@@ -75,7 +75,7 @@ class SymbolicLattice[B: BoolLattice] extends Lattice[Set[Symbolic]]:
     override def isBottom(x: L): Boolean = x.isEmpty
     def top: L = throw LatticeTopUndefined
     def join(x: L, y: => L): L =
-        (widen(WidenRecurringPatterns) andThen widen(WidenNesting(maxDeep = 2, maxWide = 4)))(x ++ y)
+        (x ++ y)
 
     def subsumes(x: L, y: => L): Boolean =
         y subsetOf x
@@ -83,4 +83,5 @@ class SymbolicLattice[B: BoolLattice] extends Lattice[Set[Symbolic]]:
     def eql[B: BoolLattice](x: L, y: L): B = BoolLattice[B].inject(x == y)
     def show(v: L): String = s"{${v.mkString(",")}}"
 
-    def widen(p: SymbolicWidenPolicy)(v: L): L = v.map(e => p.widen(e, v.filterNot(e == _)))
+    // Disable widening for now
+    def widen(p: SymbolicWidenPolicy)(v: L): L = v /* v.map(e => p.widen(e, v.filterNot(e == _))) */

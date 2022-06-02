@@ -63,6 +63,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             // run the first phase
             super.run(timeout)
         }
+        println("collection phase is done, running propagation phase")
         propagationPhase = true
         time(PropagationPhase) {
             runPropagationPhase(timeout)
@@ -264,6 +265,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             effectful { trackAddresses(addr, e) } >>>
                 super.writeSymbolic(addr)(e)
         override def writeAddr(addr: Addr, vlu: Value): Boolean =
+            if (lattice.getRight(vlu).size >= 2) then println(s"writing $vlu to $addr")
             // writeAddr can also write a symbolic value to a particular address (if getRight != Set()).
             lattice.getRight(vlu).foreach(e => trackAddresses(addr, e))
             super.writeAddr(addr, vlu)
