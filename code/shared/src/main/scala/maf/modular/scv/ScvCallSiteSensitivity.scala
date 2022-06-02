@@ -26,7 +26,7 @@ trait ScvContractCallSensitivity extends ScvContextSensitivity with maf.modular.
                     scvMonadInstance.unit(KPathCondition(PathCondition.empty, rangeContract, callers, List(), Map(), false))
 
 /** Sensitivity such that functions called with different closures are different components. */
-trait ScvArgumentSensitivity extends ScvContextSensitivity with maf.modular.scv.ScvModAnalysis with maf.modular.scv.ScvContractCallSensitivity:
+trait ScvArgumentSensitivity extends ScvContextSensitivity with maf.modular.scv.ScvModAnalysis /*with maf.modular.scv.ScvContractCallSensitivity*/:
     private def isUserDefinedApplicable(v: Value): Boolean =
         // The following are considered to be user defined and applicable:
         // - flats: usually wrap around a closure
