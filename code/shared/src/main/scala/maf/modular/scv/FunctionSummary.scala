@@ -63,7 +63,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             // run the first phase
             super.run(timeout)
         }
-        println("collection phase is done, running propagation phase")
+        //println("collection phase is done, running propagation phase")
         propagationPhase = true
         time(PropagationPhase) {
             runPropagationPhase(timeout)
