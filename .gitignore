@@ -27,3 +27,4 @@ code/**/*.semanticdb
 .venv
 .vimsession.vim
 .bsp
+out/
