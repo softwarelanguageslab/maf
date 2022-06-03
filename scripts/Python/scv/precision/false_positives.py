@@ -35,6 +35,7 @@ def visualize_false_positive_count(df):
 
     df1 = df.assign(benchmark = df["benchmark"].map(lambda x: '/'.join(x.split("/")[-2:])))
     df1 = df1.assign(blames = df1["blames"].astype(float))
+    df1 = df1.assign(configuration = df["configuration"].replace({"scvModF-FunctionSummary-TopSort": "Proposed Approach", "scvModf": "Baseline", "scvModF-rkt-fs-r": "Nguyen et al."}))
 
     ax = sb.barplot(data = df1, x = "benchmark", y = "blames", hue = "configuration") 
     ax.set_ylabel("# False Positives")
@@ -61,9 +62,10 @@ def summarize_into_table(df):
     # Convert the number of blames to a float
     df1 = df1.assign(blames = df1["blames"].astype(float))
     # Convert the number of contract checks to a float
-    df1["# check expressions"] = df1["# check expressions"].replace("-", 0).astype(float)
+    df1["# implicit contracts"] = df1["# implicit contracts"].replace("-", 0).astype(float)
+    df1["# explicit contracts"] = df1["# explicit contracts"].replace("-", 0).astype(float)
     # Only keep the information about configuration, benchjmark and number of blames
-    df1 = df1[["benchmark", "blames", "configuration", "# check expressions"]]
+    df1 = df1[["benchmark", "blames", "configuration", "# explicit contracts", "# implicit contracts"]]
     print(df1)
     # Use benchmark and configuration as an index
     df1 = df1.set_index(["benchmark", "configuration"])
@@ -85,6 +87,6 @@ GROUPS = [
 ]
 
 df1 = preprocess(df)
+visualize_false_positive_count(df1)
 summary = summarize_into_table(df1)
 summary.to_csv(INPUT_FILE+"-summary.csv")
-# visualize_false_positive_count(df1)

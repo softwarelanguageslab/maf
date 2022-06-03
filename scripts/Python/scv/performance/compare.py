@@ -24,6 +24,10 @@ def load_dataframe(filename):
     # Make the name shorter
     df["name"] = df["name"].map(lambda x: "/".join(x.split("/")[-2:]))
     df["time"] = df["time"].replace("_", np.nan).replace("TIMEOUT", np.nan).astype(float)
+    df["z3 (ns)"] = df["z3 (ns)"].replace("_", np.nan).astype(float)
+    df["collection phase (ms)"] = df["collection phase (ms)"] / (1000*1000)
+    df["propagation phase (ms)"] = df["propagation phase (ms)"] / (1000*1000)
+    df["z3 (ns)"] = df["z3 (ns)"] / (1000*1000)
     print(df)
     return df 
 
@@ -40,6 +44,7 @@ df = load_dataframe(FILENAME)
 
 # Text rotation
 plt.xticks(rotation = 45, ha = "right")
+df = df.assign(configuration = df["configuration"].replace({"scvFunctionSummariesTopSort": "Proposed Approach", "scvModf": "Baseline", "scvRktFsR": "Nguyen et al."}))
 ax = sb.barplot(data = df, x = "name", y = "time", hue = "configuration", log = True)
 ax.set_xlabel("Benchmark")
 ax.set_ylabel("Time (ms)")
