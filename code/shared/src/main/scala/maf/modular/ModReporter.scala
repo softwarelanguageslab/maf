@@ -13,15 +13,35 @@ trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
     trait TrackCount extends TrackMetric:
         def value(s: Set[Any]): Double = s.size
 
-    /** Tracks the elements in a set, and computes the median according to the sequence of groups in this set */
-    trait TrackCountMedian extends TrackMetric:
+    trait GroupedTrackCount extends TrackMetric:
         /** Returns the group of the given item, which will be used as in the aggregation */
         def group(a: Any): Any
+
+    /** Tracks the elements in a set, and computes the median according to the sequence of groups in this set */
+    trait TrackCountMedian extends GroupedTrackCount:
         // TODO: make this stuff more type safe, instead of using "any" everywhere
         def value(s: Set[Any]): Double =
             import maf.util.CollectionUtils.*
             val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
             sizes.median
+
+    trait TrackCountAvg extends GroupedTrackCount:
+        def value(s: Set[Any]): Double =
+            import maf.util.CollectionUtils.*
+            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            sizes.avg
+
+    trait TrackCountMax extends GroupedTrackCount:
+        def value(s: Set[Any]): Double =
+            import maf.util.CollectionUtils.*
+            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            sizes.max
+
+    trait TrackCountMin extends GroupedTrackCount:
+        def value(s: Set[Any]): Double =
+            import maf.util.CollectionUtils.*
+            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            sizes.min
 
     /** The type of the metric reported by the ModF analysis */
     protected trait ModMetric:

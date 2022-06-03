@@ -284,7 +284,7 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
         /** AFter calling a function we need to get its function summary and compose it with our current summary */
         override def afterCall(vlu: Value, targetCmp: Component, cll: Position.Position): EvalM[Value] =
             // track the number of distinct call sites to a particular component
-            track(DistinctCallSites, CallSite(targetCmp, cll))
+            trackCallSite(targetCmp, cll)
             // we are interested in a change to the summary of the target component
             register(SummaryReadDependency(targetCmp))
             if functionSummaries(targetCmp).isDefined && propagationPhase then composeWith(vlu, targetCmp, functionSummaries(targetCmp).get)

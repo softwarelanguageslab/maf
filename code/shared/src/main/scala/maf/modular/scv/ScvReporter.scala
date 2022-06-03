@@ -32,9 +32,25 @@ trait ScvReporter extends ModReporter[SchemeExp]:
 trait ScvCallSiteReporter extends ModAnalysis[SchemeExp] with ScvReporter:
     case class CallSite(to: Component, from: Position)
 
-    /** Measures the distinct call sites to a component, can be used as a metric for compositionality */
-    case object DistinctCallSites extends TrackCountMedian:
-        def name: String = "# distinct call sites (median)"
+    abstract class DistinctCallSites extends GroupedTrackCount:
         def group(a: Any): Any = a match
             case CallSite(to, from) => to
             case _                  => throw new Exception(s"$name is not correctly tracked")
+
+    /** Measures the distinct call sites to a component, can be used as a metric for compositionality */
+    case object DistinctCallSitesMedian extends DistinctCallSites with TrackCountMedian:
+        def name: String = "# distinct call sites (median)"
+
+    case object DistinctCallSitesAverage extends DistinctCallSites with TrackCountAvg:
+        def name: String = "# distinct call sites (average)"
+
+    case object DistinctCallSitesMax extends DistinctCallSites with TrackCountMax:
+        def name: String = "# distinct call sites (max)"
+
+    case object DistinctCallSitesMin extends DistinctCallSites with TrackCountMin:
+        def name: String = "# distinct call sites (min)"
+
+    val allDistinctCallSitesMetrics = List(DistinctCallSitesMedian, DistinctCallSitesAverage, DistinctCallSitesMax, DistinctCallSitesMin)
+
+    def trackCallSite(target: Component, loc: Position): Unit =
+        allDistinctCallSitesMetrics.foreach(track(_, CallSite(target, loc)))

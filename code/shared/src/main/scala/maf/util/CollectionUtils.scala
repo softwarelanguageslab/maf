@@ -24,6 +24,9 @@ object CollectionUtils:
             val (lower, upper) = seq.sortWith((l, r) => l < r).splitAt(seq.size / 2)
             if seq.size % 2 == 0 then (lower.last + upper.head) / 2.toDouble else upper.head
 
+        def avg =
+            seq.sum / seq.size
+
     extension [A, B](ms: List[Map[A, B]])
         /**
          * Given a list of maps combines them into a single map as follows: List[Map[A, B]] => Map[A, List[B]]
