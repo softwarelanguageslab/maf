@@ -22,25 +22,25 @@ trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
         // TODO: make this stuff more type safe, instead of using "any" everywhere
         def value(s: Set[Any]): Double =
             import maf.util.CollectionUtils.*
-            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            val sizes: Seq[Double] = s.groupBy(group).values.map(_.size.toDouble).toSeq
             sizes.median
 
     trait TrackCountAvg extends GroupedTrackCount:
         def value(s: Set[Any]): Double =
             import maf.util.CollectionUtils.*
-            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            val sizes: Seq[Double] = s.groupBy(group).values.map(_.size.toDouble).toSeq
             sizes.avg
 
     trait TrackCountMax extends GroupedTrackCount:
         def value(s: Set[Any]): Double =
             import maf.util.CollectionUtils.*
-            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            val sizes: Seq[Double] = s.groupBy(group).values.map(_.size.toDouble).toSeq
             sizes.max
 
     trait TrackCountMin extends GroupedTrackCount:
         def value(s: Set[Any]): Double =
             import maf.util.CollectionUtils.*
-            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            val sizes: Seq[Double] = s.groupBy(group).values.map(_.size.toDouble).toSeq
             sizes.min
 
     /** The type of the metric reported by the ModF analysis */
