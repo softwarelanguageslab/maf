@@ -25,4 +25,5 @@ object ContractSchemeParser:
 
     /** Parses a Scheme program with contracts into a scheme body, and runs the undefiner on top of it */
     def parse(program: String, tag: PTag = noTag): SchemeExp =
-        ContractSchemeUndefiner.undefine(ContractSchemePrelude.addPrelude(List(compile(program, tag))))
+        val builtins = Set("__toplevel_cons", "__toplevel_set-car!", "__toplevel_set-cdr!", "__toplevel_car", "__toplevel_cdr")
+        ContractSchemeUndefiner.undefine(ContractSchemePrelude.addPrelude(List(compile(program, tag)), builtins))
