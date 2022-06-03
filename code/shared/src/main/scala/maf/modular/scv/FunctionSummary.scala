@@ -3,7 +3,7 @@ package maf.modular.scv
 import maf.language.ContractScheme.ContractValues.*
 import maf.language.symbolic.*
 import maf.language.symbolic.Symbolic.*
-import maf.core.{Address, Monad}
+import maf.core.{Address, Monad, Position}
 import maf.core.Monad.MonadSyntaxOps
 import maf.language.scheme.SchemeExp
 import maf.core.Monad.MonadIterableOps
@@ -15,6 +15,7 @@ import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents
 import maf.modular.{Dependency, ModGraph}
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.modular.scv.ScvCallSiteReporter
 
 /** A dataclass that holds all the information needed for a function summary */
 case class FunctionSummary[V](
@@ -40,7 +41,7 @@ case class FunctionSummary[V](
 case class SummaryReadDependency[Component](cmp: Component) extends Dependency
 
 /** An analysis that generates function summaries for each function. */
-trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFreshBlame:
+trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFreshBlame with ScvCallSiteReporter:
     inter =>
 
     var functionSummaries: Map[Component, Option[FunctionSummary[Value]]] = Map().withDefaultValue(None)
@@ -281,11 +282,13 @@ trait FunctionSummaryAnalysis extends BaseScvBigStepSemantics with ScvIgnoreFres
             getPc.flatMap(pc => effectful { collectBlame(pc, blame) } >>> void)
 
         /** AFter calling a function we need to get its function summary and compose it with our current summary */
-        override def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =
+        override def afterCall(vlu: Value, targetCmp: Component, cll: Position.Position): EvalM[Value] =
+            // track the number of distinct call sites to a particular component
+            track(DistinctCallSites, CallSite(targetCmp, cll))
             // we are interested in a change to the summary of the target component
             register(SummaryReadDependency(targetCmp))
             if functionSummaries(targetCmp).isDefined && propagationPhase then composeWith(vlu, targetCmp, functionSummaries(targetCmp).get)
-            else super.afterCall(vlu, targetCmp)
+            else super.afterCall(vlu, targetCmp, cll)
 
 trait FunctionSummaryAnalysisWithMainBoundary extends FunctionSummaryAnalysis with StandardSchemeModFComponents:
 

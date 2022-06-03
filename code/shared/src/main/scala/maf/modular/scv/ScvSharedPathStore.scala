@@ -1,6 +1,6 @@
 package maf.modular.scv
 
-import maf.core.Identity
+import maf.core.{Identity, Position}
 import maf.language.symbolic.*
 import maf.language.scheme.SchemeExp
 import maf.core.Monad.MonadSyntaxOps
@@ -39,7 +39,7 @@ trait ScvFullPathSensitivity
             //println("--------------------------------------------------------------------------")
             answers
 
-        override protected def afterCall(vlu: Value, targetCmp: Component): EvalM[Value] =
+        override protected def afterCall(vlu: Value, targetCmp: Component, cll: Position.Position): EvalM[Value] =
             import FormulaAux.*
 
             val targetStoCache = lookupStoCache(targetCmp)

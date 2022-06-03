@@ -6,11 +6,28 @@ import maf.core.Expression
 
 /** A reporter to report metrics, it also includes some timing utilities to measure how long certain parts of the code take */
 trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
+    sealed trait TrackMetric extends ModMetric:
+        def value(s: Set[Any]): Double
+
+    /** Tracks elements in a set, and counts them afterwards */
+    trait TrackCount extends TrackMetric:
+        def value(s: Set[Any]): Double = s.size
+
+    /** Tracks the elements in a set, and computes the median according to the sequence of groups in this set */
+    trait TrackCountMedian extends TrackMetric:
+        /** Returns the group of the given item, which will be used as in the aggregation */
+        def group(a: Any): Any
+        // TODO: make this stuff more type safe, instead of using "any" everywhere
+        def value(s: Set[Any]): Double =
+            import maf.util.CollectionUtils.*
+            val sizes: Seq[Double] = s.groupBy(group).map(_.size.toDouble).toSeq
+            sizes.median
+
     /** The type of the metric reported by the ModF analysis */
     protected trait ModMetric:
         def name: String
 
-    case object NumberOfComponents extends ModMetric:
+    case object NumberOfComponents extends TrackCount:
         def name: String = "# components"
 
     case object NumberOfIntra extends ModMetric:
@@ -20,13 +37,13 @@ trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
     private var reportedMetrics: List[(ModMetric, Double)] = List()
 
     /** Keeps track of a unique count */
-    protected var trackMetrics: Map[ModMetric, Set[Any]] = Map()
+    protected var trackMetrics: Map[TrackMetric, Set[Any]] = Map()
 
     private var countMetrics: Map[ModMetric, Long] = Map()
 
     override def metrics: List[Metric] =
         reportedMetrics.map { case (k, v) => Metric(k.name, v) }.toList ++
-            trackMetrics.map { case (k, v) => Metric(k.name, v.size.toDouble) }.toList ++
+            trackMetrics.map { case (k, v) => Metric(k.name, k.value(v)) }.toList ++
             countMetrics.map { case (k, v) => Metric(k.name, v.toDouble) }.toList
 
     def count(metric: ModMetric): Unit =
@@ -35,7 +52,7 @@ trait ModReporter[E <: Expression] extends AnalysisEntry[E]:
     def accumulate(metric: ModMetric, vlu: Long): Unit =
         countMetrics = countMetrics + (metric -> (countMetrics.get(metric).getOrElse(0L) + vlu))
 
-    def track(metric: ModMetric, vlu: Any): Unit =
+    def track(metric: TrackMetric, vlu: Any): Unit =
         trackMetrics = trackMetrics + (metric -> (trackMetrics.get(metric).getOrElse(Set()) + vlu))
 
     def report(metric: ModMetric, vlu: Double): Unit = reportedMetrics = (metric, vlu) :: reportedMetrics
