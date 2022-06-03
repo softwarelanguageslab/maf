@@ -24,3 +24,6 @@
 .bsp/sbt.json
 code/**/*.semanticdb
 *.Rds
+.venv
+.vimsession.vim
+.bsp
