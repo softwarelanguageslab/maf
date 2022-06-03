@@ -54,3 +54,15 @@ trait ScvCallSiteReporter extends ModAnalysis[SchemeExp] with ScvReporter:
 
     def trackCallSite(target: Component, loc: Position): Unit =
         allDistinctCallSitesMetrics.foreach(track(_, CallSite(target, loc)))
+
+    def callsiteSummary: List[Int] =
+        trackMetrics.get(DistinctCallSitesMedian) match
+            case Some(metrics) =>
+                metrics
+                    .groupBy { case CallSite(to, _) =>
+                        to
+                    }
+                    .values
+                    .map(_.size)
+                    .toList
+            case None => List()
