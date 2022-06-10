@@ -71,9 +71,15 @@ def summarize_into_table(df):
     df1 = df1.set_index(["benchmark", "configuration"])
     # Collapse groups together
     collapsed = df1.groupby(name_of_group)
-    print(collapsed.mean())
+    print(collapsed.count()["blames"])
     # Compute some summarizing metrics
-    df1 = pd.DataFrame().assign(count = collapsed.count(), median_blames = collapsed.median()["blames"], min = collapsed.min()["blames"], max = collapsed.max()["blames"])
+    df1 = pd.DataFrame().assign(
+            count = collapsed.count()["blames"], 
+            median_blames = collapsed.median()["blames"], 
+            min_blames = collapsed.min()["blames"], 
+            max_blames = collapsed.max()["blames"],
+            median_contracts = collapsed.median()["# implicit contracts"] + collapsed.median()["# explicit contracts"]
+    )
     # Convert the tuple to a multi index
     df1.index = pd.MultiIndex.from_tuples(df1.index)
     # Unstack again
