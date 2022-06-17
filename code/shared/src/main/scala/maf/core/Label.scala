@@ -30,6 +30,12 @@ enum Label:
     case FRK // Fork
     case JOI // Join
 
+    // Actor Scheme
+    case ACT // Actor behavior expression
+    case SEN // Actor send expression
+    case BEC // Actor become expression
+    case CREA // Actor create expression
+
     // Contract language
     case DFC // define/contract
     case DPC // Dependent contract

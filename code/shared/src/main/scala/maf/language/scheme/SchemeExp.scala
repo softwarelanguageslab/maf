@@ -537,6 +537,44 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp:
     override val height: Int = tExp.height + 1
     override def toString: String = s"(join $tExp)"
 
+//
+// Actor Language
+//
+
+trait ASchemeExp extends SchemeExp
+
+case class ASchemeActor(parameters: List[Identifier], handlers: Map[Identifier, (List[Identifier], SchemeExp)], idn: Identity) extends ASchemeExp:
+    def fv: Set[String] =
+        handlers.values.flatMap(_._2.fv).toSet -- parameters.map(_.name)
+    def label: Label = ACT
+    def subexpressions: List[Expression] = handlers.values.map(_._2).toList
+    override def toString: String =
+        val pars = parameters.mkString(" ")
+        val handlersStr = handlers.map { case (nam, (prs, bdy)) => s"($nam (${pars.mkString(" ")}) $bdy)" }.mkString("\n")
+        s"(actor ($pars) $handlersStr)"
+
+case class ASchemeSend(actorRef: SchemeExp, messageType: Identifier, arguments: List[SchemeExp], idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = actorRef.fv ++ arguments.flatMap(_.fv)
+    def label: Label = SEN
+    def subexpressions: List[Expression] = actorRef :: arguments
+    override def toString: String = s"(send $actorRef $messageType ${arguments.mkString(" ")})"
+
+case class ASchemeBecome(behavior: SchemeExp, arguments: List[SchemeExp], idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = behavior.fv
+    def label: Label = BEC
+    def subexpressions: List[Expression] = List(behavior)
+    override def toString: String = s"(become $behavior ${arguments.mkString(" ")})"
+
+case class ASchemeCreate(behavior: SchemeExp, arguments: List[SchemeExp], idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = behavior.fv
+    def label: Label = CREA
+    def subexpressions: List[Expression] = List(behavior)
+    override def toString: String = s"(create $behavior ${arguments.mkString(" ")})"
+
+//
+// Contract Language
+//
+
 trait ContractSchemeExp extends SchemeExp
 
 case class ContractSchemeDepContract(
