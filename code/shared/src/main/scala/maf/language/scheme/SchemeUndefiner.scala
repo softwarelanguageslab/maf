@@ -147,6 +147,15 @@ trait UndefinerTester:
             case m: MatchExpr =>
                 m.clauses.foldLeft[Result](false)((acc, cl) => acc || checkSequence(cl.expr)(false))
 
+            case ASchemeCreate(beh, args, _) =>
+                check(beh, false) || args.foldLeft[Result](false)(_ || check(_, false))
+            case ASchemeBecome(beh, args, _) =>
+                check(beh, false) || args.foldLeft[Result](false)(_ || check(_, false))
+            case ASchemeSend(actorRef, _, args, _) =>
+                check(actorRef, false) || args.foldLeft[Result](false)(_ || check(_, false))
+            case ASchemeActor(_, handlers, _) =>
+                handlers.values.foldLeft[Result](false) { case (result, (_, bdy)) => result || check(bdy, true) }
+
             case _ =>
                 //false
                 throw new Exception(s"unrecongized expression $s")

@@ -296,6 +296,33 @@ trait BaseSchemeMonadicUndefiner:
         case ContractSchemeProvide(outs, idn) =>
             mk(ContractSchemeProvide(outs, idn))
         case _: MakeStruct => mk(exps)
+        case ASchemeSend(actorRef, msgTpy, arguments, idn) =>
+            for
+                undefinedRef <- undefineSingle(actorRef)
+                undefinedArgs <- arguments.mapM(undefineSingle)
+                result <- mk(ASchemeSend(undefinedRef, msgTpy, undefinedArgs, idn))
+            yield result
+        case ASchemeCreate(beh, arguments, idn) =>
+            for
+                undefinedBeh <- undefineSingle(beh)
+                undefinedArgs <- arguments.mapM(undefineSingle)
+                result <- mk(ASchemeCreate(undefinedBeh, undefinedArgs, idn))
+            yield result
+        case ASchemeBecome(beh, arguments, idn) =>
+            for
+                undefinedBeh <- undefineSingle(beh)
+                undefinedArgs <- arguments.mapM(undefineSingle)
+                result <- mk(ASchemeBecome(undefinedBeh, undefinedArgs, idn))
+            yield result
+        case ASchemeActor(parameters, handlers, idn) =>
+            for
+                undefinedHandlers <- handlers
+                    .mapM { case (id, (prs, bdy)) =>
+                        usingNewScope { undefineSingle(bdy).map(List(_)) }.map(letrectify).map(bdy => (id -> (prs, SchemeBegin(bdy, idn))))
+                    }
+                    .map(_.toMap)
+                result <- mk(ASchemeActor(parameters, undefinedHandlers, idn))
+            yield result
 
 object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
     import BaseSchemeMonadicUndefiner.*
