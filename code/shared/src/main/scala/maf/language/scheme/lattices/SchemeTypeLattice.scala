@@ -6,6 +6,7 @@ import maf.language.CScheme.TID
 import maf.language.scheme.primitives._
 import maf.language.scheme._
 import maf.lattice.interfaces.BoolLattice
+import maf.language.AScheme.ASchemeValues.*
 import maf.util._
 
 class TypeSchemeLattice[A <: Address]:
@@ -30,7 +31,9 @@ class TypeSchemeLattice[A <: Address]:
         struct: Boolean = false,
         setterGetter: Boolean = false,
         constructor: Boolean = false,
-        structPredicate: Boolean = false)
+        structPredicate: Boolean = false,
+        actors: Set[Actor] = Set.empty,
+        behs: Set[Behavior] = Set.empty)
         extends SmartHash:
         def isBottom: Boolean =
             !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt && !opq
@@ -56,6 +59,8 @@ class TypeSchemeLattice[A <: Address]:
         def setterGetter: L = L(setterGetter = true)
         def structConstructor: L = L(constructor = true)
         def structPredicate: L = L(structPredicate = true)
+        def actor(act: Actor): L = L(actors = Set(act))
+        def beh(behavior: Behavior): L = L(behs = Set(behavior))
 
     def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
         if b then { MayFail.success(v) }
@@ -171,7 +176,9 @@ class TypeSchemeLattice[A <: Address]:
               consCells = (join(x.consCells._1, y.consCells._1), join(x.consCells._2, y.consCells._2)),
               arr = x.arr || y.arr,
               grd = x.grd || y.grd,
-              flt = x.flt || y.flt
+              flt = x.flt || y.flt,
+              actors = x.actors ++ y.actors,
+              behs = x.behs ++ y.behs
             )
         def subsumes(x: L, y: => L): Boolean =
             (if x.str then y.str else true) &&
@@ -188,13 +195,17 @@ class TypeSchemeLattice[A <: Address]:
                 subsumes(x.consCells._1, y.consCells._2) &&
                 (if x.arr then y.arr else true) &&
                 (if x.grd then y.grd else true) &&
-                (if x.flt then y.flt else true)
+                (if x.flt then y.flt else true) &&
+                y.actors.subsetOf(x.actors) &&
+                y.behs.subsetOf(x.behs)
 
         def top: L = ???
         def getClosures(x: L): Set[Closure] = x.clos
         def getPrimitives(x: L): Set[String] = x.prims
         def getPointerAddresses(x: L): Set[A] = Set()
         def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
+        def getActors(x: L): Set[Actor] = x.actors
+        def getBehs(x: L): Set[Behavior] = x.behs
         def getContinuations(x: L): Set[K] = ???
         def getBlames(x: L): Set[Blame] = throw new Exception("Not supported")
         def getGrds(x: L): Set[Grd[L]] = Set()
@@ -226,6 +237,8 @@ class TypeSchemeLattice[A <: Address]:
         def pointer(a: A): L = Inject.pointer(a)
         def eql[B: BoolLattice](x: L, y: L): B = BoolLattice[B].top /* could be refined in some cases */
         def thread(tid: TID): L = ???
+        def actor(act: Actor): L = Inject.actor(act)
+        def beh(behavior: Behavior): L = Inject.beh(behavior)
         def cont(k: K): L = ???
         def lock(threads: Set[TID]) = ???
         def blame(blame: Blame): L = throw new Exception("Not supported")

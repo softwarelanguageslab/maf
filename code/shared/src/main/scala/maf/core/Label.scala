@@ -32,6 +32,7 @@ enum Label:
 
     // Actor Scheme
     case ACT // Actor behavior expression
+    case SEL // Actor select a message
     case SEN // Actor send expression
     case BEC // Actor become expression
     case CREA // Actor create expression

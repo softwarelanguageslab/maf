@@ -1,7 +1,7 @@
 package maf.language.AScheme
 
 import maf.language.scheme.BaseSchemeLexicalAddresser
-import maf.language.scheme.{ASchemeActor, ASchemeBecome, ASchemeCreate, ASchemeSend, SchemeExp}
+import maf.language.scheme.{ASchemeActor, ASchemeBecome, ASchemeCreate, ASchemeSelect, ASchemeSend, SchemeExp}
 
 object ASchemeLexicalAddresser extends BaseSchemeLexicalAddresser:
     override def translate(exp: SchemeExp, lenv: LexicalEnv) = exp match
@@ -11,11 +11,11 @@ object ASchemeLexicalAddresser extends BaseSchemeLexicalAddresser:
             ASchemeCreate(translate(beh, lenv), arguments.map(translate(_, lenv)), idn)
         case ASchemeBecome(beh, args, idn) =>
             ASchemeBecome(translate(beh, lenv), args.map(translate(_, lenv)), idn)
-        case ASchemeActor(prs, hndlrs, idn, name) =>
+        case ASchemeActor(prs, ASchemeSelect(hndlrs, selIdn), idn, name) =>
             val bdyLenv = lenv.newFrame.extend(prs)
             val lexHandlers = hndlrs.map { case (msg, (prs, bdy)) =>
                 val hndlLenv = bdyLenv.newFrame.extend(prs)
                 (msg -> (prs, translate(bdy, hndlLenv)))
             }
-            ASchemeActor(prs, lexHandlers.toMap, idn, name)
+            ASchemeActor(prs, ASchemeSelect(lexHandlers.toMap, selIdn), idn, name)
         case _ => super.translate(exp, lenv)

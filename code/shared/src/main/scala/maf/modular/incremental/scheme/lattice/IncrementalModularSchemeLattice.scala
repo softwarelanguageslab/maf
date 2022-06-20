@@ -9,6 +9,7 @@ import maf.modular.scheme.PtrAddr
 import maf.util.MonoidInstances.setMonoid
 import maf.util.benchmarks.Table
 import maf.util.*
+import maf.language.AScheme.ASchemeValues.*
 
 /** A modular Scheme lattice that also provides operations on address-annotated values. */
 class IncrementalModularSchemeLattice[
@@ -91,6 +92,8 @@ class IncrementalModularSchemeLattice[
         def getPrimitives(x: AL): Set[String] = schemeLattice.getPrimitives(x.toL())
         def getPointerAddresses(x: AL): Set[A] = schemeLattice.getPointerAddresses(x.toL())
         def getThreads(x: AL): Set[TID] = schemeLattice.getThreads(x.toL())
+        def getActors(x: AL): Set[Actor] = schemeLattice.getActors(x.toL())
+        def getBehs(x: AL): Set[Behavior] = schemeLattice.getBehs(x.toL())
         def getBlames(x: AL): Set[Blame] = schemeLattice.getBlames(x.toL())
         def getGrds(x: AL): Set[Grd[AL]] =
             schemeLattice.getGrds(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
@@ -132,6 +135,8 @@ class IncrementalModularSchemeLattice[
         def cons(car: AL, cdr: AL): AL = AnnotatedElement(Value.cons(car.toL(), cdr.toL()), car.joinedSources(cdr))
         def pointer(a: A): AL = AnnotatedElement(Value.pointer(a))
         def thread(tid: TID): AL = AnnotatedElement(Value.thread(tid))
+        def actor(act: Actor): AL = AnnotatedElement(Value.actor(act))
+        def beh(behavior: Behavior): AL = AnnotatedElement(Value.beh(behavior))
         def lock(threads: Set[TID]): AL = AnnotatedElement(Value.lock(threads))
         def blame(blame: Blame): AL = AnnotatedElement(Value.blame(blame))
         def grd(grd: Grd[AL]): AL = AnnotatedElement(Value.grd(grd.map(_.toL())))

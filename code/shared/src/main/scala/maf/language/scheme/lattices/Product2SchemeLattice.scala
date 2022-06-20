@@ -11,6 +11,7 @@ import maf.modular.scheme.PtrAddr
 import maf.util.MonoidInstances.setMonoid
 import maf.util.benchmarks.Table
 import maf.util.*
+import maf.language.AScheme.ASchemeValues.*
 
 trait Product2SchemeLattice[L, O, A <: Address] extends SchemeLattice[L, A]:
     def getRight(v: L): O
@@ -59,6 +60,8 @@ class Product2ModularSchemeLattice[
         def getPrimitives(x: PL): Set[String] = schemeLattice.getPrimitives(x.left)
         def getPointerAddresses(x: PL): Set[A] = schemeLattice.getPointerAddresses(x.left)
         def getThreads(x: PL): Set[TID] = schemeLattice.getThreads(x.left)
+        def getActors(x: PL): Set[Actor] = schemeLattice.getActors(x.left)
+        def getBehs(x: PL): Set[Behavior] = schemeLattice.getBehs(x.left)
         def getBlames(x: PL): Set[Blame] = schemeLattice.getBlames(x.left)
         def getGrds(x: PL): Set[Grd[PL]] =
             schemeLattice.getGrds(x.left).map(_.map(PL(_, Lattice[O].bottom)))
@@ -107,6 +110,8 @@ class Product2ModularSchemeLattice[
         def pointer(a: A): PL = PL(schemeLattice.pointer(a), Lattice[O].bottom)
         def thread(tid: TID): PL = PL(schemeLattice.thread(tid), Lattice[O].bottom)
         def lock(threads: Set[TID]): PL = PL(schemeLattice.lock(threads), Lattice[O].bottom)
+        def actor(act: Actor): PL = PL(schemeLattice.actor(act), Lattice[O].bottom)
+        def beh(behavior: Behavior): PL = PL(schemeLattice.beh(behavior), Lattice[O].bottom)
         def blame(blame: Blame): PL = PL(schemeLattice.blame(blame), Lattice[O].bottom)
         def grd(grd: Grd[PL]): PL = PL(schemeLattice.grd(grd.map(_.left)), Lattice[O].bottom)
         def arr(arr: Arr[PL]): PL = PL(schemeLattice.arr(arr.map(_.left)), Lattice[O].bottom)

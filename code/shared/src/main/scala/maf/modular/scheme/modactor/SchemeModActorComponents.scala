@@ -4,8 +4,9 @@ import maf.util.*
 import maf.language.CScheme.*
 import maf.language.scheme.*
 import maf.core.*
+import maf.language.AScheme.ASchemeValues.AID
 
-sealed trait SchemeModActorComponent[+Context] extends SmartHash with TID
+sealed trait SchemeModActorComponent[+Context] extends SmartHash with AID
 
 // The main actor of the program
 case object MainActor extends SchemeModActorComponent[Nothing]

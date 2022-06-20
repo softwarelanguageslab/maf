@@ -5,6 +5,7 @@ import maf.lattice.interfaces._
 import maf.language.CScheme.TID
 import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme._
+import maf.language.AScheme.ASchemeValues.{Actor, Behavior}
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address]:
@@ -62,6 +63,12 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** Extract the thread identifiers in this value */
     def getThreads(x: L): Set[TID]
+
+    /** Extract the actors in this value */
+    def getActors(x: L): Set[Actor]
+
+    /** Extract actor behaviors in this value */
+    def getBehs(x: L): Set[Behavior]
 
     /** Extract the blames in this value */
     def getBlames(x: L): Set[Blame]
@@ -162,6 +169,12 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** Injection of a thread identifier */
     def thread(tid: TID): L
+
+    /** Injection of an actor */
+    def actor(actor: Actor): L
+
+    /** Injection of an actor behavior */
+    def beh(behavior: Behavior): L
 
     /** Creates a new lock. */
     def lock(threads: Set[TID]): L

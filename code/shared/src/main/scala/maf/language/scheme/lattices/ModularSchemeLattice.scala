@@ -3,6 +3,7 @@ package maf.language.scheme.lattices
 import maf.core._
 import maf.language.CScheme.TID
 import maf.language.ContractScheme.ContractValues._
+import maf.language.AScheme.ASchemeValues.{Actor, Behavior}
 import maf.language.scheme.primitives.SchemePrimitive
 import maf.lattice.interfaces._
 import maf.util.datastructures.SmartUnion._
@@ -168,6 +169,15 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "STRUCTPREDICATE"
         override def toString: String = "<struct-predicate>"
 
+    case class Actors(actors: Set[Actor]) extends Value:
+        def ord = 27
+        def typeName = "ACTOR"
+        override def toString: String = s"<actor>"
+    case class Behaviors(behs: Set[Behavior]) extends Value:
+        def ord = 28
+        def typeName = "BEH"
+        override def toString: String = s"<behavior>"
+
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
 
@@ -219,6 +229,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (StructSetterGetters(o1), StructSetterGetters(o2)) => StructSetterGetters(o1 ++ o2)
             case (StructConstructors(o1), StructConstructors(o2))   => StructConstructors(o1 ++ o2)
             case (StructPredicates(o1), StructPredicates(o2))       => StructPredicates(o1 ++ o2)
+            case (Actors(o1), Actors(o2))                           => Actors(o1 ++ o2)
+            case (Behaviors(o1), Behaviors(o2))                     => Behaviors(o1 ++ o2)
             case _                                                  => throw new Exception(s"Illegal join of $x and $y")
 
         def subsumes(x: Value, y: => Value): Boolean =
@@ -255,6 +267,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                     case (StructSetterGetters(l1), StructSetterGetters(l2)) => l2.subsetOf(l1)
                     case (StructConstructors(l1), StructConstructors(l2))   => l2.subsetOf(l1)
                     case (StructPredicates(l1), StructPredicates(l2))       => l2.subsetOf(l1)
+                    case (Actors(l1), Actors(l2))                           => l2.subsetOf(l1)
+                    case (Behaviors(l1), Behaviors(l2))                     => l2.subsetOf(l1)
                     // opaque values behave like top, they subsume everything
                     case (Opqs(_), _) => true
                     case _            => false
@@ -627,6 +641,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def pointer(a: A): Value = Pointer(Set(a))
         def thread(tid: TID): Value = Thread(Set(tid))
         def lock(threads: Set[TID]): Value = Lock(threads)
+        def actor(actor: Actor): Value = Actors(Set(actor))
+        def beh(behavior: Behavior): Value = Behaviors(Set(behavior))
         def void: Value = Void
         def blame(blame: Blame): Value = Blames(Set(blame))
         def grd(grd: Grd[L]): Value = Grds(Set(grd))
@@ -656,6 +672,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def getLocks(x: Value): Set[TID] = x match
             case Lock(l) => l
             case _       => Set.empty
+        def getActors(x: Value): Set[Actor] = x match
+            case Actors(l) => l
+            case _         => Set.empty
+        def getBehs(x: Value): Set[Behavior] = x match
+            case Behaviors(l) => l
+            case _            => Set.empty
 
         def getBlames(x: Value): Set[Blame] = x match
             case Blames(l) => l
@@ -896,6 +918,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def getStructConstructor(x: L): Set[StructConstructor] = x.foldMapL(x => Value.getStructConstructor(x))(setMonoid)
         def getStructPredicates(x: L): Set[StructPredicate] = x.foldMapL(x => Value.getStructPredicates(x))(setMonoid)
         def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
+        def getActors(x: L): Set[Actor] = x.foldMapL(Value.getActors)(setMonoid)
+        def getBehs(x: L): Set[Behavior] = x.foldMapL(Value.getBehs)(setMonoid)
+
         def acquire(lock: L, tid: TID): MayFail[L, Error] =
             lock.foldMapL(l => Value.acquire(l, tid))
         def release(lock: L, tid: TID): MayFail[L, Error] =
@@ -922,6 +947,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def pointer(a: A): L = Element(Value.pointer(a))
         def thread(tid: TID): L = Element(Value.thread(tid))
         def lock(threads: Set[TID]): L = Element(Value.lock(threads))
+        def actor(actor: Actor): L = Element(Value.actor(actor))
+        def beh(behavior: Behavior): L = Element(Value.beh(behavior))
         def blame(blame: Blame): L = Element(Value.blame(blame))
         def grd(grd: Grd[L]): L = Element(Value.grd(grd))
         def arr(arr: Arr[L]): L = Element(Value.arr(arr))

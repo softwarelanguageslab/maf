@@ -38,14 +38,14 @@ object ASchemeCompiler extends BaseSchemeCompiler:
                 cplArgsComp <- tailcall(compileArgs(args))
                 (cplArgs, None) = cplArgsComp
                 cplMsgs <- tailcall(compileHandlers(msgs))
-            yield ASchemeActor(cplArgs, cplMsgs.toMap, actorIdn, Some(name))
+            yield ASchemeActor(cplArgs, ASchemeSelect(cplMsgs.toMap, args.idn), actorIdn, Some(name))
 
         case IdentWithIdentity("actor", actorIdn) :::: args :::: msgs =>
             for
                 cplArgsComp <- tailcall(compileArgs(args))
                 (cplArgs, None) = cplArgsComp
                 cplMsgs <- tailcall(compileHandlers(msgs))
-            yield ASchemeActor(cplArgs, cplMsgs.toMap, actorIdn, None)
+            yield ASchemeActor(cplArgs, ASchemeSelect(cplMsgs.toMap, args.idn), actorIdn, None)
 
         case IdentWithIdentity("become", becomeIdn) :::: beh :::: args =>
             for
