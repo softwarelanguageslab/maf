@@ -12,8 +12,10 @@ trait SchemeParserTestsSpec extends SchemeBenchmarkTests:
     def parseProgram(content: String, tag: Position.PTag = Position.noTag): List[SchemeExp] =
         SchemeParser.parse(content, tag)
 
+    def name: String = "SchemeParser"
+
     def onBenchmark(benchmark: Benchmark) =
-        property(s"SchemeParser can correctly parse $benchmark", ParserTest) {
+        property(s"$name can correctly parse $benchmark", ParserTest) {
             val content = Reader.loadFile(benchmark)
             val parsed = parseProgram(content)
             // Check that the parsing was succesful

@@ -7,6 +7,8 @@ import maf.core.Position
 import maf.bench.scheme.SchemeBenchmarkPrograms
 
 class ASchemeParserTests extends SchemeParserTestsSpec:
+    override def name: String = "ASchemeParser"
+
     override def parseProgram(content: String, tag: Position.PTag = Position.noTag): List[SchemeExp] =
         ASchemeParser.parse(content, tag)
 
