@@ -543,14 +543,19 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp:
 
 trait ASchemeExp extends SchemeExp
 
-case class ASchemeActor(parameters: List[Identifier], handlers: Map[Identifier, (List[Identifier], SchemeExp)], idn: Identity) extends ASchemeExp:
+case class ASchemeActor(
+    parameters: List[Identifier],
+    handlers: Map[Identifier, (List[Identifier], List[SchemeExp])],
+    idn: Identity,
+    name: Option[String])
+    extends ASchemeExp:
     def fv: Set[String] =
-        handlers.values.flatMap(_._2.fv).toSet -- parameters.map(_.name)
+        handlers.values.flatMap(_._2.flatMap(_.fv)).toSet -- parameters.map(_.name)
     def label: Label = ACT
-    def subexpressions: List[Expression] = handlers.values.map(_._2).toList
+    def subexpressions: List[Expression] = handlers.values.flatMap(_._2).toList
     override def toString: String =
         val pars = parameters.mkString(" ")
-        val handlersStr = handlers.map { case (nam, (prs, bdy)) => s"($nam (${pars.mkString(" ")}) $bdy)" }.mkString("\n")
+        val handlersStr = handlers.map { case (nam, (prs, bdy)) => s"($nam (${pars.mkString(" ")}) ${bdy.mkString(" ")})" }.mkString("\n")
         s"(actor ($pars) $handlersStr)"
 
 case class ASchemeSend(actorRef: SchemeExp, messageType: Identifier, arguments: List[SchemeExp], idn: Identity) extends ASchemeExp:

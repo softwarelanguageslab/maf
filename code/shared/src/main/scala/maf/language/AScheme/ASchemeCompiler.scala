@@ -13,16 +13,16 @@ object ASchemeCompiler extends BaseSchemeCompiler:
     private val actorReserved = List("actor", "send", "become", "create")
     override def reserved: List[String] = actorReserved ::: super.reserved
 
-    private def compileHandler(sexp: SExp): TailRec[(Identifier, (List[Identifier], SchemeExp))] = sexp match
+    private def compileHandler(sexp: SExp): TailRec[(Identifier, (List[Identifier], List[SchemeExp]))] = sexp match
         case IdentWithIdentity(msgTpy, idn) :::: prs :::: bdy =>
             for
                 cplArgsComp <- compileArgs(prs)
                 (cplArgs, None) = cplArgsComp
-                cplBdy <- compileBody(bdy).map(SchemeBegin(_, bdy.idn))
+                cplBdy <- compileBody(bdy)
             yield (Identifier(msgTpy, idn) -> (cplArgs, cplBdy))
         case _ => throw new Exception(s"Invalid syntax for actor message handler at ${sexp.idn}")
 
-    private def compileHandlers(sexp: SExp): TailRec[List[(Identifier, (List[Identifier], SchemeExp))]] = sexp match
+    private def compileHandlers(sexp: SExp): TailRec[List[(Identifier, (List[Identifier], List[SchemeExp]))]] = sexp match
         case SNil(_) => done(List())
         case handler :::: handlers =>
             for
@@ -33,12 +33,19 @@ object ASchemeCompiler extends BaseSchemeCompiler:
         case _ => throw new Exception(s"Invalid syntax for actor message handler list at ${sexp.idn}")
 
     override def _compile(exp: SExp): TailCalls.TailRec[SchemeExp] = exp match
+        case IdentWithIdentity("actor", actorIdn) :::: SExpValue(Value.String(name), _) :::: args :::: msgs =>
+            for
+                cplArgsComp <- tailcall(compileArgs(args))
+                (cplArgs, None) = cplArgsComp
+                cplMsgs <- tailcall(compileHandlers(msgs))
+            yield ASchemeActor(cplArgs, cplMsgs.toMap, actorIdn, Some(name))
+
         case IdentWithIdentity("actor", actorIdn) :::: args :::: msgs =>
             for
                 cplArgsComp <- tailcall(compileArgs(args))
                 (cplArgs, None) = cplArgsComp
                 cplMsgs <- tailcall(compileHandlers(msgs))
-            yield ASchemeActor(cplArgs, cplMsgs.toMap, actorIdn)
+            yield ASchemeActor(cplArgs, cplMsgs.toMap, actorIdn, None)
 
         case IdentWithIdentity("become", becomeIdn) :::: beh :::: args =>
             for

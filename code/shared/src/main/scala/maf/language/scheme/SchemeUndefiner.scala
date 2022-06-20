@@ -153,7 +153,7 @@ trait UndefinerTester:
                 check(beh, false) || args.foldLeft[Result](false)(_ || check(_, false))
             case ASchemeSend(actorRef, _, args, _) =>
                 check(actorRef, false) || args.foldLeft[Result](false)(_ || check(_, false))
-            case ASchemeActor(_, handlers, _) =>
+            case ASchemeActor(_, handlers, _, _) =>
                 handlers.values.foldLeft[Result](false) { case (result, (_, bdy)) => result || check(bdy, true) }
 
             case _ =>

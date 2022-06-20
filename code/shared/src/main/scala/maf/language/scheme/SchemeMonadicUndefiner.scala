@@ -314,14 +314,14 @@ trait BaseSchemeMonadicUndefiner:
                 undefinedArgs <- arguments.mapM(undefineSingle)
                 result <- mk(ASchemeBecome(undefinedBeh, undefinedArgs, idn))
             yield result
-        case ASchemeActor(parameters, handlers, idn) =>
+        case ASchemeActor(parameters, handlers, idn, name) =>
             for
                 undefinedHandlers <- handlers
                     .mapM { case (id, (prs, bdy)) =>
-                        usingNewScope { undefineSingle(bdy).map(List(_)) }.map(letrectify).map(bdy => (id -> (prs, SchemeBegin(bdy, idn))))
+                        usingNewScope { undefine(bdy) }.map(letrectify).map(bdy => (id -> (prs, bdy)))
                     }
                     .map(_.toMap)
-                result <- mk(ASchemeActor(parameters, undefinedHandlers, idn))
+                result <- mk(ASchemeActor(parameters, undefinedHandlers, idn, name))
             yield result
 
 object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
