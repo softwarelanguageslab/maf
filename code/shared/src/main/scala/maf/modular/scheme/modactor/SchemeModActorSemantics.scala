@@ -141,7 +141,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     // Inner ModF intra-process
     //
 
-    abstract class InnerModF(intra: ModActorIntra)
+    abstract class InnerModF(intra: ModActorIntra, beh: Behavior)
         extends ModAnalysis[SchemeExp](body(intra.component))
         with SchemeModActorInnerMonad[Msg]
         with StandardSchemeModFComponents { modf =>
@@ -173,7 +173,31 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             super.trigger(dep)
             intra.trigger(dep)
 
+        private var behaviors: Set[Behavior] = Set()
+        def getBehaviors: Set[Behavior] = behaviors
+
+        protected def recordNewBehavior(beh: Value, ags: List[Value]): EvalM[Unit] =
+            nondets(lattice.getBehs(beh).map { beh =>
+                writeActorArgs(beh, ags, intra.component)
+                behaviors = behaviors + beh
+                unit(())
+            })
+
+        protected def writeActorArgs(beh: Behavior, ags: List[Value], actor: inter.Component): Unit =
+            beh.prs.zip(ags).foreach { case (par, arg) =>
+                val addr = inter.allocVar(par, Main, actor)
+                writeAddr(addr, arg)
+            }
+
         class InnerModFIntra(component: modf.Component) extends IntraAnalysis(component) with BigStepModFIntraT:
+            override def fnEnv: Environment[Address] = component match
+                case Main =>
+                    // inject the parameters of the behavior into the component
+                    val prs = beh.prs
+                    val ads = beh.prs.map(inter.allocVar(_, Main, intra.component))
+                    super.fnEnv.extend(prs.map(_.name).zip(ads))
+                case _ => super.fnEnv
+
             val initialState: State = State(fnEnv, intra.receive())
 
             // analysis entry point
@@ -202,7 +226,16 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                     yield lattice.nil
 
                 case ASchemeBecome(beh, ags, idn) =>
-                    ???
+                    for
+                        evaluatedBeh <- eval(beh)
+                        evaluatedAgs <- ags.mapM(eval)
+                        _ <- recordNewBehavior(evaluatedBeh, evaluatedAgs)
+                        // we stop the analysis here because the actor is in a suspended state,
+                        // waiting for new messages defined by the behavior.
+                        //
+                        // The intra-actor analysis will restart the analysis when appropriate
+                        res <- mzero[Value]
+                    yield res
 
                 case _ => super.eval(exp)
 
@@ -214,11 +247,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                           // spawn the actor
                           val cmp = intra.spawn(beh, idn)
                           // write the arguments of the actor
-                          beh.prs.zip(ags).foreach { case (par, arg) =>
-                              val addr = inter.allocVar(par, Main, cmp)
-                              writeAddr(addr, arg)
-                          }
-
+                          writeActorArgs(beh, ags, cmp)
                           unit(lattice.actor(ASchemeValues.Actor(beh.name, cmp)))
                       )
                 )
