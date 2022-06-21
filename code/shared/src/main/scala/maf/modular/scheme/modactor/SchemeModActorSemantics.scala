@@ -231,13 +231,20 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             }
 
         class InnerModFIntra(component: modf.Component) extends IntraAnalysis(component) with BigStepModFIntraT:
+            private def baseEnv: Environment[Address] = inter.view(intra.component) match
+                case c: Actor[_] =>
+                    val adr = allocVar(Identifier("self", Identity.none), component)
+                    writeAddr(adr, lattice.actor(ASchemeValues.Actor(c.beh.name, intra.component)))
+                    super.fnEnv.extend("self", adr)
+                case _ => super.fnEnv
+
             override def fnEnv: Environment[Address] = component match
                 case Main =>
                     // inject the parameters of the behavior into the component
                     val prs = beh.prs
                     val ads = beh.prs.map(inter.allocVar(_, Main, intra.component))
-                    super.fnEnv.extend(prs.map(_.name).zip(ads))
-                case _ => super.fnEnv
+                    baseEnv.extend(prs.map(_.name).zip(ads))
+                case _ => baseEnv
 
             val initialState: State = State(fnEnv, intra.receive())
 
