@@ -20,4 +20,7 @@ object ASchemeValues:
     case class Actor(name: Option[String], tid: AID)
 
     /** Represents a behavior */
-    case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp)
+    case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp):
+        override def toString: String = s"<behavior: $name>"
+
+    def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy)

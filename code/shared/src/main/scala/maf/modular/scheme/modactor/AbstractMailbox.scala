@@ -53,3 +53,15 @@ case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
     def remove(m: M): PowersetMailbox[M] =
         // since the power set mailbox does not encode message multiplicity, removing a message is a no-op, since its multiplicity is not known and is therefore infinite.
         PowersetMailbox(msgs)
+
+/** This trait implements simple messages where the arguments of the messages are not store allocated */
+trait SimpleMessageMailbox extends SchemeModActorSemantics:
+    case class Message(tag: String, vlus: List[Value])
+    type Msg = Message
+    def mkMessage(tpy: String, arguments: List[Value]): Msg = Message(tpy, arguments)
+    def getTag(msg: Message): String = msg.tag
+    def getArgs(msg: Message): List[Value] = msg.vlus
+
+/** An analysis with a powerset mailbox */
+trait PowersetMailboxAnalysis extends SchemeModActorSemantics:
+    def emptyMailbox: Mailbox = PowersetMailbox(Set())

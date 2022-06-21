@@ -8,3 +8,10 @@ object FunctionUtils:
     extension [A, C](f: C => A)
         def after[B](g: B => C): B => A = (b) => f(g(b))
         def andThen[B](g: A => B): C => B = (c) => g(f(c))
+
+    def fix[T](init: T)(f: T => T): T =
+        def loop(prev: T): T =
+            val next = f(prev)
+            if next == prev then next else loop(next)
+
+        loop(init)

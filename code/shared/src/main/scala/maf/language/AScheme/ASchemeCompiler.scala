@@ -13,16 +13,16 @@ object ASchemeCompiler extends BaseSchemeCompiler:
     private val actorReserved = List("actor", "send", "become", "create")
     override def reserved: List[String] = actorReserved ::: super.reserved
 
-    private def compileHandler(sexp: SExp): TailRec[(Identifier, (List[Identifier], List[SchemeExp]))] = sexp match
+    private def compileHandler(sexp: SExp): TailRec[(String, (List[Identifier], List[SchemeExp]))] = sexp match
         case IdentWithIdentity(msgTpy, idn) :::: prs :::: bdy =>
             for
                 cplArgsComp <- compileArgs(prs)
                 (cplArgs, None) = cplArgsComp
                 cplBdy <- compileBody(bdy)
-            yield (Identifier(msgTpy, idn) -> (cplArgs, cplBdy))
+            yield (msgTpy -> (cplArgs, cplBdy))
         case _ => throw new Exception(s"Invalid syntax for actor message handler at ${sexp.idn}")
 
-    private def compileHandlers(sexp: SExp): TailRec[List[(Identifier, (List[Identifier], List[SchemeExp]))]] = sexp match
+    private def compileHandlers(sexp: SExp): TailRec[List[(String, (List[Identifier], List[SchemeExp]))]] = sexp match
         case SNil(_) => done(List())
         case handler :::: handlers =>
             for

@@ -558,7 +558,7 @@ case class ASchemeActor(
         s"(actor ($pars) $selection)"
 
 case class ASchemeSelect(
-    handlers: Map[Identifier, (List[Identifier], List[SchemeExp])],
+    handlers: Map[String, (List[Identifier], List[SchemeExp])],
     idn: Identity)
     extends ASchemeExp:
     def fv: Set[String] =

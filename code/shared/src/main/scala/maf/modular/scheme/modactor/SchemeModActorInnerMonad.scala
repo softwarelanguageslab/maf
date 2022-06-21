@@ -38,6 +38,19 @@ trait SchemeModActorInnerMonad[Msg] extends ModAnalysis[SchemeExp] with BaseSche
     def nondet[X](x: EvalM[X], y: EvalM[X]): EvalM[X] =
         nondets(Set(x, y))
 
+    /** Non deterministic receive of a message */
+    def pop: EvalM[Msg] =
+        import aevalM.*
+        get.map(_.mailbox.pop).flatMap(msgs => nondets(msgs.map(unit)))
+
+    def remove(msg: Msg): EvalM[Unit] =
+        import aevalM.*
+        for
+            st <- get
+            stNew = st.copy(mailbox = st.mailbox.remove(msg))
+            _ <- put(st)
+        yield ()
+
     implicit val evalM = new TEvalM:
         import aevalM.{get, impure, put, withState}
         export aevalM._

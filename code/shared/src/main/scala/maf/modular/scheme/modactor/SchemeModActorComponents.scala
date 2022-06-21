@@ -5,6 +5,7 @@ import maf.language.CScheme.*
 import maf.language.scheme.*
 import maf.core.*
 import maf.language.AScheme.ASchemeValues.AID
+import maf.language.AScheme.ASchemeValues.Behavior
 
 sealed trait SchemeModActorComponent[+Context] extends SmartHash with AID
 
@@ -19,7 +20,7 @@ case object MainActor extends SchemeModActorComponent[Nothing]
  * @param ctx an optional context, to be used to change the sensitivity of the analysis
  */
 case class Actor[Context](
-    beh: SchemeExp,
+    beh: Behavior,
     env: Environment[Address],
     ctx: Context)
     extends SchemeModActorComponent[Context]
