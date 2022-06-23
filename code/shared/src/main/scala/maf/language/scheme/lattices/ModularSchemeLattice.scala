@@ -172,7 +172,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     case class Actors(actors: Set[Actor]) extends Value:
         def ord = 27
         def typeName = "ACTOR"
-        override def toString: String = s"<actor>"
+        override def toString: String = s"<actor {${actors.mkString(",")}}>"
     case class Behaviors(behs: Set[Behavior]) extends Value:
         def ord = 28
         def typeName = "BEH"

@@ -17,10 +17,11 @@ object ASchemeValues:
      * @param TID
      *   The associated actor id (usually represented by a component)
      */
-    case class Actor(name: Option[String], tid: AID)
+    case class Actor(name: Option[String], tid: AID):
+        override def toString: String = s"$name"
 
     /** Represents a behavior */
-    case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp):
+    case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp, lexEnv: Environment[Address]):
         override def toString: String = s"<behavior: $name>"
 
-    def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy)
+    def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty)

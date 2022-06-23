@@ -217,20 +217,19 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
         private var behaviors: Set[Behavior] = Set()
         def getBehaviors: Set[Behavior] = behaviors
 
-        protected def recordNewBehavior(beh: Value, ags: List[Value]): EvalM[Unit] =
-            nondets(lattice.getBehs(beh).map { beh =>
-                writeActorArgs(beh, ags, intra.component)
-                behaviors = behaviors + beh
-                unit(())
-            })
-
-        protected def writeActorArgs(beh: Behavior, ags: List[Value], actor: inter.Component): Unit =
-            beh.prs.zip(ags).foreach { case (par, arg) =>
-                val addr = inter.allocVar(par, Main, actor)
-                writeAddr(addr, arg)
-            }
-
         class InnerModFIntra(component: modf.Component) extends IntraAnalysis(component) with BigStepModFIntraT:
+            protected def recordNewBehavior(beh: Value, ags: List[Value]): EvalM[Unit] =
+                nondets(lattice.getBehs(beh).map { beh =>
+                    writeActorArgs(beh, ags, intra.component)
+                    behaviors = behaviors + beh
+                    unit(())
+                })
+
+            protected def writeActorArgs(beh: Behavior, ags: List[Value], actor: inter.Component): Unit =
+                beh.prs.zip(ags).foreach { case (par, arg) =>
+                    val addr = inter.allocVar(par, Main, actor)
+                    writeAddr(addr, arg)
+                }
             private def baseEnv: Environment[Address] = inter.view(intra.component) match
                 case c: Actor[_] =>
                     val adr = allocVar(Identifier("self", Identity.none), component)
@@ -262,14 +261,15 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             override def eval(exp: SchemeExp): EvalM[Value] = exp match
                 // An actor expression evaluates to a behavior
                 case ASchemeActor(parameters, selection, _, name) =>
-                    unit(lattice.beh(Behavior(name, parameters, selection)))
+                    for env <- getEnv
+                    yield lattice.beh(Behavior(name, parameters, selection, env))
                 // Evaluating a create expression spawns a new actor and returns a reference to it
                 case ASchemeCreate(beh, ags, idn) =>
                     for
                         evaluatedBeh <- eval(beh)
                         evaluatedAgs <- ags.mapM(eval)
                         env <- getEnv
-                        actorRef <- spawnActor(evaluatedBeh, evaluatedAgs, idn, env)
+                        actorRef <- spawnActor(evaluatedBeh, evaluatedAgs, idn)
                     yield actorRef
                 // Sending a message is atomic and results in nil
                 case ASchemeSend(actorRef, messageTpy, ags, idn) =>
@@ -301,7 +301,6 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                     for
                         // select a message from the mailbox
                         msg <- pop
-                        _ = println(s"processing msg $msg")
                         // see if there is an applicable handler
                         tag = getTag(msg)
                         args = getArgs(msg)
@@ -317,13 +316,13 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
                 case _ => super.eval(exp)
 
-            def spawnActor(beh: Value, ags: List[Value], idn: Identity, lexEnv: Environment[Address]): EvalM[Value] =
+            def spawnActor(beh: Value, ags: List[Value], idn: Identity): EvalM[Value] =
                 nondets(
                   lattice
                       .getBehs(beh)
                       .map(beh =>
                           // spawn the actor
-                          val cmp = intra.spawn(beh, lexEnv.restrictTo(beh.bdy.fv), idn)
+                          val cmp = intra.spawn(beh, beh.lexEnv.restrictTo(beh.bdy.fv), idn)
                           // write the arguments of the actor
                           writeActorArgs(beh, ags, cmp)
                           unit(lattice.actor(ASchemeValues.Actor(beh.name, cmp)))
