@@ -26,7 +26,7 @@ class CPSSchemeInterpreter(
     var tid = 0
 
     def scheduleNext(): Unit =
-        steps = 5 // scala.util.Random.nextInt(10)
+        steps = scala.util.Random.nextInt(10)
         val (s, w) = work.dequeue
         state = s
         work = w
@@ -275,6 +275,18 @@ class CPSSchemeInterpreter(
         values: List[Value],
         env: Env
       ): Env = ids.zip(values).foldLeft(env)(extendEnv)
+
+    protected def checkValue(v: Value): Boolean = v match
+        case Value.Undefined(_) => false
+        case _                  => true
+
+    protected def checkAddr(a: Addr): Boolean = a._2 match
+        case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr => true
+        case _                                         => false
+
+    override def extendStore(a: Addr, v: Value): Unit =
+        if checkAddr(a) && checkValue(v) then cb(a._2.idn, v)
+        super.extendStore(a, v)
 
     def extendEnv(env: Env, idv: (Identifier, Value)): Env =
         val addr = newAddr(AddrInfo.VarAddr(idv._1))
