@@ -26,7 +26,7 @@ class CPSSchemeInterpreter(
     var tid = 0
 
     def scheduleNext(): Unit =
-        steps = scala.util.Random.nextInt(10)
+        steps = 5 // scala.util.Random.nextInt(10)
         val (s, w) = work.dequeue
         state = s
         work = w
@@ -34,6 +34,19 @@ class CPSSchemeInterpreter(
     def allocTID(): TID =
         tid = tid + 1
         tid
+
+    protected def next(st: State, version: Version): Either[Value, State] = st match
+        case Step(exp, env, cc) => Right(eval(exp, env, version, cc))
+        case Kont(v, EndC())    => Left(v)
+        case Kont(v, TrdC(tid)) =>
+            val blocked = waiting(tid)
+            waiting = waiting + (tid -> Right(v))
+            blocked match
+                case Left(continuations) => work = work.enqueueAll(continuations.map(Kont(v, _)))
+                case Right(_)            => throw new Exception(s"Thread with $tid already finished.")
+            scheduleNext()
+            Right(state)
+        case Kont(v, cc) => Right(apply(v, cc))
 
     override def run(
         program: SchemeExp,
@@ -52,18 +65,9 @@ class CPSSchemeInterpreter(
                     work = work.enqueue(state)
                     scheduleNext()
                 steps = steps - 1
-                state = state match
-                    case Step(exp, env, cc) => eval(exp, env, version, cc)
-                    case Kont(v, EndC())    => return v
-                    case Kont(v, TrdC(tid)) =>
-                        val blocked = waiting(tid)
-                        waiting = waiting + (tid -> Right(v))
-                        blocked match
-                            case Left(continuations) => work = work.enqueueAll(continuations.map(Kont(v, _)))
-                            case Right(_)            => throw new Exception(s"Thread with $tid already finished.")
-                        scheduleNext()
-                        state
-                    case Kont(v, cc) => apply(v, cc)
+                state = next(state, version) match
+                    case Left(vlu) => return vlu
+                    case Right(st) => st
             throw new TimeoutException()
         catch
             // Use the continuations to print the stack trace.
@@ -83,7 +87,7 @@ class CPSSchemeInterpreter(
     /* ***** CONTINUATIONS ***** */
     /* ************************* */
 
-    sealed trait Continuation
+    trait Continuation
 
     trait InternalContinuation extends Continuation:
         val cc: Continuation
@@ -133,6 +137,10 @@ class CPSSchemeInterpreter(
         extends State
 
     case class Kont(v: Value, cc: Continuation) extends State
+
+    /** A stopping state, is return by scheduleNext if no other thread can be scheduled */
+    case object Stop extends State:
+        val cc: Continuation = EndC()
 
     /* ********************** */
     /* ***** EVAL/APPLY ***** */

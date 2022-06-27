@@ -190,7 +190,8 @@ trait ConcreteSchemePrimitives:
           Acquire,
           Release,
           `any?`,
-          `number?`
+          `number?`,
+          `bool-top`
         ).map(prim => (prim.name, prim)).toMap
 
         abstract class SingleArgumentPrimWithExp(val name: String) extends Prim:
@@ -733,6 +734,13 @@ trait ConcreteSchemePrimitives:
                 case (Value.Integer(_) | Value.Real(_)) :: Nil => Value.Bool(true)
                 case _ :: Nil                                  => Value.Bool(false)
                 case _ => signalException(s"$name ($position) wrong number of arguments, 1 expected, got ${args.length}")
+
+        object `bool-top` extends SimplePrim:
+            val name = "bool-top"
+
+            def call(args: List[Value], position: Position) = args match
+                case Nil => if scala.util.Random.nextInt(2) != 0 then Value.Bool(true) else Value.Bool(false)
+                case _   => signalException(s"$name ($position) wrong number of arguments, 0 expected, got ${args.length}")
 
         object `any?` extends SimplePrim:
             val name = "any?"

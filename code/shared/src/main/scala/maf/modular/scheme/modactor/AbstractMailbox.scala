@@ -1,5 +1,7 @@
 package maf.modular.scheme.modactor
 
+import maf.language.AScheme.ASchemeValues.Message
+
 /**
  * An abstract representation of a mailbox.
  *
@@ -56,11 +58,10 @@ case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:
-    case class Message(tag: String, vlus: List[Value])
-    type Msg = Message
+    type Msg = Message[Value]
     def mkMessage(tpy: String, arguments: List[Value]): Msg = Message(tpy, arguments)
-    def getTag(msg: Message): String = msg.tag
-    def getArgs(msg: Message): List[Value] = msg.vlus
+    def getTag(msg: Message[Value]): String = msg.tag
+    def getArgs(msg: Message[Value]): List[Value] = msg.vlus
 
 /** An analysis with a powerset mailbox */
 trait PowersetMailboxAnalysis extends SchemeModActorSemantics:
