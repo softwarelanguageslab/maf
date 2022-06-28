@@ -102,12 +102,31 @@ object Formatter:
         digits: Int = 2
       ) = s"$num (${toPercentString(num, den, digits)})"
 
+object LogOps:
+    def log(msg: String)(using logger: Logger.Logger): Unit =
+        logger.log(msg)
+
 /** Small utility to log messages in a structured way. */
 object Logger:
 
     private val out: String = "logs/"
 
-    class Log(private val writer: Writer):
+    trait Logger:
+        def log(string: String): Unit
+        def logT(string: String): Unit
+
+    class DisabledLog extends Logger:
+        def log(string: String): Unit = ()
+        def logT(string: String): Unit = ()
+
+    class ConsoleLog extends Logger:
+        def log(string: String): Unit =
+            println(string)
+
+        def logT(string: String): Unit =
+            println(s"${Clock.nowStr()} : $string\n")
+
+    class Log(private val writer: Writer) extends Logger:
 
         /** Indicates whether logging is enabled. */
         private var enabled: Boolean = true

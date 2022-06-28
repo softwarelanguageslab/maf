@@ -9,12 +9,14 @@ import maf.util.Reader
 import maf.language.AScheme.interpreter.CPSASchemeInterpreter
 import maf.language.scheme.*
 import maf.util.benchmarks.*
+import maf.util.Logger
 
 object ASchemeRepl:
     private var concrete: Boolean = true
 
     private def run(program: List[SchemeExp]): Unit =
         if concrete then
+            given Logger.Logger = Logger.ConsoleLog()
             val interpreter = CPSASchemeInterpreter()
             println(interpreter.run(SchemeBegin(program, Identity.none), Timeout.none))
         else

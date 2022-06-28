@@ -24,6 +24,7 @@ import maf.language.scheme.ASchemeBecome
 import java.util.concurrent.TimeoutException
 import maf.language.scheme.ASchemeSelect
 import maf.util.FunctionUtils.fix
+import maf.util.Logger
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -43,6 +44,9 @@ import maf.util.FunctionUtils.fix
  */
 trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     inter =>
+    given Logger.Logger = Logger.DisabledLog()
+    import maf.util.LogOps.*
+
     type Component <: AID
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
         case b: Component => b
@@ -114,6 +118,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
      * mailboxes.
      */
     protected var mailboxes: Map[Component, Mailbox] = Map().withDefaultValue(emptyMailbox)
+    def getMailboxes: Map[Component, Mailbox] = mailboxes
 
     //
     // Inter analysis
@@ -129,8 +134,8 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
     class ModActorIntra(cmp: Component)(using ClassTag[Component]) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra:
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            println("==========================================")
-            println(s"analyzing $component")
+            log("==========================================")
+            log(s"analyzing $component")
             if timeout.reached then throw new TimeoutException()
             else
                 // the intra analysis consists of a series of ModF inner analyses.
@@ -139,7 +144,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                     case Actor(beh, _, _) => beh
 
                 def transfer(seenBehavior: Set[Behavior]): Set[Behavior] =
-                    println(s"Transfer $seenBehavior")
+                    log(s"Transfer $seenBehavior")
                     seenBehavior ++ seenBehavior.flatMap { beh =>
                         val modf = innerModF(this, beh)
                         modf.analyzeWithTimeout(timeout)
@@ -322,7 +327,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                       .getBehs(beh)
                       .map(beh =>
                           // spawn the actor
-                          val cmp = intra.spawn(beh, beh.lexEnv.restrictTo(beh.bdy.fv), idn)
+                          val cmp = intra.spawn(beh, beh.lexEnv, idn)
                           // write the arguments of the actor
                           writeActorArgs(beh, ags, cmp)
                           unit(lattice.actor(ASchemeValues.Actor(beh.name, cmp)))

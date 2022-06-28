@@ -7,10 +7,14 @@ import maf.core.*
 import maf.language.AScheme.ASchemeValues.AID
 import maf.language.AScheme.ASchemeValues.Behavior
 
-sealed trait SchemeModActorComponent[+Context] extends SmartHash with AID
+sealed trait SchemeModActorComponent[+Context] extends SmartHash with AID:
+    def removeContext: SchemeModActorComponent[Unit]
+    def removeEnv: SchemeModActorComponent[Context]
 
 // The main actor of the program
-case object MainActor extends SchemeModActorComponent[Nothing]
+case object MainActor extends SchemeModActorComponent[Nothing]:
+    def removeContext: SchemeModActorComponent[Unit] = MainActor
+    def removeEnv: SchemeModActorComponent[Nothing] = MainActor
 
 /*
  * An actor that was spawned in some other actor.
@@ -23,7 +27,10 @@ case class Actor[Context](
     beh: Behavior,
     env: Environment[Address],
     ctx: Context)
-    extends SchemeModActorComponent[Context]
+    extends SchemeModActorComponent[Context]:
+
+    def removeContext: SchemeModActorComponent[Unit] = Actor(beh, env, ())
+    def removeEnv: Actor[Context] = Actor(beh.copy(lexEnv = Environment.empty), Environment.empty, ctx)
 
 trait StandardSchemeModActorComponents extends SchemeModActorSemantics:
     type Component = SchemeModActorComponent[ComponentContext]

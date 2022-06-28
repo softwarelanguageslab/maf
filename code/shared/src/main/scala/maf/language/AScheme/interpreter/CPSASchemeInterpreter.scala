@@ -9,13 +9,17 @@ import maf.language.AScheme.ASchemeValues.*
 import scala.collection.immutable.Queue
 import maf.language.ContractScheme.ContractValues
 import maf.language.AScheme.ASchemeValues
+import maf.util.LogOps
 
 class CPSASchemeInterpreter(
     cb: (Identity, Value) => Unit = (_, _) => (),
     io: IO = new EmptyIO(),
     stack: Boolean = false,
-    cbA: ASchemeInterpreterCallback = ASchemeInterpreterCallback.EmptyCallback)
+    cbA: ASchemeInterpreterCallback = ASchemeInterpreterCallback.EmptyCallback
+  )(using maf.util.Logger.Logger)
     extends CPSSchemeInterpreter(cb, io, stack):
+
+    import LogOps.*
 
     //
     // Continuations
@@ -148,7 +152,7 @@ class CPSASchemeInterpreter(
      *   an actor reference, that can be used to send messages to
      */
     private def spawn(beh: Behavior, ags: List[Value], idn: Identity): Actor =
-        println(s"Spawning actor $beh with args $ags")
+        log(s"Spawning actor $beh with args $ags")
         val id = allocActorId()
         val actorRef = ConcreteActor(beh.name, id, beh, idn)
         // maintain the bookkeeping
@@ -169,13 +173,13 @@ class CPSASchemeInterpreter(
         case ActC(id) =>
             // is there a message in the actor's mailbox
             if mailboxes(id).isEmpty then
-                println("suspending actor")
+                log("suspending actor")
                 // suspend if no messages for this actor
                 suspended = suspended + (id -> (Kont(Value.Nil, Wait(selection, env, id))))
                 scheduleNext()
                 state
             else
-                println("receiving message from mailbox")
+                log("receiving message from mailbox")
                 // continue if there is a message for this actor
                 val (ms, mb) = mailboxes(id).dequeue
                 mailboxes = mailboxes + (id -> mb)
@@ -185,7 +189,7 @@ class CPSASchemeInterpreter(
     private def popSuspended(id: AID): Option[State] =
         suspended.get(id) match
             case s @ Some(st) =>
-                println(s"waking $st from $id")
+                log(s"waking $st from $id")
                 suspended = suspended - id
                 s
             case None => None
@@ -195,7 +199,7 @@ class CPSASchemeInterpreter(
         selection.handlers.get(ms.tag) match
             case Some((prs, first :: rest)) =>
                 val extendedEnv = extendEnv(prs, ms.vlus, env)
-                val nextCc = if rest.nonEmpty then BegC(rest, env, cc) else cc
+                val nextCc = if rest.nonEmpty then BegC(rest, extendedEnv, cc) else cc
                 Step(first, extendedEnv, nextCc)
             case Some((prs, List())) =>
                 Kont(Value.Nil, cc)
@@ -206,7 +210,7 @@ class CPSASchemeInterpreter(
         val id = asSimpleActorId(actorRef.tid)
         val ms = Message(tag, ags)
         cbA.sendMessage(actors(id), ms, idn)
-        println(s"sending message $ms to $actorRef")
+        log(s"sending message $ms to $actorRef")
         popSuspended(id) match
             case Some(Kont(_, Wait(selection, env, id))) =>
                 // schedule the delivery of the message if the actor is already waiting
@@ -324,7 +328,7 @@ class CPSASchemeInterpreter(
         case SchemeFuncall(SchemeVar(Identifier("terminate", _)), List(), _) =>
             // actor termination, simply schedule next, and make sure that there is nothing on the stack anymore
             val id = ensureEmptyStack(cc)
-            println(s"terminating actor with $id")
+            log(s"terminating actor with $id")
             scheduleNext()
             state
 

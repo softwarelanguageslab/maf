@@ -4,6 +4,7 @@ import maf.util.SmartHash
 import maf.language.scheme.ASchemeActor
 import maf.language.scheme.*
 import maf.core.{Address, Environment, Identifier}
+import maf.util.Show
 
 object ASchemeValues:
     sealed trait ASchemeValue
@@ -31,4 +32,10 @@ object ASchemeValues:
 
     def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty)
 
-    case class Message[Value](tag: String, vlus: List[Value]) extends ASchemeValue
+    case class Message[Value](tag: String, vlus: List[Value]) extends ASchemeValue:
+        def mapValues[Y](f: Value => Y): Message[Y] =
+            this.copy(vlus = vlus.map(f))
+
+    object Message:
+        given showMessage[Value]: Show[Message[Value]] with
+            def show(m: Message[Value]) = m.toString

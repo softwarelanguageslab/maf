@@ -42,6 +42,9 @@ trait AbstractMailbox[M]:
     /** Remove the specified message from the mailbox */
     def remove(m: M): AbstractMailbox[M]
 
+    /** Returns all messages in the mailbox */
+    def messages: Set[M]
+
 /**
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
  * concurrency. In Static Analysis - 20th International Symposium, SAS 2013
@@ -55,6 +58,8 @@ case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
     def remove(m: M): PowersetMailbox[M] =
         // since the power set mailbox does not encode message multiplicity, removing a message is a no-op, since its multiplicity is not known and is therefore infinite.
         PowersetMailbox(msgs)
+
+    val messages: Set[M] = msgs
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:
