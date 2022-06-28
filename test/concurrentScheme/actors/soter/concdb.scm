@@ -1,4 +1,5 @@
 ;; From D'Osualdo, inspired by Huch
+;; See: Verification of Erlang Programs using Abstract Interpretation and Model Checking, Chapter 2 page 13
 (letrec ((db-actor (actor "db" (l)
                           (allocate (key p)
                                     (if (lookup key l)
@@ -30,7 +31,7 @@
                                               (become client-write-actor db))
                                             ;; Case {ok, l} in Soter benchmark
                                             (begin
-                                              (send db lookup (read-int))
+                                              (send db lookup (read-int) self)
                                               (become client-read-actor db))))))
          (client-write-actor (actor "client-write" (db)
                                     (free ()
