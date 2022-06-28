@@ -10,7 +10,11 @@ import scala.collection.immutable.Queue
 import maf.language.ContractScheme.ContractValues
 import maf.language.AScheme.ASchemeValues
 
-class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO = new EmptyIO(), stack: Boolean = false)
+class CPSASchemeInterpreter(
+    cb: (Identity, Value) => Unit = (_, _) => (),
+    io: IO = new EmptyIO(),
+    stack: Boolean = false,
+    cbA: ASchemeInterpreterCallback = ASchemeInterpreterCallback.EmptyCallback)
     extends CPSSchemeInterpreter(cb, io, stack):
 
     //
@@ -36,8 +40,21 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
         cc: Continuation)
         extends InternalContinuation
 
-    /** Continuation that is applied after the actor behavior has been evaluated */
-    case class BecoCreaC(args: List[SchemeExp], env: Env, isBecome: Boolean, cc: Continuation) extends InternalContinuation
+    /**
+     * Continuation that is applied after the actor behavior has been evaluated
+     *
+     * @param args
+     *   the arguments of the become/create expression
+     * @param env
+     *   the current environment to evaluate the arguments of the expression
+     * @param isBecome
+     *   true if the expression is a become expression
+     * @param idn
+     *   the source code location of the become/create expression
+     * @param cc
+     *   the next continuation in the continuation stack
+     */
+    case class BecoCreaC(args: List[SchemeExp], env: Env, isBecome: Boolean, idn: Identity, cc: Continuation) extends InternalContinuation
 
     /** Continuation that is applied during the evaluation of a become/create expression */
     case class BecoCreaArgsC(
@@ -46,6 +63,7 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
         vlus: List[Value],
         env: Env,
         isBecome: Boolean,
+        idn: Identity,
         cc: Continuation)
         extends InternalContinuation
 
@@ -55,8 +73,9 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
     //
     // Values
     //
+    import ConcreteASchemeValues.*
 
-    case class ConcreteActorValue(actorValue: ASchemeValue) extends Value
+    type Actor = ConcreteActor
 
     /**
      * Converts a value from the ASchemeValue domain to the concrete scheme interpreter domain
@@ -76,8 +95,8 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
 
     /** Ensures that the value is an actor */
     private def ensureActor(vlu: Value): Actor = vlu match
-        case ConcreteActorValue(a: Actor) => a
-        case _                            => throw new Exception(s"$vlu is not an actor reference")
+        case a: ConcreteActor => a
+        case _                => throw new Exception(s"$vlu is not an actor reference")
 
     //
     // Interpreter structures
@@ -85,8 +104,17 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
 
     private type M = Message[Value]
     private type AID = SimpleActorId
+
+    /** The set of mailboxes for each actor id */
     private var mailboxes: Map[AID, Queue[M]] = Map().withDefaultValue(Queue())
+
+    /** A set of suspended states for each actor. Usually, actors are only suspended when it is waiting for messages */
     private var suspended: Map[AID, State] = Map()
+
+    /** The map from actor ids to concrete actor references */
+    private var actors: Map[AID, Actor] = Map()
+
+    /** Counter to keep track of the last used actor id */
     private var currentActorId: Int = 0
 
     /** Allocate a fresh actor identifier */
@@ -119,12 +147,16 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
      * @return
      *   an actor reference, that can be used to send messages to
      */
-    private def spawn(beh: Behavior, ags: List[Value]): Actor =
+    private def spawn(beh: Behavior, ags: List[Value], idn: Identity): Actor =
         println(s"Spawning actor $beh with args $ags")
         val id = allocActorId()
-        val actorRef = Actor(beh.name, id)
+        val actorRef = ConcreteActor(beh.name, id, beh, idn)
+        // maintain the bookkeeping
+        actors = actors + (id -> actorRef)
+        cbA.spawn(actorRef)
+
         // extend the environment with bindings for the actor arguments
-        val extendedEnv = extendEnv(Identifier("self", Identity.none) :: beh.prs, inject(actorRef) :: ags, beh.lexEnv)
+        val extendedEnv = extendEnv(Identifier("self", Identity.none) :: beh.prs, actorRef :: ags, beh.lexEnv)
 
         // start the behavior of the actor
         work = work.enqueue(Step(beh.bdy, extendedEnv, ActC(id)))
@@ -170,9 +202,10 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
             case None => throw new Exception(s"no suitable handler for ${ms.tag}")
 
     /** Asynchronously sends a message to the given actor's mailbox */
-    private def sendMessage(actorRef: Actor, tag: String, ags: List[Value], cc: Continuation): State =
+    private def sendMessage(actorRef: Actor, tag: String, ags: List[Value], idn: Identity, cc: Continuation): State =
         val id = asSimpleActorId(actorRef.tid)
         val ms = Message(tag, ags)
+        cbA.sendMessage(actors(id), ms, idn)
         println(s"sending message $ms to $actorRef")
         popSuspended(id) match
             case Some(Kont(_, Wait(selection, env, id))) =>
@@ -195,8 +228,10 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
     /** Become a different behavior */
     private def become(beh: Behavior, ags: List[Value], cc: Continuation): State =
         val id = ensureEmptyStack(cc)
+        // bookkeeping
+        cbA.become(actors(id), beh)
         // enqueue the body of the behavior
-        val extendedEnv = extendEnv(Identifier("self", Identity.none) :: beh.prs, inject(Actor(None, id)) :: ags, beh.lexEnv)
+        val extendedEnv = extendEnv(Identifier("self", Identity.none) :: beh.prs, actors(id) :: ags, beh.lexEnv)
         work = work.enqueue(Step(beh.bdy, extendedEnv, cc))
 
         // fairness: after an actor has performed a single turn, it should yield control to another actor
@@ -235,32 +270,32 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
         //
 
         // base case, the become/create expression has no arguments, change the behavior or create the actor
-        case BecoCreaC(List(), env, isBecome, cc) =>
-            if isBecome then become(ensureBehavior(v), List(), cc) else Kont(inject(spawn(ensureBehavior(v), List())), cc)
+        case BecoCreaC(List(), env, isBecome, idn, cc) =>
+            if isBecome then become(ensureBehavior(v), List(), cc) else Kont(spawn(ensureBehavior(v), List(), idn), cc)
         // the become/create has arguments that first need to be evaluated
-        case BecoCreaC(argument :: arguments, env, isBecome, cc) =>
-            Step(argument, env, BecoCreaArgsC(arguments, ensureBehavior(v), List(), env, isBecome, cc))
+        case BecoCreaC(argument :: arguments, env, isBecome, idn, cc) =>
+            Step(argument, env, BecoCreaArgsC(arguments, ensureBehavior(v), List(), env, isBecome, idn, cc))
         // base case, no more arguments to evaluate, change the behavior or create the actor
-        case BecoCreaArgsC(List(), beh, vlus, env, isBecome, cc) =>
+        case BecoCreaArgsC(List(), beh, vlus, env, isBecome, idn, cc) =>
             val ags = (v :: vlus).reverse
-            if isBecome then become(beh, ags, cc) else Kont(inject(spawn(beh, ags)), cc)
+            if isBecome then become(beh, ags, cc) else Kont(spawn(beh, ags, idn), cc)
         // more arguments to evaluate
-        case BecoCreaArgsC(argument :: arguments, beh, vlus, env, isBecome, cc) =>
-            Step(argument, env, BecoCreaArgsC(arguments, beh, v :: vlus, env, isBecome, cc))
+        case BecoCreaArgsC(argument :: arguments, beh, vlus, env, isBecome, idn, cc) =>
+            Step(argument, env, BecoCreaArgsC(arguments, beh, v :: vlus, env, isBecome, idn, cc))
 
         //
         // Send expression
         //
 
         // base case, send expression has no arguments, send the message
-        case SendC(ASchemeSend(_, msgTpy, List(), _), env, cc) =>
-            sendMessage(ensureActor(v), msgTpy.name, List(), cc)
+        case SendC(s @ ASchemeSend(_, msgTpy, List(), _), env, cc) =>
+            sendMessage(ensureActor(v), msgTpy.name, List(), s.idn, cc)
         // more arguments to evaluate
         case SendC(send @ ASchemeSend(_, msgTpy, argument :: arguments, _), env, cc) =>
             Step(argument, env, SendArgsC(arguments, List(), ensureActor(v), send, env, cc))
         // base case, no more arguments to evaluate, send message
         case SendArgsC(List(), vlus, actorRef, send, env, cc) =>
-            sendMessage(actorRef, send.messageType.name, (v :: vlus).reverse, cc)
+            sendMessage(actorRef, send.messageType.name, (v :: vlus).reverse, send.idn, cc)
         // more arguments to evaluate
         case SendArgsC(argument :: arguments, vlus, actorRef, send, env, cc) =>
             Step(argument, env, SendArgsC(arguments, (v :: vlus), actorRef, send, env, cc))
@@ -275,10 +310,10 @@ class CPSASchemeInterpreter(cb: (Identity, Value) => Unit = (_, _) => (), io: IO
             Kont(inject(Behavior(name, parameters, selection, env)), cc)
 
         case ASchemeCreate(behavior, arguments, idn) =>
-            Step(behavior, env, BecoCreaC(arguments, env, false, cc))
+            Step(behavior, env, BecoCreaC(arguments, env, false, exp.idn, cc))
 
         case ASchemeBecome(behavior, arguments, idn) =>
-            Step(behavior, env, BecoCreaC(arguments, env, true, cc))
+            Step(behavior, env, BecoCreaC(arguments, env, true, exp.idn, cc))
 
         case send @ ASchemeSend(actorRef, _, _, _) =>
             Step(actorRef, env, SendC(send, env, cc))
