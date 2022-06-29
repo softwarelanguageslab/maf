@@ -148,6 +148,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             /* Other primitives that are not R5RS */
             `random`,
             `error`,
+            `bool-top`,
           ) ++ CSchemePrimitives
         )
 
@@ -250,6 +251,9 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
         case object `sin` extends SchemePrimOp1("sin", SchemeOp.Sin)
         case object `symbol?` extends SchemePrimOp1("symbol?", SchemeOp.IsSymbol)
         case object `tan` extends SchemePrimOp1("tan", SchemeOp.Tan)
+        case object `bool-top` extends SchemePrim0("bool-top"):
+            override def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
+                PrimM[M].unit(schemeLattice.boolTop)
 
         case object SchemePlus extends SchemePrimVarArg("+"):
             def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = call(vs)

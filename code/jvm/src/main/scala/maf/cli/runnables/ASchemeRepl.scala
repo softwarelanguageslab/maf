@@ -20,6 +20,7 @@ object ASchemeRepl:
             val interpreter = CPSASchemeInterpreter()
             println(interpreter.run(SchemeBegin(program, Identity.none), Timeout.none))
         else
+            println(program)
             val analysis = new SimpleSchemeModActorAnalysis(SchemeBegin(program, Identity.none))
             analysis.analyze()
             println(analysis.storeString())
@@ -29,7 +30,7 @@ object ASchemeRepl:
         val input = StdIn.readLine().trim().nn
         if input != ":q" then
             val program = if !input.startsWith(":f") then input else Reader.loadFile(input.split(' ')(1).nn)
-            val parsed = ASchemeParser.parse(program)
-            run(parsed)
+            val parsed = ASchemeParser.parseProgram(program)
+            run(List(parsed))
             main(args)
         else ()

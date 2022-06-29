@@ -24,4 +24,4 @@ class SimpleSchemeModActorAnalysis(program: SchemeExp)
 
     override def intraAnalysis(component: SchemeModActorComponent[ComponentContext]): ModActorIntra = new ModActorIntra(component)
     override def innerModF(intra: ModActorIntra, beh: Behavior): InnerModF =
-        new InnerModF(intra, beh) with SchemeModFNoSensitivity with RandomWorklistAlgorithm[SchemeExp] {}
+        new InnerModF(intra, beh) with SchemeModFNoSensitivity with FIFOWorklistAlgorithm[SchemeExp] {}

@@ -1,6 +1,9 @@
 package maf.core
 
 import maf.core.IdentityMonad.Id
+import maf.util.LogOps
+import maf.util.Logger
+import maf.util.Show
 
 //
 // Monad
@@ -20,6 +23,17 @@ object Monad:
         def flatMap[Y](f: X => M[Y]): M[Y] = Monad[M].flatMap(self)(f)
         def >>=[Y](f: X => M[Y]): M[Y] = flatMap(f)
         def >>>[Y](m: => M[Y]): M[Y] = flatMap(_ => m)
+
+    // Utility function for logging in monadic contexts
+    def trace[M[_], X: Show](tag: String)(x: X)(using Monad[M])(using logger: Logger.Logger): M[X] =
+        LogOps.log(s"$tag ${Show[X].show(x)}")
+        Monad[M].unit(x)
+
+    // Kleisli Arrow Composition
+    extension [M[_]: Monad, X, Y](start: X => M[Y])
+        def >=>[Z](end: Y => M[Z]): X => M[Z] =
+            (x: X) => start(x).flatMap(end)
+
     // some common monad operations on iterables
     implicit class MonadIterableOps[X](xs: Iterable[X]):
 

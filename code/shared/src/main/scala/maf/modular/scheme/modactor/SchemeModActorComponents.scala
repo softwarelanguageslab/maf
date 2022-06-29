@@ -9,7 +9,7 @@ import maf.language.AScheme.ASchemeValues.Behavior
 
 sealed trait SchemeModActorComponent[+Context] extends SmartHash with AID:
     def removeContext: SchemeModActorComponent[Unit]
-    def removeEnv: SchemeModActorComponent[Context]
+    override def removeEnv: SchemeModActorComponent[Context]
 
 // The main actor of the program
 case object MainActor extends SchemeModActorComponent[Nothing]:

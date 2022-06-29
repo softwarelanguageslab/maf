@@ -35,7 +35,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
     type Analysis = SimpleSchemeModActorAnalysis
 
     protected def parseProgram(filename: String): SchemeExp =
-        SchemeBegin(ASchemeParser.parse(Reader.loadFile(filename)), Identity.none)
+        ASchemeParser.parseProgram(Reader.loadFile(filename))
 
     protected def createInterpreter(program: SchemeExp, cb: ASchemeInterpreterCallback): CPSASchemeInterpreter =
         given Logger.Logger = Logger.DisabledLog()
@@ -60,7 +60,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
             state.spawned = newActor :: state.spawned
 
     protected def concreteToAbstractActor(concr: ConcreteActor): SchemeModActorComponent[Unit] =
-        maf.modular.scheme.modactor.Actor(concr.initialBeh, concr.initialBeh.lexEnv, ())
+        maf.modular.scheme.modactor.Actor(concr.initialBeh.removeEnv, concr.initialBeh.lexEnv, ())
 
     case class ComparisonVarAddr(ident: Identifier) extends Address:
         override def printable: Boolean = false
@@ -92,50 +92,62 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
         case Value.Cons(a, d)    => analysis.lattice.cons(convertConcreteValue(analysis, a), convertConcreteValue(analysis, d))
         case Value.Vector(siz, els, ini) =>
             analysis.lattice.vector(analysis.lattice.number(siz), convertConcreteValue(analysis, ini)).getOrElse(throw Exception("should not fail"))
-        case c: ConcreteActor => analysis.lattice.actor(Actor(c.name, concreteToAbstractActor(c)))
-        case b: Behavior      => analysis.lattice.beh(b)
+        case c: ConcreteActor => analysis.lattice.actor(Actor(c.name, concreteToAbstractActor(c).removeEnv))
+        case b: Behavior      => analysis.lattice.beh(b.removeEnv)
         case v                => throw new Exception(s"Unknown concrete value type: $v")
 
     protected def toMsg(analysis: Analysis)(m: analysis.Msg): Message[analysis.Value] =
         Message(analysis.getTag(m), analysis.getArgs(m))
 
     protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState): Int =
-        val abstractMail: Map[SchemeModActorComponent[Unit], Set[Message[analysis.Value]]] =
-            analysis.getMailboxes.keys
+        val abstractMail: Map[SchemeModActorComponent[Unit], Set[Message[analysis.Value]]] = {
+            val mailboxes = analysis.getMailboxes.toList
+            val keys = mailboxes.map(_._1)
+            val values = mailboxes.map(_._2)
+
+            keys
                 .map(analysis.view)
                 .map(_.removeContext)
                 .map(_.removeEnv) // TODO: actually convert env properly
-                .zip(analysis.getMailboxes.values.map(_.messages).map(_.map(toMsg(analysis))))
+                .zip(values.map(_.messages).map(_.map(toMsg(analysis))))
                 .toMapJoined
+        }
 
-        val concreteMail: Map[SchemeModActorComponent[Unit], Set[Message[analysis.Value]]] =
-            concreteResults.mailboxes.keys
+        val concreteMail: Map[SchemeModActorComponent[Unit], Set[Message[analysis.Value]]] = {
+            val mailboxes = concreteResults.mailboxes.toList
+            val keys = mailboxes.map(_._1)
+            val values = mailboxes.map(_._2)
+
+            keys
                 .map(concreteToAbstractActor)
                 .map(_.removeEnv) // TODO: actually convert env properly
-                .zip(concreteResults.mailboxes.values.map(_.map(_.mapValues(convertConcreteValue(analysis, _))).toSet))
+                .zip(values.map(_.map(_.mapValues(convertConcreteValue(analysis, _))).toSet))
                 .toMapJoined
+        }
 
         val matchedMessages = concreteMail.map { case (cmp, msgs) =>
             msgs.filter(cmsg =>
-                println(s"getting $cmp in abstractmail: ${abstractMail.get(cmp)}")
-                abstractMail
+                // println(s"getting $cmp with concrete mail $cmsg in abstractmail: ${abstractMail.get(cmp)}")
+                val existsMatchingMessage = abstractMail
                     .get(cmp)
                     .exists(_.exists(msg => cmsg.vlus.zip(msg.vlus).forall { case (x, y) => analysis.lattice.subsumes(y, x) || x == y }))
+                if !existsMatchingMessage then alert(s"no matching message for $cmsg")
+                existsMatchingMessage
             )
         }
-        println("=======================")
-        println(s"${abstractMail.keys}")
-        println(s"${concreteMail.keys}")
-        println("=======================")
+        //println("=======================")
+        //println(s"${abstractMail.keys}")
+        //println(s"${concreteMail.keys}")
+        //println("=======================")
 
-        println("=======================")
-        println(s"${abstractMail.values}")
-        println(s"${concreteMail.values}")
-        println("=======================")
+        //println("=======================")
+        //println(s"${abstractMail.values}")
+        //println(s"${concreteMail.values}")
+        //println("=======================")
 
-        println(s"Size mismatched ${concreteMail.values.map(_.size).sum - matchedMessages.map(_.size).sum}, size matched ${matchedMessages
-            .map(_.size)
-            .sum}, size concrete ${concreteMail.values.map(_.size).sum}")
+        //println(s"Size mismatched ${concreteMail.values.map(_.size).sum - matchedMessages.map(_.size).sum}, size matched ${matchedMessages
+        //    .map(_.size)
+        //    .sum}, size concrete ${concreteMail.values.map(_.size).sum}")
         matchedMessages.map(_.size).sum - concreteMail.values.map(_.size).sum
 
     protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState): Int =
@@ -174,5 +186,6 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
             assert(compareResults(analysis, concreteState), "the results of the analysis should subsume the results of the concrete interpreter")
         }
 
-// class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
-//     override def benchmarks: Set[String] = SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
+class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
+    override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
+        SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"

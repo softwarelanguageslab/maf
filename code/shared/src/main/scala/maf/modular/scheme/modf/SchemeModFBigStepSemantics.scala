@@ -116,7 +116,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
             // Assertions are not evaluated by default
             unit(lattice.void)
 
-        private def evalCall(
+        protected def evalCall(
             exp: SchemeFuncall,
             fun: SchemeExp,
             args: List[SchemeExp]

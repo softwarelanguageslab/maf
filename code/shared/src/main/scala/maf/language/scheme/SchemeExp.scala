@@ -6,11 +6,16 @@ import maf.language.sexp._
 import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
+import maf.util.Show
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
+
+object SchemeExp:
+    given Show[SchemeExp] with
+        def show(v: SchemeExp): String = v.toString
 /*
     case SchemeLambda(name, args, body, ann, idn) =>
     case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
@@ -576,15 +581,15 @@ case class ASchemeSend(actorRef: SchemeExp, messageType: Identifier, arguments: 
     override def toString: String = s"(send $actorRef $messageType ${arguments.mkString(" ")})"
 
 case class ASchemeBecome(behavior: SchemeExp, arguments: List[SchemeExp], idn: Identity) extends ASchemeExp:
-    def fv: Set[String] = behavior.fv
+    def fv: Set[String] = behavior.fv ++ arguments.flatMap(_.fv)
     def label: Label = BEC
-    def subexpressions: List[Expression] = List(behavior)
+    def subexpressions: List[Expression] = behavior :: arguments
     override def toString: String = s"(become $behavior ${arguments.mkString(" ")})"
 
 case class ASchemeCreate(behavior: SchemeExp, arguments: List[SchemeExp], idn: Identity) extends ASchemeExp:
-    def fv: Set[String] = behavior.fv
+    def fv: Set[String] = behavior.fv ++ arguments.flatMap(_.fv)
     def label: Label = CREA
-    def subexpressions: List[Expression] = List(behavior)
+    def subexpressions: List[Expression] = behavior :: arguments
     override def toString: String = s"(create $behavior ${arguments.mkString(" ")})"
 
 //

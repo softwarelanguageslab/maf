@@ -1,7 +1,7 @@
 package maf.modular.scheme.modactor
 
 import maf.modular.ModAnalysis
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.*
 import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
 import maf.modular.scheme.modf.BigStepModFSemanticsT
 import maf.language.AScheme.ASchemeValues
@@ -13,6 +13,7 @@ import scala.reflect.ClassTag
 import maf.modular.Dependency
 import maf.core.{Address, Environment, Identifier, Identity, Lattice, Monad, MonadStateT}
 import maf.core.SetMonad.*
+import maf.core.Monad.*
 import maf.util.benchmarks.Timeout
 import maf.modular.scheme.modf.TEvalM
 import maf.language.scheme.ASchemeActor
@@ -45,6 +46,7 @@ import maf.util.Logger
 trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     inter =>
     given Logger.Logger = Logger.DisabledLog()
+
     import maf.util.LogOps.*
 
     type Component <: AID
@@ -155,6 +157,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
         /** Send the given message to the given actor */
         def send(to: ASchemeValues.Actor, m: Msg): Unit =
+            log(s"sending message $m to $to")
             // compute the component that needs to receive this message
             val toComponent = actorIdComponent(to.tid)
             // update the mailbox
@@ -196,7 +199,12 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
         import maf.core.Monad.MonadSyntaxOps
         import maf.core.Monad.MonadIterableOps
 
-        override def intraAnalysis(component: modf.Component): InnerModFIntra = InnerModFIntra(component)
+        override def warn(msg: String): Unit =
+            log(s"warn: $msg")
+
+        override def intraAnalysis(component: modf.Component): InnerModFIntra =
+            log(s"Analyzing $component")
+            InnerModFIntra(component)
 
         // SCHEME ENVIRONMENT SETUP
         lazy val baseEnv = env(intra.component)
@@ -261,6 +269,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
             // analysis entry point
             def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
+                log(s"Analyzing behavior $beh with body $fnBody")
                 eval(fnBody).run(initialState).foreach { case (vlu, _) => writeResult(vlu) }
 
             override def eval(exp: SchemeExp): EvalM[Value] = exp match
@@ -272,8 +281,8 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                 case ASchemeCreate(beh, ags, idn) =>
                     for
                         evaluatedBeh <- eval(beh)
-                        evaluatedAgs <- ags.mapM(eval)
                         env <- getEnv
+                        evaluatedAgs <- ags.mapM(eval)
                         actorRef <- spawnActor(evaluatedBeh, evaluatedAgs, idn)
                     yield actorRef
                 // Sending a message is atomic and results in nil
@@ -306,6 +315,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                     for
                         // select a message from the mailbox
                         msg <- pop
+                        _ = { log(s"actor/recv $msg") }
                         // see if there is an applicable handler
                         tag = getTag(msg)
                         args = getArgs(msg)
@@ -316,12 +326,17 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                                 val (pars, bdy) = handler.get
                                 withEnv(bindArgs(pars, args)) {
                                     Monad.sequence(bdy.map(eval))
-                                }
+                                } >>= trace(s"actor/recv $msg result")
                     yield lattice.nil
+
+                case SchemeFuncall(Identifier("terminate", _), _, _) =>
+                    // actor termination
+                    mzero
 
                 case _ => super.eval(exp)
 
             def spawnActor(beh: Value, ags: List[Value], idn: Identity): EvalM[Value] =
+                log(s"Spawning actor with behavior $beh, ags $ags")
                 nondets(
                   lattice
                       .getBehs(beh)

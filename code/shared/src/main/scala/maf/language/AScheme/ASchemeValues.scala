@@ -10,10 +10,12 @@ object ASchemeValues:
     sealed trait ASchemeValue
 
     /** An actor identifier */
-    trait AID extends SmartHash with ASchemeValue
+    trait AID extends SmartHash with ASchemeValue:
+        def removeEnv: AID
 
     /** A simple actor identifier based on a sequential integer */
-    case class SimpleActorId(id: Int) extends AID
+    case class SimpleActorId(id: Int) extends AID:
+        def removeEnv: SimpleActorId = this
 
     /**
      * A running actor.
@@ -25,9 +27,11 @@ object ASchemeValues:
      */
     case class Actor(name: Option[String], tid: AID) extends ASchemeValue:
         override def toString: String = s"$name"
+        def removeEnv: Actor = this.copy(tid = tid.removeEnv)
 
     /** Represents a behavior */
     case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp, lexEnv: Environment[Address]) extends ASchemeValue:
+        def removeEnv: Behavior = this.copy(lexEnv = Environment.empty)
         override def toString: String = s"<behavior: $name>"
 
     def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty)

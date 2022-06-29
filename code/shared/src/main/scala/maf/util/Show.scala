@@ -25,6 +25,10 @@ object Show:
     implicit val charShow: Show[Char] = new Show[Char] {
         def show(c: Char): String = s"#\\$c"
     }
+    given listShow[X: Show]: Show[List[X]] with
+        def show(v: List[X]): String =
+            s"[${v.map(Show[X].show).mkString(",")}]"
+
     // Not implicit because it would conflict with stringShow.
     val symShow: Show[String] = new Show[String] {
         def show(s: String): String = s"'$s"

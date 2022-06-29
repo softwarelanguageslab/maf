@@ -66,5 +66,5 @@ trait SchemeModActorInnerMonad[Msg] extends ModAnalysis[SchemeExp] with BaseSche
             nondet(x, y)
         def fail[X](e: Error): EvalM[X] =
             // also ignore exception in Scv semantics
-            //warn(s"encountered error $e")
+            warn(s"encountered error $e")
             mzero
