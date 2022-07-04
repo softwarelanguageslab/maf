@@ -1,14 +1,5 @@
 ;; From D'Osualdo, inspired by Huch
-;; See: Verification of Erlang Programs using Abstract Interpretation and Model Checking, Chapter 2 page 13
-(letrec ((read-bool (lambda () (bool-top)))
-         (read-int (lambda () (random 42)))
-         (lookup (lambda (key l)
-                   (if (null? l)
-                       #f
-                       (if (= (caar l) key)
-                           (cadr l)
-                           (lookup key (cdr l))))))
-         (db-actor (actor "db" (l)
+(letrec ((db-actor (actor "db" (l)
                           (allocate (key p)
                                     (if (lookup key l)
                                         ;; Case {succ, V} in Soter benchmark
@@ -57,8 +48,16 @@
                                               (become client-actor db)
                                               ;; Client reads label
                                               (become client-actor db)))))
+         (lookup (lambda (key l)
+                   (if (null? l)
+                       #f
+                       (if (= (caar l) key)
+                           (cadr l)
+                           (lookup key (cdr l))))))
+         (read-bool (lambda () (bool-top)))
+         (read-int (lambda () (int-top)))
          (db (create db-actor '()))
          (client1 (create client-actor db))
          (client2 (create client-actor db)))
-(send client1 send-req)
-(send client2 send-req))
+  (send client1 send-req)
+  (send client2 send-req))
