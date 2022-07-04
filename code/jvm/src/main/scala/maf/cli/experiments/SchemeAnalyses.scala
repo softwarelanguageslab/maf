@@ -16,6 +16,7 @@ import maf.cli.modular.scv.JVMSatSolver
 import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Address
 import scala.reflect.ClassTag
+import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -254,6 +255,9 @@ object SchemeAnalyses:
             override val sat: ScvSatSolver[Value] =
                 given SchemeLattice[Value, Address] = lattice
                 new JVMSatSolver(this)
+
+    def modActorAnalysis(prg: SchemeExp) =
+        new SimpleSchemeModActorAnalysis(prg)
 
     //def scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(prg: SchemeExp) =
     //    import maf.modular.scv.ScvSymbolicStore.given
