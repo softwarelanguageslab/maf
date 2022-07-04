@@ -249,8 +249,10 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             private def baseEnv: Environment[Address] = inter.view(intra.component) match
                 case c: Actor[_] =>
                     val adr = allocVar(Identifier("self", Identity.none), component)
+                    val adr2 = allocVar(Identifier("a/self", Identity.none), component)
                     writeAddr(adr, lattice.actor(ASchemeValues.Actor(c.beh.name, intra.component)))
-                    super.fnEnv.extend("self", adr)
+                    writeAddr(adr2, lattice.actor(ASchemeValues.Actor(c.beh.name, intra.component)))
+                    super.fnEnv.extend("self", adr).extend("a/self", adr2)
                 case _ => super.fnEnv
 
             override def fnEnv: Environment[Address] = component match

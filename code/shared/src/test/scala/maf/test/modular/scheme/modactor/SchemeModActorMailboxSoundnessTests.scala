@@ -1,29 +1,33 @@
 package maf.test.modular.scheme.modactor
 
-import maf.test.SchemeBenchmarkTests
-import maf.language.scheme.*
+import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.core.Address
+import maf.core.Environment
+import maf.core.Identifier
 import maf.core.Identity
-import maf.language.change.CodeVersion
-import scala.concurrent.duration._
+import maf.language.AScheme.ASchemeParser
 import maf.language.AScheme.ASchemeValues.*
-import maf.language.AScheme.interpreter.ConcreteASchemeValues.*
-import maf.language.ContractScheme.interpreter.ConcreteValues
 import maf.language.AScheme.interpreter.ASchemeInterpreterCallback
 import maf.language.AScheme.interpreter.CPSASchemeInterpreter
+import maf.language.AScheme.interpreter.ConcreteASchemeValues.*
+import maf.language.ContractScheme.interpreter.ConcreteValues
 import maf.language.ContractScheme.interpreter.ConcreteValues.Value
-import maf.util.datastructures.MapOps.*
-import maf.util.benchmarks.Timeout
-import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
-import maf.bench.scheme.SchemeBenchmarkPrograms
-import maf.language.AScheme.ASchemeParser
-import maf.util.Reader
-import maf.util.Logger
-import scala.concurrent.duration.Duration
-import java.util.concurrent.TimeoutException
-import maf.modular.scheme.modactor.SchemeModActorComponent
-import maf.core.Environment
+import maf.language.change.CodeVersion
+import maf.language.scheme.*
 import maf.language.scheme.interpreter.ConcreteValues.AddrInfo
-import maf.core.{Address, Identifier}
+import maf.modular.scheme.modactor.SchemeModActorComponent
+import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
+import maf.test.SchemeBenchmarkTests
+import maf.util.Logger
+import maf.util.Monoid
+import maf.util.MonoidImplicits.FoldMapExtension
+import maf.util.Reader
+import maf.util.benchmarks.Timeout
+import maf.util.datastructures.MapOps.*
+
+import java.util.concurrent.TimeoutException
+import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 /**
  * Test for checking the soundness of the mailbox abstractions.
@@ -42,12 +46,29 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
 
         CPSASchemeInterpreter(cbA = cb)
 
-    def concreteRuns: Int = 1
+    def concreteRuns: Int = 30
 
     class ConcreteState:
         var mailboxes: MapWithDefault[ConcreteActor, List[M]] = Map().useDefaultValue(List())
         var behs: MapWithDefault[ConcreteActor, List[Behavior]] = Map().useDefaultValue(List())
         var spawned: List[ConcreteActor] = List()
+
+        def this(mailboxes: Map[ConcreteActor, List[M]], behs: Map[ConcreteActor, List[Behavior]], spawned: List[ConcreteActor]) =
+            this()
+            this.mailboxes = mailboxes.useDefaultValue(List())
+            this.behs = behs.useDefaultValue(List())
+            this.spawned = spawned
+
+        def isEmpty: Boolean = mailboxes.isEmpty && behs.isEmpty && spawned.isEmpty
+
+    object ConcreteState:
+        given Monoid[ConcreteState] with
+            def zero: ConcreteState = ConcreteState()
+            def append(x: ConcreteState, y: => ConcreteState): ConcreteState =
+                val mailboxes = List(x.mailboxes, y.mailboxes).toMapAppended
+                val behs = List(x.behs, y.behs).toMapAppended
+                val spawned = x.spawned ++ y.spawned
+                ConcreteState(mailboxes, behs, spawned)
 
     class ConcreteStateCallback(state: ConcreteState) extends ASchemeInterpreterCallback:
         def sendMessage(receiver: ConcreteActor, msg: Message[Value], idn: Identity): Unit =
@@ -168,16 +189,24 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
     override protected def onBenchmark(b: String): Unit =
         property(s"$b is sound in mailbox abstractions") {
             val program = parseProgram(b)
-            val concreteState = ConcreteState()
-            // Run the conrete interpreter
-            try
-                val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(concreteState))
-                concreteInterpreter.run(program, Timeout.start(Duration(10, SECONDS)), CodeVersion.New)
-            catch
-                case _: TimeoutException =>
-                    alert(s"Concrete evaluation of $b timed out")
-                case e => cancel(s"Analysis of $b encountered an error $e")
 
+            val concreteState = (0 until concreteRuns).foldMap[ConcreteState] { _ =>
+                // Run the conrete interpreter
+                try
+                    val concreteState = ConcreteState()
+                    val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(concreteState))
+                    concreteInterpreter.run(program, Timeout.start(Duration(10, SECONDS)), CodeVersion.New)
+                    concreteState
+                catch
+                    case _: TimeoutException =>
+                        alert(s"Concrete evaluation of $b timed out")
+                        ConcreteState()
+                    case e =>
+                        alert("Concrete execution of $b encountered an error $e")
+                        ConcreteState() // cancel(s"Analysis of $b encountered an error $e")
+            }
+
+            assert(!concreteState.isEmpty, "Concrete execution should have message sends")
             // Run the abstract interpreter
             val analysis = new SimpleSchemeModActorAnalysis(program)
             analysis.analyze()
@@ -186,6 +215,6 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
             assert(compareResults(analysis, concreteState), "the results of the analysis should subsume the results of the concrete interpreter")
         }
 
-class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
-    override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
-        SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
+//class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
+//    override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
+//        SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"

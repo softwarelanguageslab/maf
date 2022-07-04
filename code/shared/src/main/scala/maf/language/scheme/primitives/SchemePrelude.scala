@@ -75,6 +75,7 @@ class BaseSchemePrelude:
         |         (res (proc output-port)))
         |    (close-output-port output-port)
         |    res))""".stripMargin,
+      "int-top" -> "(define (int-top) (random 42))",
       "caar" -> "(define (caar x) @sensitivity:FA (car (car x)))",
       "cadr" -> "(define (cadr x) @sensitivity:FA (car (cdr x)))",
       "cdar" -> "(define (cdar x) @sensitivity:FA (cdr (car x)))",

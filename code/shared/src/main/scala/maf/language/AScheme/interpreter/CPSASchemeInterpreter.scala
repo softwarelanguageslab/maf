@@ -160,7 +160,11 @@ class CPSASchemeInterpreter(
         cbA.spawn(actorRef)
 
         // extend the environment with bindings for the actor arguments
-        val extendedEnv = extendEnv(Identifier("self", Identity.none) :: beh.prs, actorRef :: ags, beh.lexEnv)
+        val extendedEnv = extendEnv(
+          Identifier("a/self", Identity.none) :: Identifier("self", Identity.none) :: beh.prs,
+          actorRef :: actorRef :: ags,
+          beh.lexEnv
+        )
 
         // start the behavior of the actor
         work = work.enqueue(Step(beh.bdy, extendedEnv, ActC(id)))
@@ -235,7 +239,11 @@ class CPSASchemeInterpreter(
         // bookkeeping
         cbA.become(actors(id), beh)
         // enqueue the body of the behavior
-        val extendedEnv = extendEnv(Identifier("self", Identity.none) :: beh.prs, actors(id) :: ags, beh.lexEnv)
+        val extendedEnv = extendEnv(
+          Identifier("a/self", Identity.none) :: Identifier("self", Identity.none) :: beh.prs,
+          actors(id) :: actors(id) :: ags,
+          beh.lexEnv
+        )
         work = work.enqueue(Step(beh.bdy, extendedEnv, cc))
 
         // fairness: after an actor has performed a single turn, it should yield control to another actor

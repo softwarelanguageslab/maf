@@ -100,9 +100,9 @@ object SchemeBenchmarkPrograms:
 
     // CONCURRENT ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    lazy val savina: Set[String] = fromFolder("test/concurrentScheme/actors/savina")()
+    lazy val savina: Set[String] = fromFolder("test/concurrentScheme/actors/savina")(".DS_Store")
     lazy val soter: Set[String] = fromFolder("test/concurrentScheme/actors/soter")()
-    lazy val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors")()
+    lazy val actors: Set[String] = savina ++ soter ++ fromFolder("test/concurrentScheme/actors")(".DS_Store")
     lazy val futures: Set[String] = fromFolder("test/concurrentScheme/futures")()
     lazy val futuresVariations: Set[String] = fromFolder("test/concurrentScheme/futures/variations")()
     lazy val threads: Set[String] = fromFolder("test/concurrentScheme/threads")()
