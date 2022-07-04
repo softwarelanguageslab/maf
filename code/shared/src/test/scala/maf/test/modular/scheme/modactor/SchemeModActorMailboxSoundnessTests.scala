@@ -153,7 +153,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
     protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState): Int =
         val abstractActors: Set[SchemeModActorComponent[Unit]] = analysis.getMailboxes.keys.map(analysis.view).map(_.removeContext).toSet
         val concreteActors: Set[SchemeModActorComponent[Unit]] = concreteResults.spawned.map(concreteToAbstractActor).toSet
-        concreteActors.size - abstractActors.size
+        abstractActors.size - concreteActors.size
 
     protected def compareBehaviors(analysis: Analysis, concreteResults: ConcreteState): Int =
         // TODO
@@ -161,9 +161,9 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
 
     protected def compareResults(analysis: Analysis, concreteResults: ConcreteState): Boolean =
         // Compare mailboxes against each other
-        compareMailboxes(analysis, concreteResults) >= 0 &&
-            /* Compare spawned actors */ compareSpawnedActors(analysis, concreteResults) >= 0 &&
-            /* Compare changes in behavior */ compareBehaviors(analysis, concreteResults) >= 0
+        compareMailboxes(analysis, concreteResults) == 0 &&
+            /* Compare spawned actors */ compareSpawnedActors(analysis, concreteResults) == 0 &&
+            /* Compare changes in behavior */ compareBehaviors(analysis, concreteResults) == 0
 
     override protected def onBenchmark(b: String): Unit =
         property(s"$b is sound in mailbox abstractions") {

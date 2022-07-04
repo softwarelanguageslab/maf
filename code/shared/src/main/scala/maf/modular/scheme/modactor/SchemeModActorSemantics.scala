@@ -145,6 +145,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                     case MainActor        => EmptyBehavior(body(cmp))
                     case Actor(beh, _, _) => beh
 
+                // TODO: is transfer the correct terminology?
                 def transfer(seenBehavior: Set[Behavior]): Set[Behavior] =
                     log(s"Transfer $seenBehavior")
                     seenBehavior ++ seenBehavior.flatMap { beh =>
@@ -153,6 +154,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                         modf.getBehaviors
                     }
 
+                // TODO: use a worklist
                 fix(Set(initialBehavior))(transfer)
 
         /** Send the given message to the given actor */
@@ -190,6 +192,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
     def innerModF(intra: ModActorIntra, beh: Behavior): InnerModF
 
+    // TODO: rename to SequentialModFAnalysis? or SingleActorModFFactorySingletonProxyDefault?
     abstract class InnerModF(intra: ModActorIntra, beh: Behavior)
         extends ModAnalysis[SchemeExp](body(intra.component))
         with SchemeModActorInnerMonad[Msg]
