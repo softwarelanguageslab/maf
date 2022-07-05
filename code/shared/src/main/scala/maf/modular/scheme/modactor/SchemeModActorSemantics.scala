@@ -45,7 +45,7 @@ import maf.util.Logger
  */
 trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     inter =>
-    given Logger.Logger = Logger.DisabledLog()
+    given Logger.Logger = Logger.ConsoleLog()
 
     import maf.util.LogOps.*
 

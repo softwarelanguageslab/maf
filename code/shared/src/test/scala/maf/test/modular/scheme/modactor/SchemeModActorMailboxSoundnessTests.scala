@@ -46,7 +46,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
 
         CPSASchemeInterpreter(cbA = cb)
 
-    def concreteRuns: Int = 30
+    def concreteRuns: Int = 5
 
     class ConcreteState:
         var mailboxes: MapWithDefault[ConcreteActor, List[M]] = Map().useDefaultValue(List())
@@ -172,8 +172,11 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
         matchedMessages.map(_.size).sum - concreteMail.values.map(_.size).sum
 
     protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState): Int =
-        val abstractActors: Set[SchemeModActorComponent[Unit]] = analysis.getMailboxes.keys.map(analysis.view).map(_.removeContext).toSet
-        val concreteActors: Set[SchemeModActorComponent[Unit]] = concreteResults.spawned.map(concreteToAbstractActor).toSet
+        val abstractActors: Set[SchemeModActorComponent[Unit]] =
+            analysis.getMailboxes.keys.map(analysis.view).map(_.removeContext).map(_.removeEnv).toSet
+        val concreteActors: Set[SchemeModActorComponent[Unit]] = concreteResults.spawned.map(concreteToAbstractActor).map(_.removeEnv).toSet
+        println(abstractActors)
+        println(concreteActors)
         abstractActors.size - concreteActors.size
 
     protected def compareBehaviors(analysis: Analysis, concreteResults: ConcreteState): Int =
@@ -183,7 +186,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
     protected def compareResults(analysis: Analysis, concreteResults: ConcreteState): Boolean =
         // Compare mailboxes against each other
         compareMailboxes(analysis, concreteResults) == 0 &&
-            /* Compare spawned actors */ compareSpawnedActors(analysis, concreteResults) == 0 &&
+            /* Compare spawned actors */ compareSpawnedActors(analysis, concreteResults) >= 0 &&
             /* Compare changes in behavior */ compareBehaviors(analysis, concreteResults) == 0
 
     override protected def onBenchmark(b: String): Unit =
@@ -192,17 +195,17 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
 
             val concreteState = (0 until concreteRuns).foldMap[ConcreteState] { _ =>
                 // Run the conrete interpreter
+                val concreteState = ConcreteState()
                 try
-                    val concreteState = ConcreteState()
                     val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(concreteState))
                     concreteInterpreter.run(program, Timeout.start(Duration(10, SECONDS)), CodeVersion.New)
                     concreteState
                 catch
                     case _: TimeoutException =>
                         alert(s"Concrete evaluation of $b timed out")
-                        ConcreteState()
+                        concreteState
                     case e =>
-                        alert("Concrete execution of $b encountered an error $e")
+                        alert(s"Concrete execution of $b encountered an error $e")
                         ConcreteState() // cancel(s"Analysis of $b encountered an error $e")
             }
 
@@ -217,4 +220,5 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
 
 //class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
 //    override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
-//        SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
+//        Set("test/concurrentScheme/actors/savina/trapr.scm")
+// SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
