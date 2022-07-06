@@ -175,13 +175,32 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
         val abstractActors: Set[SchemeModActorComponent[Unit]] =
             analysis.getMailboxes.keys.map(analysis.view).map(_.removeContext).map(_.removeEnv).toSet
         val concreteActors: Set[SchemeModActorComponent[Unit]] = concreteResults.spawned.map(concreteToAbstractActor).map(_.removeEnv).toSet
-        println(abstractActors)
-        println(concreteActors)
         abstractActors.size - concreteActors.size
 
     protected def compareBehaviors(analysis: Analysis, concreteResults: ConcreteState): Int =
-        // TODO
-        0
+        val _abstractBehaviors = analysis.getBehaviors.toList
+        val abstractBehaviors: Map[SchemeModActorComponent[Unit], Set[Behavior]] =
+            (_abstractBehaviors
+                .map(_._1)
+                .map(_.removeContext)
+                .map(_.removeEnv))
+                .zip(_abstractBehaviors.map(_._2))
+                .toMap
+                .withDefaultValue(Set())
+
+        val _concreteBehaviors = concreteResults.behs.toList
+        val concreteBehaviors: Map[SchemeModActorComponent[Unit], Set[Behavior]] =
+            (_concreteBehaviors
+                .map(_._1)
+                .map(concreteToAbstractActor)
+                .map(_.removeEnv))
+                .zip(_concreteBehaviors.map(_._2.toSet))
+                .toMap
+                .withDefaultValue(Set())
+
+        // we count how many concrete behaviors do not have any correspondig abstract behavior,
+        // this number should equal zero for a sound analysis.
+        concreteBehaviors.count { case (actor, behs) => (behs -- abstractBehaviors(actor)).size > 0 }
 
     protected def compareResults(analysis: Analysis, concreteResults: ConcreteState): Boolean =
         // Compare mailboxes against each other
@@ -218,7 +237,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
             assert(compareResults(analysis, concreteState), "the results of the analysis should subsume the results of the concrete interpreter")
         }
 
-//class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
-//    override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
-//        Set("test/concurrentScheme/actors/savina/trapr.scm")
-// SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
+class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
+    override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
+        // Set("test/concurrentScheme/actors/savina/trapr.scm")
+        SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
