@@ -26,9 +26,15 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
     enum PrecisionResult:
         case TimedOut
         case Fail
-        case Result(imprecise: Int)
+        case Result(imprecise: ObsSpu)
 
     type Analysis = SimpleSchemeModActorAnalysis
+
+    case class ObsSpu(observed: Int, spurious: Int):
+        def +(that: ObsSpu): ObsSpu =
+            ObsSpu(this.observed + that.observed, this.spurious + that.spurious)
+
+    implicit def toObsSpu(t: (Int, Int)): ObsSpu = ObsSpu(t._1, t._2)
 
     /** Specifies the timeout for the static analysis */
     def timeout: Timeout.T = Timeout.start(30.seconds)
@@ -52,7 +58,7 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
     protected def parseProgram(source: String): SchemeExp =
         ASchemeParser.parseProgram(source)
 
-    protected def compareMailbox(anl: Analysis, concreteState: ConcreteState): Int =
+    protected def compareMailbox(anl: Analysis, concreteState: ConcreteState): ObsSpu =
         val abstractMailboxesLifted = anl.getMailboxes
             .map { case (actor, mailbox) =>
                 val newActor = anl.view(actor).removeContext.removeEnv
@@ -70,17 +76,20 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
             .toMap
             .withDefaultValue(Set())
 
-        abstractMailboxesLifted.map { case (actor, mailbox) =>
+        val spurious = abstractMailboxesLifted.map { case (actor, mailbox) =>
             (mailbox -- concreteMailboxesLifted(actor)).size
         }.sum
 
-    protected def compareSpawned(anl: Analysis, concreteState: ConcreteState): Int =
+        val observed = concreteMailboxesLifted.map(_._2.size).sum
+        (observed, spurious)
+
+    protected def compareSpawned(anl: Analysis, concreteState: ConcreteState): ObsSpu =
         val abstractSpawnedLifted = anl.getMailboxes.keys.map(_.removeContext.removeEnv).toSet
         val concreteSpawnedLifted = concreteState.mailboxes.keys.map(concreteToAbstractActor andThen (_.removeEnv))
 
-        (abstractSpawnedLifted -- concreteSpawnedLifted).size
+        (concreteSpawnedLifted.size, (abstractSpawnedLifted -- concreteSpawnedLifted).size)
 
-    protected def compareBehs(anl: Analysis, concreteState: ConcreteState): Int =
+    protected def compareBehs(anl: Analysis, concreteState: ConcreteState): ObsSpu =
         val abstractBehLifted = anl.getBehaviors
             .map { case (actor, behaviors) =>
                 val newActor = anl.view(actor).removeContext.removeEnv
@@ -99,9 +108,12 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
             .toMap
             .withDefaultValue(Set())
 
-        abstractBehLifted.map { case (actor, behaviors) => (behaviors -- concreteBehLifted(actor)).size }.sum
+        val spurious = abstractBehLifted.map { case (actor, behaviors) => (behaviors -- concreteBehLifted(actor)).size }.sum
+        val observed = concreteBehLifted.map(_._2.size).sum
+        (observed, spurious)
 
     protected def onBenchmark(benchmark: String): PrecisionResult =
+        println(s"Analyzing $benchmark")
         val source = Reader.loadFile(benchmark)
         val program = parseProgram(source)
         // Run the concrete analysis a few times
@@ -119,12 +131,20 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
     def run(outCsv: String): Unit =
         val outputTable = benchmarks.foldLeft(Table.empty[String])((table, benchmark) =>
             val result = onBenchmark(benchmark)
-            val contents = result match
-                case PrecisionResult.TimedOut  => "-"
-                case PrecisionResult.Fail      => "ERROR"
-                case PrecisionResult.Result(n) => s"$n"
+            result match
+                case PrecisionResult.TimedOut =>
+                    table
+                        .add(benchmark, "observed", "-")
+                        .add(benchmark, "# spurious", "-")
+                case PrecisionResult.Fail =>
+                    table
+                        .add(benchmark, "observed", "ERROR")
+                        .add(benchmark, "# spurious", "ERROR")
 
-            table.add(benchmark, "# spurious", contents)
+                case PrecisionResult.Result(ObsSpu(observed, spurious)) =>
+                    table
+                        .add(benchmark, "observed", observed.toString)
+                        .add(benchmark, "# spurious", spurious.toString)
         )
 
         val output = outputTable.toCSVString(rowName = "benchmark")
