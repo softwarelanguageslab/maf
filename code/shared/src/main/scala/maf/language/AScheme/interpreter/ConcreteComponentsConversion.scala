@@ -108,3 +108,46 @@ trait ConcreteComponentsConversion:
 
     protected def toMsg(analysis: Analysis)(m: analysis.Msg): Message[analysis.Value] =
         Message(analysis.getTag(m), analysis.getArgs(m))
+
+    /**
+     * Creates a concrete interpreter for the given program
+     *
+     * @param program
+     *   the program to run concretely
+     * @param cb
+     *   a callback that is used to register the results of concrete interpreter
+     */
+    protected def createInterpreter(program: SchemeExp, cb: ASchemeInterpreterCallback): CPSASchemeInterpreter =
+        given Logger.Logger = Logger.DisabledLog()
+        CPSASchemeInterpreter(cbA = cb)
+
+    protected def alertMsg(msg: String): Unit
+
+    /**
+     * Runs the program <code>concreteRuns</code> times and joins the results together.
+     *
+     * @param concreteRuns
+     *   the number of concrete runs to execute
+     * @param program
+     *   the program to concretely execute
+     * @param b
+     *   the name of the benchmark program to run
+     * @return
+     *   a single concrete state that summarizes all concrete executions of the program
+     */
+    protected def runConcrete(concreteRuns: Int, program: SchemeExp, b: String): ConcreteState =
+        (0 until concreteRuns).foldMap[ConcreteState] { _ =>
+            // Run the conrete interpreter
+            val concreteState = ConcreteState()
+            try
+                val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(concreteState))
+                concreteInterpreter.run(program, Timeout.start(Duration(10, SECONDS)), CodeVersion.New)
+                concreteState
+            catch
+                case _: TimeoutException =>
+                    alertMsg(s"Concrete evaluation of $b timed out")
+                    concreteState
+                case e =>
+                    alertMsg(s"Concrete execution of $b encountered an error $e")
+                    concreteState
+        }

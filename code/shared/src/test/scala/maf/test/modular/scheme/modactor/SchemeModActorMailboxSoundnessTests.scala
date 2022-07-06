@@ -41,11 +41,6 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
     protected def parseProgram(filename: String): SchemeExp =
         ASchemeParser.parseProgram(Reader.loadFile(filename))
 
-    protected def createInterpreter(program: SchemeExp, cb: ASchemeInterpreterCallback): CPSASchemeInterpreter =
-        given Logger.Logger = Logger.DisabledLog()
-
-        CPSASchemeInterpreter(cbA = cb)
-
     def concreteRuns: Int = 5
 
     protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState): Int =
@@ -124,25 +119,13 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
             /* Compare spawned actors */ compareSpawnedActors(analysis, concreteResults) >= 0 &&
             /* Compare changes in behavior */ compareBehaviors(analysis, concreteResults) == 0
 
+    protected def alertMsg(msg: String): Unit = alert(msg)
+
     override protected def onBenchmark(b: String): Unit =
         property(s"$b is sound in mailbox abstractions") {
             val program = parseProgram(b)
 
-            val concreteState = (0 until concreteRuns).foldMap[ConcreteState] { _ =>
-                // Run the conrete interpreter
-                val concreteState = ConcreteState()
-                try
-                    val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(concreteState))
-                    concreteInterpreter.run(program, Timeout.start(Duration(10, SECONDS)), CodeVersion.New)
-                    concreteState
-                catch
-                    case _: TimeoutException =>
-                        alert(s"Concrete evaluation of $b timed out")
-                        concreteState
-                    case e =>
-                        alert(s"Concrete execution of $b encountered an error $e")
-                        ConcreteState() // cancel(s"Analysis of $b encountered an error $e")
-            }
+            val concreteState = runConcrete(concreteRuns, program, b)
 
             //assert(!concreteState.isEmpty, "Concrete execution should have message sends")
             // Run the abstract interpreter
