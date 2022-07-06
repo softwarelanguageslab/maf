@@ -4,11 +4,17 @@ import maf.language.AScheme.ASchemeParser
 import maf.modular.scheme.modactor.SchemeModActorSemantics
 import maf.language.scheme.*
 import maf.cli.experiments.SchemeAnalyses
-import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.Reader
 import maf.language.AScheme.interpreter.ConcreteComponentsConversion
 import maf.util.MonoidImplicits.FoldMapExtension
+import maf.util.benchmarks.Timeout
+import concurrent.duration.DurationInt
+import java.util.concurrent.TimeoutException
+import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
+import maf.util.benchmarks.Table.apply
+import maf.util.Writer
+import maf.util.benchmarks.Table
 
 /**
  * Compare a number of concrete runs of the program with the output of the static analyser.
@@ -17,9 +23,15 @@ import maf.util.MonoidImplicits.FoldMapExtension
  * correspond with a concrete run of the program and are therefore imprecise.
  */
 trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
-    case class PrecisionResult()
+    enum PrecisionResult:
+        case TimedOut
+        case Fail
+        case Result(imprecise: Int)
 
-    type Analysis <: SchemeModActorSemantics
+    type Analysis = SimpleSchemeModActorAnalysis
+
+    /** Specifies the timeout for the static analysis */
+    def timeout: Timeout.T = Timeout.start(30.seconds)
 
     /**
      * Creates a static analysis for the given program
@@ -40,13 +52,84 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
     protected def parseProgram(source: String): SchemeExp =
         ASchemeParser.parseProgram(source)
 
+    protected def compareMailbox(anl: Analysis, concreteState: ConcreteState): Int =
+        val abstractMailboxesLifted = anl.getMailboxes
+            .map { case (actor, mailbox) =>
+                val newActor = anl.view(actor).removeContext.removeEnv
+                val newMailbox = mailbox.messages.map(toMsg(anl))
+                newActor -> newMailbox
+            }
+            .toMap
+            .withDefaultValue(Set())
+        val concreteMailboxesLifted = concreteState.mailboxes
+            .map { case (actor, mailbox) =>
+                val newActor = concreteToAbstractActor(actor).removeEnv
+                val newMailbox = mailbox.map(_.mapValues(convertConcreteValue(anl, _))).toSet
+                newActor -> newMailbox
+            }
+            .toMap
+            .withDefaultValue(Set())
+
+        abstractMailboxesLifted.map { case (actor, mailbox) =>
+            (mailbox -- concreteMailboxesLifted(actor)).size
+        }.sum
+
+    protected def compareSpawned(anl: Analysis, concreteState: ConcreteState): Int =
+        val abstractSpawnedLifted = anl.getMailboxes.keys.map(_.removeContext.removeEnv).toSet
+        val concreteSpawnedLifted = concreteState.mailboxes.keys.map(concreteToAbstractActor andThen (_.removeEnv))
+
+        (abstractSpawnedLifted -- concreteSpawnedLifted).size
+
+    protected def compareBehs(anl: Analysis, concreteState: ConcreteState): Int =
+        val abstractBehLifted = anl.getBehaviors
+            .map { case (actor, behaviors) =>
+                val newActor = anl.view(actor).removeContext.removeEnv
+                val newBehaviors = behaviors.map(_.removeEnv)
+                newActor -> newBehaviors
+            }
+            .toMap
+            .withDefaultValue(Set())
+
+        val concreteBehLifted = concreteState.behs
+            .map { case (actor, behaviors) =>
+                val newActor = concreteToAbstractActor(actor).removeEnv.removeContext
+                val newBehaviors = behaviors.map(_.removeEnv).toSet
+                newActor -> newBehaviors
+            }
+            .toMap
+            .withDefaultValue(Set())
+
+        abstractBehLifted.map { case (actor, behaviors) => (behaviors -- concreteBehLifted(actor)).size }.sum
+
     protected def onBenchmark(benchmark: String): PrecisionResult =
         val source = Reader.loadFile(benchmark)
         val program = parseProgram(source)
         // Run the concrete analysis a few times
-        ???
+        val concreteState = runConcrete(concreteRuns, program, benchmark)
+        // Run the abstract
+        val anl = analysis(program)
+        try anl.analyzeWithTimeout(timeout)
+        catch
+            case _: TimeoutException => return PrecisionResult.TimedOut
+            case _                   => return PrecisionResult.Fail
 
-    def run(outCsv: String): Unit = ???
+        // Compare the abstract state with the concrete state
+        PrecisionResult.Result(compareMailbox(anl, concreteState) + compareSpawned(anl, concreteState) + compareBehs(anl, concreteState))
+
+    def run(outCsv: String): Unit =
+        val outputTable = benchmarks.foldLeft(Table.empty[String])((table, benchmark) =>
+            val result = onBenchmark(benchmark)
+            val contents = result match
+                case PrecisionResult.TimedOut  => "-"
+                case PrecisionResult.Fail      => "ERROR"
+                case PrecisionResult.Result(n) => s"$n"
+
+            table.add(benchmark, "# spurious", contents)
+        )
+
+        val output = outputTable.toCSVString(rowName = "benchmark")
+        val outputFile = Writer.openTimeStamped(outCsv)
+        Writer.write(outputFile, output)
 
 object SimpleModActorPrecisionBenchmarks extends ModActorPrecisionBenchmarks:
     type Analysis = SimpleSchemeModActorAnalysis
