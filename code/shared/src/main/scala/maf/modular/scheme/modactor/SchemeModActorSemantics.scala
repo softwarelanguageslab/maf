@@ -24,8 +24,9 @@ import maf.language.scheme.ASchemeSend
 import maf.language.scheme.ASchemeBecome
 import java.util.concurrent.TimeoutException
 import maf.language.scheme.ASchemeSelect
-import maf.util.FunctionUtils.fix
+import maf.util.FunctionUtils.fixWL
 import maf.util.Logger
+import maf.util.FunctionUtils.FIFOWL
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -45,7 +46,7 @@ import maf.util.Logger
  */
 trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     inter =>
-    given Logger.Logger = Logger.ConsoleLog()
+    given Logger.Logger = Logger.DisabledLog()
 
     import maf.util.LogOps.*
 
@@ -123,6 +124,17 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     def getMailboxes: Map[Component, Mailbox] = mailboxes
 
     //
+    // Behaviors
+    //
+
+    /**
+     * We keep track of the set of discovered behaviors for each component. This is mainly to support some client analyses, and the precision and
+     * soundness tests
+     */
+    protected var behaviors: Map[Component, Set[Behavior]] = Map().withDefaultValue(Set())
+    def getBehaviors: Map[Component, Set[Behavior]] = behaviors
+
+    //
     // Inter analysis
     //
 
@@ -136,6 +148,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
     class ModActorIntra(cmp: Component)(using ClassTag[Component]) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra:
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            import maf.util.FunctionUtils.WL.*
             log("==========================================")
             log(s"analyzing $component")
             if timeout.reached then throw new TimeoutException()
@@ -146,16 +159,15 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                     case Actor(beh, _, _) => beh
 
                 // TODO: is transfer the correct terminology?
-                def transfer(seenBehavior: Set[Behavior]): Set[Behavior] =
+                def transfer(seenBehavior: FIFOWL[Behavior]): FIFOWL[Behavior] =
                     log(s"Transfer $seenBehavior")
-                    seenBehavior ++ seenBehavior.flatMap { beh =>
+                    seenBehavior.addNext { beh =>
                         val modf = innerModF(this, beh)
                         modf.analyzeWithTimeout(timeout)
                         modf.getBehaviors
                     }
 
-                // TODO: use a worklist
-                fix(Set(initialBehavior))(transfer)
+                fixWL(FIFOWL.initial(initialBehavior))(transfer)
 
         /** Send the given message to the given actor */
         def send(to: ASchemeValues.Actor, m: Msg): Unit =
@@ -194,7 +206,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
     // TODO: rename to SequentialModFAnalysis? or SingleActorModFFactorySingletonProxyDefault?
     abstract class InnerModF(intra: ModActorIntra, beh: Behavior)
-        extends ModAnalysis[SchemeExp](body(intra.component))
+        extends ModAnalysis[SchemeExp](beh.bdy)
         with SchemeModActorInnerMonad[Msg]
         with StandardSchemeModFComponents { modf =>
 
@@ -237,6 +249,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             protected def recordNewBehavior(beh: Value, ags: List[Value]): EvalM[Unit] =
                 nondets(lattice.getBehs(beh).map { beh =>
                     writeActorArgs(beh, ags, intra.component)
+                    log(s"Recording new behavior $beh")
                     behaviors = behaviors + beh
                     unit(())
                 })
