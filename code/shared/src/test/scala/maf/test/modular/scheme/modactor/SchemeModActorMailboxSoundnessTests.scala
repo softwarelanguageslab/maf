@@ -24,6 +24,7 @@ import maf.util.MonoidImplicits.FoldMapExtension
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.MapOps.*
+import maf.language.AScheme.interpreter.ConcreteComponentsConversion
 
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
@@ -34,8 +35,7 @@ import scala.concurrent.duration._
  *
  * Soundness of the inner-turn sequential Scheme programs is checked by the sequential Scheme soundness tests.
  */
-trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
-    type M = Message[ConcreteValues.Value]
+trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, ConcreteComponentsConversion:
     type Analysis = SimpleSchemeModActorAnalysis
 
     protected def parseProgram(filename: String): SchemeExp =
@@ -47,78 +47,6 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
         CPSASchemeInterpreter(cbA = cb)
 
     def concreteRuns: Int = 5
-
-    class ConcreteState:
-        var mailboxes: MapWithDefault[ConcreteActor, List[M]] = Map().useDefaultValue(List())
-        var behs: MapWithDefault[ConcreteActor, List[Behavior]] = Map().useDefaultValue(List())
-        var spawned: List[ConcreteActor] = List()
-
-        def this(mailboxes: Map[ConcreteActor, List[M]], behs: Map[ConcreteActor, List[Behavior]], spawned: List[ConcreteActor]) =
-            this()
-            this.mailboxes = mailboxes.useDefaultValue(List())
-            this.behs = behs.useDefaultValue(List())
-            this.spawned = spawned
-
-        def isEmpty: Boolean = mailboxes.isEmpty && behs.isEmpty && spawned.isEmpty
-
-    object ConcreteState:
-        given Monoid[ConcreteState] with
-            def zero: ConcreteState = ConcreteState()
-            def append(x: ConcreteState, y: => ConcreteState): ConcreteState =
-                val mailboxes = List(x.mailboxes, y.mailboxes).toMapAppended
-                val behs = List(x.behs, y.behs).toMapAppended
-                val spawned = x.spawned ++ y.spawned
-                ConcreteState(mailboxes, behs, spawned)
-
-    class ConcreteStateCallback(state: ConcreteState) extends ASchemeInterpreterCallback:
-        def sendMessage(receiver: ConcreteActor, msg: Message[Value], idn: Identity): Unit =
-            state.mailboxes = state.mailboxes.update(receiver)(msg :: _)
-
-        def become(self: ConcreteActor, beh: Behavior): Unit =
-            state.behs = state.behs.update(self)(beh :: _)
-
-        def spawn(newActor: ConcreteActor): Unit =
-            state.spawned = newActor :: state.spawned
-
-    protected def concreteToAbstractActor(concr: ConcreteActor): SchemeModActorComponent[Unit] =
-        maf.modular.scheme.modactor.Actor(concr.initialBeh.removeEnv, concr.initialBeh.lexEnv, ())
-
-    case class ComparisonVarAddr(ident: Identifier) extends Address:
-        override def printable: Boolean = false
-        override def idn: Identity = ident.idn
-
-    case class ComparisonPtrAddr(exp: SchemeExp) extends Address:
-        override def printable: Boolean = false
-        override def idn: Identity = exp.idn
-
-    // TODO: also convert addresses in the abstract domain in the same way
-    protected def convertAddr(analysis: Analysis, adr: (Int, AddrInfo)): Address =
-        adr._2 match
-            case AddrInfo.VarAddr(vrb) => ComparisonVarAddr(vrb)
-            case AddrInfo.PtrAddr(ptr) => ComparisonPtrAddr(ptr)
-
-    protected def convertConcreteValue(analysis: Analysis, vlu: ConcreteValues.Value): analysis.Value = vlu match
-        case Value.Undefined(_)  => analysis.lattice.nil
-        case Value.Void          => analysis.lattice.void
-        case Value.Clo(lam, env) => analysis.lattice.closure(lam, Environment.empty /* TODO */ )
-        case Value.Primitive(p)  => analysis.lattice.primitive(p)
-        case Value.Str(s)        => analysis.lattice.string(s)
-        case Value.Symbol(s)     => analysis.lattice.symbol(s)
-        case Value.Integer(i)    => analysis.lattice.number(i)
-        case Value.Real(r)       => analysis.lattice.real(r)
-        case Value.Bool(b)       => analysis.lattice.bool(b)
-        case Value.Character(c)  => analysis.lattice.char(c)
-        case Value.Nil           => analysis.lattice.nil
-        case Value.Pointer(a)    => analysis.lattice.pointer(convertAddr(analysis, a))
-        case Value.Cons(a, d)    => analysis.lattice.cons(convertConcreteValue(analysis, a), convertConcreteValue(analysis, d))
-        case Value.Vector(siz, els, ini) =>
-            analysis.lattice.vector(analysis.lattice.number(siz), convertConcreteValue(analysis, ini)).getOrElse(throw Exception("should not fail"))
-        case c: ConcreteActor => analysis.lattice.actor(Actor(c.name, concreteToAbstractActor(c).removeEnv))
-        case b: Behavior      => analysis.lattice.beh(b.removeEnv)
-        case v                => throw new Exception(s"Unknown concrete value type: $v")
-
-    protected def toMsg(analysis: Analysis)(m: analysis.Msg): Message[analysis.Value] =
-        Message(analysis.getTag(m), analysis.getArgs(m))
 
     protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState): Int =
         val abstractMail: Map[SchemeModActorComponent[Unit], Set[Message[analysis.Value]]] = {
@@ -156,19 +84,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests:
                 existsMatchingMessage
             )
         }
-        //println("=======================")
-        //println(s"${abstractMail.keys}")
-        //println(s"${concreteMail.keys}")
-        //println("=======================")
 
-        //println("=======================")
-        //println(s"${abstractMail.values}")
-        //println(s"${concreteMail.values}")
-        //println("=======================")
-
-        //println(s"Size mismatched ${concreteMail.values.map(_.size).sum - matchedMessages.map(_.size).sum}, size matched ${matchedMessages
-        //    .map(_.size)
-        //    .sum}, size concrete ${concreteMail.values.map(_.size).sum}")
         matchedMessages.map(_.size).sum - concreteMail.values.map(_.size).sum
 
     protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState): Int =
