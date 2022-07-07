@@ -95,7 +95,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
                 .map(_._1)
                 .map(_.removeContext)
                 .map(_.removeEnv))
-                .zip(_abstractBehaviors.map(_._2))
+                .zip(_abstractBehaviors.map(_._2.map(_.removeEnv)))
                 .toMap
                 .withDefaultValue(Set())
 
@@ -105,9 +105,14 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
                 .map(_._1)
                 .map(concreteToAbstractActor)
                 .map(_.removeEnv))
-                .zip(_concreteBehaviors.map(_._2.toSet))
+                .zip(_concreteBehaviors.map(_._2.map(_.removeEnv).toSet))
                 .toMap
                 .withDefaultValue(Set())
+
+        //println(concreteBehaviors.values)
+        //println("================")
+        //print("conc ")
+        //println(concreteBehaviors.toList.map { case (actor, behs) => (behs, abstractBehaviors(actor)) })
 
         // we count how many concrete behaviors do not have any correspondig abstract behavior,
         // this number should equal zero for a sound analysis.

@@ -3,6 +3,7 @@ package maf.modular.scheme.modactor
 import maf.modular.ModAnalysis
 import maf.language.scheme.*
 import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
+import maf.util.datastructures.MapOps.*
 import maf.modular.scheme.modf.BigStepModFSemanticsT
 import maf.language.AScheme.ASchemeValues
 import maf.modular.scheme.modf.*
@@ -27,6 +28,7 @@ import maf.language.scheme.ASchemeSelect
 import maf.util.FunctionUtils.fixWL
 import maf.util.Logger
 import maf.util.FunctionUtils.FIFOWL
+import maf.util.datastructures.MapOps.MapWithDefault
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -131,7 +133,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
      * We keep track of the set of discovered behaviors for each component. This is mainly to support some client analyses, and the precision and
      * soundness tests
      */
-    protected var behaviors: Map[Component, Set[Behavior]] = Map().withDefaultValue(Set())
+    protected var behaviors: MapWithDefault[Component, Set[Behavior]] = Map().useDefaultValue(Set())
     def getBehaviors: Map[Component, Set[Behavior]] = behaviors
 
     //
@@ -167,7 +169,9 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
                         modf.getBehaviors
                     }
 
-                fixWL(FIFOWL.initial(initialBehavior))(transfer)
+                val behaviors = fixWL(FIFOWL.initial(initialBehavior))(transfer)
+
+                inter.behaviors = inter.behaviors.update(cmp)(_ ++ behaviors)
 
         /** Send the given message to the given actor */
         def send(to: ASchemeValues.Actor, m: Msg): Unit =
