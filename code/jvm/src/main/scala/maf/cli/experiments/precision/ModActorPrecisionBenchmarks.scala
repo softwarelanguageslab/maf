@@ -3,6 +3,7 @@ package maf.cli.experiments.precision
 import maf.language.AScheme.ASchemeParser
 import maf.modular.scheme.modactor.SchemeModActorSemantics
 import maf.language.scheme.*
+import maf.core.Lattice
 import maf.cli.experiments.SchemeAnalyses
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.Reader
@@ -15,6 +16,7 @@ import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.util.benchmarks.Table.apply
 import maf.util.Writer
 import maf.util.benchmarks.Table
+import maf.util.datastructures.MapOps.*
 
 /**
  * Compare a number of concrete runs of the program with the output of the static analyser.
@@ -59,21 +61,19 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
         ASchemeParser.parseProgram(source)
 
     protected def compareMailbox(anl: Analysis, concreteState: ConcreteState): ObsSpu =
-        val abstractMailboxesLifted = anl.getMailboxes
-            .map { case (actor, mailbox) =>
-                val newActor = anl.view(actor).removeContext.removeEnv
-                val newMailbox = mailbox.messages.map(toMsg(anl))
-                newActor -> newMailbox
-            }
-            .toMap
-            .withDefaultValue(Set())
+        val abstractMailboxesLifted = anl.getMailboxes.map { case (actor, mailbox) =>
+            val newActor = anl.view(actor).removeContext.removeEnv
+            val newMailbox = mailbox.messages.map(toMsg(anl))
+            newActor -> newMailbox
+        }.toMapJoined
+
         val concreteMailboxesLifted = concreteState.mailboxes
             .map { case (actor, mailbox) =>
                 val newActor = concreteToAbstractActor(actor).removeEnv
                 val newMailbox = mailbox.map(_.mapValues(convertConcreteValue(anl, _))).toSet
                 newActor -> newMailbox
             }
-            .toMap
+            .toMapJoined
             .withDefaultValue(Set())
 
         val spurious = abstractMailboxesLifted.map { case (actor, mailbox) =>

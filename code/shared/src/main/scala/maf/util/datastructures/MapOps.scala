@@ -21,7 +21,7 @@ object MapOps:
                     m.get(k) match
                         case Some(v2) => k -> Monoid[V].append(v2, v1)
                         case None     => k -> v1
-                })
+                }) ++ (c.keys.toSet -- m.keys.toSet).map((k) => k -> c(k))
             )
 
     case class MapWithDefault[K, V] private (contents: Map[K, V]) extends Map[K, V]:

@@ -38,6 +38,9 @@ trait ConcreteComponentsConversion:
     type M = Message[ConcreteValues.Value]
 
     class ConcreteState:
+        override def toString: String =
+            s"ConcreteState($mailboxes, $behs, $spawned)"
+
         var mailboxes: MapWithDefault[ConcreteActor, List[M]] = Map().useDefaultValue(List())
         var behs: MapWithDefault[ConcreteActor, List[Behavior]] = Map().useDefaultValue(List())
         var spawned: List[ConcreteActor] = List()
