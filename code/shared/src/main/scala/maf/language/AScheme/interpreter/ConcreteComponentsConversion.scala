@@ -5,7 +5,9 @@ import maf.core.Address
 import maf.core.Environment
 import maf.core.Identifier
 import maf.core.Identity
+import maf.core.Lattice
 import maf.language.AScheme.ASchemeParser
+import maf.language.AScheme.ASchemeValues.Message.*
 import maf.language.AScheme.ASchemeValues.*
 import maf.language.AScheme.interpreter.ASchemeInterpreterCallback
 import maf.language.AScheme.interpreter.CPSASchemeInterpreter
@@ -16,6 +18,7 @@ import maf.language.change.CodeVersion
 import maf.language.scheme.*
 import maf.language.scheme.interpreter.ConcreteValues.AddrInfo
 import maf.modular.scheme.modactor.SchemeModActorComponent
+import maf.modular.scheme.modactor.SchemeModActorSemantics
 import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.util.Logger
 import maf.util.Monoid
@@ -27,7 +30,6 @@ import maf.util.datastructures.MapOps.*
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
-import maf.modular.scheme.modactor.SchemeModActorSemantics
 
 /**
  * This trait can be mixed in to provide support for keeping track of all the elements reported by the CPSAScheme callback. Additionally, it provides
@@ -35,36 +37,36 @@ import maf.modular.scheme.modactor.SchemeModActorSemantics
  */
 trait ConcreteComponentsConversion:
     type Analysis <: SchemeModActorSemantics
-    type M = Message[ConcreteValues.Value]
+    type AbstractActor = SchemeModActorComponent[Unit]
 
-    class ConcreteState:
+    class ConcreteState[Value: Lattice]:
+        type M = Message[Value]
         override def toString: String =
             s"ConcreteState($mailboxes, $behs, $spawned)"
 
-        var mailboxes: MapWithDefault[ConcreteActor, List[M]] = Map().useDefaultValue(List())
+        var mailboxes: MapWithDefault[AbstractActor, Set[M]] = Map().useDefaultValue(Set())
         var behs: MapWithDefault[ConcreteActor, List[Behavior]] = Map().useDefaultValue(List())
         var spawned: List[ConcreteActor] = List()
 
-        def this(mailboxes: Map[ConcreteActor, List[M]], behs: Map[ConcreteActor, List[Behavior]], spawned: List[ConcreteActor]) =
-            this()
-            this.mailboxes = mailboxes.useDefaultValue(List())
-            this.behs = behs.useDefaultValue(List())
-            this.spawned = spawned
-
         def isEmpty: Boolean = mailboxes.isEmpty && behs.isEmpty && spawned.isEmpty
 
-    object ConcreteState:
-        given Monoid[ConcreteState] with
-            def zero: ConcreteState = ConcreteState()
-            def append(x: ConcreteState, y: => ConcreteState): ConcreteState =
-                val mailboxes = List(x.mailboxes, y.mailboxes).toMapAppended
-                val behs = List(x.behs, y.behs).toMapAppended
-                val spawned = x.spawned ++ y.spawned
-                ConcreteState(mailboxes, behs, spawned)
+        def append(other: ConcreteState[Value]): ConcreteState[Value] =
+            import maf.util.MonoidImplicits.*
+            import maf.language.AScheme.ASchemeValues.*
+            val mailboxes = List(this.mailboxes, other.mailboxes).toMapAppended
+            val behs = List(this.behs, other.behs).toMapAppended
+            val spawned = this.spawned ++ other.spawned
+            val st = ConcreteState()
+            st.mailboxes = mailboxes.useDefaultValue(Set())
+            st.behs = behs.useDefaultValue(List())
+            st.spawned = spawned
+            st
 
-    class ConcreteStateCallback(state: ConcreteState) extends ASchemeInterpreterCallback:
+    class ConcreteStateCallback(val anl: Analysis, val state: ConcreteState[anl.Value]) extends ASchemeInterpreterCallback:
         def sendMessage(receiver: ConcreteActor, msg: Message[Value], idn: Identity): Unit =
-            state.mailboxes = state.mailboxes.update(receiver)(msg :: _)
+            state.mailboxes = state.mailboxes.update(concreteToAbstractActor(receiver).removeEnv)((msgs) =>
+                Lattice[Set[state.M]].join(msgs, Set(msg.mapValues(convertConcreteValue(anl, _))))
+            )
 
         def become(self: ConcreteActor, beh: Behavior): Unit =
             state.behs = state.behs.update(self)(beh :: _)
@@ -138,19 +140,18 @@ trait ConcreteComponentsConversion:
      * @return
      *   a single concrete state that summarizes all concrete executions of the program
      */
-    protected def runConcrete(concreteRuns: Int, program: SchemeExp, b: String): ConcreteState =
-        (0 until concreteRuns).foldMap[ConcreteState] { _ =>
+    protected def runConcrete(anl: Analysis, concreteRuns: Int, program: SchemeExp, b: String): ConcreteState[anl.Value] =
+        (0 until concreteRuns).foldLeft(ConcreteState[anl.Value]())((st, _) =>
             // Run the conrete interpreter
-            val concreteState = ConcreteState()
             try
-                val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(concreteState))
+                val concreteInterpreter = createInterpreter(program, ConcreteStateCallback(anl, st))
                 concreteInterpreter.run(program, Timeout.start(Duration(10, SECONDS)), CodeVersion.New)
-                concreteState
+                st
             catch
                 case _: TimeoutException =>
                     alertMsg(s"Concrete evaluation of $b timed out")
-                    concreteState
+                    st
                 case e =>
                     alertMsg(s"Concrete execution of $b encountered an error $e")
-                    concreteState
-        }
+                    st
+        )

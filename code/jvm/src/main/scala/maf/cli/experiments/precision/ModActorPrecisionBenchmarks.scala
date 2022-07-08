@@ -60,7 +60,7 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
     protected def parseProgram(source: String): SchemeExp =
         ASchemeParser.parseProgram(source)
 
-    protected def compareMailbox(anl: Analysis, concreteState: ConcreteState): ObsSpu =
+    protected def compareMailbox(anl: Analysis, concreteState: ConcreteState[anl.Value]): ObsSpu =
         val abstractMailboxesLifted = anl.getMailboxes.map { case (actor, mailbox) =>
             val newActor = anl.view(actor).removeContext.removeEnv
             val newMailbox = mailbox.messages.map(toMsg(anl))
@@ -68,13 +68,6 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
         }.toMapJoined
 
         val concreteMailboxesLifted = concreteState.mailboxes
-            .map { case (actor, mailbox) =>
-                val newActor = concreteToAbstractActor(actor).removeEnv
-                val newMailbox = mailbox.map(_.mapValues(convertConcreteValue(anl, _))).toSet
-                newActor -> newMailbox
-            }
-            .toMapJoined
-            .withDefaultValue(Set())
 
         val spurious = abstractMailboxesLifted.map { case (actor, mailbox) =>
             (mailbox -- concreteMailboxesLifted(actor)).size
@@ -83,13 +76,13 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
         val observed = concreteMailboxesLifted.map(_._2.size).sum
         (observed, spurious)
 
-    protected def compareSpawned(anl: Analysis, concreteState: ConcreteState): ObsSpu =
+    protected def compareSpawned(anl: Analysis, concreteState: ConcreteState[anl.Value]): ObsSpu =
         val abstractSpawnedLifted = anl.getMailboxes.keys.map(_.removeContext.removeEnv).toSet
-        val concreteSpawnedLifted = concreteState.mailboxes.keys.map(concreteToAbstractActor andThen (_.removeEnv))
+        val concreteSpawnedLifted = concreteState.mailboxes.keys
 
         (concreteSpawnedLifted.size, (abstractSpawnedLifted -- concreteSpawnedLifted).size)
 
-    protected def compareBehs(anl: Analysis, concreteState: ConcreteState): ObsSpu =
+    protected def compareBehs(anl: Analysis, concreteState: ConcreteState[anl.Value]): ObsSpu =
         val abstractBehLifted = anl.getBehaviors
             .map { case (actor, behaviors) =>
                 val newActor = anl.view(actor).removeContext.removeEnv
@@ -116,10 +109,10 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
         println(s"Analyzing $benchmark")
         val source = Reader.loadFile(benchmark)
         val program = parseProgram(source)
-        // Run the concrete analysis a few times
-        val concreteState = runConcrete(concreteRuns, program, benchmark)
-        // Run the abstract
         val anl = analysis(program)
+        // Run the concrete analysis a few times
+        val concreteState = runConcrete(anl, concreteRuns, program, benchmark)
+        // Run the abstract
         try anl.analyzeWithTimeout(timeout)
         catch
             case _: TimeoutException => return PrecisionResult.TimedOut

@@ -29,6 +29,7 @@ import maf.language.AScheme.interpreter.ConcreteComponentsConversion
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration._
+import maf.core.Lattice
 
 /**
  * Test for checking the soundness of the mailbox abstractions.
@@ -43,7 +44,8 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
 
     def concreteRuns: Int = 5
 
-    protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState): Int =
+    protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
+        type AM = Set[Message[analysis.Value]]
         val abstractMail: Map[SchemeModActorComponent[Unit], Set[Message[analysis.Value]]] = {
             val mailboxes = analysis.getMailboxes.toList
             val keys = mailboxes.map(_._1)
@@ -53,7 +55,14 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
                 .map(analysis.view)
                 .map(_.removeContext)
                 .map(_.removeEnv) // TODO: actually convert env properly
-                .zip(values.map(_.messages).map(_.map(toMsg(analysis))))
+                .zip(
+                  values
+                      .map(_.messages)
+                      .map(msgs =>
+                          given Lattice[AM] = Message.messageSetLattice(analysis.lattice)
+                          Lattice.foldMapL[analysis.Msg, AM](msgs, toMsg(analysis) andThen (Set() + _))
+                      )
+                )
                 .toMapJoined
         }
 
@@ -63,15 +72,13 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
             val values = mailboxes.map(_._2)
 
             keys
-                .map(concreteToAbstractActor)
-                .map(_.removeEnv) // TODO: actually convert env properly
-                .zip(values.map(_.map(_.mapValues(convertConcreteValue(analysis, _))).toSet))
+                .zip(values)
                 .toMapJoined
         }
 
         val matchedMessages = concreteMail.map { case (cmp, msgs) =>
             msgs.filter(cmsg =>
-                // println(s"getting $cmp with concrete mail $cmsg in abstractmail: ${abstractMail.get(cmp)}")
+                //println(s"getting $cmp with concrete mail $cmsg in abstractmail: ${abstractMail.get(cmp)}")
                 val existsMatchingMessage = abstractMail
                     .get(cmp)
                     .exists(_.exists(msg => cmsg.vlus.zip(msg.vlus).forall { case (x, y) => analysis.lattice.subsumes(y, x) || x == y }))
@@ -82,13 +89,13 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
 
         matchedMessages.map(_.size).sum - concreteMail.values.map(_.size).sum
 
-    protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState): Int =
+    protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
         val abstractActors: Set[SchemeModActorComponent[Unit]] =
             analysis.getMailboxes.keys.map(analysis.view).map(_.removeContext).map(_.removeEnv).toSet
         val concreteActors: Set[SchemeModActorComponent[Unit]] = concreteResults.spawned.map(concreteToAbstractActor).map(_.removeEnv).toSet
         abstractActors.size - concreteActors.size
 
-    protected def compareBehaviors(analysis: Analysis, concreteResults: ConcreteState): Int =
+    protected def compareBehaviors(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
         val _abstractBehaviors = analysis.getBehaviors.toList
         val abstractBehaviors: Map[SchemeModActorComponent[Unit], Set[Behavior]] =
             (_abstractBehaviors
@@ -118,7 +125,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
         // this number should equal zero for a sound analysis.
         concreteBehaviors.count { case (actor, behs) => (behs -- abstractBehaviors(actor)).size > 0 }
 
-    protected def compareResults(analysis: Analysis, concreteResults: ConcreteState): Boolean =
+    protected def compareResults(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Boolean =
         // Compare mailboxes against each other
         compareMailboxes(analysis, concreteResults) == 0 &&
             /* Compare spawned actors */ compareSpawnedActors(analysis, concreteResults) >= 0 &&
@@ -130,11 +137,11 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
         property(s"$b is sound in mailbox abstractions") {
             val program = parseProgram(b)
 
-            val concreteState = runConcrete(concreteRuns, program, b)
+            val analysis = new SimpleSchemeModActorAnalysis(program)
+            val concreteState = runConcrete(analysis, concreteRuns, program, b)
 
             //assert(!concreteState.isEmpty, "Concrete execution should have message sends")
             // Run the abstract interpreter
-            val analysis = new SimpleSchemeModActorAnalysis(program)
             analysis.analyze()
 
             // Compare the results
@@ -143,5 +150,5 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
 
 class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
     override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
-        // Set("test/concurrentScheme/actors/savina/trapr.scm")
-        SchemeBenchmarkPrograms.actors - "test/concurrentScheme/actors/soter/unsafe_send.scm"
+        SchemeBenchmarkPrograms.actors --
+            Set("test/concurrentScheme/actors/soter/unsafe_send.scm", "test/concurrentScheme/actors/savina/qsort.scm")
