@@ -65,6 +65,15 @@ object ASchemeCompiler extends BaseSchemeCompiler:
                 cplArgs <- tailcall(compileBody(args))
             yield ASchemeCreate(cplBeh, cplArgs, createIdn)
 
+        case Ident("ask") :::: actorRef :::: IdentWithIdentity(tag, tagIdn) :::: args =>
+            for
+                cplActorRef <- tailcall(_compile(actorRef))
+                cplArgs <- tailcall(compileBody(args))
+            yield ASchemeAsk(cplActorRef, Identifier(tag, tagIdn), cplArgs, exp.idn)
+
+        case Ident("await") :::: future :::: SNil(_) =>
+            tailcall(_compile(future)).map(ASchemeAwait(_, exp.idn))
+
         case Ident(tag) if actorReserved.contains(tag) =>
             throw new Exception(s"Invalid syntax for $tag at ${exp.idn}")
         case _ => super._compile(exp)

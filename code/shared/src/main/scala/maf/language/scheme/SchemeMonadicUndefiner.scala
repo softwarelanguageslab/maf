@@ -302,6 +302,19 @@ trait BaseSchemeMonadicUndefiner:
                 undefinedArgs <- arguments.mapM(undefineSingle)
                 result <- mk(ASchemeSend(undefinedRef, msgTpy, undefinedArgs, idn))
             yield result
+
+        case ASchemeAsk(actorRef, msgTpy, arguments, idn) =>
+            for
+                undefinedRef <- undefineSingle(actorRef)
+                undefinedArgs <- arguments.mapM(undefineSingle)
+                result <- mk(ASchemeAsk(undefinedRef, msgTpy, undefinedArgs, idn))
+            yield result
+
+        case ASchemeAwait(future, idn) =>
+            for
+                undefinedFuture <- undefineSingle(future)
+                result <- mk(ASchemeAwait(undefinedFuture, idn))
+            yield result
         case ASchemeCreate(beh, arguments, idn) =>
             for
                 undefinedBeh <- undefineSingle(beh)

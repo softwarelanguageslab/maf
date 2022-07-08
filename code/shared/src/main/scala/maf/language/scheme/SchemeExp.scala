@@ -592,6 +592,20 @@ case class ASchemeCreate(behavior: SchemeExp, arguments: List[SchemeExp], idn: I
     def subexpressions: List[Expression] = behavior :: arguments
     override def toString: String = s"(create $behavior ${arguments.mkString(" ")})"
 
+// (ask actor msg args ...)
+case class ASchemeAsk(actorRef: SchemeExp, messageType: Identifier, args: List[SchemeExp], idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = actorRef.fv ++ args.flatMap(_.fv)
+    def label: Label = ASK
+    def subexpressions: List[Expression] = actorRef :: args
+    override def toString: String = s"(ask $actorRef $messageType ${args.mkString(" ")})"
+
+// (await future)
+case class ASchemeAwait(future: SchemeExp, idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = future.fv
+    def label: Label = AWAIT
+    def subexpressions: List[Expression] = List(future)
+    override def toString: String = s"(await $future)"
+
 //
 // Contract Language
 //

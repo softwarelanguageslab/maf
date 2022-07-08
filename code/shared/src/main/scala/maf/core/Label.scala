@@ -36,6 +36,8 @@ enum Label:
     case SEN // Actor send expression
     case BEC // Actor become expression
     case CREA // Actor create expression
+    case ASK // Actor ask expression
+    case AWAIT // Actor await expression
 
     // Contract language
     case DFC // define/contract
