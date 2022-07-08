@@ -40,6 +40,12 @@ object ASchemeValues:
 
     def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty)
 
+    /** The class of futures supported by AScheme */
+    sealed trait Future extends ASchemeValue
+
+    /** A future waiting for an actor to complete */
+    case class ActorWaitCompleteFuture(tid: AID)
+
     case class Message[Value](tag: String, vlus: List[Value]) extends ASchemeValue:
         def mapValues[Y](f: Value => Y): Message[Y] =
             this.copy(vlus = vlus.map(f))

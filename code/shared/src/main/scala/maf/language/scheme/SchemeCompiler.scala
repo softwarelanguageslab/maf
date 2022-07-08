@@ -143,6 +143,7 @@ trait BaseSchemeCompiler:
             })
         case SExpPair(SExpId(Identifier("and", _)), args, _) =>
             tailcall(compileBody(args)).map(SchemeAnd(_, exp.idn))
+        // case Ident("syntax") :::: obj :::: line :::: col => ???
         case SExpPair(SExpId(Identifier("or", _)), args, _) =>
             tailcall(compileBody(args)).map(SchemeOr(_, exp.idn))
         case SExpPair(SExpId(Identifier("<change>", _)), SExpPair(old, SExpPair(nw, SExpValue(Value.Nil, _), _), _), _) =>

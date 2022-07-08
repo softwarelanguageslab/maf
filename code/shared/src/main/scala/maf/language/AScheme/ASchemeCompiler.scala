@@ -5,6 +5,7 @@ import maf.language.sexp.*
 import maf.language.scheme.*
 import maf.core.Identifier
 import scala.util.control.TailCalls
+import maf.language.scheme.SchemeExpander.{ExpansionContext, SchemeExpanderInterpolator}
 
 object ASchemeCompiler extends BaseSchemeCompiler:
     import scala.util.control.TailCalls._
@@ -65,11 +66,14 @@ object ASchemeCompiler extends BaseSchemeCompiler:
                 cplArgs <- tailcall(compileBody(args))
             yield ASchemeCreate(cplBeh, cplArgs, createIdn)
 
-        case Ident("ask") :::: actorRef :::: IdentWithIdentity(tag, tagIdn) :::: args =>
-            for
-                cplActorRef <- tailcall(_compile(actorRef))
-                cplArgs <- tailcall(compileBody(args))
-            yield ASchemeAsk(cplActorRef, Identifier(tag, tagIdn), cplArgs, exp.idn)
+        // (ask actorRef tag args)
+        case Ident("ask") :::: actorRef :::: tag :::: args =>
+            given ExpansionContext = ExpansionContext(exp.idn, s => SchemeBegin(ASchemeParser.parse(s), exp.idn))
+            done(expand"""
+            (let ((a (create (actor () (answer (v) (terminate v))))))
+              (send $actorRef $tag . $args)
+              (wait-for-termination a))
+            """)
 
         case Ident("await") :::: future :::: SNil(_) =>
             tailcall(_compile(future)).map(ASchemeAwait(_, exp.idn))

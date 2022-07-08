@@ -102,6 +102,22 @@ object Position:
     def newTag(tag: String, path: String): PTag = PTagWithSource(tag, path)
     def withSourcePath(path: String) = SourcePathTag(path)
 
+    sealed trait Position extends SmartHash:
+        def line: Int
+        def col: Int
+        def tag: PTag
+
+    case class TextualPosition(line: Int, col: Int, tag: PTag = noTag) extends Position:
+        override def toString: String = tag match
+            case NoPTag => s"$line:$col"
+            case t      => s"${t.show}:$line:$col"
+
+    case class SyntacticalPositionAst(parent: Position, depth: Int, width: Int) extends Position:
+        override def toString: String = parent.toString
+        def line: Int = parent.line
+        def col: Int = parent.col
+        def tag: PTag = parent.tag
+
     /**
      * Positional information of an expression.
      *
@@ -112,14 +128,12 @@ object Position:
      * @param tag
      *   an optional tag, can be used to differentiate the AST from multiple parsings
      */
-    case class Position(
-        line: Int,
-        col: Int,
-        tag: PTag = noTag)
-        extends SmartHash:
-        override def toString: String = tag match
-            case NoPTag => s"$line:$col"
-            case t      => s"${t.show}:$line:$col"
+    object Position:
+        def apply(
+            line: Int,
+            col: Int,
+            tag: PTag = noTag
+          ): Position = TextualPosition(line, col, tag)
 
     def apply(
         line: Int,

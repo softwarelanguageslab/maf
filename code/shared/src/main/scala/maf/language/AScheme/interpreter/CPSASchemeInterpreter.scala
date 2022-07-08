@@ -112,6 +112,9 @@ class CPSASchemeInterpreter(
     /** The set of mailboxes for each actor id */
     private var mailboxes: Map[AID, Queue[M]] = Map().withDefaultValue(Queue())
 
+    /** The set of queues created by using an `await` expression. */
+    private var futureQueues: Map[AID, Set[Future]] = Map().withDefaultValue(Set())
+
     /** A set of suspended states for each actor. Usually, actors are only suspended when it is waiting for messages */
     private var suspended: Map[AID, State] = Map()
 
