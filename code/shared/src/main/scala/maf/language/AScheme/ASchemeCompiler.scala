@@ -68,12 +68,12 @@ object ASchemeCompiler extends BaseSchemeCompiler:
 
         // (ask actorRef tag args)
         case Ident("ask") :::: actorRef :::: tag :::: args =>
-            given ExpansionContext = ExpansionContext(exp.idn, s => SchemeBegin(ASchemeParser.parse(s), exp.idn))
-            done(expand"""
+            given ExpansionContext = ExpansionContext(exp.idn)
+            tailcall(_compile(expand"""
             (let ((a (create (actor () (answer (v) (terminate v))))))
               (send $actorRef $tag . $args)
               (wait-for-termination a))
-            """)
+            """))
 
         case Ident("await") :::: future :::: SNil(_) =>
             tailcall(_compile(future)).map(ASchemeAwait(_, exp.idn))
