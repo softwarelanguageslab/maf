@@ -167,7 +167,7 @@ class CPSASchemeInterpreter(
     private var createdFutures: MapWithDefault[AID, Set[Future]] = Map().useDefaultValue(Set())
 
     /** Other way around */
-    private var createdFuturesRev: Map[Future, Set[AID]] = Map()
+    private var createdFuturesRev: MapWithDefault[Future, Set[AID]] = Map().useDefaultValue(Set())
 
     /** A mapping from futures to their resolved value */
     private var resolvedFutures: Map[Future, Value] = Map()
@@ -253,7 +253,7 @@ class CPSASchemeInterpreter(
     private def popSuspended(id: AID): Option[State] =
         suspended.get(id) match
             case s @ Some(st) =>
-                log(s"waking $st from $id")
+                log(s"waking $id with $st")
                 suspended = suspended - id
                 s
             case None => None
@@ -271,7 +271,7 @@ class CPSASchemeInterpreter(
 
     /** Asynchronously sends a message to the given actor's mailbox */
     private def sendMessage(actorRef: Actor, tag: String, ags: List[Value], idn: Identity, cc: Continuation): State =
-        assert(!ags.exists { case ConcreteActorValue(fut: Future) => true }, "futures cannot be send across actor boundaries")
+        assert(!ags.exists { case ConcreteActorValue(fut: Future) => true; case _ => false }, "futures cannot be send across actor boundaries")
 
         val id = asSimpleActorId(actorRef.tid)
         val ms = Message(tag, ags)
@@ -335,11 +335,19 @@ class CPSASchemeInterpreter(
 
     /** Return a future that completes when the actor has terminated */
     private def waitForActorTermination(v: Value, cc: Continuation): State =
+        val currentActorId = walkUntilActorId(cc)
         val actor = ensureActor(v)
         // create a future
         val fut = ActorWaitCompleteFuture(actor.tid)
-        // add it to the queue of futures waiting for the actors completion
-        waitingForTermination = waitingForTermination.update(actor.tid)(_ + fut)
+        log(s"Resolved futures $resolvedFutures")
+        // only do something if it is not yet resolved
+        if !fut.isResolved then
+            // add it to the queue of futures waiting for the actors completion
+            waitingForTermination = waitingForTermination.update(actor.tid)(_ + fut)
+            // add it to created futures
+            createdFutures = createdFutures.update(currentActorId)(_ + fut)
+            createdFuturesRev = createdFuturesRev.update(fut)(_ + currentActorId)
+        else log(s"future $fut is already resolved, not adding it to the queue")
         // return it
         Kont(fut, cc)
 
@@ -358,6 +366,7 @@ class CPSASchemeInterpreter(
 
     /** Wait until the given future completes */
     private def awaitFuture(vlu: Value, cc: Continuation): State =
+        log(s"awaiting future $vlu")
         val fut = ensureFuture(vlu)
         if fut.isResolved then Kont(fut.value, cc)
         else
@@ -372,24 +381,28 @@ class CPSASchemeInterpreter(
 
     /** Resolves that given future to the given value, and wakens any waiting actors */
     private def resolveFuture(fut: Future, vlu: Value): State =
+        log(s"resolving future $fut to value $vlu")
         // set the value of the future
         fut.value = vlu
 
-        // reschedule the execution of the waiting actors with the given value
-        val waitingActors = futureQueues(fut)
-        val waitingActorsStates = waitingActors.map(suspended(_))
-        val nextCCs = waitingActorsStates.map(ensureWaitFuture)
-        work = nextCCs.foldLeft(work)((work, cc) => work.enqueue(Kont(vlu, cc)))
+        // it is possible that there are no waiting futures yet, only look for them if there are waiting actors in the queue
+        if futureQueues.contains(fut) then
+            // reschedule the execution of the waiting actors with the given value
+            val waitingActors = futureQueues(fut)
+            val waitingActorsStates = waitingActors.flatMap(suspended.get(_))
+            val nextCCs = waitingActorsStates.map(ensureWaitFuture)
+            work = nextCCs.foldLeft(work)((work, cc) => work.enqueue(Kont(vlu, cc)))
 
-        // remove the future from the actor that has created it
-        val creationActors = createdFuturesRev(fut)
-        createdFutures = creationActors.foldLeft(createdFutures)((createdFutures, actor) => createdFutures.update(actor)(_ - fut))
-        createdFuturesRev = createdFuturesRev.removed(fut)
+            // remove all woken actors from the future queue
+            futureQueues = futureQueues.update(fut)(_ => Set())
+            // remove all woken actors from the suspended actors
+            suspended = suspended.removedAll(waitingActors)
 
-        // remove all woken actors from the future queue
-        futureQueues = futureQueues.update(fut)(_ => Set())
-        // remove all woken actors from the suspended actors
-        suspended = suspended.removedAll(waitingActors)
+        // remove the future from the actor that has created it, however it could be that is has not been created yet
+        if createdFuturesRev.contains(fut) then
+            val creationActors = createdFuturesRev(fut)
+            createdFutures = creationActors.foldLeft(createdFutures)((createdFutures, actor) => createdFutures.update(actor)(_ - fut))
+            createdFuturesRev = createdFuturesRev.removed(fut).useDefaultValue(Set())
 
         // Finally schedule another actor again
         scheduleNext()
@@ -407,7 +420,12 @@ class CPSASchemeInterpreter(
             scheduleNext()
             Right(state)
         // A stop state stops the program directly, and returns nil
-        case Stop => Left(Value.Nil)
+        case Stop =>
+            // Check whether there are any unresolved futures
+            assert(createdFutures.values.flatten.size == 0,
+                   s"There are one or more unresolved futures, program incorrectly terminated, got $createdFutures"
+            )
+            Left(Value.Nil)
         // Threads are not allowed in the actor language
         case Kont(v, TrdC(tid)) => throw new Exception("Threads are not supported in AScheme")
         // EndC does not mean the end of the program, since some actors might not have terminated.
@@ -466,6 +484,7 @@ class CPSASchemeInterpreter(
             waitForActorTermination(v, cc)
 
         case TerC(id) =>
+            log(s"resolving futures waiting for termination of $id with $v")
             resolveTerminationFuture(id, v)
 
         //
