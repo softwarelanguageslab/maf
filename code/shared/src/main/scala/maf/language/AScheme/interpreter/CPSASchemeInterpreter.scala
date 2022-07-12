@@ -271,7 +271,7 @@ class CPSASchemeInterpreter(
 
     /** Asynchronously sends a message to the given actor's mailbox */
     private def sendMessage(actorRef: Actor, tag: String, ags: List[Value], idn: Identity, cc: Continuation): State =
-        assert(!ags.exists { case ConcreteActorValue(fut: Future) => true; case _ => false }, "futures cannot be send across actor boundaries")
+        if ags.exists { case ConcreteActorValue(fut: Future) => true; case _ => false } then throw FutureCannotBeSent(idn)
 
         val id = asSimpleActorId(actorRef.tid)
         val ms = Message(tag, ags)
@@ -317,7 +317,7 @@ class CPSASchemeInterpreter(
         val id = ensureEmptyStack(cc)
 
         // ensure that there are no running futures created by this actor (cf. Chocola: Composable Concurrency Language)
-        assert(createdFutures(id).isEmpty, "futures must be resolved before the turn of the actor that has created them")
+        if createdFutures.nonEmpty then throw FutureMustTerminateBeforeEndOfTurn
 
         // bookkeeping
         cbA.become(actors(id), beh)
@@ -422,9 +422,7 @@ class CPSASchemeInterpreter(
         // A stop state stops the program directly, and returns nil
         case Stop =>
             // Check whether there are any unresolved futures
-            assert(createdFutures.values.flatten.size == 0,
-                   s"There are one or more unresolved futures, program incorrectly terminated, got $createdFutures"
-            )
+            if createdFutures.values.flatten.size != 0 then throw IncorrectTerminationException(createdFutures)
             Left(Value.Nil)
         // Threads are not allowed in the actor language
         case Kont(v, TrdC(tid)) => throw new Exception("Threads are not supported in AScheme")
