@@ -7,3 +7,4 @@ import maf.core.Identity
 object ConcreteASchemeValues:
     case class ConcreteActorValue(actorValue: ASchemeValue) extends Value
     case class ConcreteActor(name: Option[String], tid: AID, initialBeh: Behavior, creationSite: Identity) extends Value
+    implicit def toConcreteActorValue(actorValue: ASchemeValue): Value = ConcreteActorValue(actorValue)

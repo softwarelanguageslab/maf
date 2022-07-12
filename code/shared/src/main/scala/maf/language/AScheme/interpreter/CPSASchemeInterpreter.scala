@@ -2,6 +2,7 @@ package maf.language.AScheme.interpreter
 
 import maf.language.scheme.interpreter.*
 import maf.core.*
+import maf.util.datastructures.MapOps.*
 import maf.language.scheme.*
 import maf.language.scheme.interpreter.ConcreteValues.*
 import maf.language.change.CodeVersion.{New, Old, Version}
@@ -71,6 +72,18 @@ class CPSASchemeInterpreter(
         cc: Continuation)
         extends InternalContinuation
 
+    /** Continuation that is applied after the future is evaluated in an await expression */
+    case class AwaiC(cc: Continuation) extends InternalContinuation
+
+    /** Continuation that indicates that the actor is waiting for a future to resolve */
+    case class WaitFuture(cc: Continuation) extends InternalContinuation
+
+    /** Continuation that is applied after the argument of a wait-for-termination expression has been evaluated */
+    case class WaiTer(env: Env, cc: Continuation) extends InternalContinuation
+
+    /** Continuation that is applied when the argument of a terminate expression has been evaluated */
+    case class TerC(id: AID) extends Continuation
+
     /** Bottom of continuation stack for an actor */
     case class ActC(id: AID) extends Continuation
 
@@ -102,6 +115,38 @@ class CPSASchemeInterpreter(
         case a: ConcreteActor => a
         case _                => throw new Exception(s"$vlu is not an actor reference")
 
+    /** Ensures that the value is a future */
+    private def ensureFuture(vlu: Value): Future = vlu match
+        case ConcreteActorValue(f: Future) => f
+        case _                             => throw new Exception(s"$vlu is not a future")
+
+    /**
+     * Ensures that the continuation is a WaitFuture continuation
+     *
+     * @param st
+     *   a state that must be checked
+     * @return
+     *   the continuation after the WaitFuture (i.e., WaitFuture.cc)
+     */
+    private def ensureWaitFuture(st: State): Continuation = st match
+        case Kont(_, WaitFuture(next)) => next
+        case _                         => throw new Exception(s"$st is not a state containing a wait future continuation")
+
+    //
+    // Futures
+    //
+
+    extension (fut: Future)
+        def isResolved: Boolean =
+            resolvedFutures.contains(fut)
+
+        def value: Value =
+            resolvedFutures(fut)
+
+        def value_=(vlu: Value): Unit =
+            if fut.isResolved then throw new Exception(s"future $fut is already resolved")
+            else resolvedFutures = resolvedFutures + (fut -> vlu)
+
     //
     // Interpreter structures
     //
@@ -112,8 +157,20 @@ class CPSASchemeInterpreter(
     /** The set of mailboxes for each actor id */
     private var mailboxes: Map[AID, Queue[M]] = Map().withDefaultValue(Queue())
 
-    /** The set of queues created by using an `await` expression. */
-    private var futureQueues: Map[AID, Set[Future]] = Map().withDefaultValue(Set())
+    /** A map from futures to the actors that are waiting for them */
+    private var futureQueues: MapWithDefault[Future, Set[AID]] = Map().useDefaultValue(Set())
+
+    /** A map from actors to futures that are waiting for the completion of the actor */
+    private var waitingForTermination: MapWithDefault[AID, Set[Future]] = Map().useDefaultValue(Set())
+
+    /** Futures created by the given actor (and that are not resolved yet) */
+    private var createdFutures: MapWithDefault[AID, Set[Future]] = Map().useDefaultValue(Set())
+
+    /** Other way around */
+    private var createdFuturesRev: Map[Future, Set[AID]] = Map()
+
+    /** A mapping from futures to their resolved value */
+    private var resolvedFutures: Map[Future, Value] = Map()
 
     /** A set of suspended states for each actor. Usually, actors are only suspended when it is waiting for messages */
     private var suspended: Map[AID, State] = Map()
@@ -121,7 +178,7 @@ class CPSASchemeInterpreter(
     /** The map from actor ids to concrete actor references */
     private var actors: Map[AID, Actor] = Map()
 
-    /** Counter to keep track of the last used actor id */
+    /** Counter to keep track of the last used actor id (the main actor is always zero) */
     private var currentActorId: Int = 0
 
     /** Allocate a fresh actor identifier */
@@ -214,6 +271,8 @@ class CPSASchemeInterpreter(
 
     /** Asynchronously sends a message to the given actor's mailbox */
     private def sendMessage(actorRef: Actor, tag: String, ags: List[Value], idn: Identity, cc: Continuation): State =
+        assert(!ags.exists { case ConcreteActorValue(fut: Future) => true }, "futures cannot be send across actor boundaries")
+
         val id = asSimpleActorId(actorRef.tid)
         val ms = Message(tag, ags)
         cbA.sendMessage(actors(id), ms, idn)
@@ -222,6 +281,9 @@ class CPSASchemeInterpreter(
             case Some(Kont(_, Wait(selection, env, id))) =>
                 // schedule the delivery of the message if the actor is already waiting
                 work = work.enqueue(handleMessage(ms, selection, env, ActC(id)))
+            case Some(st @ Kont(_, WaitFuture(_))) =>
+                // the actor is waiting for a future, add it back to suspended state
+                suspended = suspended + (id -> st)
             case None =>
                 // the receiving actor is not waiting for a message
                 // lets enqueue it in its mailbox
@@ -234,11 +296,29 @@ class CPSASchemeInterpreter(
     /** Ensures that the continuation is a singleton, and returns its actor id */
     private def ensureEmptyStack(cc: Continuation): AID = cc match
         case ActC(id) => id
+        case EndC()   => SimpleActorId(0)
         case _        => throw new Exception(s"unexpected behavior $cc")
+
+    /**
+     * Walk through the continuation stack until the actor id is found
+     *
+     * @todo
+     *   make this faster by keeping the actor id in the evaluation context instead
+     */
+    private def walkUntilActorId(cc: Continuation): AID = cc match
+        case ActC(id)                => id
+        case EndC()                  => SimpleActorId(0)
+        case c: InternalContinuation => walkUntilActorId(c.cc)
+        case _                       => throw new Exception(s"unexpected continuation $cc")
 
     /** Become a different behavior */
     private def become(beh: Behavior, ags: List[Value], cc: Continuation): State =
+        // ensure that this is the last action we do
         val id = ensureEmptyStack(cc)
+
+        // ensure that there are no running futures created by this actor (cf. Chocola: Composable Concurrency Language)
+        assert(createdFutures(id).isEmpty, "futures must be resolved before the turn of the actor that has created them")
+
         // bookkeeping
         cbA.become(actors(id), beh)
         // enqueue the body of the behavior
@@ -250,6 +330,68 @@ class CPSASchemeInterpreter(
         work = work.enqueue(Step(beh.bdy, extendedEnv, cc))
 
         // fairness: after an actor has performed a single turn, it should yield control to another actor
+        scheduleNext()
+        state
+
+    /** Return a future that completes when the actor has terminated */
+    private def waitForActorTermination(v: Value, cc: Continuation): State =
+        val actor = ensureActor(v)
+        // create a future
+        val fut = ActorWaitCompleteFuture(actor.tid)
+        // add it to the queue of futures waiting for the actors completion
+        waitingForTermination = waitingForTermination.update(actor.tid)(_ + fut)
+        // return it
+        Kont(fut, cc)
+
+    /** Resolves the futures that have been waiting for the given actor to terminate */
+    private def resolveTerminationFuture(id: AID, v: Value): State =
+        // add a fake waiting future, such that if the call to wait-for-termination is made after termination, it is still resolved
+        val fakeWait = ActorWaitCompleteFuture(id)
+        waitingForTermination = waitingForTermination.update(id)(_ + fakeWait)
+        // resolve all the futures that have been waiting
+        val waitingFutures = waitingForTermination(id)
+        waitingFutures.foreach(resolveFuture(_, v))
+        // then remove them from the list of waiting futures
+        waitingForTermination = waitingForTermination.update(id)(_ => Set())
+        // then return the state as determined by the last call to resolveFuture
+        state
+
+    /** Wait until the given future completes */
+    private def awaitFuture(vlu: Value, cc: Continuation): State =
+        val fut = ensureFuture(vlu)
+        if fut.isResolved then Kont(fut.value, cc)
+        else
+            // we will need to wait until the future is resolved
+            val actorId = walkUntilActorId(cc)
+            futureQueues = futureQueues.update(fut)(_ + actorId)
+            // add the actor to the state of suspended actors
+            suspended = suspended + (actorId -> Kont(Value.Nil, WaitFuture(cc)))
+            // then schedule another actor
+            scheduleNext()
+            state
+
+    /** Resolves that given future to the given value, and wakens any waiting actors */
+    private def resolveFuture(fut: Future, vlu: Value): State =
+        // set the value of the future
+        fut.value = vlu
+
+        // reschedule the execution of the waiting actors with the given value
+        val waitingActors = futureQueues(fut)
+        val waitingActorsStates = waitingActors.map(suspended(_))
+        val nextCCs = waitingActorsStates.map(ensureWaitFuture)
+        work = nextCCs.foldLeft(work)((work, cc) => work.enqueue(Kont(vlu, cc)))
+
+        // remove the future from the actor that has created it
+        val creationActors = createdFuturesRev(fut)
+        createdFutures = creationActors.foldLeft(createdFutures)((createdFutures, actor) => createdFutures.update(actor)(_ - fut))
+        createdFuturesRev = createdFuturesRev.removed(fut)
+
+        // remove all woken actors from the future queue
+        futureQueues = futureQueues.update(fut)(_ => Set())
+        // remove all woken actors from the suspended actors
+        suspended = suspended.removedAll(waitingActors)
+
+        // Finally schedule another actor again
         scheduleNext()
         state
 
@@ -270,7 +412,8 @@ class CPSASchemeInterpreter(
         case Kont(v, TrdC(tid)) => throw new Exception("Threads are not supported in AScheme")
         // EndC does not mean the end of the program, since some actors might not have terminated.
         // Only do this if the mailbox is empty or all the actors have terminated
-        case Kont(_, EndC()) =>
+        case Kont(v, EndC()) =>
+            resolveTerminationFuture(SimpleActorId(0), v)
             scheduleNext()
             Right(state)
         case _ => super.next(st, version)
@@ -315,6 +458,16 @@ class CPSASchemeInterpreter(
         case SendArgsC(argument :: arguments, vlus, actorRef, send, env, cc) =>
             Step(argument, env, SendArgsC(arguments, (v :: vlus), actorRef, send, env, cc))
 
+        // Await expressions + Futures
+        case AwaiC(cc) =>
+            awaitFuture(v, cc)
+
+        case WaiTer(env, cc) =>
+            waitForActorTermination(v, cc)
+
+        case TerC(id) =>
+            resolveTerminationFuture(id, v)
+
         //
         // Base Scheme
         //
@@ -336,11 +489,27 @@ class CPSASchemeInterpreter(
         case selection @ ASchemeSelect(handlers, idn) =>
             waitForSelect(selection, env, cc)
 
+        case ASchemeAwait(future, _) =>
+            Step(future, env, AwaiC(cc))
+
+        case SchemeFuncall(SchemeVar(Identifier("wait-for-termination", _)), List(actorRef), _) =>
+            Step(actorRef, env, WaiTer(env, cc))
+
+        case SchemeFuncall(SchemeVar(Identifier("terminate", _)), List(e), _) =>
+            val id = ensureEmptyStack(cc)
+            Step(e, env, TerC(id))
+
         case SchemeFuncall(SchemeVar(Identifier("terminate", _)), List(), _) =>
             // actor termination, simply schedule next, and make sure that there is nothing on the stack anymore
             val id = ensureEmptyStack(cc)
             log(s"terminating actor with $id")
+            // notify futures about the actors termination
+            resolveTerminationFuture(id, Value.Nil)
             scheduleNext()
             state
 
         case _ => super.eval(exp, env, version, cc)
+
+    /** Returns the termination value of the main actor */
+    def getReturnValue: Value =
+        resolvedFutures(ActorWaitCompleteFuture(SimpleActorId(0)))

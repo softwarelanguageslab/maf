@@ -43,8 +43,13 @@ object ASchemeValues:
     /** The class of futures supported by AScheme */
     sealed trait Future extends ASchemeValue
 
-    /** A future waiting for an actor to complete */
-    case class ActorWaitCompleteFuture(tid: AID)
+    /**
+     * A future waiting for an actor to complete
+     *
+     * @param tid
+     *   the id of the actor we are waiting for
+     */
+    case class ActorWaitCompleteFuture(tid: AID) extends Future
 
     case class Message[Value](tag: String, vlus: List[Value]) extends ASchemeValue:
         def mapValues[Y](f: Value => Y): Message[Y] =
