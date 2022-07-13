@@ -12,7 +12,7 @@ import maf.util.benchmarks.*
 import maf.util.Logger
 
 object ASchemeRepl:
-    private var concrete: Boolean = true
+    private var concrete: Boolean = false
 
     private def run(program: List[SchemeExp]): Unit =
         if concrete then

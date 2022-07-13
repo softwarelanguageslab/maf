@@ -20,8 +20,9 @@ class SimpleSchemeModActorAnalysis(program: SchemeExp)
     with PowersetMailboxAnalysis
     with StandardSchemeModActorComponents
     with FIFOWorklistAlgorithm[SchemeExp]
-    with SchemeModActorSemantics:
+    with SchemeModActorSemantics
+    with SchemeModActorFutures:
 
     override def intraAnalysis(component: SchemeModActorComponent[ComponentContext]): ModActorIntra = new ModActorIntra(component)
     override def innerModF(intra: ModActorIntra, beh: Behavior): InnerModF =
-        new InnerModF(intra, beh) with SchemeModFNoSensitivity with FIFOWorklistAlgorithm[SchemeExp] {}
+        new FuturesInnerModF(intra, beh) with SchemeModFNoSensitivity with FIFOWorklistAlgorithm[SchemeExp] {}

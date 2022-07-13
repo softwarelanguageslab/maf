@@ -62,6 +62,7 @@ class Product2ModularSchemeLattice[
         def getThreads(x: PL): Set[TID] = schemeLattice.getThreads(x.left)
         def getActors(x: PL): Set[Actor] = schemeLattice.getActors(x.left)
         def getBehs(x: PL): Set[Behavior] = schemeLattice.getBehs(x.left)
+        def getFutures(x: PL): Set[Future] = schemeLattice.getFutures(x.left)
         def getBlames(x: PL): Set[Blame] = schemeLattice.getBlames(x.left)
         def getGrds(x: PL): Set[Grd[PL]] =
             schemeLattice.getGrds(x.left).map(_.map(PL(_, Lattice[O].bottom)))
@@ -112,6 +113,7 @@ class Product2ModularSchemeLattice[
         def lock(threads: Set[TID]): PL = PL(schemeLattice.lock(threads), Lattice[O].bottom)
         def actor(act: Actor): PL = PL(schemeLattice.actor(act), Lattice[O].bottom)
         def beh(behavior: Behavior): PL = PL(schemeLattice.beh(behavior), Lattice[O].bottom)
+        def future(fut: Future): PL = PL(schemeLattice.future(fut), Lattice[O].bottom)
         def blame(blame: Blame): PL = PL(schemeLattice.blame(blame), Lattice[O].bottom)
         def grd(grd: Grd[PL]): PL = PL(schemeLattice.grd(grd.map(_.left)), Lattice[O].bottom)
         def arr(arr: Arr[PL]): PL = PL(schemeLattice.arr(arr.map(_.left)), Lattice[O].bottom)

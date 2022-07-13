@@ -86,6 +86,13 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
         case Actor(_, env, _) => env
 
     //
+    // addresses
+    //
+    case class ActorWaitFutureResolveAddr(actor: Component) extends Address:
+        def idn: Identity = Identity.none
+        def printable: Boolean = true
+
+    //
     // allocating addresses
     //
 
@@ -201,6 +208,11 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             val cmp = newComponent(Actor(beh, lexEnv, ctx))
             super.spawn(cmp)
             cmp
+
+        def actorIdComponent(aid: AID): Component = inter.actorIdComponent(aid)
+
+        def notifyFutures(v: Value): Unit =
+            writeAddr(ActorWaitFutureResolveAddr(cmp), v)
 
     //
     // Inner ModF intra-process

@@ -94,6 +94,7 @@ class IncrementalModularSchemeLattice[
         def getThreads(x: AL): Set[TID] = schemeLattice.getThreads(x.toL())
         def getActors(x: AL): Set[Actor] = schemeLattice.getActors(x.toL())
         def getBehs(x: AL): Set[Behavior] = schemeLattice.getBehs(x.toL())
+        def getFutures(x: AL): Set[Future] = schemeLattice.getFutures(x.toL())
         def getBlames(x: AL): Set[Blame] = schemeLattice.getBlames(x.toL())
         def getGrds(x: AL): Set[Grd[AL]] =
             schemeLattice.getGrds(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
@@ -137,6 +138,7 @@ class IncrementalModularSchemeLattice[
         def thread(tid: TID): AL = AnnotatedElement(Value.thread(tid))
         def actor(act: Actor): AL = AnnotatedElement(Value.actor(act))
         def beh(behavior: Behavior): AL = AnnotatedElement(Value.beh(behavior))
+        def future(fut: Future): AL = AnnotatedElement(Value.future(fut))
         def lock(threads: Set[TID]): AL = AnnotatedElement(Value.lock(threads))
         def blame(blame: Blame): AL = AnnotatedElement(Value.blame(blame))
         def grd(grd: Grd[AL]): AL = AnnotatedElement(Value.grd(grd.map(_.toL())))

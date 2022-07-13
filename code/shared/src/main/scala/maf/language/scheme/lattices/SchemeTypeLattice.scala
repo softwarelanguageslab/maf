@@ -33,10 +33,11 @@ class TypeSchemeLattice[A <: Address]:
         constructor: Boolean = false,
         structPredicate: Boolean = false,
         actors: Set[Actor] = Set.empty,
-        behs: Set[Behavior] = Set.empty)
+        behs: Set[Behavior] = Set.empty,
+        futures: Set[Future] = Set.empty)
         extends SmartHash:
         def isBottom: Boolean =
-            !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt && !opq
+            !str && !bool && !num && !char && !sym && !nil && prims.isEmpty && clos.isEmpty && consCells._1.isBottom && consCells._2.isBottom && !arr && !grd && !flt && !opq && actors.isEmpty && behs.isEmpty && futures.isEmpty
     object Inject:
         val bottom: L = L()
         val str: L = L(str = true)
@@ -61,6 +62,7 @@ class TypeSchemeLattice[A <: Address]:
         def structPredicate: L = L(structPredicate = true)
         def actor(act: Actor): L = L(actors = Set(act))
         def beh(behavior: Behavior): L = L(behs = Set(behavior))
+        def future(fut: Future): L = L(futures = Set(fut))
 
     def check(b: Boolean, v: L)(name: String, args: List[L]): MayFail[L, Error] =
         if b then { MayFail.success(v) }
@@ -206,6 +208,7 @@ class TypeSchemeLattice[A <: Address]:
         def getThreads(x: L): Set[TID] = throw new Exception("Not supported.")
         def getActors(x: L): Set[Actor] = x.actors
         def getBehs(x: L): Set[Behavior] = x.behs
+        def getFutures(x: L): Set[Future] = x.futures
         def getContinuations(x: L): Set[K] = ???
         def getBlames(x: L): Set[Blame] = throw new Exception("Not supported")
         def getGrds(x: L): Set[Grd[L]] = Set()
@@ -239,6 +242,7 @@ class TypeSchemeLattice[A <: Address]:
         def thread(tid: TID): L = ???
         def actor(act: Actor): L = Inject.actor(act)
         def beh(behavior: Behavior): L = Inject.beh(behavior)
+        def future(fut: Future): L = Inject.future(fut)
         def cont(k: K): L = ???
         def lock(threads: Set[TID]) = ???
         def blame(blame: Blame): L = throw new Exception("Not supported")
