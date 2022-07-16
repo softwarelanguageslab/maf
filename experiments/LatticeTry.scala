@@ -7,6 +7,10 @@ case class SchemeExp()
 case class Environment()
 case class Actor()
 
+enum SchemeOp:
+    case IsTrue
+    case IsFalse
+
 trait Lattice[L, C]:
     def bottom: L
     def inject(x: C): L
@@ -19,6 +23,7 @@ trait SchemeLattice[L] extends Lattice[L, Nothing]:
     )
     def inject[T <: AbstractType](tpy: T, vlu: tpy.ConcreteValue): L
     def get[T <: ATypeSet[_]](tpy: T, value: L): Set[tpy.ConcreteValue]
+    def op(op: SchemeOp)(vlu: List[L]): L
 
 object Lattice:
     def setLattice[A]: Lattice[Set[A], A] = new Lattice {
@@ -29,6 +34,9 @@ object Lattice:
     }
 
 trait IntLattice[I] extends Lattice[I, Int]
+trait BoolLattice[B] extends Lattice[B, Boolean]:
+    def isTrue(b: B): Boolean
+    def isFalse(b: B): Boolean
 
 trait AbstractType { type AbstractValue; type ConcreteValue; given lat: Lattice[AbstractValue, ConcreteValue] }
 trait AType[A, C](using l: Lattice[A, C]) extends AbstractType { type AbstractValue = A; type ConcreteValue = C; given lat: Lattice[A, C] = l }
@@ -39,10 +47,11 @@ trait ATypeSet[A] extends AbstractType:
 
 case class Value(contents: Map[AbstractType, Any])
 
-class ModularSchemeLattice[I: IntLattice] extends SchemeLattice[Value]:
+class ModularSchemeLattice[I: IntLattice, B: BoolLattice] extends SchemeLattice[Value]:
     object Clo extends ATypeSet[(SchemeExp, Environment)]
     object Act extends ATypeSet[Actor]
     object Num extends AType[I, Int]
+    object Bool extends AType[B, Boolean]
 
     def bottom: Value = Value(Map())
     def inject[T <: AbstractType](tpy: T, vlu: tpy.ConcreteValue): Value =
@@ -79,9 +88,9 @@ object CP:
             case (_, _)         => CP.Top
 
         def subsumes(x: L, y: => L): Boolean = (x, y) match
-            case (CP.Top, _) => true
-            case (_, Bottom) => true
-            case _           => false
+            case (CP.Top, _)    => true
+            case (_, CP.Bottom) => true
+            case _              => false
 
         def inject(x: T): L = Constant(x)
 
@@ -89,8 +98,22 @@ object CP:
     given intCpLattice: IntLattice[CP[Int]] with
         export exportIntCpLattice.*
 
+    val exportBoolCpLattice = cpLattice[Boolean]
+    given boolCpLattice: BoolLattice[CP[Boolean]] with
+        export exportBoolCpLattice.*
+
+        def isTrue(x: L): Boolean = x match
+            case CP.Bottom      => false
+            case CP.Constant(b) => b
+            case CP.Top         => true
+
+        def isFalse(x: L): Boolean = x match
+            case CP.Bottom      => false
+            case CP.Constant(b) => !b
+            case CP.Top         => true
+
 @main def run(): Unit =
-    val schemeLattice = new ModularSchemeLattice[CP[Int]]
+    val schemeLattice = new ModularSchemeLattice[CP[Int], CP[Boolean]]
     val v1 = schemeLattice.inject(schemeLattice.Num, 5)
     val v2 = schemeLattice.inject(schemeLattice.Num, 6)
     println(v1)
@@ -100,4 +123,5 @@ object CP:
     val v5 = schemeLattice.join(v3, v4)
     println(v5)
     println(schemeLattice.join(v1, v4))
-    println(schemeLattice.get(schemeLattice.Clo, v5))
+    println(schemeLattice.get(schemeLattice.Clo, v5).map(_._2))
+    println(schemeLattice.inject(schemeLattice.Bool, true))
