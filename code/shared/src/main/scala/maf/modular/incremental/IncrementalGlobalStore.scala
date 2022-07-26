@@ -94,6 +94,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     /** Updates the value of all addresses in a SCA to a given value and triggers all reading and writing components. */
     def setSCAValue(sca: SCA, value: Value): Unit =
+        // TODO: the new value often is bottom in some benchmarks!
         sca.flatMap(provenance).map(_._1).foreach(addToWorkList) // Add all components that wrote to the SCA to the WL.
         sca.foreach { addr =>
             store += (addr -> value)
@@ -220,8 +221,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         if configuration.cyclicValueInvalidation
         then
             val scas = computeSCAs()
-            scas.foreach(println)
-            scas.foreach(setSCAValue(_, lattice.bottom))
             SCAs = scas.map(sca => (sca, incomingSCAValue(sca))).toMap
         super.updateAnalysis(timeout)
 
@@ -233,7 +232,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         intra =>
 
         /** Map of addres dependencies W ~> Set[R]. */
-        // (Temporary cache, such as the sets C, R, W.
+        // (Temporary cache, such as the sets C, R, W.)
         var dataFlow: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
 
         /**
@@ -351,7 +350,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
                 doWriteIncremental()
                 if configuration.cyclicValueInvalidation then
                     dataFlowR += (component -> dataFlow)
-                    //updateSCAs()
+                    updateSCAs()
 
     end IncrementalGlobalStoreIntraAnalysis
 

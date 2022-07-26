@@ -150,7 +150,7 @@ object IncrementalRun extends App:
        // "test/changes/scheme/satMiddle.scm",
        // "test/changes/scheme/satFine.scm",
        // "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
-        "test/DEBUG1.scm",
+        "test/DEBUG2.scm",
         // "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
     )
 
@@ -168,15 +168,19 @@ object IncrementalRun extends App:
             l.configuration = allOptimisations
             l.analyzeWithTimeout(newTimeout())
             assert(l.finished)
+            l.provenance.foreach(println)
+
             l.updateAnalysis(newTimeout())
+            println()
+            l.provenance.foreach(println)
 
-            val f = lifoAnalysis(text)
-            f.version = New
-            f.configuration = allOptimisations
-            f.analyzeWithTimeout(newTimeout())
-            assert(f.finished)
+            //val f = lifoAnalysis(text)
+            //f.version = New
+            //f.configuration = allOptimisations
+            //f.analyzeWithTimeout(newTimeout())
+            //assert(f.finished)
 
-            checkEqState(f, l,"")
+            //checkEqState(f, l,"")
 
             //val noOpt = a.deepCopy()
             //noOpt.configuration = noOptimisations
