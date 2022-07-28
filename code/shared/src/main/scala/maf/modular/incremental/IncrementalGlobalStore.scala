@@ -21,10 +21,6 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     type SCA = Set[Addr]
 
-    /** The implicit flows are used for cyclic write invalidation and cover flows that are formed implicitly, i.e., through conditional branching. */
-    // TODO factor out to separate CY trait.
-    var implicitFlows: List[Set[Addr]] = Nil
-
     /* ****************************************** */
     /* ***** Provenance tracking for values ***** */
     /* ****************************************** */

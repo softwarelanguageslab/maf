@@ -42,11 +42,11 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             with LIFOWorklistAlgorithm[SchemeExp]
             with IncrementalSchemeModFBigStepSemantics
             with IncrementalSchemeTypeDomain
-            with IncrementalGlobalStore[SchemeExp] {
+            with IncrementalGlobalStoreCY[SchemeExp] {
             var configuration: IncrementalConfiguration = allOptimisations
             override def intraAnalysis(
                 cmp: Component
-              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
         }
 
     def parallelAnalysis(e: SchemeExp): Analysis =
@@ -55,14 +55,14 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             with IncrementalSchemeModConcSmallStepSemantics
             with LIFOWorklistAlgorithm[SchemeExp]
             with IncrementalSchemeTypeDomain
-            with IncrementalGlobalStore[SchemeExp] {
+            with IncrementalGlobalStoreCY[SchemeExp] {
 
             val k = 0
             var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
 
             override def intraAnalysis(
                 cmp: Component
-              ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+              ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreCYIntraAnalysis
         }
 
     def timeout(): Timeout.T = Timeout.start(Duration(5, MINUTES))
@@ -127,11 +127,11 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             with LIFOWorklistAlgorithm[SchemeExp]
             with IncrementalSchemeModFBigStepSemantics
             with IncrementalSchemeConstantPropagationDomain
-            with IncrementalGlobalStore[SchemeExp] {
+            with IncrementalGlobalStoreCY[SchemeExp] {
             var configuration: IncrementalConfiguration = allOptimisations
             override def intraAnalysis(
                 cmp: Component
-              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
         }
 
         // Expected results.
@@ -180,14 +180,14 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             with FIFOWorklistAlgorithm[SchemeExp]
             with IncrementalSchemeModFBigStepSemantics
             with IncrementalSchemeConstantPropagationDomain
-            with IncrementalGlobalStore[SchemeExp]
+            with IncrementalGlobalStoreCY[SchemeExp]
             //with IncrementalLogging[SchemeExp]
             {
             // override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
             var configuration: IncrementalConfiguration = allOptimisations
             override def intraAnalysis(
                 cmp: Component
-              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis //with IncrementalLoggingIntra
+              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis //with IncrementalLoggingIntra
         }
 
         def getStandard(p: SchemeExp) = new ModAnalysis[SchemeExp](p)

@@ -5,7 +5,7 @@ import maf.language.change.CodeVersion.*
 import maf.core.*
 import maf.language.scheme.*
 import maf.language.sexp
-import maf.modular.incremental.IncrementalGlobalStore
+import maf.modular.incremental.IncrementalGlobalStoreCY
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.modular.scheme.{modf, LitAddr}
@@ -13,11 +13,11 @@ import maf.modular.scheme.modf.*
 import maf.util.benchmarks.Timeout
 
 /** Implements big-step semantics for an incremental Scheme analysis. * */
-trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics with IncrementalGlobalStore[SchemeExp]:
+trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with IncrementalSchemeSemantics with IncrementalGlobalStoreCY[SchemeExp]:
 
     override def warn(msg: String): Unit = ()
 
-    trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis with IncrementalGlobalStoreIntraAnalysis:
+    trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntra with IncrementalIntraAnalysis with IncrementalGlobalStoreCYIntraAnalysis:
         override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
                 registerComponent(e, component)

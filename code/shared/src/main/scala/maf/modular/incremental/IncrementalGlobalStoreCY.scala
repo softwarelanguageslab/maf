@@ -13,6 +13,9 @@ import scala.collection.immutable.*
 trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStore[Expr]:
     inter =>
 
+    /** The implicit flows are used for cyclic write invalidation and cover flows that are formed implicitly, i.e., through conditional branching. */
+    var implicitFlows: List[Set[Addr]] = Nil
+
     override def updateAnalysis(timeout: Timeout.T): Unit =
         if configuration.cyclicValueInvalidation then
             val scas = computeSCAs()
