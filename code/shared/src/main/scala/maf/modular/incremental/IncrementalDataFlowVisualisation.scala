@@ -8,7 +8,7 @@ import maf.util.graph.*
 import maf.util.graph.Colors.*
 
 /** Provides functionalities to visualise the data flow graph that is inferred by the CY optimisation. */
-trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGlobalStore[Expr]:
+trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
 
     private case class AdrDep(a: Addr, directFlow: Boolean, indirectFlow: Boolean) // Keep track of the type of flow.
     // Keep track of dependencies. Similar to the data structure in IncrementalGlobalStore, but keeps track of the kind of flow.
@@ -18,7 +18,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         if configuration.cyclicValueInvalidation then addressDependenciesLog = addressDependenciesLog - cmp
         super.deleteComponent(cmp)
 
-    trait IncrementalVisualIntra extends IncrementalGlobalStoreIntraAnalysis:
+    trait IncrementalVisualIntra extends IncrementalGlobalStoreCYIntraAnalysis:
 
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
             if configuration.cyclicValueInvalidation then addressDependenciesLog = addressDependenciesLog - component

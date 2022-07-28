@@ -8,7 +8,7 @@ import maf.language.sexp
 import maf.modular.incremental.IncrementalGlobalStore
 import maf.modular.incremental.scheme.IncrementalSchemeSemantics
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
-import maf.modular.scheme.{LitAddr, modf}
+import maf.modular.scheme.{modf, LitAddr}
 import maf.modular.scheme.modf.*
 import maf.util.benchmarks.Timeout
 
@@ -46,12 +46,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
             // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
             yield lattice.addAddresses(resVal, adr)
 
-        ///** Evaluation of a literal value that adds a "literal address" as source. */
-        //override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value =
-        //    // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
-        //    val value = lattice.addAddress(super.evalLiteralValue(literal, exp), LitAddr(exp))
-        //    if !lattice.isBottom(value) then intraProvenance += (LitAddr(exp) -> lattice.join(intraProvenance(LitAddr(exp)), value))
-        //    value
+    ///** Evaluation of a literal value that adds a "literal address" as source. */
+    //override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value =
+    //    // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
+    //    val value = lattice.addAddress(super.evalLiteralValue(literal, exp), LitAddr(exp))
+    //    if !lattice.isBottom(value) then intraProvenance += (LitAddr(exp) -> lattice.join(intraProvenance(LitAddr(exp)), value))
+    //    value
 
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra
 

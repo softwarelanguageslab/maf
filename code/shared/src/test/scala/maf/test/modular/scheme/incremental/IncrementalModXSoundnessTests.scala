@@ -144,7 +144,11 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ IncrementalTest
 
 trait noCY extends IncrementalModXSoundnessTests:
-    override protected def runAnalysisWithConfiguration(program: SchemeExp, benchmark: Benchmark, config: IncrementalConfiguration): IncrementalAnalysis =
+    override protected def runAnalysisWithConfiguration(
+        program: SchemeExp,
+        benchmark: Benchmark,
+        config: IncrementalConfiguration
+      ): IncrementalAnalysis =
         super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
 
 trait STwithoutCIwithWI extends IncrementalModXSoundnessTests:
@@ -203,10 +207,10 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
     override def isSlow(b: Benchmark): Boolean =
         Set(
-            "test/changes/cscheme/threads/actors.scm",
-            "test/changes/cscheme/threads/crypt.scm",
-            "test/changes/cscheme/threads/crypt2.scm",
-            "test/changes/cscheme/threads/stm.scm"
+          "test/changes/cscheme/threads/actors.scm",
+          "test/changes/cscheme/threads/crypt.scm",
+          "test/changes/cscheme/threads/crypt2.scm",
+          "test/changes/cscheme/threads/stm.scm"
         )(b)
 
 class IncrementalSmallStepModConcTypeSlowWI extends IncrementalSmallStepModConcType with STwithoutCIwithWI
@@ -221,6 +225,6 @@ trait IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with
     override def isSlow(b: Benchmark): Boolean = true
 
 class IncrementalSmallStepModConcCPSlowWI extends IncrementalSmallStepModConcCP with STwithoutCIwithWI
-class IncrementalSmallStepModConcCPSlowCI extends  IncrementalSmallStepModConcCP with STwithoutWIWithCI
+class IncrementalSmallStepModConcCPSlowCI extends IncrementalSmallStepModConcCP with STwithoutWIWithCI
 class IncrementalSmallStepModConcCPSlowNoCIWI extends IncrementalSmallStepModConcCP with STwithoutCIWI
 class IncrementalSmallStepModConcCPSlowCIWI extends IncrementalSmallStepModConcCP with STwithCIWI

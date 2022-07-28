@@ -233,4 +233,3 @@ class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwith
 class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI
 class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI
 class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI
-

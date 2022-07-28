@@ -32,7 +32,7 @@ object TaggedSet:
         })
         // Flatmap use the tag of the resulting tagged set
         def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] = TaggedSet(m.vs.flatMap { case (tag, v) =>
-          f(v).vs.map { case (None, v) => (tag, v) ; case a@(Some(_), _) => a }
+            f(v).vs.map { case (None, v) => (tag, v); case a @ (Some(_), _) => a }
         })
 
     def empty[T, X]: TaggedSet[T, X] = TaggedSet(Set())
