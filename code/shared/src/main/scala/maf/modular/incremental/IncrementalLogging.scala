@@ -15,7 +15,7 @@ import maf.util.graph.DotGraph
  * @tparam Expr
  *   The type of the expressions under analysis.
  */
-trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr]:
+trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
     inter =>
 
     val logger: NumberedLog = Logger.numbered()
@@ -137,7 +137,12 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
 
     override def run(timeout: Timeout.T): Unit =
         logger.logU(configString())
-        super.run(timeout)
+        try super.run(timeout)
+        catch
+            case t: Throwable =>
+                logger.logException(t)
+                logData(true)
+                throw t
         if logEnd then logData(false)
 
     // Starting the incremental analysis.
@@ -183,7 +188,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
         if mode != Summary && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
-    trait IncrementalLoggingIntra extends IncrementalGlobalStoreIntraAnalysis:
+    trait IncrementalLoggingIntra extends IncrementalGlobalStoreCYIntraAnalysis:
         intra =>
 
         // Analysis of a component.
@@ -192,6 +197,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStore[Expr
             if version == Old then intraC += 1 else intraCU += 1
             repeats = repeats + (component -> (repeats(component) + 1))
             if mode != Summary then logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
+            //println(s"$step -- $component (rep ${repeats(component)})")
             if configuration.cyclicValueInvalidation && mode == Fine then logger.log(s"RSAD Resetting addressDependencies for $component.")
             super.analyzeWithTimeout(timeout)
 

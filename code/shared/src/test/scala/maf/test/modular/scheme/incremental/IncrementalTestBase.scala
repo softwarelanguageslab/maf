@@ -2,7 +2,7 @@ package maf.test.modular.scheme.incremental
 
 import maf.language.scheme.SchemeExp
 import maf.modular.incremental.IncrementalConfiguration.allConfigurations
-import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore, IncrementalModAnalysis}
+import maf.modular.incremental.{IncrementalConfiguration, IncrementalGlobalStore, IncrementalGlobalStoreCY, IncrementalModAnalysis}
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modf.StandardSchemeModFComponents
 import maf.modular.{GlobalStore, ModAnalysis, ReturnValue}
@@ -19,7 +19,7 @@ trait IncrementalTestBase extends SchemeBenchmarkTests {
     def testTags(b: Benchmark): Seq[Tag] = Seq(IncrementalTest, SlowTest)
 
     type IncrementalAnalysis = IncrementalModAnalysis[SchemeExp]
-        with IncrementalGlobalStore[SchemeExp]
+        with IncrementalGlobalStoreCY[SchemeExp]
         with ReturnValue[SchemeExp]
         with SchemeDomain
         with StandardSchemeModFComponents

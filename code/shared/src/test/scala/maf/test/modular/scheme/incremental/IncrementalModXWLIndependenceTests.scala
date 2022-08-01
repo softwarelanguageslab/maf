@@ -119,10 +119,10 @@ trait IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependence
         with SchemeModFSemanticsM
         with IncrementalSchemeModFBigStepSemantics
         with IncrementalSchemeConstantPropagationDomain
-        with IncrementalGlobalStore[SchemeExp] {
+        with IncrementalGlobalStoreCY[SchemeExp] {
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
     }
 
     def lifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
@@ -132,6 +132,6 @@ end IncrementalModFCPWLIndependenceTests
 
 class IncrementalModFCPWLIndependenceTestsWithWI extends IncrementalModFCPWLIndependenceTests:
     override def configurations: List[IncrementalConfiguration] = super.configurations.filter(_.writeInvalidation)
-    
+
 class IncrementalModFCPWLIndependenceTestsWithoutWI extends IncrementalModFCPWLIndependenceTests:
     override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.writeInvalidation)

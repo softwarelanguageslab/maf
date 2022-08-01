@@ -35,7 +35,7 @@ object IncrementalRun extends App:
                 cmp: SchemeModFComponent
               ) = new IntraAnalysis(cmp)
                 with IncrementalSchemeModFBigStepIntra
-                with IncrementalGlobalStoreIntraAnalysis
+                with IncrementalGlobalStoreCYIntraAnalysis
                 //  with AssertionModFIntra
                 with IncrementalLoggingIntra
             //with IncrementalVisualIntra
@@ -53,7 +53,7 @@ object IncrementalRun extends App:
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp)
                 with IncrementalSchemeModFBigStepIntra
-                with IncrementalGlobalStoreIntraAnalysis
+                with IncrementalGlobalStoreCYIntraAnalysis
                 with SplitPerformanceIntra
                 with IncrementalLoggingIntra {
                 override def analyzeWithTimeout(timeout: Timeout.T): Unit =
@@ -70,7 +70,7 @@ object IncrementalRun extends App:
         with LIFOWorklistAlgorithm[SchemeExp]
         with IncrementalSchemeModFBigStepSemantics
         with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
-        with IncrementalGlobalStore[SchemeExp]
+        with IncrementalGlobalStoreCY[SchemeExp]
         with IncrementalLogging[SchemeExp]
         //with IncrementalDataFlowVisualisation[SchemeExp]
         {
@@ -79,24 +79,23 @@ object IncrementalRun extends App:
         mode = Mode.Fine
         override def intraAnalysis(
             cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
         //with IncrementalVisualIntra
     }
 
     abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends ModAnalysis[SchemeExp](prg)
-            with StandardSchemeModFComponents
-            with SchemeModFNoSensitivity
-            with SchemeModFSemanticsM
-            with IncrementalSchemeModFBigStepSemantics
-            with IncrementalSchemeConstantPropagationDomain
-            with IncrementalGlobalStore[SchemeExp]
-            with IncrementalLogging[SchemeExp]
-            {
-                override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(x@") || a.toString.contains("VarAddr(v@")
-                override def warn(msg: String): Unit = ()
-                override def intraAnalysis(cmp: Component) =
-                    new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis with IncrementalLoggingIntra
+        with StandardSchemeModFComponents
+        with SchemeModFNoSensitivity
+        with SchemeModFSemanticsM
+        with IncrementalSchemeModFBigStepSemantics
+        with IncrementalSchemeTypeDomain
+        with IncrementalGlobalStoreCY[SchemeExp]
+        with IncrementalLogging[SchemeExp] {
+        override def focus(a: Addr): Boolean = a.toString.contains("primitive-procedure-objects")
+        override def warn(msg: String): Unit = ()
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
     }
 
     def lifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
@@ -121,21 +120,18 @@ object IncrementalRun extends App:
         (a.store.keySet ++ b.store.keySet).foreach { addr =>
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
             val valB = b.store.getOrElse(addr, b.lattice.bottom)
-            if valA != valB
-            then
-                 System.err.nn.println(addr.toString + "\n" + a.lattice.compare(valA, valB))
+            if valA != valB then System.err.nn.println(addr.toString + "\n" + a.lattice.compare(valA, valB))
         }
         assert(a.store.filterNot(_._2 == a.lattice.bottom) == b.store.filterNot(_._2 == b.lattice.bottom), message + " (store mismatch)")
         assert(a.visited == b.visited, message + " (visited set mismatch)")
         (a.deps.keySet ++ b.deps.keySet).foreach { dep =>
-           val dA = a.deps.getOrElse(dep, Set())
-           val dB = b.deps.getOrElse(dep, Set())
-           if dA != dB
-           then System.err.nn.println(dep.toString + "\n" + dA.mkString(" ") + "\n" + dB.mkString(" "))
+            val dA = a.deps.getOrElse(dep, Set())
+            val dB = b.deps.getOrElse(dep, Set())
+            if dA != dB then System.err.nn.println(dep.toString + "\n" + dA.mkString(" ") + "\n" + dB.mkString(" "))
         }
-       // println(a.deps.toList.map(_.toString).sorted)
-       // println(b.deps.toList.map(_.toString).sorted)
-       /* assert(a.deps == b.deps, message + " (dependency mismatch)")
+    // println(a.deps.toList.map(_.toString).sorted)
+    // println(b.deps.toList.map(_.toString).sorted)
+    /* assert(a.deps == b.deps, message + " (dependency mismatch)")
         assert(a.mapping == b.mapping, message + " (mapping mismatch)")
         assert(a.cachedReadDeps == b.cachedReadDeps, message + " (read deps mismatch)")
         assert(a.cachedSpawns == b.cachedSpawns, message + " (spawns mismatch)")
@@ -145,13 +141,13 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-     // "test/DEBUG1.scm"
-       // "test/changes/scheme/satCoarse.scm",
-       // "test/changes/scheme/satMiddle.scm",
-       // "test/changes/scheme/satFine.scm",
-       // "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
-        "test/DEBUG1.scm",
-        // "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
+      // "test/DEBUG1.scm"
+      "test/changes/scheme/multiple-dwelling (coarse).scm",
+      // "test/changes/scheme/satMiddle.scm",
+      // "test/changes/scheme/satFine.scm",
+      //   "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
+      //  "test/DEBUG3.scm",
+      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -162,21 +158,32 @@ object IncrementalRun extends App:
             println(s"***** $bench *****")
             //interpretProgram(bench)
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-           // println(text.prettyString())
+            // println(text.prettyString())
 
             val l = lifoAnalysis(text)
-            l.configuration = allOptimisations
+            l.mode = l.Mode.Summary
+            l.configuration =  allOptimisations // ci_di_wi 126512ms allOptimisations 520062ms
+            val before = System.currentTimeMillis()
             l.analyzeWithTimeout(newTimeout())
+            val after = System.currentTimeMillis()
+            print(after - before)
             assert(l.finished)
-            l.updateAnalysis(newTimeout())
+            //val scas = l.computeSCAs()
+           // scas.foreach({ sca =>
+            //    sca.foreach(a => println(l.store(a)))
+           //     println
+           // })
 
-            val f = lifoAnalysis(text)
-            f.version = New
-            f.configuration = allOptimisations
-            f.analyzeWithTimeout(newTimeout())
-            assert(f.finished)
+            //l.updateAnalysis(newTimeout())
+            //println()
 
-            checkEqState(f, l,"")
+            //val f = lifoAnalysis(text)
+            //f.version = New
+            //f.configuration = allOptimisations
+            //f.analyzeWithTimeout(newTimeout())
+            //assert(f.finished)
+
+            //checkEqState(f, l,"")
 
             //val noOpt = a.deepCopy()
             //noOpt.configuration = noOptimisations
@@ -201,7 +208,7 @@ object IncrementalRun extends App:
             // compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
             //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
             }
-            */
+             */
 
         } catch {
             case e: Exception =>

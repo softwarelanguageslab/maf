@@ -100,11 +100,11 @@ trait ModFComparisonTests extends IncrementalModXComparisonTests:
     class IncrementalAnalysis(program: SchemeExp)
         extends BaseAnalysis(program)
         with IncrementalSchemeModFBigStepSemantics
-        with IncrementalGlobalStore[SchemeExp]:
+        with IncrementalGlobalStoreCY[SchemeExp]:
         var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
         override def intraAnalysis(
             cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreIntraAnalysis
+          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
 
     class Analysis(program: SchemeExp, version: Version) extends BaseAnalysis(program) with BigStepModFSemantics with GlobalStore[SchemeExp]:
         override def intraAnalysis(
@@ -169,12 +169,12 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
     class IncrementalAnalysis(program: SchemeExp)
         extends BaseModConcAnalysis(program)
         with IncrementalSchemeModConcSmallStepSemantics
-        with IncrementalGlobalStore[SchemeExp]:
+        with IncrementalGlobalStoreCY[SchemeExp]:
         var configuration: IncrementalConfiguration = noOptimisations // allOptimisations
 
         override def intraAnalysis(
             cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis
+          ) = new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreCYIntraAnalysis
 
     class Analysis(program: SchemeExp, version: Version)
         extends BaseModConcAnalysis(program)
@@ -233,4 +233,3 @@ class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwith
 class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI
 class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI
 class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI
-
