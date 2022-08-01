@@ -168,7 +168,7 @@
        ;; check the arguments of the contract
        'todo
        ;; actually send the message but with the message/ contract attached 
-       (actor-send target (contracted-message tag (list arguments ...) (message/c (quote tag) 'todo 'todo)))))))
+       (actor-send target (contracted-message (quote tag) (list arguments ...) (message/c (quote tag) 'todo 'todo)))))))
 
 (define-syntax send 
   (syntax-rules ()
