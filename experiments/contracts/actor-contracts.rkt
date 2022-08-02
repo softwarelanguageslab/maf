@@ -65,9 +65,13 @@
    ($ensure-sends$))
 
 ;; marks a specific message to say that is has been sent 
-(define (mark-message-as-sent tag)
+(define (mark-message-as-sent tag arguments)
   (if (and (ensuring-send?) (hash-has-key? ($ensure-sends$) tag))
-    ($ensure-sends$ (hash-update ($ensure-sends$) tag (lambda (flag) #t)))
+    (let ((contracts (car (hash-ref ($ensure-sends$) tag))))
+      (debug "contracts checking " contracts "for" arguments)
+      (for-each (lambda (c argument) (contract c argument 'pos 'neg))
+                contracts arguments)
+       ($ensure-sends$ (hash-update ($ensure-sends$) tag (lambda (contract-and-flag) (cons (car contract-and-flag) #t)))))
     ; do nothing if not in an ensure send context
     '()))
 
@@ -79,8 +83,10 @@
 
 (define (handle-contracted behavior contract tag arguments)
   ;; todo: blame the actor if the tag is not available in its contract
-  (define expected-message-tags (message/c-ensure-sends contract))
-  (define ensure-sends (make-immutable-hash (map (lambda (tag) (cons tag #f)) expected-message-tags)))
+  (define expected-message-tags (map m->-tag (message/c-ensure-sends contract)))
+  (define expected-message-arguments (map m->-contracts (message/c-ensure-sends contract)))
+  (debug "got expected tags" expected-message-tags)
+  (define ensure-sends (make-immutable-hash (map (lambda (tag contract) (cons tag (cons contract #f))) expected-message-tags expected-message-arguments)))
   (parameterize ([$ensure-sends$ ensure-sends])
      (let ((result (apply behavior tag arguments)))
        (if (all-sent?)
@@ -230,6 +236,13 @@
       (behavior/contract-constructor-contract beh/c))
      (actor-mon actor beh/c)))
 
+;; a contract on a message send 
+(struct m-> (tag contracts))
+
+(define-syntax ->m
+  (syntax-rules ()
+    ((->m tag contracts ...) (m-> (quote tag) (list contracts ...)))))
+
 ;; A send on a contracted entity, is used internally by `send` when it can dispatch to a contracted send.
 (define-syntax send/c 
   (syntax-rules () 
@@ -248,7 +261,7 @@
 (define-syntax send 
   (syntax-rules ()
     ((send target tag arguments ...) 
-     (begin (mark-message-as-sent (quote tag))
+     (begin (mark-message-as-sent (quote tag) (list arguments ...))
             (cond 
               ((actor? target)  (send/a target tag arguments ...))
               ((actor-mon? target) (send/c target tag arguments ...))
@@ -260,11 +273,11 @@
 
 (define player 
   (behavior "player" ((team-id any?))
-    (messages ((get-team (reply-to) (reply reply-to team-id))))))
+    (messages ((get-team (reply-to) (reply reply-to 42))))))
 
 (define player/c (behavior/c 
                    (integer?)
-                   ((get-team (actor?) (ensure-send 'reply))))) 
+                   ((get-team (actor?) (ensure-send (->m reply integer?)))))) 
 
 (define myplayer (create/c player/c player 1))
 (define answer (await (ask myplayer get-team)))
