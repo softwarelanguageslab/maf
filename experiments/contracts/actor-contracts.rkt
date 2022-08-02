@@ -6,6 +6,8 @@
    (for ([arg args]) (display arg) (display " "))
    (newline))
 
+(define (id x) x)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Actor APIs
@@ -21,7 +23,10 @@
                 (let* ((msg (thread-receive))
                        (tag (message-tag msg))
                        (arguments (message-arguments msg)))
-                  (loop (apply behavior tag arguments)))))))))
+
+                  (loop (if (contracted-message? msg) 
+                      (handle-contracted behavior (contracted-message-contract msg) tag arguments)
+                      (apply behavior tag arguments))))))))))
 
 (define (become new-behavior . args)
   (apply new-behavior args))
@@ -45,6 +50,44 @@
 (define (actor-wait actor)
   (thread-wait (actor-thd actor)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; Contract handling during message handling
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; thread-local variable that is set to ensure that certain calls are made during the 
+;; dynamic extent of handling a message.
+(define $ensure-sends$ (make-parameter #f))
+
+;; checks whether we are in a context where we are ensuring that a particular set of 
+;; `send` statements occur.
+;; () -> bool
+(define (ensuring-send?)
+   ($ensure-sends$))
+
+;; marks a specific message to say that is has been sent 
+(define (mark-message-as-sent tag)
+  (if (and (ensuring-send?) (hash-has-key? ($ensure-sends$) tag))
+    ($ensure-sends$ (hash-update ($ensure-sends$) tag (lambda (flag) #t)))
+    ; do nothing if not in an ensure send context
+    '()))
+
+;; checks whether all the messages thart are in the current $ensure-sends$ are marked
+(define (all-sent?) 
+  (let ((ensure-sends ($ensure-sends$)))
+    (andmap id (hash-values ensure-sends))))
+
+
+(define (handle-contracted behavior contract tag arguments)
+  ;; todo: blame the actor if the tag is not available in its contract
+  (define expected-message-tags (message/c-ensure-sends contract))
+  (define ensure-sends (make-immutable-hash (map (lambda (tag) (cons tag #f)) expected-message-tags)))
+  (parameterize ([$ensure-sends$ ensure-sends])
+     (let ((result (apply behavior tag arguments)))
+       (if (all-sent?)
+           result
+           ;; todo: produce a blame, blaming the correct parties 
+           (error "actor did not sent all messages it promised to send")))))
+  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Ask Pattern API
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -205,10 +248,11 @@
 (define-syntax send 
   (syntax-rules ()
     ((send target tag arguments ...) 
-     (cond 
-       ((actor? target)  (send/a target tag arguments ...))
-       ((actor-mon? target) (send/c target tag arguments ...))
-       (else (error (format "expected an actor or contracted actor, ~a is neither." target)))))))
+     (begin (mark-message-as-sent (quote tag))
+            (cond 
+              ((actor? target)  (send/a target tag arguments ...))
+              ((actor-mon? target) (send/c target tag arguments ...))
+              (else (error (format "expected an actor or contracted actor, ~a is neither." target))))))))
          
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;; Demo code 
@@ -220,7 +264,7 @@
 
 (define player/c (behavior/c 
                    (integer?)
-                   ((get-team (actor?)))))
+                   ((get-team (actor?) (ensure-send 'reply))))) 
 
 (define myplayer (create/c player/c player 1))
 (define answer (await (ask myplayer get-team)))
