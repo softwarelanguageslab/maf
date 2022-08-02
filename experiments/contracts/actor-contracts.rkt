@@ -272,10 +272,24 @@
               ((actor? target)  (send/a target tag arguments ...))
               ((actor-mon? target) (send/c target tag arguments ...))
               (else (error (format "expected an actor or contracted actor, ~a is neither." target))))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;; Message protocol contracts 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define-syntax protocol/c 
+  (syntax-rules ()
+    ((protocol/c name 
+      (start start-state)
+      (from-state (on message to-state) ...) ...)
+    'todo)))
          
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;; Demo code 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; behavior contracts demo code
 
 (define player 
   (behavior "player" ((team-id any?))
@@ -291,3 +305,18 @@
 
 (define myplayer (create/c player/c player 1))
 (run-application myplayer)
+
+;; messsage protocol contracts (see Christophe Scholliers PhD thesis) (on the sender side)
+;; a buyer must first login, then buy something and finally logout.
+;; it is also allowed to logout without buying anything
+(define buyer/c
+  (protocol/c "buyer/c"
+    (start init)
+    (init 
+      (on login next))
+    (next 
+      (on buy next)
+      (on logout end))
+    (end)))
+    
+
