@@ -201,7 +201,13 @@
 ;; @param constructor-contract a list of contracts on the constructor parameters of the behavior
 ;; @param message-list a hashtable of mapping message tags to their contract
 (struct behavior/contract 
-   (constructor-contract message-list))
+   (constructor-contract message-list name)
+   #:methods gen:custom-write [(define (write-proc contract port mode) (fprintf port "~a" (behavior/contract-name contract)))]
+   ; behavior like a flat contract
+   #:property prop:procedure 
+      (lambda (contract actor) 
+        (and (actor-mon? actor) 
+             (eq? (actor-mon-contract actor) contract))))
 
 ;; a contract on the handling of a message.
 ;; properties of interest are: existance of message handler .
@@ -212,18 +218,18 @@
 ;; Syntax for contract creation over the behavior of an actor
 (define-syntax behavior/c 
   (syntax-rules (ensure-send)
-     ((behavior/c (constructor-contract ...) 
+     ((behavior/c name (constructor-contract ...) 
                  ((tag (param-contract ...) (ensure-send send ...) (ensure-becomes become ...)) ...))
       (behavior/contract (list constructor-contract ...) 
          (make-hash
-            (list (cons (quote tag) (message/c (list param-contract ...) (quote tag) (list send ...) (list become ...))) ...))))
-     ((behavior/c (constructor-contract ...)
+            (list (cons (quote tag) (message/c (list param-contract ...) (quote tag) (list send ...) (list become ...))) ...)) name))
+     ((behavior/c name (constructor-contract ...)
                   ((tag (param-contract ...) (ensure-send send ...)) ...))
-                  (behavior/c (constructor-contract ...) 
+                  (behavior/c name (constructor-contract ...) 
                      ((tag (param-contract ...) (ensure-send send ...) (ensure-becomes)) ...)))
-     ((behavior/c (constructor-contract ...) 
+     ((behavior/c name (constructor-contract ...) 
                   ((tag (param-contract ...)) ...))
-      (behavior/c (constructor-contract ...)
+      (behavior/c name (constructor-contract ...)
                   ((tag (param-contract ...) (ensure-send) (ensure-becomes)) ...)))))
 
 ;; create a contracted actor reference
@@ -275,10 +281,13 @@
   (behavior "player" ((team-id any?))
     (messages ((get-team (reply-to) (reply reply-to 42))))))
 
-(define player/c (behavior/c 
+(define player/c (behavior/c "player/c"
                    (integer?)
                    ((get-team (actor?) (ensure-send (->m reply integer?)))))) 
 
+(define/contract (run-application pl)
+  (-> player/c integer?)
+  (await (ask pl get-team)))
+
 (define myplayer (create/c player/c player 1))
-(define answer (await (ask myplayer get-team)))
-(displayln answer)
+(run-application myplayer)
