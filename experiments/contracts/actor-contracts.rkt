@@ -8,6 +8,14 @@
 
 (define (id x) x)
 
+(define (init x)
+  (if (null? x) '() 
+    (reverse (cdr (reverse x)))))
+
+(define (last x)
+  (if (null? x) (error "no last in list" x)
+    (car (reverse x))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Actor APIs
@@ -268,6 +276,7 @@
   (syntax-rules ()
     ((send target tag arguments ...) 
      (begin (mark-message-as-sent (quote tag) (list arguments ...))
+            (ensure-protocol (quote tag) (list arguments ...))
             (cond 
               ((actor? target)  (send/a target tag arguments ...))
               ((actor-mon? target) (send/c target tag arguments ...))
@@ -283,8 +292,78 @@
     ((protocol/c name 
       (start start-state)
       (from-state (on message to-state) ...) ...)
-    'todo)))
-         
+     (protocol (quote start-state) 
+               (make-hash (list (cons (quote from-state) (make-hash (list (cons (quote message) (quote to-state)) ...))) ...))))))
+
+(struct protocol (start states))
+
+(define (protocol-successors protocol tag)
+  (hash-ref (protocol-states protocol) tag))
+
+(define $protocol$ (make-parameter #f))
+
+(struct protocol-state (tag protocol))
+(define (has-next? current next-message)
+  (let*
+    ((current-tag (protocol-state-tag current))
+     (protocol (protocol-state-protocol current))
+     (current-successors (protocol-successors protocol current-tag)))
+    (member next-message (hash-keys current-successors))))
+
+;; Produces a successor state for the given tag, if the successor state is invalid produces #f
+(define (go-next current next-message)
+  (let*
+    ((current-tag (protocol-state-tag current))
+     (protocol (protocol-state-protocol current))
+     (current-successors (protocol-successors protocol current-tag)))
+    (if (has-next? current next-message)
+        (let ((next-tag (hash-ref current-successors next-message)))
+          (protocol-state next-tag protocol))
+        #f)))
+        
+(define (is-final? current)
+  (let*
+    ((current-tag (protocol-state-tag current))
+     (protocol (protocol-state-protocol current))
+     (current-successors (protocol-successors protocol current-tag)))
+    (null? (hash-values current-successors))))
+  
+;; mutates the thread-local field $protocol$ to go to the next tag
+(define (go-next! next-tag)
+  (let ((current ($protocol$)))
+    ($protocol$ (go-next current next-tag))))
+
+
+(struct ensure-protocol/f-wrapper (protocol f)
+   #:property prop:procedure
+      (lambda (self . args) 
+        (let ((protocol (ensure-protocol/f-wrapper-protocol self))
+              (f (ensure-protocol/f-wrapper-f self)))
+        (parameterize [($protocol$ (protocol-state (protocol-start protocol) protocol))]
+          ;; run the function 
+          (let ((res (apply f args)))
+             ;; then check whether we are in a final state 
+             (if (is-final? ($protocol$))
+                 ;; simply return the result 
+                 res 
+                 ;; otherwise create a blame error (todo)
+                 (error "protocol not finished till completion currently in state" (protocol-state-tag ($protocol$)))))))))
+
+;; ensure that the given procedure behaves like the given protocol when applied
+(struct ensure-protocol/f (protocol) 
+   #:property prop:contract 
+      (build-contract-property 
+        #:projection (lambda (self) (lambda (blm) (lambda (f)
+         (ensure-protocol/f-wrapper (ensure-protocol/f-protocol self) f))))))
+
+;; called by `send` to track position in the protocol
+(define (ensure-protocol tag arguments)
+  (if (and ($protocol$) (has-next? ($protocol$) tag))
+      (go-next! tag)
+      ;; todo, generate blame error
+      (when ($protocol$)
+          (error "not in the correct position in the protocol " (protocol-state-tag ($protocol$))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;; Demo code 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -318,5 +397,15 @@
       (on buy next)
       (on logout end))
     (end)))
-    
 
+(define (buyer-impl seller)
+  (send seller login)
+  (send seller buy)
+  (send seller logout))
+
+(define/contract (test-buyer buyer)
+   (-> (ensure-protocol/f buyer/c) any?)
+   (let ((seller (create (behavior "seller" () (messages ((login () '()) (buy () '()) (logout () '())))))))
+      (buyer seller)))
+
+(test-buyer buyer-impl)
