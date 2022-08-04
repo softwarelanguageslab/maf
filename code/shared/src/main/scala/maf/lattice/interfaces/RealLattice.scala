@@ -3,7 +3,7 @@ package maf.lattice.interfaces
 import maf.core.Lattice
 
 /** A lattice for reals (i.e., floating point numbers) */
-trait RealLattice[R] extends Lattice[R] { self =>
+trait RealLattice[R] extends Lattice[R, Double] { self =>
     def inject(n: Double): R
     def toInt[I: IntLattice](n: R): I
     def ceiling(n: R): R

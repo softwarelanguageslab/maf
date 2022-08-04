@@ -6,12 +6,22 @@ import maf.util.Show
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends MAFException
 
-/** A lattice typeclass. It is actually a join-semi lattice as it only need a join operation and a bottom element */
-trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
+/**
+ * A lattice typeclass. It is actually a join-semi lattice as it only need a join operation and a bottom element
+ *
+ * @tparam L
+ *   the type of the values in the lattice
+ * @tparam C
+ *   the type of the result of a concretrisation function
+ */
+trait Lattice[L, C] extends PartialOrdering[L] with Show[L] with Serializable:
 
     /** A lattice has a bottom element */
     def bottom: L
     def isBottom(x: L): Boolean = x == bottom
+
+    /** Inject (or abstract) a concrete value into the lattice */
+    def inject(c: C): L
 
     /** A lattice has a top element (might be undefined) */
     def top: L
@@ -45,9 +55,9 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
         case (false, false) => None // not comparable
 
 object Lattice:
-    def apply[L: Lattice]: Lattice[L] = implicitly
+    def apply[L, C](using lat: Lattice[L, C]): Lattice[L, C] = lat
 
-    implicit def setLattice[A: Show]: Lattice[Set[A]] = new Lattice[Set[A]] {
+    implicit def setLattice[A: Show]: Lattice[Set[A], A] = new Lattice[Set[A], A] {
         def show(x: Set[A]): String = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
         def top = throw LatticeTopUndefined
         def bottom: Set[A] = Set.empty
@@ -57,7 +67,7 @@ object Lattice:
         def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
     }
 
-    implicit object UnitLattice extends Lattice[Unit]:
+    implicit object UnitLattice extends Lattice[Unit, Unit]:
         def show(v: Unit): String = "()"
         def top = throw LatticeTopUndefined
         def bottom = ()
@@ -65,9 +75,9 @@ object Lattice:
         def subsumes(x: Unit, y: => Unit): Boolean = true
         def eql[B: BoolLattice](x: Unit, y: Unit): B = BoolLattice[B].inject(true)
 
-    def foldMapL[X, L: Lattice](xs: Iterable[X], f: X => L): L =
-        if xs.isEmpty then Lattice[L].bottom
-        else Lattice[L].join(f(xs.head), foldMapL(xs.tail, f))
+    def foldMapL[X, L, C](using Lattice[L, C])(xs: Iterable[X], f: X => L): L =
+        if xs.isEmpty then Lattice[L, C].bottom
+        else Lattice[L, C].join(f(xs.head), foldMapL(xs.tail, f))
 
 // TODO: move this to somewhere else
 trait MaybeEq[A]:

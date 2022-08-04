@@ -5,7 +5,7 @@ import maf.core._
 case object NotANumberString extends Error
 
 /** A lattice for strings */
-trait StringLattice[S] extends Lattice[S]:
+trait StringLattice[S] extends Lattice[S, String]:
     def inject(s: String): S
     def length[I: IntLattice](s: S): I
     def append(s1: S, s2: S): S

@@ -10,6 +10,7 @@ import maf.language.AScheme.ASchemeValues.Future
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address]:
+    type Value = L
 
     // TODO: make this a type parameter for type safety!
     type K = Any
