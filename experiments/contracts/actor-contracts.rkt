@@ -16,6 +16,8 @@
   (if (null? x) (error "no last in list" x)
     (car (reverse x))))
 
+(begin-for-syntax
+   (struct syntax-location (line column) #:transparent))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;; Actor APIs
@@ -73,12 +75,13 @@
    ($ensure-sends$))
 
 ;; marks a specific message to say that is has been sent 
-(define (mark-message-as-sent tag arguments)
+(define (mark-message-as-sent tag arguments positions)
+  (debug "receiving positions" positions)
   (if (and (ensuring-send?) (hash-has-key? ($ensure-sends$) tag))
     (let ((contracts (car (hash-ref ($ensure-sends$) tag))))
       (debug "contracts checking " contracts "for" arguments)
-      (for-each (lambda (c argument) (contract c argument 'pos 'neg))
-                contracts arguments)
+      (for-each (lambda (c argument pos) (contract c argument pos 'neg))
+                contracts arguments positions)
        ($ensure-sends$ (hash-update ($ensure-sends$) tag (lambda (contract-and-flag) (cons (car contract-and-flag) #t)))))
     ; do nothing if not in an ensure send context
     '()))
@@ -123,9 +126,12 @@
 (define (await fut)
   (fut))
 
-(define (reply to v) 
-  (displayln (format "replying to ~a with ~a" to v))
-  (send to reply v))
+(define-syntax reply 
+  (syntax-rules ()
+    ((reply to v) 
+     (begin 
+        (displayln (format "replying to ~a with ~a" to v))
+        (send to reply v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;; Behaviors 
@@ -135,13 +141,11 @@
         #:property prop:procedure (struct-field-index constructor)
         #:reflection-name 'behavior)
 
-(define-syntax behavior 
-  (syntax-rules ()
+(define-syntax (behavior stx)
+  (syntax-case stx ()
     ((behavior name ((param param-contract) ...)
        handler)
-     (behavior/s (lambda (param ...)
-       ;; check the contract on the contructor arguments
-       (contract param-contract param 'pos 'neg) ... 
+     #'(behavior/s (lambda (param ...)
        ;; return a receival lambda
        (lambda (msg-tag . arguments)
          (apply handler (cons msg-tag arguments))))))))
@@ -241,14 +245,20 @@
                   ((tag (param-contract ...) (ensure-send) (ensure-becomes)) ...)))))
 
 ;; create a contracted actor reference
-(define (create/c beh/c behavior . args)
-   (let ((actor (apply create behavior args)))
-     ;; check whether the constructors hold for the arguments 
-     (for-each (lambda (argument c) 
-      (contract c argument 'pos 'neg))
-      args
-      (behavior/contract-constructor-contract beh/c))
-     (actor-mon actor beh/c)))
+(define-syntax (create/c stx) 
+  (syntax-case stx () 
+    ((create/c beh/c behavior args ...)
+     (let ((positions (map (lambda (stx) (syntax-location (syntax-line stx) (syntax-column stx))) (syntax->list #'(args ...)))))
+        #`(let* ((args$ (list args ...))
+                (actor (apply create behavior args$))
+                (beh/c$ beh/c))
+           ;; check whether the constructors hold for the arguments 
+           (for-each (lambda (argument c pos) 
+            (contract c argument pos 'neg))
+            args$
+            (behavior/contract-constructor-contract beh/c$)
+            (list #,@positions))
+           (actor-mon actor beh/c$))))))
 
 ;; a contract on a message send 
 (struct m-> (tag contracts))
@@ -257,30 +267,37 @@
   (syntax-rules ()
     ((->m tag contracts ...) (m-> (quote tag) (list contracts ...)))))
 
+
 ;; A send on a contracted entity, is used internally by `send` when it can dispatch to a contracted send.
-(define-syntax send/c 
-  (syntax-rules () 
+(define-syntax (send/c stx)
+  (syntax-case stx () 
     ((send/c target tag arguments ...) 
      (let*
+       ((args (syntax->list #'(arguments ...)))
+        (positions (map (lambda (arg) (syntax-location (syntax-line arg) (syntax-column arg))) args)))
+
+     #`(let*
        ((target-contract (actor-mon-contract target))
         (message-contract (hash-ref (behavior/contract-message-list target-contract) (quote tag))))
        ;; check the arguments of the contract
-       (for-each (lambda (c argument)
-                   (contract c argument 'pos 'neg))
+       (for-each (lambda (c argument position)
+                   (contract c argument position 'neg))
                  (message/c-parameter-contracts message-contract)
-                 (list arguments ...))
+                 (list arguments ...)
+                 (list #,@positions))
        ;; actually send the message but with the message/c contract attached 
-       (actor-send (actor-mon-actor target) (contracted-message (quote tag) (list arguments ...) message-contract))))))
+       (actor-send (actor-mon-actor target) (contracted-message (quote tag) (list arguments ...) message-contract)))))))
 
-(define-syntax send 
-  (syntax-rules ()
+(define-syntax (send stx)
+  (syntax-case stx ()
     ((send target tag arguments ...) 
-     (begin (mark-message-as-sent (quote tag) (list arguments ...))
-            (ensure-protocol (quote tag) (list arguments ...))
-            (cond 
-              ((actor? target)  (send/a target tag arguments ...))
-              ((actor-mon? target) (send/c target tag arguments ...))
-              (else (error (format "expected an actor or contracted actor, ~a is neither." target))))))))
+     (let ((positions (map (lambda (arg) (syntax-location (syntax-line arg) (syntax-column arg))) (syntax->list #'(arguments ...)))))
+        #`(begin (mark-message-as-sent (quote tag) (list arguments ...) (list #,@positions))
+               (ensure-protocol (quote tag) (list arguments ...))
+               (cond 
+                 ((actor? target)  (send/a target tag arguments ...))
+                 ((actor-mon? target) (send/c target tag arguments ...))
+                 (else (error (format "expected an actor or contracted actor, ~a is neither." target)))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
