@@ -84,6 +84,7 @@ class IncrementalModularSchemeLattice[
                 y // Breaks laziness: we want y to be evaluated exactly once. If not, y will be evaluates twice (once to get the value and once to get the sources).
             AnnotatedElements(schemeLattice.join(x.toL(), ys.toL()).vs, x.sources.union(ys.sources))
         // Monoid[AL].append(x, y)
+        /** Sumsumption check. Returns true if x ⊒ y and false otherwise. */
         def subsumes(x: AL, y: => AL): Boolean = schemeLattice.subsumes(x.toL(), y.toL())
         def top: AL = throw LatticeTopUndefined
 

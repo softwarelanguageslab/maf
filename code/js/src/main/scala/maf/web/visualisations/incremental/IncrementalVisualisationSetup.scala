@@ -74,9 +74,9 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
         println(s"$addr [$cmp]: $old => $nw")
         super.updateAddrInc(cmp, addr, nw)
 
-    override def deleteProvenance(cmp: SchemeModFComponent, addr: Addr): Unit =
+    override def deleteContribution(cmp: SchemeModFComponent, addr: Addr): Unit =
         val old = store.getOrElse(addr, lattice.bottom)
-        super.deleteProvenance(cmp, addr)
+        super.deleteContribution(cmp, addr)
         val nw = store.getOrElse(addr, lattice.bottom)
         println(s"$addr [$cmp]: $old _> $nw")
 

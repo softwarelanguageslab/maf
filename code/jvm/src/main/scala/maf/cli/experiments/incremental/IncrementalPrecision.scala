@@ -73,6 +73,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
+        // TODO merge `compareToFullReanalysis` and `compareToNoOptimisations` for efficiency!
         compareToFullReanalysis(file)
         println()
         compareToNoOptimisations(file)
@@ -81,7 +82,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         print(s"Testing $file (full R) ")
         val program = parse(file)
         // Initial analysis: analyse + update.
-        val a1 = analysis(program, ci_di_wi) // Allow tracking for all optimisations.
+        val a1 = analysis(program, allOptimisations) // Allow tracking for all optimisations.
 
         // Base case: analysis of new program version.
         val a2 = analysis(program, noOptimisations) // The configuration does not matter here.
@@ -106,7 +107,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         print(s"Testing $file (noOpt) ")
         val program = parse(file)
         // Initial analysis: analyse + update.
-        val a1 = analysis(program, ci_di_wi) // Allow tracking for all optimisations.
+        val a1 = analysis(program, allOptimisations) // Allow tracking for all optimisations.
 
         // Run the initial analysis which needs to finish.
         if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) then
@@ -146,7 +147,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
+    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
     val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
@@ -160,12 +161,10 @@ class IncrementalSchemeModFCPPrecision() extends IncrementalSchemePrecision:
 class IncrementalSchemeModConcTypePrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
     val outputFile: String = "precision/modconc-type.txt"
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 class IncrementalSchemeModConcCPPrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
     val outputFile: String = "precision/modconc-CP.txt"
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPrecision:
     def splitOutput(output: String, fullName: String = "", nooptName: String = ""): (String, String) =

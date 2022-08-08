@@ -26,8 +26,8 @@ object Reader:
  */
 object Writer:
 
-    private case class W(w: BufferedWriter, var report: Boolean)
-
+    // Todo: W used to be a private class, but this started to give IllegalAccessErrors at some point. Try to make this private again?
+    case class W(w: BufferedWriter, var report: Boolean)
     opaque type Writer = W
 
     /** Avoids a file to be accidentally overwritten. */
