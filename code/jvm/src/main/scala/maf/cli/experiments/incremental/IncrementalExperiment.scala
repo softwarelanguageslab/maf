@@ -53,9 +53,10 @@ trait IncrementalExperiment[E <: Expression]:
                     // writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
                     //e.getStackTrace.nn.take(5).foreach(ste => writeErrln(ste.toString))
                     reportError(file)
-                case e: VirtualMachineError =>
+                case e: VirtualMachineError if catchErrors =>
                     // writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
                     reportError(file)
+                case e => throw e
             println()
         }
 

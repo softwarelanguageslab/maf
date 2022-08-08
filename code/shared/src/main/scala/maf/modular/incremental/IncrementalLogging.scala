@@ -26,11 +26,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
 
     def focus(a: Addr): Boolean = false // Whether to "watch" an address and insert it into the table.
 
-    var maxLen: Int = 75
+    var maxLen: Int = 50
     def crop(string: String, length: Int = maxLen): String = if string.length <= length then string else string.take(length) + "..."
 
     enum Mode:
-        case Fine, Coarse, Summary
+        case Fine, Select, Coarse, Summary
 
     import Mode.*
     var mode: Mode = Fine
@@ -48,6 +48,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
+      |RSCA  Indicates a given SCA is refined.
       |TRIG  Indicates the given dependency has been triggered.
       |WRIT  Address write, including the address, value written and value now residing in the store.
       |
@@ -94,16 +95,15 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
             .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
             .prettyString()
         val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
-        depString + (if configuration.cyclicValueInvalidation then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString) else "")
+        depString + (if configuration.cyclicValueInvalidation && mode != Select then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString) else "")
 
     private def programToString(): String =
-        val str = program.asInstanceOf[SchemeExp].prettyString()
-        "Desugared program:\n\n" + str
+        if mode != Select then "Desugared program:\n\n" + program.asInstanceOf[SchemeExp].prettyString() else ""
 
     private def logData(end: Boolean): Unit =
         // if end then logger.logU("\n\n" + getSummary())
         logger.logU("\n\n" + tableToString())
-        if mode != Summary then logger.logU("\n" + storeString().split("\n").nn.map(s => crop(s.nn)).mkString("\n"))
+        if mode == Fine || mode == Coarse then logger.logU("\n" + storeString().split("\n").nn.mkString("\n"))
         logger.logU("\n" + addressDependenciesToString())
         if end then logger.logU("\n\n" + programToString())
 
@@ -162,7 +162,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
                 throw t
 
     override def deregister(target: Component, dep: Dependency): Unit =
-        if mode == Fine then logger.log(s"DINV $target <-\\- $dep")
+        if mode == Fine || mode == Select then logger.log(s"DINV $target <-\\- $dep")
         super.deregister(target, dep)
 
     override def deleteComponent(cmp: Component): Unit =
@@ -175,18 +175,22 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         super.deleteAddress(addr)
 
     override def trigger(dep: Dependency): Unit =
-        if mode != Summary then logger.log(s"TRIG ${crop(dep.toString)} [adding: ${crop(deps(dep).toString())}]")
+        if mode == Fine || mode == Coarse then logger.log(s"TRIG ${crop(dep.toString)} [adding: ${crop(deps(dep).toString())}]")
         super.trigger(dep)
 
     override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
         val b = super.updateAddrInc(cmp, addr, nw)
-        if mode == Fine then
+        if mode == Fine || (mode == Select && focus(addr)) then
             logger.log(s"IUPD ${crop(addr.toString)} <<= ${crop(inter.store.getOrElse(addr, lattice.bottom).toString)} (W ${crop(nw.toString)})")
         b
 
     override def spawn(cmp: Component): Unit =
         if mode != Summary && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
+
+    override def refineSCA(newIncoming: Map[Addr, (Value, Set[Addr])]): Unit =
+        if mode != Summary then logger.log(s"RSCA ${newIncoming.keySet.mkString("{",", ","}")}")
+        super.refineSCA(newIncoming)
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreCYIntraAnalysis:
         intra =>
@@ -205,16 +209,16 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         override def readAddr(addr: Addr): Value =
             val v = super.readAddr(addr)
             if v == lattice.bottom then botRead = Some(addr) else botRead = None
-            if mode == Fine then logger.log(s"READ ${crop(addr.toString)} => ${crop(v.toString)}")
+            if mode == Fine || (mode == Select && focus(addr)) then logger.log(s"READ ${crop(addr.toString)} => ${crop(v.toString)}")
             v
 
         // Writing an address.
         override def writeAddr(addr: Addr, value: Value): Boolean =
             if configuration.cyclicValueInvalidation && mode != Summary then
-                lattice.getAddresses(value).foreach(r => logger.log(s"ADEP $r ~> ${crop(addr.toString)}"))
-                implicitFlows.flatten.foreach(f => logger.log(s"ADP* $f ~> ${crop(addr.toString)}"))
+                lattice.getAddresses(value).foreach(r => if mode != Select || focus(addr) then logger.log(s"ADEP ${crop(r.toString)} ~> ${crop(addr.toString)}"))
+                implicitFlows.flatten.foreach(f => if mode != Select || focus(addr) then logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}"))
             val b = super.writeAddr(addr, value)
-            if mode == Fine then
+            if mode == Fine || (mode == Select && focus(addr)) then
                 logger.log(
                   s"WRIT ${crop(value.toString)} => ${crop(addr.toString)} (${if b then "becomes" else "remains"} ${crop(intra.store.getOrElse(addr, lattice.bottom).toString)})"
                 )
@@ -223,11 +227,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         // Incremental store update.
         override def doWriteIncremental(): Unit =
             if mode != Summary then
-                intraProvenance.foreach({ case (addr, value) => logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
+                intraProvenance.foreach({ case (addr, value) => if mode != Select || focus(addr) then logger.log(s"PROV ${crop(addr.toString)}: ${crop(value.toString)}") })
             super.doWriteIncremental()
 
         override def commit(): Unit =
-            if mode != Summary then logger.log("COMI")
+            if mode == Summary || mode == Coarse then logger.log("COMI")
             super.commit()
             insertTable(Right(component))
 

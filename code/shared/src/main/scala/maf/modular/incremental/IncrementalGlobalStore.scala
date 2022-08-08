@@ -4,6 +4,7 @@ import maf.core.Expression
 import maf.language.change.CodeVersion.*
 import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
+import maf.modular.scheme.LitAddr
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.Tarjan
@@ -36,7 +37,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
     def provenanceValue(addr: Addr): Value = provenance(addr).values.fold(lattice.bottom)(lattice.join(_, _))
 
     /** Updates the provenance information for a specific component and address. */
-    def updateProvenance(cmp: Component, addr: Addr, value: Value): Unit = provenance += (addr -> (provenance(addr) + (cmp -> value)))
+    def updateContribution(cmp: Component, addr: Addr, value: Value): Unit = provenance += (addr -> (provenance(addr) + (cmp -> value)))
 
     /*
     TODO Only update the provenance if the value is not bottom? Or remove the provenance when the value has become bottom?
@@ -58,7 +59,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      * @param addr
      *   The address corresponding to the deleted write dependency.
      */
-    def deleteProvenance(cmp: Component, addr: Addr): Unit =
+    def deleteContribution(cmp: Component, addr: Addr): Unit =
         // Delete the provenance information corresponding to this component.
         provenance += (addr -> (provenance(addr) - cmp))
         // Compute the new value for the address and update it in the store.
@@ -95,7 +96,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
      */
     override def deleteComponent(cmp: Component): Unit =
         if configuration.writeInvalidation then
-            cachedWrites(cmp).foreach(deleteProvenance(cmp, _))
+            cachedWrites(cmp).foreach(deleteContribution(cmp, _))
             cachedWrites = cachedWrites - cmp
         super.deleteComponent(cmp)
 
@@ -119,7 +120,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         val old = provenance(addr)(cmp)
         if old == nw then return false // Nothing changed. TODO ensure only values are compared and not annotations?
         // Else, there is some change. Note that both `old ⊏ nw` and `nw ⊏ old` - or neither - are possible.
-        updateProvenance(cmp, addr, nw)
+        updateContribution(cmp, addr, nw)
         val oldJoin = inter.store.getOrElse(addr, lattice.bottom) // The value currently at the given address.
         // If `old ⊑ nw` we can just use join, which is probably more efficient.
         val newJoin = if lattice.subsumes(nw, old) then lattice.join(oldJoin, nw) else provenanceValue(addr)
@@ -186,7 +187,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
             if version == New then
                 // The addresses previously written to by this component, but that are no longer written by this component.
                 val deltaW = cachedWrites(component) -- recentWrites
-                deltaW.foreach(deleteProvenance(component, _))
+                deltaW.foreach(deleteContribution(component, _))
             cachedWrites += (component -> recentWrites)
 
         /* ------------------ */
@@ -195,7 +196,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
         /** Called for every written address. Returns true if the dependency needs to be triggered. */
         override def doWrite(dep: Dependency): Boolean = dep match
-            case AddrDependency(addr) if configuration.writeInvalidation => false // Upon a commit, doWriteIncremental will take care of this. It uses updateAddrInc instead of updateAddr is used, and performs triggers accordingly.
+            case AddrDependency(_) if configuration.writeInvalidation => false // Upon a commit, doWriteIncremental will take care of this. It uses updateAddrInc instead of updateAddr is used, and performs triggers accordingly.
             case _ => super.doWrite(dep)
 
         /** First performs the commit. Then uses information inferred during the analysis of the component to refine the store if possible. */
@@ -225,4 +226,3 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
 
     override def configString(): String = super.configString() + s"\n  with an incremental global store and an $domainName"
 end IncrementalGlobalStore
-

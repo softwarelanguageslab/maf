@@ -1,7 +1,7 @@
 package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
-import maf.cli.experiments.incremental.SplitPerformance
+import maf.cli.experiments.incremental.*
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
@@ -92,7 +92,8 @@ object IncrementalRun extends App:
         with IncrementalSchemeTypeDomain
         with IncrementalGlobalStoreCY[SchemeExp]
         with IncrementalLogging[SchemeExp] {
-        override def focus(a: Addr): Boolean = a.toString.contains("primitive-procedure-objects")
+        override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(l@map:1:16)")
+        mode = Mode.Fine // Mode.Select
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
@@ -142,12 +143,11 @@ object IncrementalRun extends App:
 
     val modFbenchmarks: List[String] = List(
       // "test/DEBUG1.scm"
-      "test/changes/scheme/multiple-dwelling (coarse).scm",
+      "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
       // "test/changes/scheme/satMiddle.scm",
       // "test/changes/scheme/satFine.scm",
-      //   "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
-      //  "test/DEBUG3.scm",
-      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm"
+      //"test/changes/scheme/reinforcingcycles/implicit-paths.scm",
+       //"test/DEBUG3.scm",
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -161,27 +161,23 @@ object IncrementalRun extends App:
             // println(text.prettyString())
 
             val l = lifoAnalysis(text)
-            l.mode = l.Mode.Summary
-            l.configuration =  allOptimisations // ci_di_wi 126512ms allOptimisations 520062ms
-            val before = System.currentTimeMillis()
+            l.configuration = allOptimisations
             l.analyzeWithTimeout(newTimeout())
-            val after = System.currentTimeMillis()
-            print(after - before)
             assert(l.finished)
             //val scas = l.computeSCAs()
-           // scas.foreach({ sca =>
+            // scas.foreach({ sca =>
             //    sca.foreach(a => println(l.store(a)))
-           //     println
-           // })
+            //     println
+            // })
 
-            //l.updateAnalysis(newTimeout())
-            //println()
+            l.updateAnalysis(newTimeout())
+            println("=====")
 
-            //val f = lifoAnalysis(text)
-            //f.version = New
-            //f.configuration = allOptimisations
-            //f.analyzeWithTimeout(newTimeout())
-            //assert(f.finished)
+            val f = lifoAnalysis(text)
+            f.version = New
+            f.configuration = allOptimisations
+            f.analyzeWithTimeout(newTimeout())
+            assert(f.finished)
 
             //checkEqState(f, l,"")
 
@@ -216,7 +212,7 @@ object IncrementalRun extends App:
         }
     }
 
-    println("Done")
+    println("\n\n**Done**\n\n")
 end IncrementalRun
 
 // Prints the maximal heap size.
