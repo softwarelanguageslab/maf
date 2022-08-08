@@ -67,17 +67,6 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
 
     /** Computes the "incoming" values for all addresses in the SCA. */
     def computeIncoming(sca: SCA): Map[Addr, (Value, Set[Addr])] =
-        /*
-        cachedWrites.foldLeft(Map()) {
-            case (map, (component, addresses)) =>
-              addresses.intersect(SCA).foldLeft(map)  // All addresses of the SCA written by `component`...
-                { case (map, addr) =>
-                    if dataFlowR(component)(addr).intersect(sca).isEmpty then // ...that were not influenced by an address in the SCA...
-                        map += (addr -> lattice.join(map.getOrElse(addr, lattice.bottom), provenance(addr)(component)))  // ...compose incoming values.
-                    else map
-              }
-        }
-         */
         // The same than the above but hopefully more efficient.
         // TODO: we have to treat control-flow dependencies separately (i.e., not add them as part of incomingValue) => is this already ok?
         sca.foldLeft(sca.map(_ -> (lattice.bottom, Set())).toMap) { case (map, addr) =>
@@ -126,86 +115,12 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         })
         SCAs = incoming
 
-    /*
-    /**
-     * Computes the join of all values "incoming" in this SCA. The join suffices, as the addresses in the SCA are inter-dependent (i.e., the analysis
-     * will join everything together anyway).
-     *
-     * @note
-     *   This implementation computes the incoming value on a "per component" base, by using the provenance.
-     * @note
-     *   We do not distinguish between contributions by components that are partially incoming: if a component writes 2 values to an address and one
-     *   is incoming, no incoming values will be detected. TODO Improve upon this?
-     * @return
-     *   The join of all values "incoming" in this SCA.
-     */
-    // TODO Shouldn't we look at the incoming sca value per component? As this can differ... Or at individual incoming values?
-    // TODO not join!
-    def incomingSCAValue(sca: SCA): Value =
-        cachedWrites.foldLeft(lattice.bottom) { case (value, (component, addresses)) =>
-            // All addresses of the SCA written by `component`...
-            addresses.intersect(sca).foldLeft(value) { case (value, addr) =>
-                // ...that were not influenced by an address in the SCA...
-                if dataFlowR(component)(addr).intersect(sca).isEmpty then
-                    // ...contribute to the incoming value.
-                    lattice.join(value, provenance(addr)(component))
-                else value
-            }
-        }
-
-    /** Updates the value of all addresses in a SCA to a given value and triggers all reading and writing components. */
-    def setSCAValue(sca: SCA, value: Value): Unit =
-        // TODO: the new value often is bottom in some benchmarks!
-        sca.flatMap(provenance).map(_._1).foreach(addToWorkList) // Add all components that wrote to the SCA to the WL.
-        sca.foreach { addr =>
-            store += (addr -> value)
-            provenance += (addr -> provenance(addr).map(av => (av._1, value)).withDefaultValue(lattice.bottom)) // Set the provenance to the given value. `.map` removes the default value...
-            trigger(AddrDependency(addr)) // Add all components that read a value from the SCA to the WL.
-        }
-
-    def resetSCA(sca: SCA): Unit =
-        sca.flatMap(provenance).map(_._1).foreach(addToWorkList) // remark: are these the only ones?
-        sca.foreach { addr =>
-            store += (addr -> lattice.bottom)
-            provenance -= addr
-            trigger(AddrDependency(addr))
-        }
-
-    /** Update the SCAs. Triggers the necessary components. */
-    def updateSCAs(): Unit =
-        // Compute the set of new SCAs.
-        val newSCAs = computeSCAs()
-        // Compute a mapping from new SCAs to old SCAs.
-        val map = newSCAs.map(sca => (sca, SCAs.keySet.filter(n => sca.intersect(n).nonEmpty))).toMap
-        // For every new SCA, compute the incoming values.
-        // TODO: we have to treat control-flow dependencies separately (i.e., not add them as part of incomingValue)
-        val newSCAValues = newSCAs.map(sca => (sca, incomingSCAValue(sca))).toMap
-        // For every new SCA, update the incoming values and set the SCA to the new value.
-        map.foreach({ case (nw, old) =>
-            val newIncoming = newSCAValues(nw)
-            old.foreach { sca =>
-                val oldIncoming = SCAs(sca)
-                if oldIncoming != newIncoming && lattice.subsumes(oldIncoming, newIncoming) then setSCAValue(nw, newIncoming)
-            }
-        })
-        // Update the cache (SCAs).
-        SCAs = newSCAValues // TODO: why isn't this based on nw?
-     */
-
     trait IncrementalGlobalStoreCYIntraAnalysis extends IncrementalGlobalStoreIntraAnalysis:
         intra =>
 
         /** Map of address dependencies W ~> Set[R]. */
         // (Temporary cache, such as the sets C, R, W.)
         var dataFlow: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
-
-        //var litEvalIntra: Set[Expr] = Set()
-
-        //override def doWriteIncremental(): Unit = intraProvenance.foreach({
-        //    case (LitAddr(_), _) => // When a literal changes, the expression changes, so this should be handled by deleteProvenance + this address must not appear in the store.
-        //    case (addr, value) =>
-        //        if updateAddrInc(component, addr, value) then inter.trigger(AddrDependency(addr))
-        //})
 
         override def readAddr(addr: Addr): Value =
             if configuration.cyclicValueInvalidation then lattice.addAddress(super.readAddr(addr), addr)
