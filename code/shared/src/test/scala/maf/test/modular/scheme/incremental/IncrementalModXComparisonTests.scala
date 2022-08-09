@@ -27,7 +27,7 @@ import scala.concurrent.duration.*
  */
 // TODO: Require equality when all optimisations are enabled.
 trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
-    def configurations: List[IncrementalConfiguration]
+    def configurations: List[IncrementalConfiguration] = List()
     def timeout(): Timeout.T = Timeout.start(Duration(150, SECONDS))
 
     def testTags(b: Benchmark, c: IncrementalConfiguration): Seq[Tag]
@@ -228,6 +228,8 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
             val iv = i.store.getOrElse(addr, i.lattice.bottom)
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
+
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
 
 class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwithWI
 class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI
