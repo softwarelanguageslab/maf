@@ -1,13 +1,18 @@
 #lang racket
 
 (require  "./meta-base.rkt")
-(require "./meta")
+(require "./meta.rkt")
 
 (provide 
   actor
-  base/create 
-  base/send 
+  send 
+  create
+  ask 
+  reply
+  await
+  debug
+  mirror!
+  base-mirror-actor
+  become
   behavior
   messages)
-
-
