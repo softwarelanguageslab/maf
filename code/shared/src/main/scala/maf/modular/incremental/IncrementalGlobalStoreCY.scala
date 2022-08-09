@@ -93,7 +93,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val sca = newIncoming.keySet
         newIncoming.foreach { case (addr, (value, _)) =>
         // TODO: update all data structures (provenance, store,...).
-            store += (addr -> value)
+            store += (addr -> lattice.bottom) // undo value)
             // Delete the provenance of non-incoming values (i.e., flows within the SCA).
             provenance += (addr -> provenance(addr).filter({ case (cmp, _) => dataFlowR(cmp)(addr).intersect(sca).isEmpty}))
             // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
