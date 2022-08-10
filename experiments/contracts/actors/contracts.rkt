@@ -10,10 +10,51 @@
 
 (struct behavior-contract (cstors msgs name))
 
+;; Attaches a contract on the given message handler, and returns a message handler 
+;; that is capable of processing the constraints introduced by the contract.
+(define/contract (attach-contract mirror behavior message) 
+   (-> contracted-message? any?)
+   (lambda () 
+     (behavior message)
+     ;; let's ask the mirror what kind of messages we processed
+     (let ((messages (await (ask mirror processed-messages))))
+       ;; check if all of them were sent (that were required to be sent)
+       (if (all-sent? messages)
+           ;; if so, reset the internal state of the mirror
+           (await ask mirror reset)
+           ;; otherwise, yield an error (todo: attach blame labels here)
+           (error "not all messages are sent")))))
+
 (define/contract (behavior/c-mirror contract)
   (-> behavior-contract? actor?)
-  (create (behavior contract ((_ any?)) 
-    (messages/extend (base-mirror base-mirror) ())) '()))
+  (letrec ((mirror (behavior contract ((_ any?))
+       (messages/extend (base-mirror base-mirror) 
+        ((receive (sender behavior message)
+         ;; if the message has a contract attached we will need to check the behavior of 
+         ;; the actor while processing the message. 
+         (if (contract-message? message) 
+             (begin 
+                (reply sender (attach-contract behavior message))
+                (become monitor-message-sends (monitored-messages message)))
+             ;; if there is not contract attached we fall-back to the default actor behavior
+             (super))
+         (become mirror mirror))))))
+      ;; used while processing a contracted message in `receive`
+      (monitor-message-sends (behavior contract ((monitored-messages any?))
+         (messages/extend (base-mirror monitor-message-sends)
+            ((send (sender receiver tag arguments)
+             ;; log that the send has occured 
+             (let ((logged-send (log-send monitored-messages tag arguments)))
+                ;; execute the default behavior
+                (super)
+                ;; continue 
+                (become monitor-message-sends logged-send)))
+             ;; reset to `mirror` behavior
+             (reset () 
+               (become mirror '()))
+             ;; reply with the map of messages that were sent if asked to do so
+             (processed-messages (reply-to) (reply reply-to monitored-messages)))))))
+    (create mirror '())))
 
 ;; a contract on the handling of a message.
 ;; properties of interest are: existance of message handler .
@@ -41,6 +82,7 @@
      (message-contracts (behavior-contract-msgs behavior-contract))
      (message-argument-contracts (message-contract-ref message-contracts tag)))
 
+    ;; todo: add correct blame labels
     (for-each (lambda (argument c)
                 (contract c argument 'pos 'neg))
               arguments 
@@ -53,16 +95,17 @@
   (letrec ((contract-mirror (behavior "contract-system-mirror" ((_ any?))
       (messages/extend (base-mirror contract-mirror)
            ((send (sender receiver tag arguments)
-            ;; if the receiver is a contracted actor reference then we need to apply the contracts
-            ;; and wrap any ensure/c contracts in a contracted message. 
-            (debug "meta/send")
             (let 
               ((actor (if (contracted-actor? receiver)
+               ;; if the receiver is a contracted actor reference then we need to apply the contracts
+               ;; and wrap any ensure/c contracts in a contracted message. 
                 (begin 
                    (enforce-message-send receiver tag arguments)
                    (contracted-actor-actor receiver))
                 receiver)))
+            ;; in any case we need to invoke the base behavior
             (reply sender (send-meta actor (message tag arguments)))
+            ;; we continue being ourselves
             (become contract-mirror contract-mirror))))))))
     (create-with-mirror previous-mirror contract-mirror contract-mirror)))
                 
