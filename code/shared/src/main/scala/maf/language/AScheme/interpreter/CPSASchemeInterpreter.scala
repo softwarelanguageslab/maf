@@ -178,6 +178,9 @@ class CPSASchemeInterpreter(
     /** The map from actor ids to concrete actor references */
     private var actors: Map[AID, Actor] = Map()
 
+    /** Reference to the current actor state */
+    //private var currentActor: ActorState = ActorState.none
+
     /** Counter to keep track of the last used actor id (the main actor is always zero) */
     private var currentActorId: Int = 0
 
