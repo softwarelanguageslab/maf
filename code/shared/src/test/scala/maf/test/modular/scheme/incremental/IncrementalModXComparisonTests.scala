@@ -229,9 +229,11 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
 
+class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwithWI:
     override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
-
-class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwithWI
-class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI
-class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI
-class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI
+class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
+class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
+class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI:
+    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
