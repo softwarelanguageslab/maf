@@ -16,3 +16,6 @@ object Writer:
 
         def map[X, Y](m: M[X])(f: X => Y): M[Y] =
             flatMap(m)(x => unit(f(x)))
+
+    def tell[W](w: W): Writer[W, Unit] =
+        Writer((), w)
