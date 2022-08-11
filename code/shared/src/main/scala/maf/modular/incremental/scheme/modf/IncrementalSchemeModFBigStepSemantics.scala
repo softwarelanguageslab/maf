@@ -47,15 +47,16 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
             yield lattice.addAddresses(resVal, adr)
 
         /** Evaluation of a literal value that adds a "literal address" as source. */
-        override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value =
+        override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] =
+            // sorry for the Monad, Jens...
             // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
-            if configuration.cyclicValueInvalidation
-            then
+            if configuration.cyclicValueInvalidation then
                 //litEvalIntra += exp
                 val a = LitAddr(exp)
-                val value = lattice.addAddress(super.evalLiteralValue(literal, exp), a)
-                if !lattice.isBottom(value) then intraProvenance += (a -> value) // We can just overwrite any previous value as it will be the same.
-                value
+                for
+                    value <- super.evalLiteralValue(literal, exp).map(v => lattice.addAddress(v, a))
+                    _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
+                yield value
             else super.evalLiteralValue(literal, exp)
 
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra

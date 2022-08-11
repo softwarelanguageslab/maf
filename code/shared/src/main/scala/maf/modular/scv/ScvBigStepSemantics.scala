@@ -293,15 +293,18 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                     }
 
         override protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
-            withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
-                for
-                    extEnv <- getEnv
-                    _ <- bindings.mapM_ { case (id, exp) =>
-                        extract(eval(exp)).flatMap(value => assignPost(id, extEnv, value))
-                    }
-                    res <- evalSequence(body)
-                yield res
-            }
+            for
+                newEnv <- getEnv.flatMap(env => bindings.foldLeftM(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) })
+                result <- withEnv(_ => newEnv) {
+                    for
+                        extEnv <- getEnv
+                        _ <- bindings.mapM_ { case (id, exp) =>
+                            extract(eval(exp)).flatMap(value => assignPost(id, extEnv, value))
+                        }
+                        res <- evalSequence(body)
+                    yield res
+                }
+            yield result
 
         override def eval(exp: SchemeExp): EvalM[Value] =
             exp match
