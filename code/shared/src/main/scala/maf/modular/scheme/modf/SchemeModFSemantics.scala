@@ -123,6 +123,9 @@ trait BaseSchemeModFSemanticsM
 
             allArgAddrs.map(addr => (addr, store.getOrElse(addr, lattice.bottom)))
 
+    protected def newComponentM(call: Call[ComponentContext]): M[Component] =
+        baseEvalM.unit(newComponent(call))
+
     //XXXXXXXXXXXXXXXXXXXXXXXXXX//
     // INTRA-COMPONENT ANALYSIS //
     //XXXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -235,7 +238,7 @@ trait BaseSchemeModFSemanticsM
                             for
                                 context <- ctx.allocM(clo, argVals, cll, component)
                                 targetCall = Call(clo, context)
-                                targetCmp = newComponent(targetCall)
+                                targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, argVals)
                                 _ <- ctx.beforeCall(targetCmp, prs, clo)
                                 result = call(targetCmp)
@@ -251,7 +254,7 @@ trait BaseSchemeModFSemanticsM
                                 varArgVal <- allocateList(varArgs)
                                 context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
                                 targetCall = Call(clo, context)
-                                targetCmp = newComponent(targetCall)
+                                targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, fixedArgVals)
                                 _ = bindArg(targetCmp, vararg, varArgVal)
                                 _ <- ctx.beforeCall(targetCmp, prs, clo)
