@@ -2,10 +2,13 @@ package maf.core.monad
 
 import maf.core.Monad
 import maf.core.Monad.MonadSyntaxOps
+import maf.core.IdentityMonad
 
 case class ReaderT[M[_], T, A](runReader: (T) => M[A])
 
 object ReaderT:
+    type Reader[R] = [X] =>> ReaderT[IdentityMonad.Id, R, X]
+
     given readerMonad[M[_]: Monad, T]: Monad[[A] =>> ReaderT[M, T, A]] with
         type R[A] = ReaderT[M, T, A]
         def unit[X](v: X): R[X] = ReaderT((_: T) => Monad[M].unit(v))
