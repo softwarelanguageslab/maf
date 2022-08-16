@@ -19,9 +19,6 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     /** The implicit flows are used for cyclic write invalidation and cover flows that are formed implicitly, i.e., through conditional branching. */
     var implicitFlows: List[Set[Addr]] = Nil
 
-    ///** Literals evaluated during every component's analysis. */
-    //var litEval: Map[Component, Set[Expr]] = Map().withDefaultValue(Set())
-
     override def updateAnalysis(timeout: Timeout.T): Unit =
         if configuration.cyclicValueInvalidation then
             val scas = computeSCAs()
@@ -60,17 +57,43 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * Keeps track of all inferred SCCs of addresses during an incremental update. To avoid confusion with analysis components, we call these Strongly
      * Connected Addresses (SCC containing addresses). For every SCA, keep track of the join of values flowing towards it from outside the SCA.
      */
-    var SCAs: Set[Map[Addr, (Value, Set[Addr])]] = Set()
+    var SCAs: Set[Map[Addr, Set[(Value, Addr)]]] = Set()
 
     def computeSCAs(): Set[SCA] =
         Tarjan.scc[Addr](store.keySet, dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
 
     /** Computes the "incoming" values for all addresses in the SCA. */
-    def computeIncoming(sca: SCA): Map[Addr, (Value, Set[Addr])] =
-        // The same than the above but hopefully more efficient.
+    def computeIncoming(sca: SCA): Map[Addr, Set[(Value, Addr)]] =
+    /*
+        dataFlowR.foldLeft(sca.map(_ -> (lattice.bottom, Set[Addr]())).toMap) { case (map, (cmp, wrs)) =>
+            wrs.foldLeft(map) { case (map, (write, reads)) =>
+                reads.foldLeft(map) { case (map, read) =>
+                    if sca.contains(read)
+                    then map
+                    else
+                        val (v, a) = map.getOrElse(write, (lattice.bottom, Set()))
+                        map + (write -> (lattice.join(v, provenance(write)(cmp)), a + read))
+                }
+            }
+        }
+      */
         // TODO: we have to treat control-flow dependencies separately (i.e., not add them as part of incomingValue) => is this already ok?
-        sca.foldLeft(sca.map(_ -> (lattice.bottom, Set())).toMap) { case (map, addr) =>
+        sca.foldLeft(sca.map(_ -> Set()).toMap: Map[Addr, Set[(Value, Addr)]]) { case (map, addr): (Map[Addr, Set[(Value, Addr)]], Addr) =>
             // REMARK: here provenance does not seem to contain Lit Addresses? (wel bij het printen). Waarom worden deze dan niet in de map gestopt?
+            // REMARK: wanneer een lit addr niet meer gelezen wordt, verdwijnt het uit de provenance... (maar moet er normaal origineel wel in te zien zijn)...
+            println(addr.toString  + " " + provenance(addr))
+            // TODO: use dataFlowR here to also loop over literal addresses that are not in the provenance (but they should?)
+            dataFlowR.foldLeft(map) { case (map, (cmp, mp)): (Map[Addr, Set[(Value, Addr)]], (Component, Map[Addr, Set[Addr]])) =>
+              if mp(addr).intersect(sca).isEmpty
+              then
+                  mp(addr).foldLeft(map) { case (map, a): (Map[Addr, Set[(Value, Addr)]], Addr) =>
+                      val bnd: Set[(Value, Addr)] = map(addr)
+                      val v: Value = store(a)
+                      map + (addr -> (bnd + ((v, a))))
+                  }
+              else map
+            }
+            /*
             provenance(addr).foldLeft(map) { case (map, (cmp, value)) =>
                 if dataFlowR(cmp)(addr).intersect(sca).isEmpty
                 then
@@ -78,6 +101,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                     map + (addr -> (lattice.join(v, value), a ++ dataFlowR(cmp)(addr)))
                 else map
             }
+            */
         }
 
     /** Checks whether a SCA needs to be refined. */
@@ -93,9 +117,11 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val sca = newIncoming.keySet
         newIncoming.foreach { case (addr, (value, _)) =>
         // TODO: update all data structures (provenance, store,...).
-            store += (addr -> lattice.bottom) // undo value)
+            store += (addr -> value)
             // Delete the provenance of non-incoming values (i.e., flows within the SCA).
             provenance += (addr -> provenance(addr).filter({ case (cmp, _) => dataFlowR(cmp)(addr).intersect(sca).isEmpty}))
+            // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
+            dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (addr -> cm._2(addr).diff(sca))))
             // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
             // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
             trigger(AddrDependency(addr))
@@ -106,11 +132,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val newSCAs = computeSCAs()
         // For every new SCA, compute the incoming values.
         val incoming = newSCAs.map(computeIncoming) // TODO: merge into refineSCA?
+        println(incoming)
         // Compute a mapping from new SCAs to old SCAs.
         val tupled = incoming.map(sca => (sca, SCAs.filter(n => sca.keySet.intersect(n.keySet).nonEmpty).flatten))
         tupled.foreach({ case (nw, old) =>
           //println(old.toString() ++ " => " ++ nw.toString())
-          if refiningNeeded(old.toMap, nw)
+          val mp: Map[Addr, (Value, Set[Addr])] = old.toMap
+          if refiningNeeded(mp, nw)
           then refineSCA(nw)
         })
         SCAs = incoming
@@ -140,7 +168,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             super.commit()
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlow)
-                //litEval += (component -> litEvalIntra) // Remark: or do we add it to the provenance and store the values separately for literals so they can be used to compute incoming values?
+                println(component)
+                println(provenance)
+                println(dataFlowR)
+                println()
                 if version == New then updateSCAs()
 
     end IncrementalGlobalStoreCYIntraAnalysis

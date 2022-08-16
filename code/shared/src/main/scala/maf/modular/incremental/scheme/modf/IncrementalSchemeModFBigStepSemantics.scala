@@ -51,7 +51,6 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
             // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
             if configuration.cyclicValueInvalidation
             then
-                //litEvalIntra += exp
                 val a = LitAddr(exp)
                 val value = lattice.addAddress(super.evalLiteralValue(literal, exp), a)
                 if !lattice.isBottom(value) then intraProvenance += (a -> value) // We can just overwrite any previous value as it will be the same.
