@@ -142,12 +142,13 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-      // "test/DEBUG1.scm"
-      "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
+       "test/DEBUG1.scm"
+     // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
       // "test/changes/scheme/satMiddle.scm",
-      // "test/changes/scheme/satFine.scm",
+       //"test/changes/scheme/satFine.scm",
       //"test/changes/scheme/reinforcingcycles/implicit-paths.scm",
        //"test/DEBUG3.scm",
+       //"test/changes/scheme/nbody-processed.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -162,6 +163,7 @@ object IncrementalRun extends App:
 
             val l = lifoAnalysis(text)
             l.configuration = allOptimisations
+            println("init")
             l.analyzeWithTimeout(newTimeout())
             assert(l.finished)
             //val scas = l.computeSCAs()
@@ -169,10 +171,10 @@ object IncrementalRun extends App:
             //    sca.foreach(a => println(l.store(a)))
             //     println
             // })
-
+            println("upd")
             l.updateAnalysis(newTimeout())
-            println("=====")
 
+            println("rean")
             val f = lifoAnalysis(text)
             f.version = New
             f.configuration = allOptimisations
