@@ -5,14 +5,23 @@
 
 (provide 
   actor
+  actor?
   send 
   create
+  create-with-mirror
   ask 
   reply
   await
   debug
+  mirror?
   mirror!
+  default-mirror!
+  install-mirror
   base-mirror-actor
+  base-mirror
   become
   behavior
-  messages)
+  messages
+  messages/extend
+  message
+  send-meta)

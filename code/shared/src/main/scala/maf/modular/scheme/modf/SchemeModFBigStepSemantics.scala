@@ -1,13 +1,14 @@
 package maf.modular.scheme.modf
 
 import maf.core._
+import maf.core.Monad.MonadSyntaxOps
 import maf.core.Position._
 import maf.language.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
 
 /* Generic trait for big-step computations in a "monadic" style */
-trait TEvalM[M[_]] extends Monad[M], MonadError[M, Error], MonadJoin[M]:
+trait TEvalM[M[_]] extends BaseEvalM[M]:
     /** Implementation of MonadJoin */
     def mbottom[X]: M[X] = mzero
     def mjoin[X: Lattice](x: M[X], y: M[X]): M[X] = merge(x, y)
@@ -19,6 +20,13 @@ trait TEvalM[M[_]] extends Monad[M], MonadError[M, Error], MonadJoin[M]:
     def getEnv: M[Environment[Address]]
     // TODO: withExtendedEnv would make more sense
     def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => M[X]): M[X]
+    def withEnvM[X](f: Environment[Address] => M[Environment[Address]])(ev: M[X]): M[X] =
+        given Monad[M] = this
+        for
+            newEnv <- Monad[M].flatMap(getEnv)(f)
+            result <- withEnv(_ => newEnv) { ev }
+        yield result
+
     //def inject[X: Lattice](x: X): M[X] = if Lattice[X].isBottom(x) then mzero else unit(x)
     def merge[X: Lattice](x: M[X], y: M[X]): M[X]
     def merge[X: Lattice](xs: Iterable[M[X]]): M[X] =
@@ -51,7 +59,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
         import evalM._
         // simple big-step eval
         protected def eval(exp: SchemeExp): EvalM[Value] = exp match
-            case SchemeValue(value, _)              => unit(evalLiteralValue(value, exp))
+            case SchemeValue(value, _)              => evalLiteralValue(value, exp)
             case lambda: SchemeLambdaExp            => evalClosure(lambda)
             case SchemeVar(nam)                     => evalVariable(nam)
             case SchemeBegin(exps, _)               => evalSequence(exps)
@@ -88,7 +96,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
         protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             for
                 bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
-                res <- withEnv(env => bind(bds, env)) {
+                res <- withEnvM(env => bind(bds, env)) {
                     evalSequence(body)
                 }
             yield res
@@ -97,12 +105,12 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
                 case Nil => evalSequence(body)
                 case (id, exp) :: restBds =>
                     eval(exp).flatMap { rhs =>
-                        withEnv(env => bind(id, env, rhs)) {
+                        withEnvM(env => bind(id, env, rhs)) {
                             evalLetStar(restBds, body)
                         }
                     }
         protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
-            withEnv(env => bindings.foldLeft(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
+            withEnvM(env => bindings.foldLeftM(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
                 for
                     extEnv <- getEnv
                     _ <- bindings.mapM_ { case (id, exp) =>

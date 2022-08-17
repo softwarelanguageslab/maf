@@ -15,6 +15,8 @@ import maf.core.IdentityMonad.given
 import maf.core.Monad.MonadIterableOps
 import maf.core.Monad.MonadSyntaxOps
 
+trait BaseEvalM[M[_]] extends Monad[M] with MonadError[M, Error] with MonadJoin[M]
+
 /** Base definitions for a Scheme MODF analysis (monadic style). */
 // TODO: Most of this can be factored out to SchemeSemantics
 trait BaseSchemeModFSemanticsM
@@ -26,7 +28,7 @@ trait BaseSchemeModFSemanticsM
 
     /** Functions of these base definitions can be executed in the context of the given monad */
     type M[_]
-    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] with MonadJoin[M]
+    implicit lazy val baseEvalM: BaseEvalM[M]
 
     // the environment in which the ModF analysis is executed
     type Env = Environment[Addr]
@@ -121,6 +123,9 @@ trait BaseSchemeModFSemanticsM
 
             allArgAddrs.map(addr => (addr, store.getOrElse(addr, lattice.bottom)))
 
+    protected def newComponentM(call: Call[ComponentContext]): M[Component] =
+        baseEvalM.unit(newComponent(call))
+
     //XXXXXXXXXXXXXXXXXXXXXXXXXX//
     // INTRA-COMPONENT ANALYSIS //
     //XXXXXXXXXXXXXXXXXXXXXXXXXX//
@@ -154,7 +159,13 @@ trait BaseSchemeModFSemanticsM
         // variable lookup: use the global store
         protected def lookup(id: Identifier, env: Env): M[Value] = env.lookup(id.name) match
             case None       => baseEvalM.fail(UndefinedVariableError(id))
-            case Some(addr) => baseEvalM.unit(readAddr(addr))
+            case Some(addr) => read(addr)
+
+        protected def read(adr: Addr): M[Value] =
+            baseEvalM.unit(readAddr(adr))
+        protected def write(adr: Addr, v: Value): M[Unit] =
+            baseEvalM.unit(writeAddr(adr, v))
+
         protected def assign(
             id: Identifier,
             env: Env,
@@ -162,8 +173,7 @@ trait BaseSchemeModFSemanticsM
           ): M[Unit] = env.lookup(id.name) match
             case None => baseEvalM.fail(UndefinedVariableError(id))
             case Some(addr) =>
-                writeAddr(addr, vlu)
-                baseEvalM.unit(())
+                write(addr, vlu)
 
         protected def assign(bds: List[(Identifier, Value)], env: Env): M[Unit] =
             import maf.core.Monad.MonadSyntaxOps
@@ -173,13 +183,14 @@ trait BaseSchemeModFSemanticsM
             id: Identifier,
             env: Env,
             vlu: Value
-          ): Env =
+          ): M[Env] =
             val addr = allocVar(id, component)
             val env2 = env.extend(id.name, addr)
-            writeAddr(addr, vlu)
-            env2
-        protected def bind(bds: List[(Identifier, Value)], env: Env): Env =
-            bds.foldLeft(env)((env2, bnd) => bind(bnd._1, env2, bnd._2))
+            write(addr, vlu) >>> baseEvalM.unit(env2)
+
+        protected def bind(bds: List[(Identifier, Value)], env: Env): M[Env] =
+            bds.foldLeftM(env)((env2, bnd) => bind(bnd._1, env2, bnd._2))
+
         protected def applyFun(
             fexp: SchemeFuncall,
             fval: Value,
@@ -227,7 +238,7 @@ trait BaseSchemeModFSemanticsM
                             for
                                 context <- ctx.allocM(clo, argVals, cll, component)
                                 targetCall = Call(clo, context)
-                                targetCmp = newComponent(targetCall)
+                                targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, argVals)
                                 _ <- ctx.beforeCall(targetCmp, prs, clo)
                                 result = call(targetCmp)
@@ -238,12 +249,12 @@ trait BaseSchemeModFSemanticsM
                         if prs.length <= arity then
                             val (fixedArgs, varArgs) = args.splitAt(prs.length)
                             val fixedArgVals = fixedArgs.map(_._2)
-                            val varArgVal = allocateList(varArgs)
 
                             for
+                                varArgVal <- allocateList(varArgs)
                                 context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
                                 targetCall = Call(clo, context)
-                                targetCmp = newComponent(targetCall)
+                                targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, fixedArgVals)
                                 _ = bindArg(targetCmp, vararg, varArgVal)
                                 _ <- ctx.beforeCall(targetCmp, prs, clo)
@@ -254,17 +265,19 @@ trait BaseSchemeModFSemanticsM
                     case _ => Monad[M].unit(lattice.bottom)
                 })
             )
-        protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match
-            case Nil                => lattice.nil
-            case (exp, vlu) :: rest => allocateCons(exp)(vlu, allocateList(rest))
-        protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
+        protected def allocateList(elms: List[(SchemeExp, Value)]): M[Value] = elms match
+            case Nil => baseEvalM.unit(lattice.nil)
+            case (exp, vlu) :: rest =>
+                allocateList(rest).flatMap(v => allocateCons(exp)(vlu, v))
+
+        protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): M[Value] =
             allocateVal(pairExp)(lattice.cons(car, cdr))
-        protected def allocateString(stringExp: SchemeExp)(str: String): Value =
+        protected def allocateString(stringExp: SchemeExp)(str: String): M[Value] =
             allocateVal(stringExp)(lattice.string(str))
-        protected def allocateVal(exp: SchemeExp)(v: Value): Value =
+        protected def allocateVal(exp: SchemeExp)(v: Value): M[Value] =
             val addr = allocPtr(exp, component)
-            writeAddr(addr, v)
-            lattice.pointer(addr)
+            write(addr, v) >>> baseEvalM.unit(lattice.pointer(addr))
+
         protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value =
             //TODO [difficult]: implement append
             throw new Exception("NYI -- append")
@@ -306,14 +319,14 @@ trait BaseSchemeModFSemanticsM
                 })
             )
         // evaluation helpers
-        protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): Value = literal match
-            case sexp.Value.Integer(n)   => lattice.number(n)
-            case sexp.Value.Real(r)      => lattice.real(r)
-            case sexp.Value.Boolean(b)   => lattice.bool(b)
+        protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] = literal match
+            case sexp.Value.Integer(n)   => baseEvalM.unit(lattice.number(n))
+            case sexp.Value.Real(r)      => baseEvalM.unit(lattice.real(r))
+            case sexp.Value.Boolean(b)   => baseEvalM.unit(lattice.bool(b))
             case sexp.Value.String(s)    => allocateString(exp)(s)
-            case sexp.Value.Character(c) => lattice.char(c)
-            case sexp.Value.Symbol(s)    => lattice.symbol(s)
-            case sexp.Value.Nil          => lattice.nil
+            case sexp.Value.Character(c) => baseEvalM.unit(lattice.char(c))
+            case sexp.Value.Symbol(s)    => baseEvalM.unit(lattice.symbol(s))
+            case sexp.Value.Nil          => baseEvalM.unit(lattice.nil)
         // The current component serves as the lexical environment of the closure.
         protected def newClosure(
             lambda: SchemeLambdaExp,
@@ -356,12 +369,16 @@ trait BaseSchemeModFSemanticsIdentity extends BaseSchemeModFSemantics:
     export maf.core.IdentityMonad.given
     import maf.core.IdentityMonad.Id
 
-    sealed trait IdFailure[+X]
+    sealed trait IdFailure[+X]:
+        def force: X = this match
+            case Success(v) => v
+            case Failure    => throw new Exception("cannot force failure")
+
     case class Success[X](v: X) extends IdFailure[X]
     case object Failure extends IdFailure[Nothing]
 
     type M[X] = IdFailure[X]
-    implicit lazy val baseEvalM: Monad[M] with MonadError[M, Error] with MonadJoin[M] = new Monad[M] with MonadError[M, Error] with MonadJoin[M]:
+    implicit lazy val baseEvalM = new BaseEvalM[M]:
         def unit[T](v: T) = Success(v)
         def flatMap[A, B](m: M[A])(f: A => M[B]): M[B] =
             m match

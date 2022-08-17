@@ -128,7 +128,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemanticsIdentity:
                 evalLetStar(bindings, body, env, cnt)
             case SchemeLetrec(bindings, body, _) =>
                 val extEnv = bindings.foldLeft(env) { case (env2, (id, _)) =>
-                    bind(id, env2, lattice.bottom)
+                    bind(id, env2, lattice.bottom).force
                 }
                 evalLetrec(bindings, body, extEnv, cnt)
             case call @ SchemeFuncall(fexp, args, _) =>
@@ -155,7 +155,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemanticsIdentity:
             cnt: Kont
           ): Set[State] = bindings match
             case Nil =>
-                val extEnv = bind(done, env)
+                val extEnv = bind(done, env).force
                 evalSequence(body, extEnv, cnt)
             case (id, vexp) :: rest =>
                 val frm = LetFrame(id, rest, done, body, env)
@@ -214,7 +214,7 @@ trait SmallStepModFSemantics extends BaseSchemeModFSemanticsIdentity:
             case LetFrame(id, rest, done, body, env) =>
                 evalLet(rest, (id, vlu) :: done, body, env, cnt)
             case LetStarFrame(id, rest, body, env) =>
-                evalLetStar(rest, body, bind(id, env, vlu), cnt)
+                evalLetStar(rest, body, bind(id, env, vlu).force, cnt)
             case LetrecFrame(id, rest, body, env) =>
                 assign(id, env, vlu)
                 evalLetrec(rest, body, env, cnt)

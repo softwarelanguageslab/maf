@@ -5,7 +5,7 @@ import maf.util._
 import maf.language.scheme._
 
 // A SchemeModFComponent represents function calls
-sealed trait SchemeModFComponent extends SmartHash
+trait SchemeModFComponent extends SmartHash
 
 object SchemeModFComponent:
     // The main function call, i.e. the entry point of the program (corresponding to all top-level code)

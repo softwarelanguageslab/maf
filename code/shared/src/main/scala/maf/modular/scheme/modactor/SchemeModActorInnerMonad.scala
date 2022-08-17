@@ -7,6 +7,7 @@ import maf.core.SetMonad.*
 import maf.language.scheme.SchemeExp
 
 trait SchemeModActorInnerMonad[Msg] extends ModAnalysis[SchemeExp] with BaseSchemeModFSemanticsM with BigStepModFSemanticsT:
+    outer =>
     import maf.core.Monad.MonadSyntaxOps
 
     protected type Mailbox = AbstractMailbox[Msg]
@@ -56,7 +57,7 @@ trait SchemeModActorInnerMonad[Msg] extends ModAnalysis[SchemeExp] with BaseSche
         export aevalM._
         def getEnv: EvalM[Environment[Address]] = get.map(_.env)
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
-            withEnvM(f andThen unit)(ev)
+            outer.withEnvM(f andThen unit)(ev)
 
         //def guard(bln: Boolean): EvalM[Unit] =
         //  if bln then unit(()) else mzero
