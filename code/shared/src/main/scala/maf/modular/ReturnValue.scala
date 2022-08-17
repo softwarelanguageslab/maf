@@ -18,6 +18,7 @@ trait ReturnValue[Expr <: Expression] extends GlobalStore[Expr]:
     // convenience method: final program result = return-addr of the initial component
     def returnValue(cmp: Component): Value = store.getOrElse(returnAddr(cmp), lattice.bottom)
     def finalResult: Value = returnValue(initialComponent)
+    override def result: Option[Value] = Some(finalResult)
 
     // intra-analysis can now also update and read the result of a component
     override def intraAnalysis(cmp: Component): ReturnResultIntra

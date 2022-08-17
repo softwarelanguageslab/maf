@@ -4,6 +4,7 @@ import maf.modular.scheme.modf.BigStepModFSemanticsT
 import maf.core.Address
 import maf.language.scheme.*
 import maf.core.Monad.*
+import maf.core.StateOps
 import maf.core.monad.ReaderT
 import maf.core.Lattice
 import maf.core.LocalStore
@@ -15,6 +16,7 @@ import maf.modular.ModAnalysis
 import maf.core.Position.Position
 import maf.util.benchmarks.Timeout.T
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.modular.scheme.SchemeSetup
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.core.MonadStateT
 import maf.core.Monad
@@ -25,7 +27,7 @@ trait TEvalMFlowSensitive[M[_], V: Lattice] extends TEvalM[M]:
     def write(addr: Address, v: V): M[Unit]
     def read(addr: Address): M[V]
     def putStore(lstore: LocalStore[Address, V]): M[Unit]
-    def runForValue[V](m: M[V]): V
+    def runForValue[T](init: LocalStore[Address, V], initialEnv: Environment[Address], m: M[T]): scala.collection.immutable.Set[T]
 
 trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
     type Component = FlowSensitiveComponent
@@ -58,22 +60,28 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
     override def writeAddr(addr: Address, value: Value): Boolean =
         throw new Exception("global store writes are not supported (inter)")
 
-    trait FlowSensitiveIntra extends BigStepModFIntraT:
-        /** Returns an EvalM monad that has initialized its state to the initial state */
-        protected def initialState: EvalM[Unit]
+    /** The initial store */
+    protected def baseStore: LocalStore[Address, Value]
 
+    trait FlowSensitiveIntra extends BigStepModFIntraT:
         override def analyzeWithTimeout(timeout: T): Unit =
             // inject the local store into the analysis context of the component
-            val lstore = evalM.runForValue(for
-                _ <- initialState.flatMap(_ => evalM.putStore(component.localStore))
-                // the evaluate the expression
-                result <- eval(body(component))
-                // put the result in the store on the correct address
-                _ <- write(returnAddr(component), result)
-                lstore <- evalM.getStore
-            yield lstore)
-            // keep track of the resulting store from the component
-            componentStores = componentStores + (component -> lstore)
+            val lstores = evalM.runForValue(
+              baseStore,
+              fnEnv,
+              for
+                  _ <- evalM.putStore(component.localStore)
+                  // the evaluate the expression
+                  result <- eval(body(component))
+                  // put the result in the store on the correct address
+                  _ <- write(returnAddr(component), result)
+                  lstore <- evalM.getStore
+              yield lstore
+            )
+            lstores.foreach(lstore =>
+                // keep track of the resulting store from the component
+                componentStores = componentStores + (component -> lstore)
+            )
 
         // Make sure that the global store operations are not used
         override def writeAddr(addr: Addr, value: Value): Boolean =
@@ -119,20 +127,44 @@ trait SimpleFlowSensitiveAnalysisMonad extends SchemeModFFlowSensitive:
      */
     type EvalM[X] = MonadStateT[AnalysisState, Reader, X]
 
-    protected val monadInstance: Monad[EvalM] = MonadStateT.stateInstance[AnalysisState, Reader]
+    protected val monadInstance: StateOps[AnalysisState, EvalM] = MonadStateT.stateInstance[AnalysisState, Reader]
 
     given evalM: TEvalMFlowSensitive[EvalM, Value] with
         export monadInstance.*
-        def getStore: EvalM[Store] = ???
-        def putStore(lstore: LocalStore[Address, Value]): EvalM[Unit] = ???
-        def write(addr: Address, v: Value): EvalM[Unit] = ???
-        def read(addr: Address): EvalM[Value] = ???
-        def runForValue[V](m: EvalM[V]): V = ???
-        def fail[X](err: core.Error): EvalM[X] = ???
-        def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = ???
-        def mzero[X]: EvalM[X] = ???
-        def getEnv: EvalM[Environment[Address]] = ???
-        def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] = ???
+        import monadInstance.*
+        import maf.core.monad.MonadLift.*
+
+        def getStore: EvalM[Store] =
+            get.map(_.lstore)
+
+        def putStore(lstore: LocalStore[Address, Value]): EvalM[Unit] =
+            get.flatMap(st => put(st.copy(lstore = lstore)))
+
+        def write(addr: Address, v: Value): EvalM[Unit] =
+            getStore.flatMap(store => putStore(store.integrate(store.extend(addr, v))))
+
+        def read(addr: Address): EvalM[Value] =
+            getStore.flatMap(store =>
+                store.lookup(addr) match
+                    case Some(vlu) => unit(vlu)
+                    case _         => mzero
+            )
+
+        def runForValue[V](init: LocalStore[Address, Value], initialEnv: Environment[Address], m: EvalM[V]): scala.collection.immutable.Set[V] =
+            m.runValue(AnalysisState(init)).runReader(initialEnv)
+
+        def fail[X](err: core.Error): EvalM[X] = /* ignore error */ mzero
+
+        def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = /* do not merge branches, but continue non-deterministically */
+            MonadStateT((s) => ReaderT((e) => x.run(s).runReader(e) ++ y.run(s).runReader(e)))
+
+        def mzero[X]: EvalM[X] = lift(ReaderT.lift(Set()))
+
+        def getEnv: EvalM[Environment[Address]] =
+            lift(ReaderT.ask)
+
+        def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => EvalM[X]): EvalM[X] =
+            MonadStateT((s) => ReaderT.local(f)(ev.run(s)))
 
 /* Convience implementation of a flow sensitive analysis */
 class SimpleFlowSensitiveAnalysis(exp: SchemeExp)
@@ -142,14 +174,17 @@ class SimpleFlowSensitiveAnalysis(exp: SchemeExp)
     with StandardSchemeModFAllocator
     with FIFOWorklistAlgorithm[SchemeExp]
     with SchemeConstantPropagationDomain
-    with SimpleFlowSensitiveAnalysisMonad:
+    with SimpleFlowSensitiveAnalysisMonad
+    with SchemeSetup:
 
-    override def store: Map[Address, Value] = ???
-    override def store_=(store: Map[Address, Value]): Unit = ???
+    override def baseEnv: Env = initialEnv
+    override protected def baseStore: LocalStore[Address, Value] =
+        given lat: Lattice[Value] = this.lattice
+        given shouldCount: (Addr => Boolean) = ((_) => false)
+        LocalStore.from[Address, Value](store)
 
-    override def baseEnv: Env = ???
-    override def initialComponent: Component = ???
+    override def initialComponent: Component =
+        FlowSensitiveComponent(SchemeModFComponent.Main, baseStore)
 
     override def intraAnalysis(component: Component): FlowSensitiveIntra =
-        new IntraAnalysis(component) with FlowSensitiveIntra:
-            override protected def initialState: EvalM[Unit] = ???
+        new IntraAnalysis(component) with FlowSensitiveIntra

@@ -28,6 +28,9 @@ trait AnalysisEntry[Exp <: Expression]:
     /** The name of the program under analysis (if available) */
     def name: Option[String] = None
 
+    /** The result of the analysis, if any is available */
+    def result: Option[Any] = None
+
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some
  * utility functionality.
