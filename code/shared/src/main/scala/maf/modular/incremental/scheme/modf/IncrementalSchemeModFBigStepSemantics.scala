@@ -52,8 +52,8 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
             if configuration.cyclicValueInvalidation
             then
                 val a = LitAddr(exp)
-                val value = lattice.addAddress(super.evalLiteralValue(literal, exp), a)
-                if !lattice.isBottom(value) then intraProvenance += (a -> value) // We can just overwrite any previous value as it will be the same.
+                val value = lattice.addAddress(super.evalLiteralValue(literal, exp), a) // Attach the address to the value for flow tracking.
+                // if !lattice.isBottom(value) then intraProvenance += (a -> value) // We can just overwrite any previous value as it will be the same. REMARK This does not need to be added as we use it nowhere.
                 value
             else super.evalLiteralValue(literal, exp)
 
