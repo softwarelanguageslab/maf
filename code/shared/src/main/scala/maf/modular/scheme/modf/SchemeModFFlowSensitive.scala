@@ -21,6 +21,7 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.core.MonadStateT
 import maf.core.Monad
 import maf.core
+import maf.modular.Dependency
 
 trait TEvalMFlowSensitive[M[_], V: Lattice] extends TEvalM[M]:
     def getStore: M[LocalStore[Address, V]]
@@ -28,6 +29,9 @@ trait TEvalMFlowSensitive[M[_], V: Lattice] extends TEvalM[M]:
     def read(addr: Address): M[V]
     def putStore(lstore: LocalStore[Address, V]): M[Unit]
     def runForValue[T](init: LocalStore[Address, V], initialEnv: Environment[Address], m: M[T]): scala.collection.immutable.Set[T]
+
+    /** Runs the given impure computation inside the monad */
+    def impure[X](f: => X): M[X]
 
 trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
     type Component = FlowSensitiveComponent
@@ -53,6 +57,11 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
 
     override protected def newComponentM(call: Call[ComponentContext]): EvalM[Component] =
         evalM.getStore.map(store => FlowSensitiveComponent(call, store))
+
+    // override the "result" method such that the resulting local stores are used
+    override def result: Option[Value] =
+        val init = initialComponent
+        componentStores.get(init).flatMap(_.lookup(returnAddr(init)))
 
     override def intraAnalysis(component: Component): FlowSensitiveIntra
 
@@ -90,14 +99,21 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
         override def readAddr(addr: Addr): Value =
             throw new Exception("global store reads are not supported")
 
+        override def doWrite(dep: Dependency): Boolean = dep match
+            case maf.modular.AddrDependency(adr) => true
+            case _                               => super.doWrite(dep)
+
         // Read and writes are
         override protected def read(adr: Addr): EvalM[Value] =
             register(maf.modular.AddrDependency(adr))
             evalM.read(adr)
 
         override protected def write(adr: Addr, v: Value): EvalM[Unit] =
-            trigger(maf.modular.AddrDependency(adr))
-            evalM.write(adr, v)
+            given b: (Address => Boolean) = (_) => false
+            // Check whether the final component store has a value that subsumes the to-write value
+            val prior = componentStores.get(component).getOrElse(LocalStore.empty).lookup(adr).getOrElse(lattice.bottom)
+            (if !lattice.subsumes(prior, v) then evalM.impure(trigger(maf.modular.AddrDependency(adr)))
+             else evalM.unit(())) >>> evalM.write(adr, v)
 
         // Override the afterCall function in order to inject the local store into the monad
         override protected def afterCall(vlu: Value, cmp: Component, cll: Position): EvalM[Value] =
@@ -153,12 +169,15 @@ trait SimpleFlowSensitiveAnalysisMonad extends SchemeModFFlowSensitive:
         def runForValue[V](init: LocalStore[Address, Value], initialEnv: Environment[Address], m: EvalM[V]): scala.collection.immutable.Set[V] =
             m.runValue(AnalysisState(init)).runReader(initialEnv)
 
-        def fail[X](err: core.Error): EvalM[X] = /* ignore error */ mzero
+        def fail[X](err: core.Error): EvalM[X] =
+            /* ignore error */
+            mzero
 
         def merge[X: Lattice](x: EvalM[X], y: EvalM[X]): EvalM[X] = /* do not merge branches, but continue non-deterministically */
             MonadStateT((s) => ReaderT((e) => x.run(s).runReader(e) ++ y.run(s).runReader(e)))
 
-        def mzero[X]: EvalM[X] = lift(ReaderT.lift(Set()))
+        def mzero[X]: EvalM[X] =
+            lift(ReaderT.lift(Set()))
 
         def getEnv: EvalM[Environment[Address]] =
             lift(ReaderT.ask)
@@ -172,13 +191,13 @@ class SimpleFlowSensitiveAnalysis(exp: SchemeExp)
     with SchemeModFFlowSensitive
     with SchemeModFNoSensitivity
     with StandardSchemeModFAllocator
-    with FIFOWorklistAlgorithm[SchemeExp]
-    with SchemeConstantPropagationDomain
     with SimpleFlowSensitiveAnalysisMonad
-    with SchemeSetup:
+    with SchemeSetup
+    with SchemeConstantPropagationDomain
+    with FIFOWorklistAlgorithm[SchemeExp]:
 
     override def baseEnv: Env = initialEnv
-    override protected def baseStore: LocalStore[Address, Value] =
+    override lazy val baseStore: LocalStore[Address, Value] =
         given lat: Lattice[Value] = this.lattice
         given shouldCount: (Addr => Boolean) = ((_) => false)
         LocalStore.from[Address, Value](store)
