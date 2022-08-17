@@ -4,6 +4,7 @@ import maf.core.IdentityMonad.Id
 import maf.util.LogOps
 import maf.util.Logger
 import maf.util.Show
+import maf.core.monad.MonadLift
 
 //
 // Monad
@@ -185,6 +186,10 @@ object MonadStateT:
     import maf.core.Monad.MonadSyntaxOps
     def apply[S, M[_]: Monad, A](run: S => M[(A, S)]): MonadStateT[S, M, A] =
         new MonadStateT(run)
+
+    given monadLift[S]: MonadLift[[M[_], A] =>> MonadStateT[S, M, A]] with
+        def lift[M[_]: Monad, A](m: M[A]): MonadStateT[S, M, A] =
+            MonadStateT((s) => Monad[M].map(m)(v => (v, s)))
 
     given stateInstance[S, M[_]: Monad]: StateOps[S, [A] =>> MonadStateT[S, M, A]] with
         private type SM[A] = MonadStateT[S, M, A]
