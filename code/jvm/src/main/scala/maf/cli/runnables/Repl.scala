@@ -24,11 +24,13 @@ object Repl:
     """.stripMargin
 
     private val configurationsHelp: Map[String, String] = Map(
-      "modfFS" -> "Flow sensitive ModF"
+      "modfFS" -> "Flow sensitive ModF",
+      "ci" -> "context-insensitive analysis"
     )
 
     private val configurations: Map[String, (SchemeExp) => AnalysisEntry[SchemeExp]] = Map(
-      "modfFS" -> SchemeAnalyses.modFFlowSensitive
+      "modfFS" -> SchemeAnalyses.modFFlowSensitive,
+      "ci" -> SchemeAnalyses.contextInsensitiveAnalysis
     )
 
     private def printHelp(): Unit =
