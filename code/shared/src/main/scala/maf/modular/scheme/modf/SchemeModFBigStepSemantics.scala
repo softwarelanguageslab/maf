@@ -114,7 +114,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
                 for
                     extEnv <- getEnv
                     _ <- bindings.mapM_ { case (id, exp) =>
-                        eval(exp).map(value => assign(id, extEnv, value))
+                        eval(exp).flatMap(value => assign(id, extEnv, value))
                     }
                     res <- evalSequence(body)
                 yield res
