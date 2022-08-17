@@ -162,6 +162,10 @@ object SchemeAnalyses:
             with SchemeModFLocalAnalysisResults:
             override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
 
+    // Flow sensitive analysis
+    def modFFlowSensitive(prg: SchemeExp) =
+        new SimpleFlowSensitiveAnalysis(prg)
+
     /**
      * SCV analysis with Racket features:
      *

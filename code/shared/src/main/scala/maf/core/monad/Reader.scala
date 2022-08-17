@@ -25,3 +25,7 @@ object ReaderT:
 
     def lift[M[_], T, A](m: M[A]): ReaderT[M, T, A] =
         ReaderT((_) => m)
+
+    given readerLift[R]: MonadLift[[M[_], A] =>> ReaderT[M, R, A]] with
+        def lift[M[_]: Monad, A](m: M[A]): ReaderT[M, R, A] =
+            ReaderT.lift(m)
