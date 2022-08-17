@@ -188,9 +188,9 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         if mode != Summary && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
-    override def refineSCA(newIncoming: Map[Addr, (Value, Set[Addr])]): Unit =
-        if mode != Summary then logger.log(s"RSCA ${newIncoming.keySet.mkString("{",", ","}")}")
-        super.refineSCA(newIncoming)
+    override def refineSCA(sca: SCA): Unit =
+        if mode != Summary then logger.log(s"RSCA ${sca.mkString("{",", ","}")}")
+        super.refineSCA(sca)
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreCYIntraAnalysis:
         intra =>
