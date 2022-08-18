@@ -72,7 +72,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
         oldDataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                oldFlowsR = oldFlowsR + (write -> (flowsR(write) ++ reads))
+                oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
             }
         }
         oldFlowsR.exists { case (w, rs) =>
@@ -93,7 +93,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                   dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
                   acc
             }
-            // Refine the store.
+            // Refine the store. TODO remove when v is bottom!
             store += (a -> v)
             // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
             // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
