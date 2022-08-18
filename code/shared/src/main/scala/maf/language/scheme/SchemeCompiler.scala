@@ -5,7 +5,7 @@ import maf.language.sexp._
 
 /** Trait that provides a method to compile an s-expression into a standard Scheme expression. */
 trait BaseSchemeCompiler:
-    class SchemeCompilerException(reason: String, position: Identity) extends Exception(reason)
+    class SchemeCompilerException(reason: String, position: Identity) extends Exception(s"$reason (${position.pos})")
     import scala.util.control.TailCalls._
 
     /** Reserved keywords */
