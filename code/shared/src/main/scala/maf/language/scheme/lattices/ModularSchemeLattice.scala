@@ -31,6 +31,190 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X], Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
 
+    type NoExtract = Nothing
+    type NoInject = Nothing
+
+    trait AbstractType[T, W]:
+        type Extract
+        type Inject
+        type Abstract = T
+
+        def inject(v: Inject): Abstract = throw new Exception("injection not possible")
+        def extract(v: Abstract): Extract = throw new Exception("extraction not possible")
+        val lattice: Lattice[Abstract]
+        def wrap: (T => W)
+
+    trait AbstractSetType[T, W] extends AbstractType[Set[T], W]:
+        type Extract = Set[T]
+        type Inject = T
+        override def inject(v: Inject): Abstract = Set(v)
+        override def extract(v: Abstract): Extract = v
+        given Show[T] with
+            def show(v: T): String = v.toString
+        val lattice: Lattice[Abstract] = Lattice.setLattice
+
+    trait AbstractWrapType[T: Lattice, W] extends AbstractType[T, W]:
+        type Extract = NoExtract
+        val lattice: Lattice[Abstract] = summon[Lattice[T]]
+
+    object StrT extends AbstractWrapType[S, Str]:
+        type Inject = String
+        override def inject(v: Inject): Abstract = StringLattice[S].inject(v)
+        def wrap = Str.apply
+
+    object BoolT extends AbstractWrapType[B, Bool]:
+        type Inject = Boolean
+        override def inject(v: Inject): Abstract = BoolLattice[B].inject(v)
+        def wrap = Bool.apply
+
+    object RealT extends AbstractWrapType[R, Real]:
+        type Inject = Double
+        override def inject(v: Inject): Abstract = RealLattice[R].inject(v)
+        def wrap = Real.apply
+
+    object CharT extends AbstractWrapType[C, Char]:
+        type Inject = scala.Char
+        override def inject(v: scala.Char): Abstract = CharLattice[C].inject(v)
+        def wrap = Char.apply
+
+    object SymbolT extends AbstractWrapType[Sym, Symbol]:
+        type Inject = String
+        override def inject(v: String): Abstract = SymbolLattice[Sym].inject(v)
+        def wrap = Symbol.apply
+
+    object PrimT extends AbstractSetType[String, Prim]:
+        def wrap = Prim.apply
+
+    object CloT extends AbstractSetType[schemeLattice.Closure, Clo]:
+        def wrap = Clo.apply
+
+    object NilT extends AbstractType[Unit, Nil.type]:
+        type Extract = NoExtract
+        type Inject = NoInject
+        def wrap = (_) => Nil
+        val lattice: Lattice[Abstract] = Lattice.UnitLattice
+
+    object PointerT extends AbstractSetType[A, Pointer]:
+        def wrap = Pointer.apply
+
+    object ConsT extends AbstractType[(L, L), Cons]:
+        type Extract = NoExtract
+        type Inject = NoInject
+
+        def wrap = Cons.apply.tupled
+
+        // TODO: this in ad-hoc lattice, we should make a PairLattice instead somewhere
+        val lattice: Lattice[Abstract] = new Lattice[Abstract] {
+            def show(v: (L, L)): String = s"(${v._1},${v._2})"
+            def top = throw LatticeTopUndefined
+            def bottom = (schemeLattice.bottom, schemeLattice.bottom)
+            def join(x: (L, L), y: => (L, L)): (L, L) =
+                (schemeLattice.join(x._1, y._1), schemeLattice.join(x._2, y._2))
+            def subsumes(x: (L, L), y: => (L, L)): Boolean =
+                (schemeLattice.subsumes(x._1, y._1) && schemeLattice.subsumes(x._2, y._2))
+            def eql[B: BoolLattice](x: (L, L), y: (L, L)): B = ???
+        }
+
+    object VecT extends AbstractType[Vec, Vec]:
+        type Inject = NoInject
+        type Extract = NoExtract
+        def wrap = (v) => v
+        // TODO: ad-hoc implementation, should create a VectorLattice
+        val lattice: Lattice[Vec] = new Lattice[Vec] {
+            def show(v: Vec) = v.toString
+            def top = throw LatticeTopUndefined
+            def bottom = ???
+            def join(x: Vec, y: => Vec): Vec =
+                val size1 = x.size
+                val size2 = y.size
+                val els1 = x.elements
+                val els2 = y.elements
+                // First, joins the size
+                val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty)
+                // Then, joins elements by adding (with vector-set!) all elements of els1 and then els2 inside the new vector
+                val vWithEls1Joined = els1.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) =>
+                    Value.vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
+                        case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
+                    }
+                })
+                val vWithEls2Joined = els2.foldLeft(vWithEls1Joined)({ case (acc, (k, v)) =>
+                    Value.vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
+                        case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
+                    }
+                })
+                vWithEls2Joined
+            def subsumes(x: Vec, y: => Vec): Boolean =
+                val siz1 = x.size
+                val siz2 = y.size
+                val els1 = x.elements
+                val els2 = y.elements
+                IntLattice[I].subsumes(siz1, siz2) &&
+                els2.forall { case (idx2, vlu2) =>
+                    els1.exists { case (idx1, vlu1) =>
+                        IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
+                    }
+                }
+            def eql[B: BoolLattice](x: Vec, y: Vec): B = ???
+        }
+
+    object KontT extends AbstractSetType[K, Kont]:
+        def wrap = Kont.apply
+
+    object ThreadT extends AbstractSetType[TID, Thread]:
+        def wrap = Thread.apply
+
+    object LockT extends AbstractSetType[TID, Lock]:
+        def wrap = Lock.apply
+
+    object VoidT extends AbstractType[Unit, Void.type]:
+        type Extract = NoExtract
+        type Inject = NoInject
+        def wrap = (_) => Void
+        val lattice: Lattice[Abstract] = Lattice.UnitLattice
+
+    object InputPortT extends AbstractWrapType[L, InputPort](using L.lattice):
+        type Extract = NoExtract
+        type Inject = NoInject
+        def wrap = InputPort.apply
+
+    object OutputPortT extends AbstractWrapType[L, OutputPort](using L.lattice):
+        type Extract = NoExtract
+        type Inject = NoInject
+        def wrap = OutputPort.apply
+
+    object BlameT extends AbstractSetType[Blame, Blames]:
+        def wrap = Blames.apply
+
+    object GrdT extends AbstractSetType[Grd[L], Grds]:
+        def wrap = Grds.apply
+
+    object Arrs extends AbstractSetType[Arr[L], Arrs]:
+        def wrap = Arrs.apply
+
+    object FlatT extends AbstractSetType[Flat[L], Flats]:
+        def wrap = Flats.apply
+
+    object OpqT extends AbstractSetType[Opq, Opqs]:
+        def wrap = Opqs.apply
+
+    object StructT extends AbstractSetType[Struct[L], Structs]:
+        def wrap = Structs.apply
+
+    object StructSetterGetterT extends AbstractSetType[StructSetterGetter, StructSetterGetters]:
+        def wrap = StructSetterGetters.apply
+
+    object StructConstructorT extends AbstractSetType[StructConstructor, StructConstructors]:
+        def wrap = StructConstructors.apply
+
+    object StructPredicateT extends AbstractSetType[StructPredicate, StructPredicates]:
+        def wrap = StructPredicates.apply
+
+    object ActorT extends AbstractSetType[Actor, Actors]:
+        def wrap = Actors.apply
+
+    object FutureT extends AbstractSetType[Future, Futures]:
+        def wrap = Futures.apply
+
     /**
      * We first implement all possible operations on single values, that can be only joined when compatible. This therefore is not a lattice but will
      * be used to build the set lattice
@@ -38,18 +222,22 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     sealed trait Value extends SmartHash:
         def ord: scala.Int
         def typeName: String // Can be used to print information on values.
+
     case class Str(s: S) extends Value:
         def ord = 0
         def typeName = "STRG"
         override def toString: String = StringLattice[S].show(s)
+
     case class Bool(b: B) extends Value:
         def ord = 1
         def typeName = "BOOL"
         override def toString: String = BoolLattice[B].show(b)
+
     case class Int(i: I) extends Value:
         def ord = 2
         def typeName = "INTE"
         override def toString: String = IntLattice[I].show(i)
+
     case class Real(r: R) extends Value:
         def ord = 3
         def typeName = "REAL"
@@ -78,14 +266,17 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def ord = 8
         def typeName = "NULL"
         override def toString: String = "()"
+
     case class Pointer(ptrs: Set[A]) extends Value:
         def ord = 9
         def typeName = "PNTR"
         override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
+
     case class Cons(car: L, cdr: L) extends Value:
         def ord = 10
         def typeName = "CONS"
         override def toString: String = s"($car . $cdr)"
+
     case class Vec(size: I, elements: Map[I, L]) extends Value:
         def ord = 11
         def typeName = "VECT"
@@ -96,6 +287,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 })
                 .mkString(", ")
             s"Vector(size: $size, elems: {$els})"
+
     case class Kont(k: Set[K]) extends Value:
         def ord = 12
         def typeName = "KONT"
@@ -116,11 +308,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def ord = 15
         def typeName = "VOID"
         override def toString: String = "<void>"
-    case class InputPort(id: Value) extends Value:
+    case class InputPort(id: L) extends Value:
         def ord = 16
         def typeName = "IPRT"
         override def toString: String = s"InputPort{$id}"
-    case class OutputPort(id: Value) extends Value:
+    case class OutputPort(id: L) extends Value:
         def ord = 17
         def typeName = "OPRT"
         override def toString: String = s"OutputPort{$id}"
@@ -223,8 +415,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Thread(t1), Thread(t2))                           => Thread(sunion(t1, t2))
             case (Lock(l1), Lock(l2))                               => Lock(sunion(l1, l2))
             case (Void, Void)                                       => Void
-            case (InputPort(l1), InputPort(l2))                     => InputPort(join(l1, l2))
-            case (OutputPort(l1), OutputPort(l2))                   => OutputPort(join(l1, l2))
+            case (InputPort(l1), InputPort(l2))                     => InputPort(schemeLattice.join(l1, l2))
+            case (OutputPort(l1), OutputPort(l2))                   => OutputPort(schemeLattice.join(l1, l2))
             case (Blames(l1), Blames(l2))                           => Blames(sunion(l1, l2))
             case (Arrs(l1), Arrs(l2))                               => Arrs(sunion(l1, l2))
             case (Grds(l1), Grds(l2))                               => Grds(sunion(l1, l2))
@@ -263,8 +455,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                             }
                     case (Thread(t1), Thread(t2))                           => t2.subsetOf(t1)
                     case (Lock(l1), Lock(l2))                               => l2.subsetOf(l1)
-                    case (InputPort(l1), InputPort(l2))                     => subsumes(l1, l2)
-                    case (OutputPort(l1), OutputPort(l2))                   => subsumes(l1, l2)
+                    case (InputPort(l1), InputPort(l2))                     => schemeLattice.subsumes(l1, l2)
+                    case (OutputPort(l1), OutputPort(l2))                   => schemeLattice.subsumes(l1, l2)
                     case (Blames(l1), Blames(l2))                           => l2.subsetOf(l1)
                     case (Arrs(l1), Arrs(l2))                               => l2.subsetOf(l1)
                     case (Grds(l1), Grds(l2))                               => l2.subsetOf(l1)
@@ -525,8 +717,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                     args(0) match
                         case Char(c) => MayFail.success(Bool(CharLattice[C].isUpper(c)))
                         case _       => MayFail.failure(OperatorNotApplicable("char-upper-case?", args))
-                case MakeInputPort  => MayFail.success(InputPort(args(0)))
-                case MakeOutputPort => MayFail.success(OutputPort(args(0)))
                 case Plus =>
                     (args(0), args(1)) match
                         case (Int(n1), Int(n2))   => MayFail.success(Int(IntLattice[I].plus(n1, n2)))
@@ -814,8 +1004,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
         def refs(x: Value): Set[Address] = x match
             case Bool(_) | Char(_) | Int(_) | Real(_) | Str(_) | Symbol(_) | Prim(_) | Void | Nil | Blames(_) => Set.empty
-            case InputPort(id)                                                                                => refs(id)
-            case OutputPort(id)                                                                               => refs(id)
+            case InputPort(id)                                                                                => schemeLattice.refs(id)
+            case OutputPort(id)                                                                               => schemeLattice.refs(id)
             case Thread(_) | Lock(_) | Kont(_) => ??? // TODO: don't know enough about these types to compute refs
             case Pointer(ptrs)                 => ptrs.toSet[Address]
             case Cons(car, cdr)                => sunion(schemeLattice.refs(car), schemeLattice.refs(cdr))
@@ -903,7 +1093,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         case _ => Value.op(op)(argsv).map(x => Element(x))
             op.checkArity(args)
             op match
-                case SchemeOp.MakeVector =>
+                case SchemeOp.MakeInputPort  => MayFail.success(Element(InputPortT.wrap(args(0))))
+                case SchemeOp.MakeOutputPort => MayFail.success(Element(OutputPortT.wrap(args(0))))
+                case SchemeOp.MakeVector     =>
                     /* Treated as a special case because args(1) can be bottom (this would be a valid use of MakeVector) */
                     args(0).foldMapL(arg0 => Value.vector(arg0, args(1)).map(v => Element(v)))
                 case _ => fold(args, List())
