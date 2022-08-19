@@ -20,7 +20,8 @@ import maf.language.AScheme.ASchemeValues.Future
  */
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
-    extends Serializable:
+    extends Serializable
+    with SchemeLattice[HMap, A]:
 
     trait ModularSchemeConvertor[BaseAddr <: Address, V]:
         def convertAddr(addr: Address): BaseAddr
@@ -932,6 +933,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     }
     implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
+    // TODO: field SchemeLattice only exists for backwards compability reasons, but for the sake of simplification should also be removed, and the methods be included within the class itself
     val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] { lat =>
         def show(x: L): String = x.toString /* TODO[easy]: implement better */
         def isTrue(x: L): Boolean = x.elements[Value].foldMap(Value.isTrue(_))(boolOrMonoid)
@@ -1066,6 +1068,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case Lock(tids)   => baseDomain.Lock(tids)
             case Thread(tids) => baseDomain.Thread(tids)
             case v            => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
+
+    // Make this an instance of SchemeLattice
+    export L.lattice.*
 
     object L:
         implicit val lattice: SchemeLattice[L, A] = schemeLattice
