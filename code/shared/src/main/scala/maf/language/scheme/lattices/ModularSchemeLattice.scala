@@ -217,51 +217,42 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
      * be used to build the set lattice
      */
     sealed trait Value extends SmartHash:
-        def ord: scala.Int
         val tpy: HMapKey
         def typeName: String // Can be used to print information on values.
 
     case class Str(s: S) extends Value, Product1[S]:
-        def ord = 0
         val tpy = StrT
         def typeName = "STRG"
         override def toString: String = StringLattice[S].show(s)
 
     case class Bool(b: B) extends Value, Product1[B]:
-        def ord = 1
         def typeName = "BOOL"
         val tpy = BoolT
         override def toString: String = BoolLattice[B].show(b)
 
     case class Int(i: I) extends Value, Product1[I]:
-        def ord = 2
         def typeName = "INTE"
         val tpy = IntT
         override def toString: String = IntLattice[I].show(i)
 
     case class Real(r: R) extends Value, Product1[R]:
-        def ord = 3
         def typeName = "REAL"
         val tpy = RealT
         override def toString: String = RealLattice[R].show(r)
     case class Char(c: C) extends Value, Product1[C]:
-        def ord = 4
         def typeName = "CHAR"
         val tpy = CharT
         override def toString: String = CharLattice[C].show(c)
     case class Symbol(s: Sym) extends Value, Product1[Sym]:
-        def ord = 5
         def typeName = "SYMB"
         val tpy = SymbolT
         override def toString: String = SymbolLattice[Sym].show(s)
     case class Prim(prims: Set[String]) extends Value, Product1[Set[String]]:
-        def ord = 6
         def typeName = "PRIM"
         val tpy = PrimT
         override def toString: String = prims.mkString("Primitive{", ", ", "}")
     // TODO: define `type Closure = (SchemeLambdaExp, Env)` (maybe using a case class)
     case class Clo(closures: Set[schemeLattice.Closure]) extends Value, Product1[Set[schemeLattice.Closure]]:
-        def ord = 7
         def typeName = "CLOS"
         val tpy = CloT
         override def toString: String =
@@ -269,25 +260,21 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 .map(_._1.lambdaName)
                 .mkString("Closures{", ", ", "}")
     case object Nil extends Value:
-        def ord = 8
         def typeName = "NULL"
         val tpy = NilT
         override def toString: String = "()"
 
     case class Pointer(ptrs: Set[A]) extends Value, Product1[Set[A]]:
-        def ord = 9
         def typeName = "PNTR"
         val tpy = PointerT
         override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
 
     case class Cons(car: L, cdr: L) extends Value:
-        def ord = 10
         def typeName = "CONS"
         val tpy = ConsT
         override def toString: String = s"($car . $cdr)"
 
     case class Vec(size: I, elements: Map[I, L]) extends Value:
-        def ord = 11
         def typeName = "VECT"
         val tpy = VecT
         override def toString: String =
@@ -299,12 +286,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             s"Vector(size: $size, elems: {$els})"
 
     case class Kont(k: Set[K]) extends Value, Product1[Set[K]]:
-        def ord = 12
         def typeName = "KONT"
         val tpy = KontT
         override def toString: String = "<continuation>"
     case class Thread(threads: Set[TID]) extends Value, Product1[Set[TID]]:
-        def ord = 13
         val tpy = ThreadT
         def typeName = "THRD"
         override def toString: String = threads.mkString("Thread{", ", ", "}")
@@ -312,93 +297,77 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     // An empty set indicates the lock is not held, but a non-empty set may also indicate this... (due to the monotonicity of the analysis, threads will only increase in size).
     // This should correspond to the formalisation of ModConc and \lambda_\tau.
     case class Lock(threads: Set[TID]) extends Value, Product1[Set[TID]]:
-        def ord = 14
         def typeName = "LOCK"
         val tpy = LockT
         override def toString: String = threads.mkString("Lock{", ", ", "}")
 
     case object Void extends Value:
-        def ord = 15
         def typeName = "VOID"
         val tpy = VoidT
         override def toString: String = "<void>"
     case class InputPort(id: L) extends Value, Product1[L]:
-        def ord = 16
         def typeName = "IPRT"
         val tpy = InputPortT
         override def toString: String = s"InputPort{$id}"
     case class OutputPort(id: L) extends Value, Product1[L]:
-        def ord = 17
         def typeName = "OPRT"
         val tpy = OutputPortT
         override def toString: String = s"OutputPort{$id}"
 
     case class Blames(blames: Set[Blame]) extends Value, Product1[Set[Blame]]:
-        def ord = 18
         def typeName = "BLAME"
         val tpy = BlameT
         override def toString: String = s"<blame: ${blames.map(_.toString).mkString(",")}>"
 
     case class Grds(grds: Set[Grd[L]]) extends Value, Product1[Set[Grd[L]]]:
-        def ord = 19
         def typeName = "GRD"
         val tpy = GrdT
         override def toString: String = s"<grd: ${grds.map(_.toString).mkString(",")}>"
 
     case class Arrs(arrs: Set[Arr[L]]) extends Value, Product1[Set[Arr[L]]]:
-        def ord = 20
         def typeName = "ARR"
         val tpy = ArrT
         override def toString: String = s"<arr: ${arrs.map(_.toString).mkString(",")}>"
 
     case class Flats(flats: Set[Flat[L]]) extends Value, Product1[Set[Flat[L]]]:
-        def ord = 21
         def typeName = "FLT"
         val tpy = FlatT
         override def toString: String = s"<flat: ${flats.map(_.toString).mkString(",")}>"
 
     case class Opqs(opqs: Set[Opq]) extends Value, Product1[Set[Opq]]:
-        def ord = 22
         def typeName = "OPQ"
         val tpy = OpqT
         override def toString: String = s"<opq>"
 
     case class Structs(structs: Set[Struct[L]]) extends Value, Product1[Set[Struct[L]]]:
-        def ord = 23
         def typeName = "STRUCT"
         val tpy = StructT
         override def toString: String = s"<struct: ${structs.map(_.tag).mkString(",")}>"
 
     case class StructSetterGetters(getterSetters: Set[StructSetterGetter]) extends Value, Product1[Set[StructSetterGetter]]:
-        def ord = 24
         def typeName = "STRUCTGETTERSETTER"
         val tpy = StructSetterGetterT
         override def toString: String = "<struct-getter-setter>"
 
     case class StructConstructors(constructors: Set[StructConstructor]) extends Value, Product1[Set[StructConstructor]]:
-        def ord = 25
         def typeName = "STRUCTCONSTRUCTOR"
         val tpy = StructConstructorT
         override def toString: String = "<struct-constructor>"
 
     case class StructPredicates(predicates: Set[StructPredicate]) extends Value, Product1[Set[StructPredicate]]:
-        def ord = 26
         def typeName = "STRUCTPREDICATE"
         val tpy = StructPredicateT
         override def toString: String = "<struct-predicate>"
 
     case class Actors(actors: Set[Actor]) extends Value, Product1[Set[Actor]]:
-        def ord = 27
         def typeName = "ACTOR"
         val tpy = ActorT
         override def toString: String = s"<actor {${actors.mkString(",")}}>"
     case class Behaviors(behs: Set[Behavior]) extends Value, Product1[Set[Behavior]]:
-        def ord = 28
         def typeName = "BEH"
         val tpy = BehaviorT
         override def toString: String = s"<behavior>"
     case class Futures(futures: Set[Future]) extends Value, Product1[Set[Future]]:
-        def ord = 29
         def typeName = "FUT"
         val tpy = FutureT
         override def toString: String = s"<future>"
@@ -1067,7 +1036,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case Void         => baseDomain.Void
             case Lock(tids)   => baseDomain.Lock(tids)
             case Thread(tids) => baseDomain.Thread(tids)
-            case v            => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
+            case v            => throw new Exception(s"Unsupported value type for conversion: ${v.typeName}.")
 
     // Make this an instance of SchemeLattice
     export L.lattice.*
