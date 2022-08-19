@@ -55,7 +55,7 @@ case class HMap(contents: Map[HMapKey, Any]):
 
     /** Get a value (if any) of the given type */
     def get(k: HMapKey)(using default: Default[k.Extract]): k.Extract =
-        this.contents.get(k).map(_.asInstanceOf[k.Abstract]).map(k.extract).getOrElse(default.default)
+        this.contents.get(k).map(_.asInstanceOf[k.Wrap]).map(k.unwrap andThen k.extract).getOrElse(default.default)
 
     def getAbstract(k: HMapKey): k.Abstract =
         this.contents.get(k).map(_.asInstanceOf[k.Wrap]).map(k.unwrap).getOrElse(k.lattice.bottom)
