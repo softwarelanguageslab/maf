@@ -132,6 +132,8 @@ class SchemeLatticeTests[L](gen: SchemeLatticeGenerator[L])(implicit val schemeL
     }
     checkAll(schemeLaws)
 
-class ConcreteSchemeLatticeTests extends SchemeLatticeTests(ConcreteModularSchemeLattice.SchemeValueLatticeGenerator)
-class ConstantSchemeLatticeTests extends SchemeLatticeTests(ConstantModularSchemeLattice.SchemeValueLatticeGenerator)
-class TypeSchemeLatticeTests extends SchemeLatticeTests(TypeModularSchemeLattice.SchemeValueLatticeGenerator)
+class ConcreteSchemeLatticeTests
+    extends SchemeLatticeTests(ConcreteModularSchemeLattice.SchemeValueLatticeGenerator)(using ConcreteModularSchemeLattice.valLat)
+class ConstantSchemeLatticeTests
+    extends SchemeLatticeTests(ConstantModularSchemeLattice.SchemeValueLatticeGenerator)(using ConstantModularSchemeLattice.valLat)
+class TypeSchemeLatticeTests extends SchemeLatticeTests(TypeModularSchemeLattice.SchemeValueLatticeGenerator)(using TypeModularSchemeLattice.valLat)
