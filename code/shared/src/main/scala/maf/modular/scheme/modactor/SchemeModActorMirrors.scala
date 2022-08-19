@@ -20,7 +20,7 @@ object MirrorValues:
     case class Mirror[Ref](name: String, tid: Ref)
 
 /** Monad for supporting actor operaton */
-trait ActorEvalM[M[_], ActorRef, V] extends TEvalM[M]:
+trait ActorEvalM[M[_], Context, ActorRef, V] extends TEvalM[M]:
     /**
      * Send a message to the given actor
      *
@@ -40,11 +40,21 @@ trait ActorEvalM[M[_], ActorRef, V] extends TEvalM[M]:
      *   the message itself
      * @param sender
      *   the sender of the message
+     * @param context
+     *   the analysis context in which the ask messages should be sent
+     * @param idn
+     *   a location associated with the send
      * @return
      *   the value that was the result of the ask pattern, if a suitable lattice is available, "bottom" can be used to signal that the value is not
      *   yet available, or mzero can be returned to stop the analysis until the value becomes available.
      */
-    def ask(to: ActorRef, tag: String, ags: List[V], sender: ActorRef): M[V]
+    def ask(
+        to: ActorRef,
+        tag: String,
+        ags: List[V],
+        sender: ActorRef,
+        context: Context,
+      ): M[V]
 
     /** Create an actor */
     def create(beh: Behavior, ags: List[V], idn: Identity): M[ActorRef]
@@ -70,7 +80,7 @@ trait ActorEvalM[M[_], ActorRef, V] extends TEvalM[M]:
  * @tparam V
  *   the type of abstract values
  */
-trait MetaEvalM[M[_], ActorRef, V] extends ActorEvalM[M, ActorRef, V]:
+trait MetaEvalM[M[_], Context, ActorRef, V] extends ActorEvalM[M, Context, ActorRef, V]:
 
     /**
      * Installs the given mirror for the given actor in the actor system
@@ -102,7 +112,10 @@ trait MetaEvalM[M[_], ActorRef, V] extends ActorEvalM[M, ActorRef, V]:
  */
 trait SchemeModActorMirrors[ActorRef <: AID, Beh] extends BigStepModFSemanticsT:
     override def intraAnalysis(component: Component): IntraMirrorAnalysis
-    implicit override val evalM: MetaEvalM[EvalM, ActorRef, Value]
+    implicit override val evalM: MetaEvalM[EvalM, MirrorContext, ActorRef, Value]
+
+    protected type MirrorContext
+    protected def allocMirrorCtx(baseContext: Option[ComponentContext], sendIdentity: Identity): MirrorContext
 
     trait IntraMirrorAnalysis extends BigStepModFIntraT:
         private def intercept(f: MirrorValues.Mirror[ActorRef] => EvalM[Value])(otherwise: EvalM[Value]): EvalM[Value] =
@@ -113,9 +126,23 @@ trait SchemeModActorMirrors[ActorRef <: AID, Beh] extends BigStepModFSemanticsT:
                 }
             )
 
+        /**
+         * Auxilary function that works like evalM.ask but also allocates a mirror context based on the context of the current component
+         *
+         * @param actorRef
+         *   the receiver of the message
+         * @param ags
+         *   the list of arguments that should be containing within the message
+         * @param idn
+         *   the location of the send, can be used for deciding on the mirror context
+         */
+        private def mirrorAsk(actorRef: ActorRef, tag: String, ags: List[Value], sender: ActorRef, idn: Identity): EvalM[Value] =
+            val ctx = allocMirrorCtx(context(component), idn)
+            evalM.ask(actorRef, tag, ags, sender, ctx)
+
         private def interceptCreate(beh: Value, ags: List[Value], idn: Identity): EvalM[Value] = intercept { mirror =>
             // TODO: actually put the arguments in a scheme list. Figure out a precise allocation scheme for this.
-            evalM.selfActor.flatMap(self => evalM.ask(mirror.tid, "create", beh :: ags, self))
+            evalM.selfActor.flatMap(self => mirrorAsk(mirror.tid, "create", beh :: ags, self, idn))
         } /* otherwise */ {
             // base behavior
             evalM.merge(
@@ -146,7 +173,7 @@ trait SchemeModActorMirrors[ActorRef <: AID, Beh] extends BigStepModFSemanticsT:
                     evaluatedActor <- eval(actorRef)
                     evaluatedAgs <- Monad.sequence(ags.map(eval))
                     self <- evalM.selfActor
-                    result <- intercept { mirror => evalM.ask(mirror.tid, "send", evaluatedActor :: evaluatedAgs, self) } /* otherwise */ {
+                    result <- intercept { mirror => mirrorAsk(mirror.tid, "send", evaluatedActor :: evaluatedAgs, self, idn) } /* otherwise */ {
                         evalM.sendMessage(evaluatedActor, tag, evaluatedAgs)
                     }
                 yield result
@@ -164,7 +191,7 @@ trait SchemeModActorMirrors[ActorRef <: AID, Beh] extends BigStepModFSemanticsT:
                         for
                             self <- evalM.selfActor
                             env <- evalM.getEnv
-                            lam <- evalM.ask(mirror.tid, "receive", List(msg, reifyHandler(pars, bdy, env)), self)
+                            lam <- mirrorAsk(mirror.tid, "receive", List(msg, reifyHandler(pars, bdy, env)), self, idn)
                             result <- applyThunk(lam, idn)
                         yield result
                     } /* otherwise */ { evalM.withEnvM(env => bind(pars.zip(ags).toList, env)) { Monad.sequence(bdy.map(eval)).map(_.last) } }
