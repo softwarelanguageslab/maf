@@ -54,7 +54,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case analysis.modularLatticeWrapper.modularLattice.Void         => baseDomain.Void
         case analysis.modularLatticeWrapper.modularLattice.Lock(tids)   => baseDomain.Lock(tids)
         case analysis.modularLatticeWrapper.modularLattice.Thread(tids) => baseDomain.Thread(tids)
-        case v => throw new Exception(s"Unsupported value type for conversion: ${v.typeName}.")
+        case v                                                          => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
     protected def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match
         case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))

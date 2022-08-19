@@ -173,7 +173,7 @@ class IncrementalModularSchemeLattice[
             var table = Table.empty.withDefaultValue("")
             def insertList(name: String, values: List[Value]): Unit =
                 values.foreach { v =>
-                    if v.typeName == "PNTR" then // Pointers.
+                    if v.ord == 9 then // Pointers.
                         val ptrs = v
                             .asInstanceOf[Pointer]
                             .ptrs
