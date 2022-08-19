@@ -1,6 +1,8 @@
 package maf.language.scheme.lattices
 
 import maf.core._
+import maf.lattice.{AbstractSetType, AbstractType, AbstractWrapType, HMap, HMapKey, NoExtract, NoInject}
+import maf.util.MonoidImplicits.*
 import maf.language.CScheme.TID
 import maf.language.ContractScheme.ContractValues._
 import maf.language.AScheme.ASchemeValues.{Actor, Behavior}
@@ -31,32 +33,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X], Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
 
-    type NoExtract = Nothing
-    type NoInject = Nothing
-
-    trait AbstractType[T, W]:
-        type Extract
-        type Inject
-        type Abstract = T
-
-        def inject(v: Inject): Abstract = throw new Exception("injection not possible")
-        def extract(v: Abstract): Extract = throw new Exception("extraction not possible")
-        val lattice: Lattice[Abstract]
-        def wrap: (T => W)
-
-    trait AbstractSetType[T, W] extends AbstractType[Set[T], W]:
-        type Extract = Set[T]
-        type Inject = T
-        override def inject(v: Inject): Abstract = Set(v)
-        override def extract(v: Abstract): Extract = v
-        given Show[T] with
-            def show(v: T): String = v.toString
-        val lattice: Lattice[Abstract] = Lattice.setLattice
-
-    trait AbstractWrapType[T: Lattice, W] extends AbstractType[T, W]:
-        type Extract = NoExtract
-        val lattice: Lattice[Abstract] = summon[Lattice[T]]
-
     object StrT extends AbstractWrapType[S, Str]:
         type Inject = String
         override def inject(v: Inject): Abstract = StringLattice[S].inject(v)
@@ -66,6 +42,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         type Inject = Boolean
         override def inject(v: Inject): Abstract = BoolLattice[B].inject(v)
         def wrap = Bool.apply
+
+    object IntT extends AbstractWrapType[I, Int]:
+        type Inject = BigInt
+        override def inject(v: Inject): Abstract = IntLattice[I].inject(v)
+        def wrap = Int.apply
 
     object RealT extends AbstractWrapType[R, Real]:
         type Inject = Double
@@ -92,6 +73,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         type Extract = NoExtract
         type Inject = NoInject
         def wrap = (_) => Nil
+        def unwrap(v: Wrap) = ()
         val lattice: Lattice[Abstract] = Lattice.UnitLattice
 
     object PointerT extends AbstractSetType[A, Pointer]:
@@ -102,6 +84,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         type Inject = NoInject
 
         def wrap = Cons.apply.tupled
+        def unwrap(v: Wrap) = (v.car, v.cdr)
 
         // TODO: this in ad-hoc lattice, we should make a PairLattice instead somewhere
         val lattice: Lattice[Abstract] = new Lattice[Abstract] {
@@ -119,6 +102,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         type Inject = NoInject
         type Extract = NoExtract
         def wrap = (v) => v
+        def unwrap(v: Vec) = v
         // TODO: ad-hoc implementation, should create a VectorLattice
         val lattice: Lattice[Vec] = new Lattice[Vec] {
             def show(v: Vec) = v.toString
@@ -133,14 +117,18 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty)
                 // Then, joins elements by adding (with vector-set!) all elements of els1 and then els2 inside the new vector
                 val vWithEls1Joined = els1.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) =>
-                    Value.vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
-                        case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
-                    }
+                    // potentially unsafe, should really be improved
+                    Value
+                        .vectorSet(acc, Int(k), v)
+                        .map(v => v.get(VecT)(using Default.errorIfDefault))
+                        .getOrElse(throw new Exception("operation failed"))
                 })
                 val vWithEls2Joined = els2.foldLeft(vWithEls1Joined)({ case (acc, (k, v)) =>
-                    Value.vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
-                        case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
-                    }
+                    // potentially unsafe, should really be improved
+                    Value
+                        .vectorSet(acc, Int(k), v)
+                        .map(v => v.get(VecT)(using Default.errorIfDefault))
+                        .getOrElse(throw new Exception("operation failed"))
                 })
                 vWithEls2Joined
             def subsumes(x: Vec, y: => Vec): Boolean =
@@ -170,6 +158,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         type Extract = NoExtract
         type Inject = NoInject
         def wrap = (_) => Void
+        def unwrap(v: Wrap): Abstract = ()
         val lattice: Lattice[Abstract] = Lattice.UnitLattice
 
     object InputPortT extends AbstractWrapType[L, InputPort](using L.lattice):
@@ -184,6 +173,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     object BlameT extends AbstractSetType[Blame, Blames]:
         def wrap = Blames.apply
+
+    object ArrT extends AbstractSetType[Arr[L], Arrs]:
+        def wrap = Arrs.apply
 
     object GrdT extends AbstractSetType[Grd[L], Grds]:
         def wrap = Grds.apply
@@ -212,6 +204,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     object ActorT extends AbstractSetType[Actor, Actors]:
         def wrap = Actors.apply
 
+    object BehaviorT extends AbstractSetType[Behavior, Behaviors]:
+        def wrap = Behaviors.apply
+
     object FutureT extends AbstractSetType[Future, Futures]:
         def wrap = Futures.apply
 
@@ -221,43 +216,52 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
      */
     sealed trait Value extends SmartHash:
         def ord: scala.Int
+        val tpy: HMapKey
         def typeName: String // Can be used to print information on values.
 
-    case class Str(s: S) extends Value:
+    case class Str(s: S) extends Value, Product1[S]:
         def ord = 0
+        val tpy = StrT
         def typeName = "STRG"
         override def toString: String = StringLattice[S].show(s)
 
-    case class Bool(b: B) extends Value:
+    case class Bool(b: B) extends Value, Product1[B]:
         def ord = 1
         def typeName = "BOOL"
+        val tpy = BoolT
         override def toString: String = BoolLattice[B].show(b)
 
-    case class Int(i: I) extends Value:
+    case class Int(i: I) extends Value, Product1[I]:
         def ord = 2
         def typeName = "INTE"
+        val tpy = IntT
         override def toString: String = IntLattice[I].show(i)
 
-    case class Real(r: R) extends Value:
+    case class Real(r: R) extends Value, Product1[R]:
         def ord = 3
         def typeName = "REAL"
+        val tpy = RealT
         override def toString: String = RealLattice[R].show(r)
-    case class Char(c: C) extends Value:
+    case class Char(c: C) extends Value, Product1[C]:
         def ord = 4
         def typeName = "CHAR"
+        val tpy = CharT
         override def toString: String = CharLattice[C].show(c)
-    case class Symbol(s: Sym) extends Value:
+    case class Symbol(s: Sym) extends Value, Product1[Sym]:
         def ord = 5
         def typeName = "SYMB"
+        val tpy = SymbolT
         override def toString: String = SymbolLattice[Sym].show(s)
-    case class Prim(prims: Set[String]) extends Value:
+    case class Prim(prims: Set[String]) extends Value, Product1[Set[String]]:
         def ord = 6
         def typeName = "PRIM"
+        val tpy = PrimT
         override def toString: String = prims.mkString("Primitive{", ", ", "}")
     // TODO: define `type Closure = (SchemeLambdaExp, Env)` (maybe using a case class)
-    case class Clo(closures: Set[schemeLattice.Closure]) extends Value:
+    case class Clo(closures: Set[schemeLattice.Closure]) extends Value, Product1[Set[schemeLattice.Closure]]:
         def ord = 7
         def typeName = "CLOS"
+        val tpy = CloT
         override def toString: String =
             closures
                 .map(_._1.lambdaName)
@@ -265,21 +269,25 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     case object Nil extends Value:
         def ord = 8
         def typeName = "NULL"
+        val tpy = NilT
         override def toString: String = "()"
 
-    case class Pointer(ptrs: Set[A]) extends Value:
+    case class Pointer(ptrs: Set[A]) extends Value, Product1[Set[A]]:
         def ord = 9
         def typeName = "PNTR"
+        val tpy = PointerT
         override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
 
     case class Cons(car: L, cdr: L) extends Value:
         def ord = 10
         def typeName = "CONS"
+        val tpy = ConsT
         override def toString: String = s"($car . $cdr)"
 
     case class Vec(size: I, elements: Map[I, L]) extends Value:
         def ord = 11
         def typeName = "VECT"
+        val tpy = VecT
         override def toString: String =
             val els = elements.toList
                 .map({ case (k, v) =>
@@ -288,91 +296,109 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 .mkString(", ")
             s"Vector(size: $size, elems: {$els})"
 
-    case class Kont(k: Set[K]) extends Value:
+    case class Kont(k: Set[K]) extends Value, Product1[Set[K]]:
         def ord = 12
         def typeName = "KONT"
+        val tpy = KontT
         override def toString: String = "<continuation>"
-    case class Thread(threads: Set[TID]) extends Value:
+    case class Thread(threads: Set[TID]) extends Value, Product1[Set[TID]]:
         def ord = 13
+        val tpy = ThreadT
         def typeName = "THRD"
         override def toString: String = threads.mkString("Thread{", ", ", "}")
     // Could also store (a) Thread(s) here, but this seems to be simpler.
     // An empty set indicates the lock is not held, but a non-empty set may also indicate this... (due to the monotonicity of the analysis, threads will only increase in size).
     // This should correspond to the formalisation of ModConc and \lambda_\tau.
-    case class Lock(threads: Set[TID]) extends Value:
+    case class Lock(threads: Set[TID]) extends Value, Product1[Set[TID]]:
         def ord = 14
         def typeName = "LOCK"
+        val tpy = LockT
         override def toString: String = threads.mkString("Lock{", ", ", "}")
 
     case object Void extends Value:
         def ord = 15
         def typeName = "VOID"
+        val tpy = VoidT
         override def toString: String = "<void>"
-    case class InputPort(id: L) extends Value:
+    case class InputPort(id: L) extends Value, Product1[L]:
         def ord = 16
         def typeName = "IPRT"
+        val tpy = InputPortT
         override def toString: String = s"InputPort{$id}"
-    case class OutputPort(id: L) extends Value:
+    case class OutputPort(id: L) extends Value, Product1[L]:
         def ord = 17
         def typeName = "OPRT"
+        val tpy = OutputPortT
         override def toString: String = s"OutputPort{$id}"
 
-    case class Blames(blames: Set[Blame]) extends Value:
+    case class Blames(blames: Set[Blame]) extends Value, Product1[Set[Blame]]:
         def ord = 18
         def typeName = "BLAME"
+        val tpy = BlameT
         override def toString: String = s"<blame: ${blames.map(_.toString).mkString(",")}>"
 
-    case class Grds(grds: Set[Grd[L]]) extends Value:
+    case class Grds(grds: Set[Grd[L]]) extends Value, Product1[Set[Grd[L]]]:
         def ord = 19
         def typeName = "GRD"
+        val tpy = GrdT
         override def toString: String = s"<grd: ${grds.map(_.toString).mkString(",")}>"
 
-    case class Arrs(arrs: Set[Arr[L]]) extends Value:
+    case class Arrs(arrs: Set[Arr[L]]) extends Value, Product1[Set[Arr[L]]]:
         def ord = 20
         def typeName = "ARR"
+        val tpy = ArrT
         override def toString: String = s"<arr: ${arrs.map(_.toString).mkString(",")}>"
 
-    case class Flats(flats: Set[Flat[L]]) extends Value:
+    case class Flats(flats: Set[Flat[L]]) extends Value, Product1[Set[Flat[L]]]:
         def ord = 21
         def typeName = "FLT"
+        val tpy = FlatT
         override def toString: String = s"<flat: ${flats.map(_.toString).mkString(",")}>"
 
-    case class Opqs(opqs: Set[Opq]) extends Value:
+    case class Opqs(opqs: Set[Opq]) extends Value, Product1[Set[Opq]]:
         def ord = 22
         def typeName = "OPQ"
+        val tpy = OpqT
         override def toString: String = s"<opq>"
 
-    case class Structs(structs: Set[Struct[L]]) extends Value:
+    case class Structs(structs: Set[Struct[L]]) extends Value, Product1[Set[Struct[L]]]:
         def ord = 23
         def typeName = "STRUCT"
+        val tpy = StructT
         override def toString: String = s"<struct: ${structs.map(_.tag).mkString(",")}>"
 
-    case class StructSetterGetters(getterSetters: Set[StructSetterGetter]) extends Value:
+    case class StructSetterGetters(getterSetters: Set[StructSetterGetter]) extends Value, Product1[Set[StructSetterGetter]]:
         def ord = 24
         def typeName = "STRUCTGETTERSETTER"
+        val tpy = StructSetterGetterT
         override def toString: String = "<struct-getter-setter>"
 
-    case class StructConstructors(constructors: Set[StructConstructor]) extends Value:
+    case class StructConstructors(constructors: Set[StructConstructor]) extends Value, Product1[Set[StructConstructor]]:
         def ord = 25
         def typeName = "STRUCTCONSTRUCTOR"
+        val tpy = StructConstructorT
         override def toString: String = "<struct-constructor>"
 
-    case class StructPredicates(predicates: Set[StructPredicate]) extends Value:
+    case class StructPredicates(predicates: Set[StructPredicate]) extends Value, Product1[Set[StructPredicate]]:
         def ord = 26
         def typeName = "STRUCTPREDICATE"
+        val tpy = StructPredicateT
         override def toString: String = "<struct-predicate>"
 
-    case class Actors(actors: Set[Actor]) extends Value:
+    case class Actors(actors: Set[Actor]) extends Value, Product1[Set[Actor]]:
         def ord = 27
         def typeName = "ACTOR"
+        val tpy = ActorT
         override def toString: String = s"<actor {${actors.mkString(",")}}>"
-    case class Behaviors(behs: Set[Behavior]) extends Value:
+    case class Behaviors(behs: Set[Behavior]) extends Value, Product1[Set[Behavior]]:
         def ord = 28
         def typeName = "BEH"
+        val tpy = BehaviorT
         override def toString: String = s"<behavior>"
-    case class Futures(futures: Set[Future]) extends Value:
+    case class Futures(futures: Set[Future]) extends Value, Product1[Set[Future]]:
         def ord = 29
         def typeName = "FUT"
+        val tpy = FutureT
         override def toString: String = s"<future>"
 
     /** The injected true value */
@@ -382,95 +408,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     val False: Bool = Bool(BoolLattice[B].inject(false))
 
     object Value:
-
-        /** Tries to join (throws an exception for incompatible types) */
-        def join(x: Value, y: => Value): Value = (x, y) match
-            case (Nil, Nil)                           => Nil
-            case (Str(s1), Str(s2))                   => Str(StringLattice[S].join(s1, s2))
-            case (Bool(b1), Bool(b2))                 => Bool(BoolLattice[B].join(b1, b2))
-            case (Int(i1), Int(i2))                   => Int(IntLattice[I].join(i1, i2))
-            case (Real(f1), Real(f2))                 => Real(RealLattice[R].join(f1, f2))
-            case (Char(c1), Char(c2))                 => Char(CharLattice[C].join(c1, c2))
-            case (Symbol(s1), Symbol(s2))             => Symbol(SymbolLattice[Sym].join(s1, s2))
-            case (Prim(p1), Prim(p2))                 => Prim(sunion(p1, p2))
-            case (Clo(c1), Clo(c2))                   => Clo(sunion(c1, c2))
-            case (Pointer(a1), Pointer(a2))           => Pointer(sunion(a1, a2))
-            case (Cons(a1, d1), Cons(a2, d2))         => Cons(schemeLattice.join(a1, a2), schemeLattice.join(d1, d2))
-            case (Vec(size1, els1), Vec(size2, els2)) =>
-                // First, joins the size
-                val vSizeInitJoined = Vec(IntLattice[I].join(size1, size2), Map.empty)
-                // Then, joins elements by adding (with vector-set!) all elements of els1 and then els2 inside the new vector
-                val vWithEls1Joined = els1.foldLeft(vSizeInitJoined)({ case (acc, (k, v)) =>
-                    vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
-                        case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
-                    }
-                })
-                val vWithEls2Joined = els2.foldLeft(vWithEls1Joined)({ case (acc, (k, v)) =>
-                    vectorSet(acc, Int(k), v).getOrElse(schemeLattice.bottom) match {
-                        case Elements(vs) => vs.head.asInstanceOf[Vec] // Should really be improved, this is ugly
-                    }
-                })
-                vWithEls2Joined
-            case (Kont(k1), Kont(k2))                               => Kont(sunion(k1, k2))
-            case (Thread(t1), Thread(t2))                           => Thread(sunion(t1, t2))
-            case (Lock(l1), Lock(l2))                               => Lock(sunion(l1, l2))
-            case (Void, Void)                                       => Void
-            case (InputPort(l1), InputPort(l2))                     => InputPort(schemeLattice.join(l1, l2))
-            case (OutputPort(l1), OutputPort(l2))                   => OutputPort(schemeLattice.join(l1, l2))
-            case (Blames(l1), Blames(l2))                           => Blames(sunion(l1, l2))
-            case (Arrs(l1), Arrs(l2))                               => Arrs(sunion(l1, l2))
-            case (Grds(l1), Grds(l2))                               => Grds(sunion(l1, l2))
-            case (Flats(l1), Flats(l2))                             => Flats(sunion(l1, l2))
-            case (Opqs(o1), Opqs(o2))                               => Opqs(sunion(o1, o2))
-            case (Structs(o1), Structs(o2))                         => Structs(sunion(o1, o2))
-            case (StructSetterGetters(o1), StructSetterGetters(o2)) => StructSetterGetters(o1 ++ o2)
-            case (StructConstructors(o1), StructConstructors(o2))   => StructConstructors(o1 ++ o2)
-            case (StructPredicates(o1), StructPredicates(o2))       => StructPredicates(o1 ++ o2)
-            case (Actors(o1), Actors(o2))                           => Actors(o1 ++ o2)
-            case (Behaviors(o1), Behaviors(o2))                     => Behaviors(o1 ++ o2)
-            case (Futures(o1), Futures(o2))                         => Futures(o1 ++ o2)
-            case _                                                  => throw new Exception(s"Illegal join of $x and $y")
-
-        def subsumes(x: Value, y: => Value): Boolean =
-            if x == y then true
-            else
-                (x, y) match
-                    case (Str(s1), Str(s2))           => StringLattice[S].subsumes(s1, s2)
-                    case (Bool(b1), Bool(b2))         => BoolLattice[B].subsumes(b1, b2)
-                    case (Int(i1), Int(i2))           => IntLattice[I].subsumes(i1, i2)
-                    case (Real(f1), Real(f2))         => RealLattice[R].subsumes(f1, f2)
-                    case (Char(c1), Char(c2))         => CharLattice[C].subsumes(c1, c2)
-                    case (Symbol(s1), Symbol(s2))     => SymbolLattice[Sym].subsumes(s1, s2)
-                    case (Clo(c1), Clo(c2))           => c2.subsetOf(c1)
-                    case (Prim(p1), Prim(p2))         => p2.subsetOf(p1)
-                    case (Pointer(a1), Pointer(a2))   => a2.subsetOf(a1)
-                    case (Kont(k1), Kont(k2))         => k2.subsetOf(k1)
-                    case (Cons(a1, d1), Cons(a2, d2)) => schemeLattice.subsumes(a1, a2) && schemeLattice.subsumes(d1, d2)
-                    case (Vec(siz1, els1), Vec(siz2, els2)) =>
-                        IntLattice[I].subsumes(siz1, siz2) &&
-                            els2.forall { case (idx2, vlu2) =>
-                                els1.exists { case (idx1, vlu1) =>
-                                    IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
-                                }
-                            }
-                    case (Thread(t1), Thread(t2))                           => t2.subsetOf(t1)
-                    case (Lock(l1), Lock(l2))                               => l2.subsetOf(l1)
-                    case (InputPort(l1), InputPort(l2))                     => schemeLattice.subsumes(l1, l2)
-                    case (OutputPort(l1), OutputPort(l2))                   => schemeLattice.subsumes(l1, l2)
-                    case (Blames(l1), Blames(l2))                           => l2.subsetOf(l1)
-                    case (Arrs(l1), Arrs(l2))                               => l2.subsetOf(l1)
-                    case (Grds(l1), Grds(l2))                               => l2.subsetOf(l1)
-                    case (Flats(l1), Flats(l2))                             => l2.subsetOf(l1)
-                    case (Structs(l1), Structs(l2))                         => l2.subsetOf(l1)
-                    case (StructSetterGetters(l1), StructSetterGetters(l2)) => l2.subsetOf(l1)
-                    case (StructConstructors(l1), StructConstructors(l2))   => l2.subsetOf(l1)
-                    case (StructPredicates(l1), StructPredicates(l2))       => l2.subsetOf(l1)
-                    case (Actors(l1), Actors(l2))                           => l2.map(_.removeEnv).subsetOf(l1.map(_.removeEnv))
-                    case (Behaviors(l1), Behaviors(l2))                     => l2.map(_.removeEnv).subsetOf(l1.map(_.removeEnv))
-                    case (Futures(l1), Futures(l2))                         => l2.subsetOf(l1)
-                    // opaque values behave like top, they subsume everything
-                    case (Opqs(_), _) => true
-                    case _            => false
+        // TODO: Opq has a special status for subsumes, in that it subsumes everything (i.e. it is like top)
 
         def isTrue(x: Value): Boolean = x match
             case Bool(b) => BoolLattice[B].isTrue(b)
@@ -554,9 +492,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                     })
 
                 case IsTrue =>
-                    MayFail.success(bool(isTrue(args(0))))
+                    MayFail.success(BoolT.alpha(isTrue(args(0))))
                 case IsFalse =>
-                    MayFail.success(bool(isFalse(args(0))))
+                    MayFail.success(BoolT.alpha(isFalse(args(0))))
                 case IsVector =>
                     MayFail.success(args(0) match {
                         case _: Vec => True
@@ -823,95 +761,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         case (Int(length), Char(c)) => MayFail.success(Str(IntLattice[I].makeString(length, c)))
                         case _                      => MayFail.failure(OperatorNotApplicable("make-string", args))
 
-        def number(x: BigInt): Value = Int(IntLattice[I].inject(x))
-
-        def real(x: Double): Value = Real(RealLattice[R].inject(x))
-        def string(x: String): Value = Str(StringLattice[S].inject(x))
-        def bool(x: Boolean): Value = Bool(BoolLattice[B].inject(x))
-        def char(x: scala.Char): Value = Char(CharLattice[C].inject(x))
-        def primitive(x: String): Value = Prim(Set(x))
-        def closure(x: schemeLattice.Closure): Value = Clo(Set(x))
-        def cont(k: K): Value = Kont(Set(k))
-        def symbol(x: String): Value = Symbol(SymbolLattice[Sym].inject(x))
-        def nil: Value = Nil
-        def cons(car: L, cdr: L): Value = Cons(car, cdr)
-        def pointer(a: A): Value = Pointer(Set(a))
-        def thread(tid: TID): Value = Thread(Set(tid))
-        def lock(threads: Set[TID]): Value = Lock(threads)
-        def actor(actor: Actor): Value = Actors(Set(actor))
-        def beh(behavior: Behavior): Value = Behaviors(Set(behavior))
-        def future(fut: Future): Value = Futures(Set(fut))
-        def void: Value = Void
-        def blame(blame: Blame): Value = Blames(Set(blame))
-        def grd(grd: Grd[L]): Value = Grds(Set(grd))
-        def arr(arr: Arr[L]): Value = Arrs(Set(arr))
-        def flt(flt: Flat[L]): Value = Flats(Set(flt))
-        def opq(opq: Opq): Value = Opqs(Set(opq))
-        def struct(struct: Struct[L]): Value = Structs(Set(struct))
-        def structSetterGetter(struct: StructSetterGetter): Value = StructSetterGetters(Set(struct))
-        def structConstructor(constr: StructConstructor): Value = StructConstructors(Set(constr))
-        def structPredicate(pred: StructPredicate): Value = StructPredicates(Set(pred))
-
-        def getClosures(x: Value): Set[schemeLattice.Closure] = x match
-            case Clo(closures) => closures
-            case _             => Set.empty
-        def getPrimitives(x: Value): Set[String] = x match
-            case Prim(prms) => prms
-            case _          => Set.empty
-        def getContinuations(x: Value): Set[K] = x match
-            case Kont(k) => k
-            case _       => Set.empty
-        def getPointerAddresses(x: Value): Set[A] = x match
-            case Pointer(ptrs) => ptrs
-            case _             => Set.empty
-        def getThreads(x: Value): Set[TID] = x match
-            case Thread(t) => t
-            case _         => Set.empty
-        def getLocks(x: Value): Set[TID] = x match
-            case Lock(l) => l
-            case _       => Set.empty
-        def getActors(x: Value): Set[Actor] = x match
-            case Actors(l) => l
-            case _         => Set.empty
-        def getBehs(x: Value): Set[Behavior] = x match
-            case Behaviors(l) => l
-            case _            => Set.empty
-        def getFutures(x: Value): Set[Future] = x match
-            case Futures(l) => l
-            case _          => Set.empty
-
-        def getBlames(x: Value): Set[Blame] = x match
-            case Blames(l) => l
-            case _         => Set.empty
-
-        def getGrds(x: Value): Set[Grd[L]] = x match
-            case Grds(l) => l
-            case _       => Set.empty
-
-        def getArrs(x: Value): Set[Arr[L]] = x match
-            case Arrs(l) => l
-            case _       => Set.empty
-
-        def getFlats(x: Value): Set[Flat[L]] = x match
-            case Flats(l) => l
-            case _        => Set.empty
-
-        def getStructs(x: Value): Set[Struct[L]] = x match
-            case Structs(l) => l
-            case _          => Set.empty
-
-        def getSetterGetters(x: Value): Set[StructSetterGetter] = x match
-            case StructSetterGetters(l) => l
-            case _                      => Set.empty
-
-        def getStructConstructor(x: Value): Set[StructConstructor] = x match
-            case StructConstructors(l) => l
-            case _                     => Set.empty
-
-        def getStructPredicates(x: Value): Set[StructPredicate] = x match
-            case StructPredicates(l) => l
-            case _                   => Set.empty
-
         def car(x: Value): MayFail[L, Error] = x match
             case Cons(car, _) => MayFail.success(car)
             case _            => MayFail.failure(TypeError("expecting cons to access car", x))
@@ -1041,46 +890,59 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Thread(t1), Thread(t2)) => if t1.intersect(t2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             case _                        => False
 
-    type L = Elements
-    case class Elements(vs: List[Value]) extends SmartHash:
-        override def toString: String =
-            if vs.isEmpty then "⊥"
-            else if vs.tail.isEmpty then vs.head.toString
-            else vs.map(_.toString).sorted.mkString("{", ",", "}")
-        def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
-            vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
+    type L = HMap
+    //case class Elements(vs: List[Value]) extends SmartHash:
+    //    override def toString: String =
+    //        if vs.isEmpty then "⊥"
+    //        else if vs.tail.isEmpty then vs.head.toString
+    //        else vs.map(_.toString).sorted.mkString("{", ",", "}")
+    //    def foldMapL[X](f: Value => X)(implicit monoid: Monoid[X]): X =
+    //        vs.foldLeft(monoid.zero)((acc, x) => monoid.append(acc, f(x)))
+    //
+
+    // This object simulates the usage of the now legacy "Elements" case class.
+    object Elements:
+        /** Convience method to be able to construct values of the modular scheme lattice in the old way. */
+        @deprecated("Elements is being replaced by HMap, use HMap instead of Elements", "2022-08-19")
+        def apply(vs: Iterable[Value]): L =
+            // NOTE: the usage of asInstanceOf here is slightly unsafe since Value.tpy.Wrap might not correspond to the actual type of v
+            // we trust the programmers to not make this mistake, but it cannot be enforcement at compile-time.
+            // Removal of these wrappers might (partially) solve the problem.
+            vs.foldLeft(HMap.empty)((hmap, v) => hmap.wrapInsert(v.tpy, v.asInstanceOf[v.tpy.Wrap]))
+
+        @deprecated("Elements is being replaced by HMap, use HMap instead of Elements", "2022-08-19")
+        def unapply(v: L): Option[(List[Value])] =
+            Some(v.elements[Value])
+
+        extension (v: L) def vs: List[Value] = v.elements[Value]
+
     object Element extends Serializable:
-        def apply(v: Value): L = Elements(List(v))
+        def apply(v: Value): L =
+            // NOTE: the usage of asInstanceOf here is slightly unsafe since Value.tpy.Wrap might not correspond to the actual type of v
+            // we trust the programmers to not make this mistake, but it cannot be enforcement at compile-time.
+            // Removal of these wrappers might (partially) solve the problem.
+            HMap.wrapInserted(v.tpy, v.asInstanceOf[v.tpy.Wrap])
 
     import MonoidInstances._
     implicit val lMonoid: Monoid[L] = new Monoid[L] {
-        private def insert(vs: List[Value], v: Value): List[Value] = vs match
-            case scala.Nil                     => List(v)
-            case v0 :: _ if v.ord < v0.ord     => v :: vs
-            case v0 :: rest if v.ord == v0.ord => Value.join(v, v0) :: rest
-            case v0 :: rest                    => v0 :: insert(rest, v)
-        def append(x: L, y: => L): L = (x, y) match
-            case (Elements(as), Elements(bs)) => Elements(bs.foldLeft(as)(insert))
-        def zero: L = Elements(scala.Nil)
+        def append(x: L, y: => L): L =
+            Lattice[L].join(x, y)
+        def zero: L = Lattice[L].bottom
     }
     implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
     val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] { lat =>
         def show(x: L): String = x.toString /* TODO[easy]: implement better */
-        def isTrue(x: L): Boolean = x.foldMapL(Value.isTrue(_))(boolOrMonoid)
-        def isFalse(x: L): Boolean = x.foldMapL(Value.isFalse(_))(boolOrMonoid)
-        def isBoolean(x: L): Boolean = x.foldMapL(Value.isBoolean(_))(boolOrMonoid)
-        def retractBool(x: L): L = Elements(x.vs.filter {
-            case Bool(_) => false
-            case _       => true
-        })
-
-        def isOpq(x: L): Boolean = x.foldMapL(Value.isOpq(_))(boolOrMonoid)
+        def isTrue(x: L): Boolean = x.elements[Value].foldMap(Value.isTrue(_))(boolOrMonoid)
+        def isFalse(x: L): Boolean = x.elements[Value].foldMap(Value.isFalse(_))(boolOrMonoid)
+        def isBoolean(x: L): Boolean = x.elements[Value].foldMap(Value.isBoolean(_))(boolOrMonoid)
+        def retractBool(x: L): L = ??? // TODO: implement (does anybody uses this)?
+        def isOpq(x: L): Boolean = x.elements[Value].foldMap(Value.isOpq(_))(boolOrMonoid)
 
         def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] =
             def fold(argsToProcess: List[L], argsvRev: List[Value]): MayFail[L, Error] = argsToProcess match
                 case arg :: args =>
-                    arg.foldMapL(argv => fold(args, argv :: argsvRev))
+                    arg.elements[Value].foldMap(argv => fold(args, argv :: argsvRev))
                 case List() =>
                     val argsv = argsvRev.reverse
                     op match
@@ -1093,85 +955,85 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         case _ => Value.op(op)(argsv).map(x => Element(x))
             op.checkArity(args)
             op match
-                case SchemeOp.MakeInputPort  => MayFail.success(Element(InputPortT.wrap(args(0))))
-                case SchemeOp.MakeOutputPort => MayFail.success(Element(OutputPortT.wrap(args(0))))
-                case SchemeOp.MakeVector     =>
+                case SchemeOp.MakeInputPort =>
+                    if schemeLattice.isBottom(args(0)) then MayFail.success(schemeLattice.bottom)
+                    else MayFail.success(Element(InputPortT.wrap(args(0))))
+                case SchemeOp.MakeOutputPort =>
+                    if schemeLattice.isBottom(args(0)) then MayFail.success(schemeLattice.bottom)
+                    else MayFail.success(Element(OutputPortT.wrap(args(0))))
+                case SchemeOp.MakeVector =>
                     /* Treated as a special case because args(1) can be bottom (this would be a valid use of MakeVector) */
-                    args(0).foldMapL(arg0 => Value.vector(arg0, args(1)).map(v => Element(v)))
+                    args(0).elements[Value].foldMap(arg0 => Value.vector(arg0, args(1)).map(v => Element(v)))
                 case _ => fold(args, List())
 
-        def join(x: L, y: => L): L = Monoid[L].append(x, y)
-        def subsumes(x: L, y: => L): Boolean =
-            y.foldMapL(y =>
-                /* For every element in y, there exists an element of x that subsumes it */
-                x.foldMapL(x => Value.subsumes(x, y))(boolOrMonoid)
-            )(boolAndMonoid)
+        def join(x: L, y: => L): L = Lattice[L].join(x, y)
+        def subsumes(x: L, y: => L): Boolean = Lattice[L].subsumes(x, y)
         def top: L = throw LatticeTopUndefined
 
-        def getClosures(x: L): Set[Closure] = x.foldMapL(x => Value.getClosures(x))(setMonoid)
-        def getContinuations(x: L): Set[lat.K] = x.foldMapL(x => Value.getContinuations(x))(setMonoid)
-        def getPrimitives(x: L): Set[String] = x.foldMapL(x => Value.getPrimitives(x))(setMonoid)
-        def getPointerAddresses(x: L): Set[A] = x.foldMapL(x => Value.getPointerAddresses(x))(setMonoid)
-        def getBlames(x: L): Set[Blame] = x.foldMapL(x => Value.getBlames(x))(setMonoid)
-        def getGrds(x: L): Set[Grd[L]] = x.foldMapL(x => Value.getGrds(x))(setMonoid)
-        def getArrs(x: L): Set[Arr[L]] = x.foldMapL(x => Value.getArrs(x))(setMonoid)
-        def getFlats(x: L): Set[Flat[L]] = x.foldMapL(x => Value.getFlats(x))(setMonoid)
-        def getStructs(x: L): Set[Struct[L]] = x.foldMapL(x => Value.getStructs(x))(setMonoid)
-        def getGetterSetter(x: L): Set[StructSetterGetter] = x.foldMapL(x => Value.getSetterGetters(x))(setMonoid)
-        def getStructConstructor(x: L): Set[StructConstructor] = x.foldMapL(x => Value.getStructConstructor(x))(setMonoid)
-        def getStructPredicates(x: L): Set[StructPredicate] = x.foldMapL(x => Value.getStructPredicates(x))(setMonoid)
-        def getThreads(x: L): Set[TID] = x.foldMapL(Value.getThreads)(setMonoid)
-        def getActors(x: L): Set[Actor] = x.foldMapL(Value.getActors)(setMonoid)
-        def getBehs(x: L): Set[Behavior] = x.foldMapL(Value.getBehs)(setMonoid)
-        def getFutures(x: L): Set[Future] = x.foldMapL(Value.getFutures)(setMonoid)
+        def getClosures(x: L): Set[Closure] = x.get(CloT)
+        def getContinuations(x: L): Set[lat.K] = x.get(KontT)
+        def getPrimitives(x: L): Set[String] = x.get(PrimT)
+        def getPointerAddresses(x: L): Set[A] = x.get(PointerT)
+        def getBlames(x: L): Set[Blame] = x.get(BlameT)
+        def getGrds(x: L): Set[Grd[L]] = x.get(GrdT)
+        def getArrs(x: L): Set[Arr[L]] = x.get(ArrT)
+        def getFlats(x: L): Set[Flat[L]] = x.get(FlatT)
+        def getStructs(x: L): Set[Struct[L]] = x.get(StructT)
+        def getGetterSetter(x: L): Set[StructSetterGetter] = x.get(StructSetterGetterT)
+        def getStructConstructor(x: L): Set[StructConstructor] = x.get(StructConstructorT)
+        def getStructPredicates(x: L): Set[StructPredicate] = x.get(StructPredicateT)
+        def getThreads(x: L): Set[TID] = x.get(ThreadT)
+        def getActors(x: L): Set[Actor] = x.get(ActorT)
+        def getBehs(x: L): Set[Behavior] = x.get(BehaviorT)
+        def getFutures(x: L): Set[Future] = x.get(FutureT)
 
         def acquire(lock: L, tid: TID): MayFail[L, Error] =
-            lock.foldMapL(l => Value.acquire(l, tid))
+            lock.elements[Value].foldMap(l => Value.acquire(l, tid))
         def release(lock: L, tid: TID): MayFail[L, Error] =
-            lock.foldMapL(l => Value.release(l, tid))
+            lock.elements[Value].foldMap(l => Value.release(l, tid))
 
-        def bottom: L = Elements(List.empty)
+        def bottom: L = Lattice[L].bottom
 
-        def number(x: BigInt): L = Element(Value.number(x))
+        def number(x: BigInt): L = HMap.injected(IntT, x)
 
-        def numTop: L = Element(Int(IntLattice[I].top))
-        def charTop: L = Element(Char(CharLattice[C].top))
-        def realTop: L = Element(Real(RealLattice[R].top))
-        def stringTop: L = Element(Str(StringLattice[S].top))
-        def symbolTop: L = Element(Symbol(SymbolLattice[Sym].top))
-        def real(x: Double): L = Element(Value.real(x))
-        def string(x: String): L = Element(Value.string(x))
-        def char(x: scala.Char): L = Element(Value.char(x))
-        def bool(x: Boolean): L = Element(Value.bool(x))
-        def primitive(x: String): L = Element(Value.primitive(x))
-        def closure(x: Closure): L = Element(Value.closure(x))
-        def cont(x: lat.K): L = Element(Value.cont(x))
-        def symbol(x: String): L = Element(Value.symbol(x))
-        def cons(car: L, cdr: L): L = Element(Value.cons(car, cdr))
-        def pointer(a: A): L = Element(Value.pointer(a))
-        def thread(tid: TID): L = Element(Value.thread(tid))
-        def lock(threads: Set[TID]): L = Element(Value.lock(threads))
-        def actor(actor: Actor): L = Element(Value.actor(actor))
-        def beh(behavior: Behavior): L = Element(Value.beh(behavior))
-        def future(fut: Future): L = Element(Value.future(fut))
-        def blame(blame: Blame): L = Element(Value.blame(blame))
-        def grd(grd: Grd[L]): L = Element(Value.grd(grd))
-        def arr(arr: Arr[L]): L = Element(Value.arr(arr))
-        def flat(flt: Flat[L]): L = Element(Value.flt(flt))
-        def opq(opq: Opq): L = Element(Value.opq(opq))
-        def struct(struct: Struct[L]): L = Element(Value.struct(struct))
-        def structPredicate(struct: StructPredicate): L = Element(Value.structPredicate(struct))
+        def numTop: L = HMap.inserted(IntT, IntLattice[I].top)
+        def charTop: L = HMap.inserted(CharT, CharLattice[C].top)
+        def realTop: L = HMap.inserted(RealT, RealLattice[R].top)
+        def stringTop: L = HMap.inserted(StrT, StringLattice[S].top)
+        def symbolTop: L = HMap.inserted(SymbolT, SymbolLattice[Sym].top)
+        def real(x: Double): L = HMap.injected(RealT, x)
+        def string(x: String): L = HMap.injected(StrT, x)
+        def char(x: scala.Char): L = HMap.injected(CharT, x)
+        def bool(x: Boolean): L = HMap.injected(BoolT, x)
+        def primitive(x: String): L = HMap.injected(PrimT, x)
+        def closure(x: Closure): L = HMap.injected(CloT, x)
+        def cont(x: lat.K): L = HMap.injected(KontT, x)
+        def symbol(x: String): L = HMap.injected(SymbolT, x)
+        def cons(car: L, cdr: L): L = HMap.wrapInserted(ConsT, Cons(car, cdr))
+        def pointer(a: A): L = HMap.injected(PointerT, a)
+        def thread(tid: TID): L = HMap.injected(ThreadT, tid)
+        def lock(threads: Set[TID]): L = HMap.inserted(LockT, threads)
+        def actor(actor: Actor): L = HMap.injected(ActorT, actor)
+        def beh(behavior: Behavior): L = HMap.injected(BehaviorT, behavior)
+        def future(fut: Future): L = HMap.injected(FutureT, fut)
+        def blame(blame: Blame): L = HMap.injected(BlameT, blame)
+        def grd(grd: Grd[L]): L = HMap.injected(GrdT, grd)
+        def arr(arr: Arr[L]): L = HMap.injected(ArrT, arr)
+        def flat(flt: Flat[L]): L = HMap.injected(FlatT, flt)
+        def opq(opq: Opq): L = HMap.injected(OpqT, opq)
+        def struct(struct: Struct[L]): L = HMap.injected(StructT, struct)
+        def structPredicate(struct: StructPredicate): L = HMap.injected(StructPredicateT, struct)
         def structSetterGetter(setterGetter: StructSetterGetter): L =
-            Element(Value.structSetterGetter(setterGetter))
+            HMap.injected(StructSetterGetterT, setterGetter)
         def structConstructor(constructor: StructConstructor): L =
-            Element(Value.structConstructor(constructor))
-        def nil: L = Element(Value.nil)
-        def void: L = Element(Value.void)
+            HMap.injected(StructConstructorT, constructor)
+        def nil: L = HMap.wrapInserted(NilT, Nil)
+        def void: L = HMap.wrapInserted(VoidT, Void)
         def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
-        def refs(x: L): Set[Address] = x.foldMapL(x => Value.refs(x))(setMonoid)
-        def eq(xs: L, ys: L)(comparePtr: MaybeEq[A]): L =
-            xs.foldMapL { x =>
-                ys.foldMapL { y =>
+        def refs(x: L): Set[Address] = x.elements[Value].foldMap(x => Value.refs(x))(setMonoid) // TODO: put in HMap lattice
+        def eq(xs: L, ys: L)(comparePtr: MaybeEq[A]): L = // TODO: put in HMap lattice
+            xs.elements[Value].foldMap { x =>
+                ys.elements[Value].foldMap { y =>
                     Element(Value.eq(x, y)(comparePtr))
                 }
             }

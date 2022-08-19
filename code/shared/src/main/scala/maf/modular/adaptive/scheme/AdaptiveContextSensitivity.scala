@@ -13,6 +13,8 @@ import maf.util.datastructures.MultiSet
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     this: AdaptiveContextSensitivityPolicy =>
 
+    import modularLattice.Elements.*
+
     // disable warning messages and debug logging by default (can be override for custom logging)
     protected def warn(message: => String): Unit = ()
     protected def debug(message: => String): Unit = ()
@@ -239,7 +241,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         clo._2.asInstanceOf[WrappedEnv[Addr, SchemeModule]].data
     private def sizeOfValue(value: Value): Int =
         value.vs.map(sizeOfV).sum
-    private def sizeOfV(v: ValueElement): Int = v match
+    private def sizeOfV(v: modularLattice.Value): Int = v match
         case modularLatticeWrapper.modularLattice.Pointer(ptrs)    => ptrs.size
         case modularLatticeWrapper.modularLattice.Clo(closures)    => closures.size
         case modularLatticeWrapper.modularLattice.Cons(car, cdr)   => sizeOfValue(car) + sizeOfValue(cdr)
