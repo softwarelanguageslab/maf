@@ -676,7 +676,7 @@ trait BaseScvBigStepSemantics extends ScvModAnalysis with ScvBaseSemantics with 
                   nondets(
                     ifFeasible(`true?`, result) { tag(result.symbolic)(lattice.bool(true)) },
                     ifFeasible(`false?`, result) { tag(result.symbolic)(lattice.bool(false)) }, {
-                        val otherValues = lattice.retractBool(result.value)
+                        val otherValues = result.value // lattice.retractBool(result.value)
                         if lattice.isBottom(otherValues) then void else tag(result.symbolic)(otherValues)
                     }
                   )

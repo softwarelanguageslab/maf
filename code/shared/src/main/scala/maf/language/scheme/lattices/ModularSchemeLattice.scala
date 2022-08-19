@@ -100,14 +100,15 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     object VecT extends AbstractType[Vec, Vec]:
         type Inject = NoInject
-        type Extract = NoExtract
+        type Extract = Vec
         def wrap = (v) => v
         def unwrap(v: Vec) = v
+        override def extract(v: Vec) = v
         // TODO: ad-hoc implementation, should create a VectorLattice
         val lattice: Lattice[Vec] = new Lattice[Vec] {
             def show(v: Vec) = v.toString
             def top = throw LatticeTopUndefined
-            def bottom = ???
+            def bottom = Vec(IntLattice[I].bottom, Map())
             def join(x: Vec, y: => Vec): Vec =
                 val size1 = x.size
                 val size2 = y.size

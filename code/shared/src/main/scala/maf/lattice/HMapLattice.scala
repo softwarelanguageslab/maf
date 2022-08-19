@@ -46,11 +46,12 @@ case class HMap(contents: Map[HMapKey, Any]):
     /** Inject the given concrete value in the abstract domain */
     def inject(k: HMapKey, v: k.Inject): HMap =
         val abstr = k.inject(v)
-        val updated = contents.get(k).map(_.asInstanceOf[k.Wrap]).map(orig => k.wrap(k.lattice.join(k.unwrap(orig), abstr)))
+        val updated: k.Wrap =
+            contents.get(k).map(_.asInstanceOf[k.Wrap]).map(orig => k.wrap(k.lattice.join(k.unwrap(orig), abstr))).getOrElse(k.wrap(abstr))
         this.copy(contents = contents + (k -> updated))
 
     def wrapInsert(k: HMapKey, v: k.Wrap): HMap =
-        val updated = contents.get(k).map(_.asInstanceOf[k.Wrap]).map(orig => k.wrap(k.lattice.join(k.unwrap(orig), k.unwrap(v))))
+        val updated: k.Wrap = contents.get(k).map(_.asInstanceOf[k.Wrap]).map(orig => k.wrap(k.lattice.join(k.unwrap(orig), k.unwrap(v)))).getOrElse(v)
         this.copy(contents = contents + (k -> updated))
 
     /** Get a value (if any) of the given type */
