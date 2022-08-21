@@ -58,8 +58,8 @@ case class HMap(contents: Map[HMapKey, Any]):
     def get(k: HMapKey)(using default: Default[k.Extract]): k.Extract =
         this.contents.get(k).map(_.asInstanceOf[k.Wrap]).map(k.unwrap andThen k.extract).getOrElse(default.default)
 
-    def getAbstract(k: HMapKey): k.Abstract =
-        this.contents.get(k).map(_.asInstanceOf[k.Wrap]).map(k.unwrap).getOrElse(k.lattice.bottom)
+    def getAbstract(k: HMapKey): Option[k.Abstract] =
+        this.contents.get(k).map(_.asInstanceOf[k.Wrap]).map(k.unwrap)
 
     /** Returns true if the HMap does not contain any value */
     def isEmpty: Boolean = contents.isEmpty
@@ -71,13 +71,11 @@ case class HMap(contents: Map[HMapKey, Any]):
           (y.contents.keys).foldLeft(x.contents)((map, key) =>
               y.contents.get(key) match
                   case Some(v) =>
-                      val vlu =
-                          key.wrap(
-                            key.lattice.join(map.get(key).map(_.asInstanceOf[key.Wrap]).map(key.unwrap).getOrElse(key.lattice.bottom),
-                                             key.unwrap(v.asInstanceOf[key.Wrap])
-                            )
-                          )
-                      map + (key -> vlu)
+                      val newVlu = map.get(key).map(_.asInstanceOf[key.Wrap]).map(key.unwrap) match
+                          case Some(otherVlu) =>
+                              key.wrap(key.lattice.join(otherVlu, key.unwrap(v.asInstanceOf[key.Wrap])))
+                          case None => v
+                      map + (key -> newVlu)
                   case _ => map
           )
         )
@@ -87,9 +85,10 @@ case class HMap(contents: Map[HMapKey, Any]):
         val x = this
         // for every element in `y` there exists an element in `x` of the same type that subsumes it
         y.contents.keys.forall((key) =>
-            val xv = x.getAbstract(key)
-            val yv = y.getAbstract(key)
-            key.lattice.subsumes(xv, yv)
+            (for
+                xv <- x.getAbstract(key)
+                yv <- y.getAbstract(key)
+            yield key.lattice.subsumes(xv, yv)).getOrElse(false)
         )
 
     /**

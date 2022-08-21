@@ -91,9 +91,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         val lattice: Lattice[Abstract] = new Lattice[Abstract] {
             def show(v: (L, L)): String = s"(${v._1},${v._2})"
             def top = throw LatticeTopUndefined
-            def bottom = (schemeLattice.bottom, schemeLattice.bottom)
-            def join(x: (L, L), y: => (L, L)): (L, L) =
-                (schemeLattice.join(x._1, y._1), schemeLattice.join(x._2, y._2))
+            def bottom = ???
+            def join(x: (L, L), y: => (L, L)): (L, L) = (schemeLattice.join(x._1, y._1), schemeLattice.join(x._2, y._2))
             def subsumes(x: (L, L), y: => (L, L)): Boolean =
                 (schemeLattice.subsumes(x._1, y._1) && schemeLattice.subsumes(x._2, y._2))
             def eql[B: BoolLattice](x: (L, L), y: (L, L)): B = ???
