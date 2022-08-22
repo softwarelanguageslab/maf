@@ -19,6 +19,7 @@ import maf.modular.worklist.*
 import maf.util.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.*
+import maf.util.graph.{DotGraph, Graph}
 
 import scala.concurrent.duration.*
 
@@ -91,12 +92,13 @@ object IncrementalRun extends App:
         with IncrementalSchemeModFBigStepSemantics
         with IncrementalSchemeTypeDomain
         with IncrementalGlobalStoreCY[SchemeExp]
-        with IncrementalLogging[SchemeExp] {
-        override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(l@map:1:16)")
+        with IncrementalLogging[SchemeExp]
+        with IncrementalDataFlowVisualisation[SchemeExp] {
+        override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(l@1:31)")
         mode = Mode.Fine // Mode.Select
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
     }
 
     def lifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
@@ -166,6 +168,7 @@ object IncrementalRun extends App:
             println("init")
             l.analyzeWithTimeout(newTimeout())
             assert(l.finished)
+            l.dataFlowToPNG("logs/flows.dot")
             //val scas = l.computeSCAs()
             // scas.foreach({ sca =>
             //    sca.foreach(a => println(l.store(a)))

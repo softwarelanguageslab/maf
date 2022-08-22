@@ -1,6 +1,12 @@
-; The incremental update will create a new cyclic flow in which immediately the outdated value of `v` is introduced.
-(define v #t)
-(define (f x) (set! v x))
-(define (g) (set! v #f))
-(<change> (g) #t)
-(f v)
+(letrec ((for-each (lambda (f l)
+                      (if (null? l)
+                        #t
+                        (begin
+                          (for-each f (cdr l))))))
+          (list (lambda args args))
+          (_0 (letrec ((loop (lambda (level)
+                                (if (< level 2)
+                                  (for-each (lambda (child-pt1) (loop (+ 1 level))) (list ((<change> list vector) '<pt>)))
+                                  #f))))
+                (loop 0))))
+  _0)

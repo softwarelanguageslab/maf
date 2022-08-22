@@ -42,6 +42,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
       |CINV  Component invalidation: the given component is deleted.
       |COMI  Indicates the component's analysis is committed.
+      |DELA  Indicates the removal of a given address.
       |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
       |NEWC  Discovery of a new, not yet existing component.
@@ -171,6 +172,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         super.deleteComponent(cmp)
 
     override def deleteAddress(addr: Addr): Unit =
+        if mode == Fine || mode == Select then logger.log(s"DELA $addr")
         deletedA = addr :: deletedA
         super.deleteAddress(addr)
 
@@ -201,14 +203,13 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
             if version == Old then intraC += 1 else intraCU += 1
             repeats = repeats + (component -> (repeats(component) + 1))
             if mode != Summary then logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
-            //println(s"$step -- $component (rep ${repeats(component)})")
             if configuration.cyclicValueInvalidation && mode == Fine then logger.log(s"RSAD Resetting addressDependencies for $component.")
             super.analyzeWithTimeout(timeout)
 
         // Reading an address.
         override def readAddr(addr: Addr): Value =
             val v = super.readAddr(addr)
-            if v == lattice.bottom then botRead = Some(addr) else botRead = None
+            if lattice.isBottom(v) then botRead = Some(addr) else botRead = None
             if mode == Fine || (mode == Select && focus(addr)) then logger.log(s"READ ${crop(addr.toString)} => ${crop(v.toString)}")
             v
 

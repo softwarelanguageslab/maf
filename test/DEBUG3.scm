@@ -298,21 +298,11 @@
         (list 'cons cons)
         (list 'null? null?)
         (list 'list list)
-        (list 'memq memq)
         (list 'member member)
         (list 'not not)
-        (list '+ +)
         (list '- -)
-        (list '* *)
         (list '= =)
-        (list '> >)
         (list '< <)
-        (list '>= >=)
-        (list 'abs abs)
-        (list 'remainder remainder)
-        (list 'integer? integer?)
-        (list 'sqrt sqrt)
-        (list 'eq? eq?)
     ;;      more primitives
     ))
 
@@ -371,10 +361,8 @@
           (analyze-self-evaluating exp))
     ((quoted? exp) (analyze-quoted exp))
     ((variable? exp) (analyze-variable exp))
-    ((assignment? exp) (analyze-assignment exp))
     ((definition? exp) (analyze-definition exp))
     ((if? exp) (analyze-if exp))
-    ((lambda? exp) (analyze-lambda exp))
     ((begin? exp) (analyze-sequence (begin-actions exp)))
     ((cond? exp) (analyze (cond->if exp)))
     ((let? exp) (analyze (let->combination exp)))
@@ -399,13 +387,6 @@
   (lambda (env succeed fail)
     (succeed (lookup-variable-value exp env)
       fail)))
-
-(define (analyze-lambda exp)
-  (let ((vars (lambda-parameters exp))
-         (bproc (analyze-sequence (lambda-body exp))))
-    (lambda (env succeed fail)
-      (succeed (make-procedure vars bproc env)
-        fail))))
 
 ;;
 ;; zie deel 1c p. 14
@@ -453,26 +434,6 @@
         (lambda (val fail2)
           (define-variable! var val env)
           (succeed 'ok fail2))
-        fail))))
-
-;;
-;; zie deel 1c p. 17
-;;
-(define (analyze-assignment exp)
-  (let ((var (assignment-variable exp))
-         (vproc (analyze (assignment-value exp))))
-    (lambda (env succeed fail)
-      (vproc env
-        (lambda (val fail2)
-          (let ((old-value
-                  (lookup-variable-value var env)))
-            (set-variable-value! var val env)
-            (succeed 'ok
-              (lambda ()
-                (set-variable-value! var
-                  old-value
-                  env)
-                (fail2)))))
         fail))))
 
 ;;
@@ -572,23 +533,11 @@
 
                       (list 'define '(multiple-dwelling)
                             (list 'let '((baker    (amb 1 2 3 4 5))
-                                          (cooper   (amb 1 2 3 4 5))
-                                          (fletcher (amb 1 2 3 4 5))
-                                          (miller   (amb 1 2 3 4 5))
                                           (smith    (amb 1 2 3 4 5)))
-                                  '(require (distinct? (list baker cooper fletcher miller smith)))
+                                  '(require (distinct? (list baker smith)))
                                   (list 'require (list 'not (list '= 'baker 5)))
-                                  '(require (not (= cooper 1)))
-                                  '(require (not (= fletcher 5)))
-                                  '(require (not (= fletcher 1)))
-                                  '(require (> miller cooper))
-                                  (list 'require (list 'not (list '= '(abs (- smith fletcher)) 1)))
-                                  '(require (not (= (abs (- fletcher cooper)) 1)))
                                   #t
                                   '(list (list 'baker baker)
-                                         (list 'cooper cooper)
-                                         (list 'fletcher fletcher)
-                                         (list 'miller miller)
                                          (list 'smith smith))))
 
                       '(multiple-dwelling))
@@ -604,23 +553,11 @@
 
                       (list 'define '(multiple-dwelling)
                             (list 'let '((baker    (amb 1 2 3 4 5))
-                                          (cooper   (amb 1 2 3 4 5))
-                                          (fletcher (amb 1 2 3 4 5))
-                                          (miller   (amb 1 2 3 4 5))
                                           (smith    (amb 1 2 3 4 5)))
-                                  '(require (distinct? (list baker cooper fletcher miller smith)))
+                                  '(require (distinct? (list baker smith)))
                                   (list 'require (list 'not (list '= 'baker 4)))
-                                  '(require (not (= cooper 1)))
-                                  '(require (not (= fletcher 5)))
-                                  '(require (not (= fletcher 1)))
-                                  '(require (> miller cooper))
-                                  (list 'require (list 'not (list '= '(abs (- smith fletcher)) 2)))
-                                  '(require (not (= (abs (- fletcher cooper)) 1)))
-                                  '(require (< (abs (- miller smith)) 3))
+                                  '(require (< (abs (- baker smith)) 3))
                                   '(list (list 'baker baker)
-                                         (list 'cooper cooper)
-                                         (list 'fletcher fletcher)
-                                         (list 'miller miller)
                                          (list 'smith smith))))
 
                       '(multiple-dwelling))))
@@ -640,7 +577,4 @@
 
 (try)
 (and (next-alternative)
-  (next-alternative)
-  (next-alternative)
-  (next-alternative)
   (next-alternative))
