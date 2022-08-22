@@ -76,14 +76,18 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
                 //   info(s"Analysis of $benchmark cannot be run using $config: invalid configuration encountered.")
             }
 
-trait withoutCIwithWI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation)
-trait withCIWI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation)
-trait withoutWIWithCI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && c.componentInvalidation)
-trait withoutCIWI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && !c.componentInvalidation)
+trait withoutCICYwithWI extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
+trait withoutCYwithCIWI extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
+trait withoutWICYwithCI extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
+trait withoutCIWICY extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
+trait withoutCIwithWICY extends IncrementalModXComparisonTests :
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && c.cyclicValueInvalidation)
+trait withCIWICY extends IncrementalModXComparisonTests :
+    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && c.cyclicValueInvalidation)
 
 trait ModFComparisonTests extends IncrementalModXComparisonTests:
 
@@ -152,10 +156,12 @@ trait ModFComparisonTests extends IncrementalModXComparisonTests:
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
 
-class ModFComparisonTestsWI extends ModFComparisonTests with withoutCIwithWI
-class ModFComparisonTestsCIWI extends ModFComparisonTests with withCIWI
-class ModFComparisonTestsCI extends ModFComparisonTests with withoutWIWithCI
-class ModFComparisonTestsNoCIWI extends ModFComparisonTests with withoutCIWI
+class ModFComparisonTestsWI extends ModFComparisonTests with withoutCICYwithWI
+class ModFComparisonTestsCIWI extends ModFComparisonTests with withoutCYwithCIWI
+class ModFComparisonTestsCI extends ModFComparisonTests with withoutWICYwithCI
+class ModFComparisonTestsNoCIWICY extends ModFComparisonTests with withoutCIWICY
+class ModFComparisonTestsWICY extends ModFComparisonTests with withoutCIwithWICY
+class ModFComparisonTestsCIWICY extends ModFComparisonTests with withCIWICY
 
 trait ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
 
@@ -229,11 +235,7 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
             assert(a.lattice.subsumes(iv.asInstanceOf[a.Value], av), s"Store mismatch at $addr: $av is not subsumed by $iv.")
         }
 
-class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCIwithWI:
-    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
-class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withCIWI:
-    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
-class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWIWithCI:
-    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
-class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWI:
-    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.cyclicValueInvalidation)
+class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCICYwithWI
+class ModConcComparisonTestsNoCYCIWI extends ModConcComparisonTests with withoutCYwithCIWI
+class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWICYwithCI
+class ModConcComparisonTestsNoCIWICY extends ModConcComparisonTests with withoutCIWICY
