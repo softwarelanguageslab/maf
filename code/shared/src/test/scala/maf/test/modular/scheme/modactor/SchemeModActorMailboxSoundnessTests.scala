@@ -42,7 +42,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
     protected def parseProgram(filename: String): SchemeExp =
         ASchemeParser.parseProgram(Reader.loadFile(filename))
 
-    def concreteRuns: Int = 2
+    def concreteRuns: Int = 5
 
     protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
         type AM = Set[Message[analysis.Value]]
