@@ -107,6 +107,9 @@ case class HMap(contents: Map[HMapKey, Any]):
             case Some(newVlu) => this.copy(contents = this.contents + (key -> key.wrap(newVlu)))
             case None         => this
 
+    override def toString: String =
+        if contents.isEmpty then "⊥" else s"{${contents.values.map(_.toString).mkString(",")}}"
+
 object HMap:
     /**
      * Creates a new HMap that contains one abstract value of the given type
