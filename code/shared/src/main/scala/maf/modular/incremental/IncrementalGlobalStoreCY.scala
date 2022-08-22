@@ -42,11 +42,6 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         case _ => super.deleteContribution(cmp, addr)
     }
 
-    override def deleteAddress(addr: Addr): Unit =
-        // REMARK: Why is this only needed with CY?
-        cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - addr)).withDefaultValue(Set())
-        super.deleteAddress(addr)
-
     /**
      * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
      *
@@ -94,6 +89,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
               else
                   // Delete the provenance of non-incoming values (i.e., flows within the SCA).
                   provenance += (a -> (provenance(a) - c))
+                  // Mark there is no provenance any more. REMARK check reason
+                  cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
                   // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
                   dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
                   acc
