@@ -100,6 +100,13 @@ case class HMap(contents: Map[HMapKey, Any]):
     def elements[W]: List[W] =
         this.contents.values.map(_.asInstanceOf[W]).toList
 
+    def mapValue(key: HMapKey)(f: key.Abstract => key.Abstract): HMap =
+        // changes the value in the hmap of the given key according to the given mapping function.
+        // if there is no value of the given type, the mapping function is not applied.
+        this.contents.get(key).map(_.asInstanceOf[key.Wrap]).map(key.unwrap).map(f) match
+            case Some(newVlu) => this.copy(contents = this.contents + (key -> key.wrap(newVlu)))
+            case None         => this
+
 object HMap:
     /**
      * Creates a new HMap that contains one abstract value of the given type

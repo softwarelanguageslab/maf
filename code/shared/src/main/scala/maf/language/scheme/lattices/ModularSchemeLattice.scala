@@ -391,6 +391,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "ACTOR"
         val tpy = ActorT
         override def toString: String = s"<actor {${actors.mkString(",")}}>"
+
     case class Behaviors(behs: Set[Behavior]) extends Value, Product1[Set[Behavior]]:
         def ord = 28
         def typeName = "BEH"

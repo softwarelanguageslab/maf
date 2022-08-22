@@ -42,7 +42,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
     protected def parseProgram(filename: String): SchemeExp =
         ASchemeParser.parseProgram(Reader.loadFile(filename))
 
-    def concreteRuns: Int = 5
+    def concreteRuns: Int = 2
 
     protected def compareMailboxes(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
         type AM = Set[Message[analysis.Value]]
@@ -81,13 +81,20 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
                 //println(s"getting $cmp with concrete mail $cmsg in abstractmail: ${abstractMail.get(cmp)}")
                 val existsMatchingMessage = abstractMail
                     .get(cmp)
-                    .exists(_.exists(msg => cmsg.vlus.zip(msg.vlus).forall { case (x, y) => analysis.lattice.subsumes(y, x) || x == y }))
+                    .exists(
+                      _.exists(msg => cmsg.vlus.zip(msg.vlus).forall { case (x, y) => analysis.lattice.subsumes(removeEnv(analysis, y), x) || x == y })
+                    )
+
                 if !existsMatchingMessage then alert(s"no matching message for $cmsg")
                 existsMatchingMessage
             )
         }
 
         matchedMessages.map(_.size).sum - concreteMail.values.map(_.size).sum
+
+    private def removeEnv(analysis: Analysis, v: analysis.Value): analysis.Value =
+        v.mapValue(analysis.modularLattice.ActorT)((v) => v.map(_.removeEnv))
+            .mapValue(analysis.modularLattice.BehaviorT)((v) => v.map(_.removeEnv))
 
     protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
         val abstractActors: Set[SchemeModActorComponent[Unit]] =
