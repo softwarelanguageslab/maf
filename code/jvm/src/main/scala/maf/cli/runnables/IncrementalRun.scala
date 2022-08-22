@@ -95,7 +95,7 @@ object IncrementalRun extends App:
         with IncrementalLogging[SchemeExp]
         with IncrementalDataFlowVisualisation[SchemeExp] {
         override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(l@1:31)")
-        mode = Mode.Fine // Mode.Select
+        mode = Mode.Coarse // Mode.Select
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
@@ -144,13 +144,14 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-       "test/DEBUG1.scm"
+      // "test/DEBUG1.scm"
      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
       // "test/changes/scheme/satMiddle.scm",
        //"test/changes/scheme/satFine.scm",
       //"test/changes/scheme/reinforcingcycles/implicit-paths.scm",
        //"test/DEBUG3.scm",
-       //"test/changes/scheme/nbody-processed.scm"
+      // "test/changes/scheme/nbody-processed.scm"
+      "test/changes/scheme/browse.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -168,7 +169,7 @@ object IncrementalRun extends App:
             println("init")
             l.analyzeWithTimeout(newTimeout())
             assert(l.finished)
-            l.dataFlowToPNG("logs/flows.dot")
+            l.dataFlowToImage("logs/init.dot")
             //val scas = l.computeSCAs()
             // scas.foreach({ sca =>
             //    sca.foreach(a => println(l.store(a)))
@@ -176,6 +177,7 @@ object IncrementalRun extends App:
             // })
             println("upd")
             l.updateAnalysis(newTimeout())
+            l.dataFlowToImage("logs/incr.dot")
 
             println("rean")
             val f = lifoAnalysis(text)
@@ -183,6 +185,7 @@ object IncrementalRun extends App:
             f.configuration = allOptimisations
             f.analyzeWithTimeout(newTimeout())
             assert(f.finished)
+            l.dataFlowToImage("logs/rean.dot")
 
             //checkEqState(f, l,"")
 
