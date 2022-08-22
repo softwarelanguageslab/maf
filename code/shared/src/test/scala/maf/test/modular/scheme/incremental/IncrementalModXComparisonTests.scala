@@ -105,7 +105,7 @@ trait ModFComparisonTests extends IncrementalModXComparisonTests:
         extends BaseAnalysis(program)
         with IncrementalSchemeModFBigStepSemantics
         with IncrementalGlobalStoreCY[SchemeExp]:
-        var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
+        var configuration: IncrementalConfiguration = allOptimisations
         override def intraAnalysis(
             cmp: Component
           ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
@@ -176,7 +176,7 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
         extends BaseModConcAnalysis(program)
         with IncrementalSchemeModConcSmallStepSemantics
         with IncrementalGlobalStoreCY[SchemeExp]:
-        var configuration: IncrementalConfiguration = noOptimisations // allOptimisations
+        var configuration: IncrementalConfiguration = ci_di_wi
 
         override def intraAnalysis(
             cmp: Component
@@ -236,6 +236,6 @@ trait ModConcComparisonTests extends IncrementalModXComparisonTests with Concurr
         }
 
 class ModConcComparisonTestsWI extends ModConcComparisonTests with withoutCICYwithWI
-class ModConcComparisonTestsNoCYCIWI extends ModConcComparisonTests with withoutCYwithCIWI
+class ModConcComparisonTestsCIWI extends ModConcComparisonTests with withoutCYwithCIWI
 class ModConcComparisonTestsCI extends ModConcComparisonTests with withoutWICYwithCI
-class ModConcComparisonTestsNoCIWICY extends ModConcComparisonTests with withoutCIWICY
+class ModConcComparisonTestsNoCIWI extends ModConcComparisonTests with withoutCIWICY

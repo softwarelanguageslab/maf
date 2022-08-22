@@ -44,7 +44,7 @@ trait IncrementalModXSoundnessTests extends SchemeSoundnessTests:
 
     override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
-    val configurations: List[IncrementalConfiguration] = List(ci_di_wi) // The configurations to test.
+    val configurations: List[IncrementalConfiguration] = List(allOptimisations) // The configurations to test.
 
     def runInterpreterWithVersion(
         i: SchemeInterpreter,

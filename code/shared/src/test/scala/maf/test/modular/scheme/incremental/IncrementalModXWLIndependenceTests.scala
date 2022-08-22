@@ -24,9 +24,9 @@ trait IncrementalModXWLIndependenceTests extends IncrementalTestBase {
         val lifo = lifoAnalysis(program)
         val fifo = fifoAnalysis(program)
         val rand = randAnalysis(program)
-        lifo.configuration = ci_di_wi
-        fifo.configuration = ci_di_wi
-        rand.configuration = ci_di_wi
+        lifo.configuration = allOptimisations
+        fifo.configuration = allOptimisations
+        rand.configuration = allOptimisations
 
         // Initial analysis.
         info("Checking initial analysis.")
@@ -125,9 +125,9 @@ trait IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependence
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
     }
 
-    def lifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
-    def fifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with FIFOWorklistAlgorithm[SchemeExp]
-    def randAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, ci_di_wi) with RandomWorklistAlgorithm[SchemeExp]
+    def lifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, allOptimisations) with LIFOWorklistAlgorithm[SchemeExp]
+    def fifoAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, allOptimisations) with FIFOWorklistAlgorithm[SchemeExp]
+    def randAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, allOptimisations) with RandomWorklistAlgorithm[SchemeExp]
 end IncrementalModFCPWLIndependenceTests
 
 class IncrementalModFCPWLIndependenceTestsWithWI extends IncrementalModFCPWLIndependenceTests:

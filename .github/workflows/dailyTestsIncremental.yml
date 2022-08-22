@@ -136,7 +136,9 @@ jobs:
           ModFComparisonTestsWI,
           ModFComparisonTestsCIWI,
           ModFComparisonTestsCI,
-          ModFComparisonTestsNoCIWI,
+          ModFComparisonTestsNoCIWICY,
+          ModFComparisonTestsWICY,
+          ModFComparisonTestsCIWICY,
 
           ModConcComparisonTestsWI,
           ModConcComparisonTestsCIWI,
