@@ -42,20 +42,22 @@ case class DotGraph[N <: GraphElement, E <: GraphElement]():
                 val label =
                     n.label.replace("<", "&lt;").nn.replace(">", "&gt;").nn.replace("&lt;br/&gt;", "<br/>").nn
                 val color = n.color
+                val shape = if n.shape == "" then "box" else n.shape
                 val tooltip = n.metadata.toString.replace("<", "&lt;").nn.replace(">", "&gt;").nn
                 writer.write(
-                  s"node_$id[shape=box, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n"
+                  s"node_$id[shape=$shape, xlabel=$id, label=<$label>, fillcolor=<$color> style=<filled>, tooltip=<$tooltip>];\n"
                 )
             }
             _edges.foreach({ case (n1, ns) =>
                 ns.foreach({ case (annot, n2) =>
                     val annotstr = annot.label
                     val color = annot.color
-                    val constrain = if !annot.constrain then ",constraint = false" else ""
+                    val shape = if annot.shape == "" then "none" else annot.shape
                     val options = Map(
                       "color" -> s"<$color>",
                       "label" -> s"<$annotstr>",
-                      "constraint" -> (if annot.constrain then "true" else "false")
+                      "constraint" -> (if annot.constrain then "true" else "false"),
+                      "shape" -> s"<$shape>"
                     )
 
                     val optionsText = options.map { case (key, value) => s"$key=$value" }.mkString(",")

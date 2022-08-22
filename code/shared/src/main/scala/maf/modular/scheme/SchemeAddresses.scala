@@ -23,7 +23,7 @@ trait ExceptionAddr[Context] extends SchemeAddr[Context]
 case class LitAddr[Context](exp: SchemeExp) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = exp.idn
-    override def toString: String = s"LitAddr($exp@${exp.idn})"
+    override def toString: String = s"$exp@${exp.idn}"
 
 case class PrmAddr(nam: String) extends SchemeAddr[Nothing]:
     def printable = false

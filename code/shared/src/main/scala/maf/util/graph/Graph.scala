@@ -18,6 +18,8 @@ trait GraphElement:
 
     /** Should  the graph element constrain  the ranking of the node during visualisation */
     def constrain: Boolean = true
+    /** Allows to set the shape of nodes and edges. */
+    def shape: String = ""
 
 class NoTransition extends GraphElement:
     def label = ""

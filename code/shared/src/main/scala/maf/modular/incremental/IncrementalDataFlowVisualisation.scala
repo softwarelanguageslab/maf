@@ -2,6 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.modular.*
+import maf.modular.scheme.LitAddr
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.*
@@ -27,10 +28,10 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         override def writeAddr(addr: Addr, value: Value): Boolean =
             if configuration.cyclicValueInvalidation then
                 var flattenedFlows = implicitFlows.flatten.toSet
-                var set = lattice.getAddresses(value).map(a => AdrDep(a, true, flattenedFlows(a))).toSet
+                var set = lattice.getAddresses(value).map(a => AdrDep(a, true, flattenedFlows(a)))
                 flattenedFlows = flattenedFlows.filter(adr => set.find(_.a == adr).isEmpty)
                 set = set ++ flattenedFlows.map(a => AdrDep(a, false, true))
-                var newDependencies = SmartUnion.sunion(addressDependenciesLog(component)(addr), set)
+                val newDependencies = SmartUnion.sunion(addressDependenciesLog(component)(addr), set)
                 addressDependenciesLog = addressDependenciesLog + (component -> (addressDependenciesLog(component) + (addr -> newDependencies)))
             val b = super.writeAddr(addr, value)
             b
@@ -48,7 +49,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
     def flowInformationToDotGraph(fileName: String): Unit =
         // Type of graph elements. One type suffices for both nodes and edges.
-        case class GE(label: String, color: Color = Colors.White, metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
+        case class GE(label: String, color: Color = Colors.White, override val shape: String = "", metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
         // Colour nodes by SCA.
         val nodeColors = computeSCAs().toList.zipWithIndex
             .flatMap({ case (sca, index) => val color = allColors(index); sca.map(v => (v, color)) })
@@ -57,7 +58,10 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         // Generate the nodes. Create a mapping from addresses to graph elements (nodes).
         val nodes: Map[Addr, GE] =
             (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
-                .map(addr => (addr, GE(addr.toString(), nodeColors(addr))))
+                .map(addr => (addr,
+                    GE(addr.toString,
+                        if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else nodeColors(addr),
+                        if addr.isInstanceOf[LitAddr[_]] then "triangle" else "box")))
                 .toMap
         // Compute the edges.
         val edges: Set[(GE, GE, AdrDep)] =
@@ -70,3 +74,45 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
                     edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
             }
             .toFile(fileName)
+
+    def dataFlowToPNG(fileName: String): Unit =
+        flowInformationToDotGraph(fileName)
+        DotGraph.createPNG(fileName, true)
+
+/*
+class IncrementalDataFlowVisualiser[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
+
+    case class Explicit() extends GraphElement:
+        def label = ""
+        def color = Colors.Black
+        def metadata = GraphMetadataNone
+
+    case class Implicit() extends GraphElement:
+            def label = ""
+            def color = Colors.Grey
+            def metadata = GraphMetadataNone
+
+    case class Node(addr: Addr) extends GraphElement:
+        def label = addr.toString
+        def color = Colors.Black
+        def metadata = GraphMetadataNone
+
+    var flowElements: Map[Component, (Set[GraphElement], Set[(GraphElement, GraphElement, GraphElement)])]
+
+    trait IncrementalDataFlowVisualiserIntra extends IncrementalGlobalStoreCYIntraAnalysis:
+
+        var nodes: Set[GraphElement] = Set()
+        var edges: Set[(GraphElement, GraphElement, GraphElement)]
+
+        override def writeAddr(addr: Addr, value: Value): Boolean =
+            nodes += Node(addr)
+            lattice.getAddresses(value).foreach(a => edges += (a, Explicit(), addr))
+            implicitFlows.foreach(a => edges += (a, Implicit(), addr))
+            super.writeAddr(addr, value)
+
+        override def commit(): Unit =
+            flowElements += (component -> (nodes, edges))
+            super.commit()
+
+    end IncrementalDataFlowVisualiserIntra
+*/
