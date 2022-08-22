@@ -100,12 +100,18 @@ object SingleDotGraph extends DotGraph()
 object DotGraph:
     def empty[N <: GraphElement, E <: GraphElement] = new DotGraph[N, E]().G.typeclass.empty
 
-    // Returns a boolean indicating whether the conversion was successful.
-    def createPNG(dotFile: String, removeSource: Boolean = false): Boolean =
+    private def convert(dotFile: String, typ: String, removeSource: Boolean = false): Boolean =
         if !dotFile.endsWith(".dot") then return false
-        var source = dotFile.replace(" ", "\\ ").nn
-        var target = source.dropRight(3) ++ "png"
+        val source = dotFile.replace(" ", "\\ ").nn
+        val target = source.dropRight(3) ++ typ
         import sys.process.*
-        val result = s"dot -Tpng $source -o $target".! == 0
+        val result = s"dot -T$typ $source -o $target".! == 0
         if removeSource then s"rm $source".!
         result
+
+    // Returns a boolean indicating whether the conversion was successful.
+    def createPNG(dotFile: String, removeSource: Boolean = false): Boolean =
+        convert(dotFile, "png", removeSource)
+
+    def createSVG(dotFile: String, removeSource: Boolean = false): Boolean =
+        convert(dotFile, "svg", removeSource)

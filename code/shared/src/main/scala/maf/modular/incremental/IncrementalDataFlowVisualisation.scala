@@ -64,10 +64,13 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
                         if addr.isInstanceOf[LitAddr[_]] then "triangle" else "box")))
                 .toMap
         // Compute the edges.
-        val edges: Set[(GE, GE, AdrDep)] =
+        var edges: Set[(GE, GE, AdrDep)] =
             addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
         val g = DotGraph[GE, GE]().G.typeclass
+        // Do not show the implicit flows when there are many edges... Otherwise the graph becomes intractable.
+        val edgeCut = 250
+        if edges.size > edgeCut then edges = edges.filter(_._3.directFlow)
         edges
             .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
                 case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
@@ -75,9 +78,9 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
             }
             .toFile(fileName)
 
-    def dataFlowToPNG(fileName: String): Unit =
+    def dataFlowToImage(fileName: String): Unit =
         flowInformationToDotGraph(fileName)
-        DotGraph.createPNG(fileName, true)
+        DotGraph.createSVG(fileName, true)
 
 /*
 class IncrementalDataFlowVisualiser[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
