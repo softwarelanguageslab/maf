@@ -85,7 +85,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
   )
   .jvmSettings(
     /** General */
-    Compile / mainClass := Some("maf.cli.Main"),
+    Compile / mainClass := Some("maf.cli.runnables.SCAMArtifact"),
     //libraryDependencies += "net.openhft" % "affinity" % "3.21ea82",
     run / fork := false,
   )
