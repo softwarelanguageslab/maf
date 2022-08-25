@@ -11,7 +11,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
   .in(file("code"))
   .settings(
     /** General settings */
-    name := "Modular Analysis Framework (MAF)",
+    name := "MAF",
     version := "2.0",
     scalaVersion := "3.1.0",
     //crossScalaVersions ++= Seq("2.13.6", "3.1.0"),

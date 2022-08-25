@@ -1,3 +1,30 @@
 FROM sbtscala/scala-sbt:eclipse-temurin-17.0.3_1.7.1_3.1.3
 
+# Copy the soure files to the docker build container
+COPY . /build
+WORKDIR /build
+# Run the actual build of the source code
+RUN sbt maf/assembly
+RUN ls -rtl /build/code/jvm/target/scala-3.1.0/
 
+FROM eclipse-temurin:17-jre-focal
+
+# For running the artifact we will only need the jar, tests and scripts
+WORKDIR /app
+COPY --from=0 /build/code/jvm/target/scala-3.1.0/MAF-assembly-2.0.jar /app/MAF.jar
+COPY --from=0 /build/test/ /app/test/
+COPY --from=0 /build/scripts /app/scripts/
+
+# For running the processing scripts we will also need Python3, pandas and seaborn
+RUN apt update && \
+    apt install -y python3 python3-pip z3 libz3-java && \
+    apt clean
+
+# Install the required pip dependencies
+RUN pip3 install seaborn pandas
+
+# Results will be reported back to the host
+VOLUME /app/results
+
+# We will not configure a command, since this will be controlled by the scripts
+ENTRYPOINT ["java", "-jar", "MAF.jar"]

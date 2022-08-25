@@ -92,6 +92,6 @@ object CountFalsePositives:
         println(resultTable)
         println(resultTable.prettyString())
 
-        val writer = Writer.openTimeStamped(s"out/scv-precision-false-positives.csv")
+        val writer = Writer.openTimeStamped(s"results/precision/scv-precision-false-positives.csv")
         Writer.write(writer, resultTable.toCSVString(rowName = "benchmark"))
         Writer.close(writer)

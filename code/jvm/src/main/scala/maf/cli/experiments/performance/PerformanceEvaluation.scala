@@ -157,7 +157,7 @@ trait PerformanceEvaluation:
         Writer.close(hdl)
 
     def run(
-        path: String = "benchOutput/performance/output.csv",
+        path: String = "results/performance/output.csv",
         timeoutFast: Boolean = true,
         failFast: Boolean = true
       ) =
