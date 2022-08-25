@@ -15,7 +15,7 @@ import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.*
-import maf.modular.worklist.*
+import maf.modular.worklist.{LIFOWorklistAlgorithm, *}
 import maf.util.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.*
@@ -25,66 +25,7 @@ import scala.concurrent.duration.*
 
 object IncrementalRun extends App:
 
-    def newAnalysis(text: SchemeExp, configuration: IncrementalConfiguration) =
-        new IncrementalSchemeModFAnalysisCPLattice(text, configuration)
-            with IncrementalLogging[SchemeExp]
-            //with IncrementalDataFlowVisualisation[SchemeExp]
-            {
-            override def focus(a: Addr): Boolean = a.toString == "VarAddr(x@<=:1:13)[Some(ε)]"
-            mode = Mode.Coarse
-            override def intraAnalysis(
-                cmp: SchemeModFComponent
-              ) = new IntraAnalysis(cmp)
-                with IncrementalSchemeModFBigStepIntra
-                with IncrementalGlobalStoreCYIntraAnalysis
-                //  with AssertionModFIntra
-                with IncrementalLoggingIntra
-            //with IncrementalVisualIntra
-        }
-
-    // Performance benchmarks
-    def perfAnalysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
-        with SplitPerformance[SchemeExp]
-        with IncrementalLogging[SchemeExp] {
-        mode = Mode.Summary
-        var cnt = 0
-        override def run(timeout: Timeout.T) =
-            super.run(timeout)
-            println(cnt)
-        override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp)
-                with IncrementalSchemeModFBigStepIntra
-                with IncrementalGlobalStoreCYIntraAnalysis
-                with SplitPerformanceIntra
-                with IncrementalLoggingIntra {
-                override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-                    cnt = cnt + 1
-                    super.analyzeWithTimeout(timeout)
-            }
-    }
-
-    // Analysis from soundness tests.
-    def base(program: SchemeExp) = new ModAnalysis[SchemeExp](program)
-        with StandardSchemeModFComponents
-        with SchemeModFNoSensitivity
-        with SchemeModFSemanticsM
-        with LIFOWorklistAlgorithm[SchemeExp]
-        with IncrementalSchemeModFBigStepSemantics
-        with IncrementalSchemeTypeDomain // IncrementalSchemeConstantPropagationDomain
-        with IncrementalGlobalStoreCY[SchemeExp]
-        with IncrementalLogging[SchemeExp]
-        //with IncrementalDataFlowVisualisation[SchemeExp]
-        {
-        override def focus(a: Addr): Boolean = false // a.toString.contains("VarAddr(n")
-        var configuration: IncrementalConfiguration = ci
-        mode = Mode.Fine
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
-        //with IncrementalVisualIntra
-    }
-
-    abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
+    class Analysis(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends ModAnalysis[SchemeExp](prg)
         with StandardSchemeModFComponents
         with SchemeModFNoSensitivity
@@ -93,16 +34,15 @@ object IncrementalRun extends App:
         with IncrementalSchemeTypeDomain
         with IncrementalGlobalStoreCY[SchemeExp]
         with IncrementalLogging[SchemeExp]
+        with LIFOWorklistAlgorithm[SchemeExp]
         with IncrementalDataFlowVisualisation[SchemeExp] {
-        override def focus(a: Addr): Boolean = a.toString.contains("VarAddr(l@1:31)")
-        mode = Mode.Coarse // Mode.Select
+        override def focus(a: Addr): Boolean = a.toString.contains("x@54:20")
+        mode = Mode.Step // Mode.Select
+        stepFocus = 1//13//10//23//119
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
     }
-
-    def lifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with LIFOWorklistAlgorithm[SchemeExp]
-    def fifoAnalysis(b: SchemeExp) = new BaseModFAnalysisIncremental(b, ci_di_wi) with FIFOWorklistAlgorithm[SchemeExp]
 
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
     // Useful when reducing a program when debugging the analysis.
@@ -119,7 +59,7 @@ object IncrementalRun extends App:
         }
         println("Done interpreting.")
 
-    def checkEqState(a: BaseModFAnalysisIncremental, b: BaseModFAnalysisIncremental, message: String): Unit =
+    def checkEqState(a: Analysis, b: Analysis, message: String = ""): Unit =
         (a.store.keySet ++ b.store.keySet).foreach { addr =>
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
             val valB = b.store.getOrElse(addr, b.lattice.bottom)
@@ -144,82 +84,49 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-      // "test/DEBUG1.scm"
+       "test/DEBUG1.scm",
+        "test/DEBUG2.scm"
      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
       // "test/changes/scheme/satMiddle.scm",
        //"test/changes/scheme/satFine.scm",
       //"test/changes/scheme/reinforcingcycles/implicit-paths.scm",
        //"test/DEBUG3.scm",
       // "test/changes/scheme/nbody-processed.scm"
-      "test/changes/scheme/browse.scm"
+     // "test/changes/scheme/browse.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
-    val configs = List(noOptimisations)
 
-    modFbenchmarks.foreach { bench =>
-        try {
-            println(s"***** $bench *****")
-            //interpretProgram(bench)
-            val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            // println(text.prettyString())
+    val d1 = new Analysis(CSchemeParser.parseProgram(Reader.loadFile("test/DEBUG1.scm")), ci_di_wi)
+    val d2 = new Analysis(CSchemeParser.parseProgram(Reader.loadFile("test/DEBUG2.scm")), ci_di_wi)
 
-            val l = lifoAnalysis(text)
-            l.configuration = allOptimisations
-            println("init")
-            l.analyzeWithTimeout(newTimeout())
-            assert(l.finished)
-            l.dataFlowToImage("logs/init.dot")
-            //val scas = l.computeSCAs()
-            // scas.foreach({ sca =>
-            //    sca.foreach(a => println(l.store(a)))
-            //     println
-            // })
-            println("upd")
-            l.updateAnalysis(newTimeout())
-            l.dataFlowToImage("logs/incr.dot")
+    d1.analyzeWithTimeout(newTimeout())
+    assert(d1.finished)
+    d2.analyzeWithTimeout(newTimeout())
+    assert(d2.finished)
+    checkEqState(d1, d2)
 
-            println("rean")
-            val f = lifoAnalysis(text)
-            f.version = New
-            f.configuration = allOptimisations
-            f.analyzeWithTimeout(newTimeout())
-            assert(f.finished)
-            l.dataFlowToImage("logs/rean.dot")
+    /*
+        modFbenchmarks.foreach { bench =>
+            try {
+                println(s"***** $bench *****")
+                val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+                val a = new Analysis(text, allOptimisations)
+                println("interp")
+                interpretProgram(bench)
+                println("init")
+                a.analyzeWithTimeout(newTimeout())
+                assert(a.finished)
 
-            //checkEqState(f, l,"")
+                println("upd")
+                a.updateAnalysis(newTimeout())
 
-            //val noOpt = a.deepCopy()
-            //noOpt.configuration = noOptimisations
-            //noOpt.logger.logU("***** NO OPT *****")
-            //noOpt.updateAnalysis(newTimeout())
-            //assert(noOpt.finished)
-
-            //val full = newAnalysis(text, noOptimisations)
-            //full.version = New
-            //full.logger.logU("***** FULL *****")
-            //full.analyzeWithTimeout(newTimeout())
-            //assert(full.finished)
-            /*
-            configs.foreach { config =>
-                println(config)
-                val opt = l.deepCopy()
-                opt.configuration = config
-                //opt.logger.logU(s"***** ${config.toString} *****")
-                opt.updateAnalysis(newTimeout())
-                assert(opt.finished)
-
-            // compareAnalyses(opt, full, s"${opt.configuration.toString} vs. Full")
-            //compareAnalyses(opt, noOpt, s"${opt.configuration.toString} vs. No Opt")
+            } catch {
+                case e: Exception =>
+                    e.printStackTrace(System.out)
             }
-             */
-
-        } catch {
-            case e: Exception =>
-                e.printStackTrace(System.out)
         }
-    }
-
+    */
     println("\n\n**Done**\n\n")
 end IncrementalRun
 
@@ -239,3 +146,21 @@ object IncrementalExtraction extends App:
 
     val program = CSchemeParser.parseProgram(Reader.loadFile(text))
     println((if version == New then ProgramVersionExtracter.getUpdated(program) else ProgramVersionExtracter.getInitial(program)).prettyString())
+
+/*
+    Key not found error in deleteContribution (when W not removed during cycle cleanup):
+
+(letrec ((for-each (lambda (f l)
+                      (if (null? l)
+                        #t
+                        (begin
+                          (for-each f (cdr l))))))
+          (list (lambda args args))
+          (_0 (letrec ((loop (lambda (level)
+                                (if (< level 2)
+                                  (for-each (lambda (child-pt1) (loop (+ 1 level))) (list ((<change> list vector) '<pt>)))
+                                  #f))))
+                (loop 0))))
+  _0)
+
+*/

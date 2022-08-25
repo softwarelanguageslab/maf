@@ -52,7 +52,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         case class GE(label: String, color: Color = Colors.White, override val shape: String = "", metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
         // Colour nodes by SCA.
         val nodeColors = computeSCAs().toList.zipWithIndex
-            .flatMap({ case (sca, index) => val color = allColors(index); sca.map(v => (v, color)) })
+            .flatMap({ case (sca, index) => val color = palette(index); sca.map(v => (v, color)) })
             .toMap
             .withDefaultValue(Colors.White)
         // Generate the nodes. Create a mapping from addresses to graph elements (nodes).

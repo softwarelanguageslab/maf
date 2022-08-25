@@ -89,7 +89,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
               else
                   // Delete the provenance of non-incoming values (i.e., flows within the SCA).
                   provenance += (a -> (provenance(a) - c))
-                  // Mark that there is no provenance any more. REMARK check reason
+                  // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
+                  // REMARK: check reason + impact
                   cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
                   // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
                   dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
