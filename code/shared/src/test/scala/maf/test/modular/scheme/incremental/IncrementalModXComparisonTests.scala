@@ -160,8 +160,8 @@ class ModFComparisonTestsWI extends ModFComparisonTests with withoutCICYwithWI
 class ModFComparisonTestsCIWI extends ModFComparisonTests with withoutCYwithCIWI
 class ModFComparisonTestsCI extends ModFComparisonTests with withoutWICYwithCI
 class ModFComparisonTestsNoCIWICY extends ModFComparisonTests with withoutCIWICY
-class ModFComparisonTestsWICY extends ModFComparisonTests with withoutCIwithWICY
-class ModFComparisonTestsCIWICY extends ModFComparisonTests with withCIWICY
+//class ModFComparisonTestsWICY extends ModFComparisonTests with withoutCIwithWICY
+//class ModFComparisonTestsCIWICY extends ModFComparisonTests with withCIWICY
 
 trait ModConcComparisonTests extends IncrementalModXComparisonTests with ConcurrentIncrementalBenchmarks:
 

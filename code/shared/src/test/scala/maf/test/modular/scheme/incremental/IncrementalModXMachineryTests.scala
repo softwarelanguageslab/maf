@@ -43,7 +43,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             with IncrementalSchemeModFBigStepSemantics
             with IncrementalSchemeTypeDomain
             with IncrementalGlobalStoreCY[SchemeExp] {
-            var configuration: IncrementalConfiguration = allOptimisations
+            var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
             override def intraAnalysis(
                 cmp: Component
               ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
@@ -184,7 +184,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             //with IncrementalLogging[SchemeExp]
             {
             // override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
-            var configuration: IncrementalConfiguration = allOptimisations
+            var configuration: IncrementalConfiguration = ci_di_wi // allOptimisations
             override def intraAnalysis(
                 cmp: Component
               ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis //with IncrementalLoggingIntra

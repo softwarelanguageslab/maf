@@ -84,7 +84,7 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-       "test/DEBUG1.scm",
+     //  "test/DEBUG1.scm",
         "test/DEBUG2.scm"
      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
       // "test/changes/scheme/satMiddle.scm",
@@ -97,16 +97,6 @@ object IncrementalRun extends App:
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
 
-    val d1 = new Analysis(CSchemeParser.parseProgram(Reader.loadFile("test/DEBUG1.scm")), ci_di_wi)
-    val d2 = new Analysis(CSchemeParser.parseProgram(Reader.loadFile("test/DEBUG2.scm")), ci_di_wi)
-
-    d1.analyzeWithTimeout(newTimeout())
-    assert(d1.finished)
-    d2.analyzeWithTimeout(newTimeout())
-    assert(d2.finished)
-    checkEqState(d1, d2)
-
-    /*
         modFbenchmarks.foreach { bench =>
             try {
                 println(s"***** $bench *****")
@@ -126,7 +116,6 @@ object IncrementalRun extends App:
                     e.printStackTrace(System.out)
             }
         }
-    */
     println("\n\n**Done**\n\n")
 end IncrementalRun
 

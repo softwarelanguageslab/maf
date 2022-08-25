@@ -22,7 +22,7 @@ trait IncrementalModXRestartTests extends IncrementalTestBase {
     /** Tests whether the analysis result does not change when the analysis is restarted after completion. */
     private def restartTest(program: SchemeExp): Unit =
         val a = analysis(program)
-        a.configuration = allOptimisations
+        a.configuration = ci_di_wi // allOptimisations
         a.analyzeWithTimeout(analysisTimeout())
         assume(a.finished, "Initial analysis timed out.")
 

@@ -28,20 +28,6 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         if configuration.cyclicValueInvalidation then dataFlowR = dataFlowR - cmp
         super.deleteComponent(cmp)
 
-    override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean = addr match {
-        //case LitAddr(_) =>
-        //    updateContribution(cmp, addr, nw)
-        //    false // These will never update, but also must not become part of the store.
-        case _ => super.updateAddrInc(cmp, addr, nw)
-    }
-
-    override def deleteContribution(cmp: Component, addr: Addr): Unit = addr match {
-        //case LitAddr(_) =>
-        //    provenance += (addr -> (provenance(addr) - cmp)) // TODO MAKE SURE THIS CAUSES REFINEMENT OF SCA
-        //    if provenance(addr).isEmpty then provenance -= addr
-        case _ => super.deleteContribution(cmp, addr)
-    }
-
     /**
      * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
      *
