@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker import < prebuilt/image.tar.gz - scam-scv-2022-artifact
+docker load -i prebuilt/image.tar.gz 
