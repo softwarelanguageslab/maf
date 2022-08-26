@@ -59,12 +59,3 @@ The command above will run the benchmarks and their Python processing scripts. A
 * Section 6B: 
    - `maf.cli.experiments.aam.ScvPerformanceComparison` implements the performance (in terms of execution time) benchmarks described in the paper. 
    - `maf.cli.experiments.scv.CountFalsePositives` implements the precision (in terms of false positives) benchmarks described in the papers.
-
-
-## Badges
-
-Our artifact satisfies the following criteria:
-
-* Available: this artifact is archived at TODO ADD DOI here. The artifact is provided under an open source license (GPLv3), with a commercial use exception (see LICENSE.md).
-* Functional: this artifact provides scripts to regenerate the results presented in the paper (see above)
-* Reusable: the artifact can be extended and reused for other purposes.  We provide documentation is this README with pointers to the relevant files, as well as source code documentation in the source itself. 
