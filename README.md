@@ -3,10 +3,14 @@ Summary-Based Compositional Analysis for Soft Contract Verification - Artifact
 
 This repository contains the software artifact for the paper "Summary-Based Compositional Analysis for Soft Contract Verification".
 
+## Obtaining the Artifact
+
+The artifact is published as an archive on Zenodo at https://doi.org/10.5281/zenodo.7024635.
+
 ## Running the Artifact
 
 The artifact can be executed in two ways: by building it from source or by executing our pre-built Docker image.
-The commands listed below will create a Docker image in the local Docker installation named `scam-scv-2022-artifact`.
+The commands listed below will create a Docker image in the local Docker installation named `scam-scv-2022-artifact`. All commands need to be executed on the host where Docker has been installed.
 
 ### Building from Source
 
@@ -34,6 +38,8 @@ Followed by:
 The second argument of the command above can be used to change the location of the CSV files that contain the benchmark results.
 
 ## Reproducing Tables
+
+**Note:** All commands need to be executed on the host where Docker has been installed.
 
 To reproduce the tables included in the paper, the benchmark programs can be executed, and their results analyzed. 
 For convience a script is included that generates the tables for the paper, and outputs them in LaTeX format:
