@@ -127,7 +127,8 @@ following publications:
   2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-10.pdf). _See release: `SCAM 2020`_
 * _Incremental Flow Analysis through Computational Dependency Reification_. SCAM
   2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-12.pdf). _See release: `SCAM 2020`
-* _Summary-Based Compositional Analysis for Soft Contract Verification_. SCAM 2022. [preprint pdf](http://soft.vub.ac.be/Publications/2022/vub-tr-soft-22-12.pdf). [artifact](https://github.com/softwarelanguageslab/maf/tree/scam-2022-summaries).
+* _Summary-Based Compositional Analysis for Soft Contract Verification_. SCAM 2022. [preprint pdf](http://soft.vub.ac.be/Publications/2022/vub-tr-soft-22-12.pdf). [git](https://github.com/softwarelanguageslab/maf/tree/scam-2022-summaries). [artifact](https://doi.org/10.5281/zenodo.7024635)
+.
 
 **Scala-AM has been used for evaluating static analysis approaches in the following publications:**
   * _Garbage-Free Abstract Interpretation through Abstract Reference Counting_. ECOOP 2019. [pdf](http://drops.dagstuhl.de/opus/volltexte/2019/10784/).
