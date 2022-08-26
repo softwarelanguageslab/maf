@@ -149,17 +149,18 @@ trait PerformanceEvaluation:
     def exportCSV(
         path: String,
         format: PerformanceResult => String,
-        timestamped: Boolean = true
+        timestamped: Boolean = true,
+        rowName: String = "name"
       ) =
         val hdl = if timestamped then Writer.openTimeStamped(path) else Writer.open(path)
-        val csv = results.toCSVString(format = format)
+        val csv = results.toCSVString(format = format, rowName = rowName)
         Writer.write(hdl, csv)
         Writer.close(hdl)
 
     def run(
         path: String = "results/performance/output.csv",
         timeoutFast: Boolean = true,
-        failFast: Boolean = true
+        failFast: Boolean = true,
       ) =
         given ExecutionContext with
             def execute(runnable: Runnable): Unit = runnable.run

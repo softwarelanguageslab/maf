@@ -27,10 +27,10 @@ def load_dataframe(filename):
     # Replace TIMEOUTS with NaN
     df["time"] = df["time"].replace("_", np.nan).replace("TIMEOUT", np.nan).astype(float)
     # Convert from nanoseconds to milliseconds
-    df["z3 (ns)"] = df["z3 (ns)"].replace("_", np.nan).astype(float)
+    # df["z3 (ns)"] = df["z3 (ns)"].replace("_", np.nan).astype(float)
     df["collection phase (ms)"] = df["collection phase (ms)"] / (1000*1000)
     df["propagation phase (ms)"] = df["propagation phase (ms)"] / (1000*1000)
-    df["z3 (ns)"] = df["z3 (ns)"] / (1000*1000)
+    # df["z3 (ns)"] = df["z3 (ns)"] / (1000*1000)
     return df 
 
 

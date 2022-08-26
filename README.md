@@ -29,23 +29,25 @@ In order to run the pre-built Docker image, it first needs to be imported in the
 ./scripts/artifact/import_image.sh
 ```
 
-Followed by:
-
-```
-./scripts/artifact/run_benchmarks.sh $PWD/results/
-```
-
-The second argument of the command above can be used to change the location of the CSV files that contain the benchmark results.
-
 ## Reproducing Tables
 
 **Note:** All commands need to be executed on the host where Docker has been installed.
 
 To reproduce the tables included in the paper, the benchmark programs can be executed, and their results analyzed. 
-For convience a script is included that generates the tables for the paper, and outputs them in LaTeX format:
+
+First make sure that the `results` directory is empty or non-existent. If you run the artifact for the first time, this should be the case.
+Then run the benchmarks, this may take up to 2 hours.
+
+``` 
+./scripts/artifact/run_benchmarks.sh $PWD/results/
+```
+
+The second argument of the command above can be used to change the location of the CSV files that contain the benchmark results.
+
+Then run the script for producing the tables and printing them in LaTeX format: 
 
 ```
-./scripts/artifact/run_and_build_tables.sh $PWD/results/
+./scripts/artifact/produce_tables.sh $PWD/results/
 ```
 
 The command above will run the benchmarks and their Python processing scripts. All processing scripts can be found in the `scripts/Python/scv/` directory.
