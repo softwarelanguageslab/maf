@@ -4,6 +4,10 @@ import maf.core.Monad
 import maf.core.Monad.MonadSyntaxOps
 import maf.core.IdentityMonad
 
+trait MonadReader[R, M[_, _]]:
+    def ask: M[R, R]
+    def local[R, A](f: R => R)(m: M[R, A]): M[R, A]
+
 case class ReaderT[M[_], T, A](runReader: (T) => M[A])
 
 object ReaderT:
@@ -17,11 +21,18 @@ object ReaderT:
         def map[X, Y](m: R[X])(f: X => Y): R[Y] =
             flatMap(m)(f andThen unit)
 
+    given monadReaderInstance[M[_]: Monad, T]: MonadReader[T, [R, A] =>> ReaderT[M, R, A]] with
+        type MT[R, A] = ReaderT[M, R, A]
+        def ask: MT[T, T] =
+            ReaderT((r) => Monad[M].unit(r))
+        def local[R, A](f: R => R)(m: MT[R, A]): MT[R, A] =
+            ReaderT((r) => m.runReader(f(r)))
+
     def ask[M[_]: Monad, T]: ReaderT[M, T, T] =
-        ReaderT((r) => Monad[M].unit(r))
+        monadReaderInstance.ask
 
     def local[M[_]: Monad, R, A](f: R => R)(m: ReaderT[M, R, A]): ReaderT[M, R, A] =
-        ReaderT((r) => m.runReader(f(r)))
+        monadReaderInstance.local(f)(m)
 
     def lift[M[_], T, A](m: M[A]): ReaderT[M, T, A] =
         ReaderT((_) => m)

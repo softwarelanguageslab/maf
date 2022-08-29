@@ -1,6 +1,9 @@
 package maf.modular.scheme.modactor
 
+import maf.modular.scheme.modflocal.{EffectLens, EffectsM}
 import maf.modular.ModAnalysis
+import maf.util.*
+import maf.core.monad.*
 import maf.language.scheme.*
 import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
 import maf.util.datastructures.MapOps.*
@@ -31,6 +34,9 @@ import maf.util.FunctionUtils.FIFOWL
 import maf.util.datastructures.MapOps.MapWithDefault
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.AScheme.ASchemeLattice
+import maf.language.scheme.primitives.StoreM
+import maf.core.StateOps
+import maf.modular.AddrDependency
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -117,7 +123,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     //
 
     type Msg
-
+    // TODO: remove these methods
     def mkMessage(tpy: String, arguments: List[Value]): Msg
     def getTag(msg: Msg): String
     def getArgs(msg: Msg): List[Value]
@@ -158,6 +164,55 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     //
 
     override def intraAnalysis(component: Component): ModActorIntra
+
+    //
+    // Semantics
+    //
+    trait ModularASchemeSemantics extends ASchemeSemantics:
+        val messageM: MessageM[A]
+        val storeM: StoreM[A, Adr, Val]
+        val effectsM: EffectsM[A, Component, State]
+
+        // Enfore that the lattice is the same as the inter-actor semantics
+        override type Value = inter.Value
+        override lazy val lattice = inter.lattice
+
+        /** The result of the internal computation of the analysis monad */
+        type Result
+
+        /** The type of the internal state of the Monad */
+        type State
+
+        /** Needed state transformations */
+        val lens: ActorLens[State]
+        trait ActorLens[S] extends Lens[S], EffectLens[S]:
+            def putSto(st: S, sto: Map[Address, Value]): S
+            def getSto(st: S): Map[Address, Value]
+            def sto = (putSto, getSto)
+            def putMailboxes(st: S, mb: Map[Component, Mailbox]): S
+            def getMailboxes(st: S): Map[Component, Mailbox]
+            def mailboxes = (putMailboxes, getMailboxes)
+
+        /** Run the monad until completion, returning its state and value */
+        def run[X](m: A[X]): A[(X, Result)]
+
+        implicit override val analysisM: ModularAnalysisM
+
+        /** A monad that supports mondular analysis semantics needs to have a notion of "effects" */
+        trait ModularAnalysisM extends ActorAnalysisM[A], EffectsM[A, Component, State], StateOps[State, A]:
+            def extendSto(a: Adr, v: Val): A[Unit] =
+                /* trigger a write */ trigger(a) >>> /* and actually do the write */
+                    (get.map(lens.modify(lens.sto)(sto => sto + (a -> lattice.join(sto.get(a).getOrElse(lattice.bottom), v)))) >>= put)
+
+            def lookupSto(a: Adr): A[Val] =
+                register(AddrDependency(a)) >>>
+                    get.map(lens.getSto).flatMap(_.get(a).map(unit).getOrElse(mbottom))
+
+            def send(to: ActorRef, m: Message): A[Val] =
+                // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
+                ???
+
+    // TODO: val semantics: ModularASchemeSemantics
 
     class ModActorIntra(cmp: Component)(using ClassTag[Component]) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra:
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
@@ -309,69 +364,6 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
             def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
                 log(s"Analyzing behavior $beh with body $fnBody")
                 eval(fnBody).run(initialState).foreach { case (vlu, _) => writeResult(vlu) }
-
-            override def eval(exp: SchemeExp): EvalM[Value] = exp match
-                // An actor expression evaluates to a behavior
-                case ASchemeActor(parameters, selection, _, name) =>
-                    for env <- getEnv
-                    yield lattice.beh(Behavior(name, parameters, selection, env))
-                // Evaluating a create expression spawns a new actor and returns a reference to it
-                case ASchemeCreate(beh, ags, idn) =>
-                    for
-                        evaluatedBeh <- eval(beh)
-                        env <- getEnv
-                        evaluatedAgs <- ags.mapM(eval)
-                        actorRef <- spawnActor(evaluatedBeh, evaluatedAgs, idn)
-                    yield actorRef
-                // Sending a message is atomic and results in nil
-                case ASchemeSend(actorRef, messageTpy, ags, idn) =>
-                    for
-                        evaluatedActorRef <- eval(actorRef)
-                        evaluatedAgs <- ags.mapM(eval)
-                        msg = mkMessage(messageTpy.name, evaluatedAgs)
-                        _ <- nondets(lattice.getActors(evaluatedActorRef).map { actor =>
-                            intra.send(actor, msg)
-                            unit(())
-                        })
-                    yield lattice.nil
-
-                // Change the behavior of the current actor, and return nil
-                case ASchemeBecome(beh, ags, idn) =>
-                    for
-                        evaluatedBeh <- eval(beh)
-                        evaluatedAgs <- ags.mapM(eval)
-                        _ <- recordNewBehavior(evaluatedBeh, evaluatedAgs)
-                        // we stop the analysis here because the actor is in a suspended state,
-                        // waiting for new messages defined by the behavior.
-                        //
-                        // The intra-actor analysis will restart the analysis when appropriate
-                        res <- mzero[Value]
-                    yield res
-
-                // Receive a message from the mailbox
-                case ASchemeSelect(handlers, idn) =>
-                    for
-                        // select a message from the mailbox
-                        msg <- pop
-                        _ = { log(s"actor/recv $msg") }
-                        // see if there is an applicable handler
-                        tag = getTag(msg)
-                        args = getArgs(msg)
-                        handler = handlers.get(tag)
-                        result <-
-                            if handler.isEmpty then mzero
-                            else
-                                val (pars, bdy) = handler.get
-                                withEnv(bindArgs(pars, args)) {
-                                    Monad.sequence(bdy.map(eval))
-                                } >>= trace(s"actor/recv $msg result")
-                    yield lattice.nil
-
-                case SchemeFuncall(Identifier("terminate", _), _, _) =>
-                    // actor termination
-                    mzero
-
-                case _ => super.eval(exp)
 
             def spawnActor(beh: Value, ags: List[Value], idn: Identity): EvalM[Value] =
                 log(s"Spawning actor with behavior $beh, ags $ags")

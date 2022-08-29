@@ -23,7 +23,26 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
 
     implicit override lazy val lattice: ASchemeLattice[Val, Adr]
 
-    trait ActorAnalysisM[M[_]] extends AnalysisM[M]:
+    trait MessageM[M[_]]:
+        /**
+         * Create a new message
+         *
+         * @param tag
+         *   the tag of the message
+         * @param arguments
+         *   a list of values representing the arguments of the message
+         * @return
+         *   the new message wrapped in the analysis monad
+         */
+        def mkMessage(tpy: String, arguments: List[Value]): M[Message]
+
+        /** Get the tag of a message */
+        def getMessageTag(m: Message): String
+
+        /** Get the arguments of a message */
+        def getMessageArguments(m: Message): List[Val]
+
+    trait ActorAnalysisM[M[_]] extends AnalysisM[M], MessageM[M]:
         /**
          * Send a message to the given actor
          *
@@ -88,24 +107,6 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          *   the message wrapped in the analysis monad
          */
         def receive: M[Message]
-
-        /**
-         * Create a new message
-         *
-         * @param tag
-         *   the tag of the message
-         * @param arguments
-         *   a list of values representing the arguments of the message
-         * @return
-         *   the new message wrapped in the analysis monad
-         */
-        def mkMessage(tpy: String, arguments: List[Value]): M[Message]
-
-        /** Get the tag of a message */
-        def getMessageTag(m: Message): String
-
-        /** Get the arguments of a message */
-        def getMessageArguments(m: Message): List[Val]
 
         /**
          * Spawn a new actor
