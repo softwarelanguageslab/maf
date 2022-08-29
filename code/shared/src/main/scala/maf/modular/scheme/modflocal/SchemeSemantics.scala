@@ -27,6 +27,12 @@ trait SchemeSemantics:
     trait AnalysisM[M[_]] extends SchemePrimM[M, Adr, Val]:
         def getEnv: M[Env]
         def withEnv[X](f: Env => Env)(blk: M[X]): M[X]
+        def withEnvM[X](f: Env => M[Env])(blk: M[X]): M[X] =
+            for
+                oldEnv <- getEnv
+                newEnv <- f(oldEnv)
+                res <- withEnv(_ => newEnv) { blk }
+            yield res
         def lookupEnv(nam: String): M[Adr] =
             for env <- getEnv yield env(nam)
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =

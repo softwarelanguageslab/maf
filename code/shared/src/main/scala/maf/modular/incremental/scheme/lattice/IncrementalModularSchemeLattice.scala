@@ -96,9 +96,6 @@ class IncrementalModularSchemeLattice[
         def getPrimitives(x: AL): Set[String] = schemeLattice.getPrimitives(x.toL())
         def getPointerAddresses(x: AL): Set[A] = schemeLattice.getPointerAddresses(x.toL())
         def getThreads(x: AL): Set[TID] = schemeLattice.getThreads(x.toL())
-        def getActors(x: AL): Set[Actor] = schemeLattice.getActors(x.toL())
-        def getBehs(x: AL): Set[Behavior] = schemeLattice.getBehs(x.toL())
-        def getFutures(x: AL): Set[Future] = schemeLattice.getFutures(x.toL())
         def getBlames(x: AL): Set[Blame] = schemeLattice.getBlames(x.toL())
         def getGrds(x: AL): Set[Grd[AL]] =
             schemeLattice.getGrds(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
@@ -140,9 +137,6 @@ class IncrementalModularSchemeLattice[
         def cons(car: AL, cdr: AL): AL = AnnotatedElements(schemeLattice.cons(car.toL(), cdr.toL()), car.joinedSources(cdr))
         def pointer(a: A): AL = toAL(schemeLattice.pointer(a))
         def thread(tid: TID): AL = toAL(schemeLattice.thread(tid))
-        def actor(act: Actor): AL = toAL(schemeLattice.actor(act))
-        def beh(behavior: Behavior): AL = toAL(schemeLattice.beh(behavior))
-        def future(fut: Future): AL = toAL(schemeLattice.future(fut))
         def lock(threads: Set[TID]): AL = toAL(schemeLattice.lock(threads))
         def blame(blame: Blame): AL = toAL(schemeLattice.blame(blame))
         def grd(grd: Grd[AL]): AL = toAL(schemeLattice.grd(grd.map(_.toL()))) // TODO: grd looses its annotation if used like this?

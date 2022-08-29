@@ -29,6 +29,8 @@ import maf.util.FunctionUtils.fixWL
 import maf.util.Logger
 import maf.util.FunctionUtils.FIFOWL
 import maf.util.datastructures.MapOps.MapWithDefault
+import maf.language.scheme.lattices.SchemeLattice
+import maf.language.AScheme.ASchemeLattice
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -51,6 +53,8 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     given Logger.Logger = Logger.DisabledLog()
 
     import maf.util.LogOps.*
+
+    implicit override lazy val lattice: ASchemeLattice[Value, Address]
 
     type Component <: AID
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
@@ -240,8 +244,8 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
         // SCHEME ENVIRONMENT SETUP
         lazy val baseEnv = env(intra.component)
         // SCHEME LATTICE SETUP
+        implicit override lazy val lattice: ASchemeLattice[Value, Address] = inter.lattice
         type Value = inter.Value
-        lazy val lattice = inter.lattice
         lazy val primitives = inter.primitives
         // MODF ADDRESS ALLOCATION
         type AllocationContext = inter.AllocationContext

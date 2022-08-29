@@ -6,6 +6,9 @@ import maf.core.Identifier
 import maf.language.scheme.*
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.language.AScheme.ASchemeValues.ActorWaitCompleteFuture
+import maf.core.Address
+import maf.language.scheme.lattices.SchemeLattice
+import maf.language.AScheme.ASchemeLattice
 
 trait SchemeModActorFutures extends SchemeModActorSemantics:
     inter =>

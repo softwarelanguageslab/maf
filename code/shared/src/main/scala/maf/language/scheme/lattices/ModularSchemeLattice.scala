@@ -12,6 +12,7 @@ import maf.util.datastructures.SmartUnion._
 import maf.util._
 import smtlib.theories.Core.False
 import maf.language.AScheme.ASchemeValues.Future
+import maf.language.AScheme.ASchemeLattice
 
 /**
  * Defines a Scheme lattice based on other lattices. Example usage: val address = NameAddress val lattice = new ModularSchemeLattice[SchemeExp,
@@ -202,20 +203,11 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     object StructPredicateT extends AbstractSetType[StructPredicate, StructPredicates]:
         def wrap = StructPredicates.apply
 
-    object ActorT extends AbstractSetType[Actor, Actors]:
-        def wrap = Actors.apply
-
-    object BehaviorT extends AbstractSetType[Behavior, Behaviors]:
-        def wrap = Behaviors.apply
-
-    object FutureT extends AbstractSetType[Future, Futures]:
-        def wrap = Futures.apply
-
     /**
      * We first implement all possible operations on single values, that can be only joined when compatible. This therefore is not a lattice but will
      * be used to build the set lattice
      */
-    sealed trait Value extends SmartHash:
+    trait Value extends SmartHash:
         def ord: scala.Int
         val tpy: HMapKey
         def typeName: String // Can be used to print information on values.
@@ -385,23 +377,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "STRUCTPREDICATE"
         val tpy = StructPredicateT
         override def toString: String = "<struct-predicate>"
-
-    case class Actors(actors: Set[Actor]) extends Value, Product1[Set[Actor]]:
-        def ord = 27
-        def typeName = "ACTOR"
-        val tpy = ActorT
-        override def toString: String = s"<actor {${actors.mkString(",")}}>"
-
-    case class Behaviors(behs: Set[Behavior]) extends Value, Product1[Set[Behavior]]:
-        def ord = 28
-        def typeName = "BEH"
-        val tpy = BehaviorT
-        override def toString: String = s"<behavior>"
-    case class Futures(futures: Set[Future]) extends Value, Product1[Set[Future]]:
-        def ord = 29
-        def typeName = "FUT"
-        val tpy = FutureT
-        override def toString: String = s"<future>"
 
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
@@ -986,9 +961,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def getStructConstructor(x: L): Set[StructConstructor] = x.get(StructConstructorT)
         def getStructPredicates(x: L): Set[StructPredicate] = x.get(StructPredicateT)
         def getThreads(x: L): Set[TID] = x.get(ThreadT)
-        def getActors(x: L): Set[Actor] = x.get(ActorT)
-        def getBehs(x: L): Set[Behavior] = x.get(BehaviorT)
-        def getFutures(x: L): Set[Future] = x.get(FutureT)
 
         def acquire(lock: L, tid: TID): MayFail[L, Error] =
             lock.elements[Value].foldMap(l => Value.acquire(l, tid))
@@ -1016,9 +988,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def pointer(a: A): L = HMap.injected(PointerT, a)
         def thread(tid: TID): L = HMap.injected(ThreadT, tid)
         def lock(threads: Set[TID]): L = HMap.inserted(LockT, threads)
-        def actor(actor: Actor): L = HMap.injected(ActorT, actor)
-        def beh(behavior: Behavior): L = HMap.injected(BehaviorT, behavior)
-        def future(fut: Future): L = HMap.injected(FutureT, fut)
         def blame(blame: Blame): L = HMap.injected(BlameT, blame)
         def grd(grd: Grd[L]): L = HMap.injected(GrdT, grd)
         def arr(arr: Arr[L]): L = HMap.injected(ArrT, arr)

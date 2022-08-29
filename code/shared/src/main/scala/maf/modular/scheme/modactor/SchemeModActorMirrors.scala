@@ -7,6 +7,8 @@ import maf.modular.scheme.modf.TEvalM
 import maf.core.*
 import maf.language.AScheme.ASchemeValues.*
 import maf.language.scheme.SchemeExp
+import maf.language.scheme.lattices.SchemeLattice
+import maf.language.AScheme.ASchemeLattice
 
 object MirrorValues:
     /**
@@ -113,6 +115,7 @@ trait MetaEvalM[M[_], Context, ActorRef, V] extends ActorEvalM[M, Context, Actor
 trait SchemeModActorMirrors[ActorRef <: AID, Beh] extends BigStepModFSemanticsT:
     override def intraAnalysis(component: Component): IntraMirrorAnalysis
     implicit override val evalM: MetaEvalM[EvalM, MirrorContext, ActorRef, Value]
+    implicit override lazy val lattice: ASchemeLattice[Value, Address]
 
     protected type MirrorContext
     protected def allocMirrorCtx(baseContext: Option[ComponentContext], sendIdentity: Identity): MirrorContext

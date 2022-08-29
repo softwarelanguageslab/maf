@@ -104,6 +104,8 @@ object Monad:
                 vs <- merge(xs)
             yield Lattice[X].join(v, vs)
 
+    def merge[X: Lattice, M[_]: Monad](xs: Iterable[M[X]]): M[X] = merge(xs.toList)
+
 //
 // MonadError
 //
