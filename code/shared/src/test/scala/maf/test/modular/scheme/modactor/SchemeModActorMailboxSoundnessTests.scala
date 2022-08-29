@@ -93,8 +93,8 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
         matchedMessages.map(_.size).sum - concreteMail.values.map(_.size).sum
 
     private def removeEnv(analysis: Analysis, v: analysis.Value): analysis.Value =
-        v.mapValue(analysis.modularLattice.ActorT)((v) => v.map(_.removeEnv))
-            .mapValue(analysis.modularLattice.BehaviorT)((v) => v.map(_.removeEnv))
+        v.mapValue(analysis.lattice.ActorT)((v) => v.map(_.removeEnv))
+            .mapValue(analysis.lattice.BehaviorT)((v) => v.map(_.removeEnv))
 
     protected def compareSpawnedActors(analysis: Analysis, concreteResults: ConcreteState[analysis.Value]): Int =
         val abstractActors: Set[SchemeModActorComponent[Unit]] =
