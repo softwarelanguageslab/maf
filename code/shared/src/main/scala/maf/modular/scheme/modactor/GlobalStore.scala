@@ -92,6 +92,7 @@ trait GlobalStoreModActor(prog: SchemeExp)
                 MonadStateT((s) => ReaderT((e) => xs.toList.foldMap(_.run(s).runReader(e))))
 
             def withEnv[X](f: Env => Env)(blk: A[X]): A[X] = ???
+
             //MonadStateT((s) => ReaderT.local { case (ctx, env: Environment[Address]) => (ctx, f(env)) }(blk.run(s)))
 
             private val initialEnv: Environment[Address] = ???
@@ -102,9 +103,9 @@ trait GlobalStoreModActor(prog: SchemeExp)
              */
             def run[X](cmp: Component, m: A[X]): Set[(X, IntraState)] =
                 val (ctx, env) = cmp match
-                    case (MainActor, None | Some(SchemeModFComponent.Main))            => (initialCtx, initialEnv)
-                    case (Actor(beh, env, ctx), None | Some(SchemeModFComponent.Main)) => (ctx, env)
-                    case (_, Some(SchemeModFComponent.Call(clo, ctx)))                 => (ctx, clo._2)
+                    case Cmp(MainActor, None | Some(SchemeModFComponent.Main))            => (initialCtx, initialEnv)
+                    case Cmp(Actor(beh, env, ctx), None | Some(SchemeModFComponent.Main)) => (ctx, env)
+                    case Cmp(_, Some(SchemeModFComponent.Call(clo, ctx)))                 => (ctx, clo._2)
 
                 val st = IntraState(self = cmp)
                 val ev = (ctx, env)

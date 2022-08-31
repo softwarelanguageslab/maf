@@ -118,6 +118,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with ASchemeDomain:
     def emptyMailbox: Mailbox
 
     def getMailboxes: Map[Component, Mailbox] = ???
+    def getBehaviors: Set[Behavior] = ???
 
     //
     // Inter analysis

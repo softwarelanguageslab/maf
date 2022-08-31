@@ -45,6 +45,4 @@ class SimpleSchemeModActorAnalysis(program: SchemeExp)
     with SchemeModActorSemantics
     with SchemeModActorFutures:
 
-    override def intraAnalysis(component: SchemeModActorComponent[ComponentContext]): ModActorIntra = new ModActorIntra(component)
-    override def innerModF(intra: ModActorIntra, beh: Behavior): InnerModF =
-        new FuturesInnerModF(intra, beh) with SchemeModFNoSensitivity with FIFOWorklistAlgorithm[SchemeExp] {}
+    override def intraAnalysis(component: SchemeModActorComponent[ComponentContext]): ModActorIntra = new ModActorIntra(component) {}
