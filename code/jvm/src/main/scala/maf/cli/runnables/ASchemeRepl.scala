@@ -23,7 +23,7 @@ object ASchemeRepl:
             println(program)
             val analysis = new SimpleSchemeModActorAnalysis(SchemeBegin(program, Identity.none))
             analysis.analyze()
-            println(analysis.storeString())
+    //println(analysis.storeString())
 
     def main(args: Array[String]): Unit =
         print("> ")

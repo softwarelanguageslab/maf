@@ -82,28 +82,28 @@ trait ModActorPrecisionBenchmarks extends ConcreteComponentsConversion:
 
         (concreteSpawnedLifted.size, (abstractSpawnedLifted -- concreteSpawnedLifted).size)
 
-    protected def compareBehs(anl: Analysis, concreteState: ConcreteState[anl.Value]): ObsSpu =
-        val abstractBehLifted = anl.getBehaviors
-            .map { case (actor, behaviors) =>
-                val newActor = anl.view(actor).removeContext.removeEnv
-                val newBehaviors = behaviors.map(_.removeEnv)
-                newActor -> newBehaviors
-            }
-            .toMap
-            .withDefaultValue(Set())
+    protected def compareBehs(anl: Analysis, concreteState: ConcreteState[anl.Value]): ObsSpu = ???
+    //val abstractBehLifted = anl.getBehaviors
+    //    .map { case (actor, behaviors) =>
+    //        val newActor = anl.view(actor).removeContext.removeEnv
+    //        val newBehaviors = behaviors.map(_.removeEnv)
+    //        newActor -> newBehaviors
+    //    }
+    //    .toMap
+    //    .withDefaultValue(Set())
 
-        val concreteBehLifted = concreteState.behs
-            .map { case (actor, behaviors) =>
-                val newActor = concreteToAbstractActor(actor).removeEnv.removeContext
-                val newBehaviors = behaviors.map(_.removeEnv).toSet
-                newActor -> newBehaviors
-            }
-            .toMap
-            .withDefaultValue(Set())
+    //val concreteBehLifted = concreteState.behs
+    //    .map { case (actor, behaviors) =>
+    //        val newActor = concreteToAbstractActor(actor).removeEnv.removeContext
+    //        val newBehaviors = behaviors.map(_.removeEnv).toSet
+    //        newActor -> newBehaviors
+    //    }
+    //    .toMap
+    //    .withDefaultValue(Set())
 
-        val spurious = abstractBehLifted.map { case (actor, behaviors) => (behaviors -- concreteBehLifted(actor)).size }.sum
-        val observed = concreteBehLifted.map(_._2.size).sum
-        (observed, spurious)
+    //val spurious = abstractBehLifted.map { case (actor, behaviors) => (behaviors -- concreteBehLifted(actor)).size }.sum
+    //val observed = concreteBehLifted.map(_._2.size).sum
+    //(observed, spurious)
 
     protected def onBenchmark(benchmark: String): PrecisionResult =
         println(s"Analyzing $benchmark")
