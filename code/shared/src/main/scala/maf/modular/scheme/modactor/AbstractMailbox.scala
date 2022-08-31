@@ -37,10 +37,7 @@ trait AbstractMailbox[M]:
      * Pop a message from the mailbox. Depending on the level of abstraction used, it can return a set of messages that might be received during that
      * turn.
      */
-    def pop: Set[M] // TODO: rename to dequeue
-
-    /** Remove the specified message from the mailbox */
-    def remove(m: M): AbstractMailbox[M]
+    def dequeue: Set[(M, AbstractMailbox[M])] // TODO: rename to dequeue
 
     /** Returns all messages in the mailbox */
     def messages: Set[M]
@@ -53,12 +50,9 @@ case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
     def enqueue(msg: M): PowersetMailbox[M] =
         this.copy(msgs = msgs + msg)
 
-    // TODO: return a set of messages together with a mailbox after removal of that message
-    def pop: Set[M] = msgs
-
-    def remove(m: M): PowersetMailbox[M] =
-        // since the power set mailbox does not encode message multiplicity, removing a message is a no-op, since its multiplicity is not known and is therefore infinite.
-        PowersetMailbox(msgs)
+    def dequeue: Set[(M, AbstractMailbox[M])] =
+        // We return a copy of the same mailbox for each message since message multiplicity is unknown
+        msgs.map(m => (m, PowersetMailbox(msgs)))
 
     val messages: Set[M] = msgs
 

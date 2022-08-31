@@ -159,6 +159,6 @@ class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMai
     override def benchmarks: Set[String] = // Set("test/concurrentScheme/actors/soter/concdb.scm")
         SchemeBenchmarkPrograms.actors --
             Set("test/concurrentScheme/actors/soter/unsafe_send.scm",
-                "test/concurrentScheme/actors/savina/qsort.scm",
+                "test/concurrentSchem/actors/savina/qsort.scm",
                 "test/concurrentScheme/actors/savina/fbank.scm"
             )

@@ -51,7 +51,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @param msg
          *   the message to send
          */
-        def sendMessage(to: Val, tag: String, ags: List[Val]): M[Val] =
+        def sendMessage(to: Val, tag: String, ags: List[Val]): M[Unit] =
             given Monad[M] = this
             mkMessage(tag, ags).flatMap { msg =>
                 merge(
@@ -64,35 +64,13 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                 )
             }
 
-        def send(to: ActorRef, m: Message): M[Val]
+        def send(to: ActorRef, m: Message): M[Unit]
 
-        /**
-         * Sends a message using the "ask" pattern to the given actor
-         *
-         * @param to
-         *   the actor to receive the message
-         * @param msg
-         *   the message itself
-         * @param sender
-         *   the sender of the message
-         * @param context
-         *   the analysis context in which the ask messages should be sent
-         * @param idn
-         *   a location associated with the send
-         * @return
-         *   the value that was the result of the ask pattern, if a suitable lattice is available, "bottom" can be used to signal that the value is
-         *   not yet available, or mzero can be returned to stop the analysis until the value becomes available.
-         */
-        def ask(
-            to: ActorRef,
-            tag: String,
-            ags: List[Value],
-            sender: ActorRef,
-            context: Ctx,
-          ): M[Value]
+        def nondets[X](xs: Iterable[M[X]]): M[X]
 
         /** Create an actor */
-        def create(beh: Behavior, ags: List[Value], idn: Identity): M[ActorRef]
+        def create(beh: Value, ags: List[Value], idn: Identity): M[ActorRef] =
+            nondets(lattice.getBehs(beh).map(b => spawnActor(b, ags, idn)))
 
         /** Become a new behavior */
         def become(beh: Behavior, ags: List[Value], idn: Identity): M[Unit]
@@ -114,7 +92,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   a value representing the actor reference of the just created actor
          */
-        def spawnActor(beh: Value, ags: List[Value], idn: Identity): M[Value]
+        def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): M[ActorRef]
 
     implicit override val analysisM: ActorAnalysisM[A]
     import analysisM.*
@@ -142,8 +120,8 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                 evaluatedBeh <- eval(beh)
                 env <- getEnv
                 evaluatedAgs <- ags.mapM(eval)
-                actorRef <- spawnActor(evaluatedBeh, evaluatedAgs, idn)
-            yield actorRef
+                actorRef <- create(evaluatedBeh, evaluatedAgs, idn)
+            yield lattice.actor(actorRef)
 
         // Sending a message is atomic (asynchronous) and results in nil
         case ASchemeSend(actorRef, messageTpy, ags, idn) =>

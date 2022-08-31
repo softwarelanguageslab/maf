@@ -10,6 +10,25 @@ import maf.core.monad.MonadLift
 // Monad
 //
 
+/**
+ * A "dynamic" monad which is bounded by "U". It is dynamic in the sense that it can be returned as an object from a function without imposing a
+ * static monadic structure using type parameters.
+ *
+ * @tparam X
+ *   the type that is contained by the dynamic monadic structure
+ * @tparam U
+ *   the upper bound of the typeclass for this dynamic monadic structure, must be a typeclass that inherits from the Monad typeclass
+ */
+trait DynMonad[X, U[_[_]] <: Monad[_]]:
+    /** The type of the contained monad */
+    type M[_]
+
+    /** The Monad instance of the contained monad */
+    given dynMonadInstance: U[M]
+
+    /** The actual datastructue that represents the monad */
+    val contents: M[X]
+
 trait Monad[M[_]]:
     def unit[X](x: X): M[X]
     def map[X, Y](m: M[X])(f: X => Y): M[Y]

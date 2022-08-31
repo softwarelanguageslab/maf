@@ -1,6 +1,8 @@
 package maf.modular.scheme.modactor
 
-import maf.modular.scheme.modflocal.{EffectLens, EffectsM}
+import maf.core.DynMonad
+import maf.modular.scheme.modflocal.{EffectLens, EffectsM, EffectsMC}
+import maf.language.AScheme.*
 import maf.modular.ModAnalysis
 import maf.util.*
 import maf.core.monad.*
@@ -37,6 +39,11 @@ import maf.language.AScheme.ASchemeLattice
 import maf.language.scheme.primitives.StoreM
 import maf.core.StateOps
 import maf.modular.AddrDependency
+import maf.core
+import maf.core.MaybeEq
+import maf.modular.ReturnAddr
+import maf.lattice.interfaces.BoolLattice
+import maf.core.worklist.WorkList
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -54,13 +61,11 @@ import maf.modular.AddrDependency
  *
  * In terms of intra-process state, the following information is kept: a mailbox and a current environment.
  */
-trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
+trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with ASchemeDomain:
     inter =>
     given Logger.Logger = Logger.DisabledLog()
 
     import maf.util.LogOps.*
-
-    implicit override lazy val lattice: ASchemeLattice[Value, Address]
 
     type Component <: AID
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
@@ -72,9 +77,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     //
     type ComponentContext
 
-    def allocCtx(currCmp: Component, idn: Identity): ComponentContext
     def initialComponent: Component
-    def newComponent(actor: Actor[ComponentContext]): Component
     def view(cmp: Component): SchemeModActorComponent[ComponentContext]
 
     //
@@ -90,11 +93,6 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
         case Actor(beh, _, _) =>
             beh.bdy
 
-    def env(cmp: Component): Env = env(view(cmp))
-    def env(cmp: SchemeModActorComponent[ComponentContext]): Env = cmp match
-        case MainActor        => initialEnv
-        case Actor(_, env, _) => env
-
     //
     // addresses
     //
@@ -103,27 +101,11 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
         def printable: Boolean = true
 
     //
-    // allocating addresses
-    //
-
-    type AllocationContext
-    def allocVar(
-        id: Identifier,
-        modFCmp: SchemeModFComponent,
-        cmp: Component
-      ): VarAddr[AllocationContext]
-    def allocPtr(
-        exp: SchemeExp,
-        modFCmp: SchemeModFComponent,
-        cmp: Component
-      ): PtrAddr[AllocationContext]
-
-    //
     // Messages
     //
 
     type Msg
-    // TODO: remove these methods
+    // TODO: remove these methods, in favor of the one in the monad
     def mkMessage(tpy: String, arguments: List[Value]): Msg
     def getTag(msg: Msg): String
     def getArgs(msg: Msg): List[Value]
@@ -135,23 +117,7 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
 
     def emptyMailbox: Mailbox
 
-    /**
-     * Each actor keeps track of each own mailbox. A single actor corresponds to a single component in our analysis, therefore we map components to
-     * mailboxes.
-     */
-    protected var mailboxes: Map[Component, Mailbox] = Map().withDefaultValue(emptyMailbox)
-    def getMailboxes: Map[Component, Mailbox] = mailboxes
-
-    //
-    // Behaviors
-    //
-
-    /**
-     * We keep track of the set of discovered behaviors for each component. This is mainly to support some client analyses, and the precision and
-     * soundness tests
-     */
-    protected var behaviors: MapWithDefault[Component, Set[Behavior]] = Map().useDefaultValue(Set())
-    def getBehaviors: Map[Component, Set[Behavior]] = behaviors
+    def getMailboxes: Map[Component, Mailbox] = ???
 
     //
     // Inter analysis
@@ -169,213 +135,168 @@ trait SchemeModActorSemantics extends ModAnalysis[SchemeExp] with SchemeSetup:
     // Semantics
     //
     trait ModularASchemeSemantics extends ASchemeSemantics:
-        val messageM: MessageM[A]
-        val storeM: StoreM[A, Adr, Val]
-        val effectsM: EffectsM[A, Component, State]
-
         // Enfore that the lattice is the same as the inter-actor semantics
         override type Value = inter.Value
         override lazy val lattice = inter.lattice
 
-        /** The result of the internal computation of the analysis monad */
-        type Result
+        override type Message = Msg
 
         /** The type of the internal state of the Monad */
         type State
 
         /** Needed state transformations */
-        val lens: ActorLens[State]
-        trait ActorLens[S] extends Lens[S], EffectLens[S]:
+        given lens: ActorLens[State]
+        trait ActorLens[S] extends Lens[S], EffectLens[Component, S]:
+            //
+            // Store
+            //
             def putSto(st: S, sto: Map[Address, Value]): S
             def getSto(st: S): Map[Address, Value]
             def sto = (putSto, getSto)
+
+            //
+            // Mailboxes
+            //
             def putMailboxes(st: S, mb: Map[Component, Mailbox]): S
             def getMailboxes(st: S): Map[Component, Mailbox]
             def mailboxes = (putMailboxes, getMailboxes)
 
-        /** Run the monad until completion, returning its state and value */
-        def run[X](m: A[X]): A[(X, Result)]
+            //
+            // Set of actors spawned
+            //
+            def putActors(st: S, actors: Set[Component]): S
+            def getActors(st: S): Set[Component]
+            def actors = (putActors, getActors)
+
+            //
+            // Set of behaviors discovered during the sequential intra-analysis
+            //
+            def putBehaviors(st: S, behs: Set[Behavior]): S
+            def getBehaviors(st: S): Set[Behavior]
+            def behaviors = (putBehaviors, getBehaviors)
 
         implicit override val analysisM: ModularAnalysisM
 
         /** A monad that supports mondular analysis semantics needs to have a notion of "effects" */
         trait ModularAnalysisM extends ActorAnalysisM[A], EffectsM[A, Component, State], StateOps[State, A]:
+            //
+            // Abstract methods
+            //
+
+            def allocConstructorVar(actor: Component)(par: Identifier): A[Adr]
+
+            /* Returns the component associated with the entrypoint of the current component */
+            def selfActorCmp: A[Component]
+
+            /** Allocate a new component for the given actor */
+            def allocateActor(initialBehavior: Behavior, idn: Identity): A[Component]
+
+            /** Allocate a ModF call component */
+            def allocateCall(lam: Lam, env: Environment[Address], ctx: Ctx): A[Component]
+
+            /** Allocat a component for the new behavior */
+            def allocateBehavior(beh: Behavior, idn: Identity): A[Component]
+
+            given componentGiven: ClassTag[Component]
+
+            override def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): A[ActorRef] = for
+                cmp <- allocateActor(beh, idn)
+                // allocate actor arguments
+                _ <- beh.prs.mapM(allocConstructorVar(cmp)).flatMap(adrs => extendSto(adrs.zip(ags)))
+                // spawn the actor
+                _ <- spawn(cmp)
+                // put the newly spawned actor in the list of actors
+                _ <- get.map(lens.modify(lens.actors)(_ + cmp)) >>= put
+            yield (maf.language.AScheme.ASchemeValues.Actor(beh.name, cmp))
+
+            override def become(beh: Behavior, ags: List[Value], idn: Identity): A[Unit] = for
+                // put the behavior arguments in the store
+                _ <- beh.prs.mapM(this.allocVar).flatMap(adrs => extendSto(adrs.zip(ags)))
+                // track the created behaviors
+                _ <- get.map(lens.modify(lens.behaviors)(_ + beh)) >>= put
+                // create a component for the behavior and spawn it
+                _ <- allocateBehavior(beh, idn) >>= spawn
+            yield ()
+
+            override def addrEq: A[MaybeEq[Adr]] = unit(new MaybeEq[Adr] {
+                override def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
+                    BoolLattice[B].inject(a1 == a2)
+            })
+
+            override def getMessageTag(m: Message): String =
+                inter.getTag(m)
+
+            override def mkMessage(tpy: String, arguments: List[Value]): A[Message] =
+                unit(inter.mkMessage(tpy, arguments))
+
+            override def getMessageArguments(m: Message): List[Val] =
+                inter.getArgs(m)
+
+            override def call(lam: Lam): A[Val] =
+                for
+                    env <- getEnv
+                    ctx <- getCtx
+                    _ <- allocateCall(lam, env, ctx) >>= spawn
+                    cmp <- selfCmp
+                    result <- lookupSto(ReturnAddr(cmp, lam.idn))
+                yield result
+
+            def updateSto(a: Adr, v: Val): A[Unit] = extendSto(a, v)
+
             def extendSto(a: Adr, v: Val): A[Unit] =
-                /* trigger a write */ trigger(a) >>> /* and actually do the write */
+                /* trigger a write */ trigger(AddrDependency(a)) >>> /* and actually do the write */
                     (get.map(lens.modify(lens.sto)(sto => sto + (a -> lattice.join(sto.get(a).getOrElse(lattice.bottom), v)))) >>= put)
 
             def lookupSto(a: Adr): A[Val] =
                 register(AddrDependency(a)) >>>
                     get.map(lens.getSto).flatMap(_.get(a).map(unit).getOrElse(mbottom))
 
-            def send(to: ActorRef, m: Message): A[Val] =
+            def send(to: ActorRef, m: Message): A[Unit] =
+                val receiver = actorIdComponent(to.tid)
                 // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
-                ???
+                trigger(MailboxDep(receiver)) >>>
+                    (get.map(lens.modify(lens.mailboxes)(mbs => mbs + (receiver -> mbs.apply(receiver).enqueue(m)))) >>= put)
 
-    // TODO: val semantics: ModularASchemeSemantics
+            def mailbox: A[Mailbox] =
+                get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(boxes.apply))
 
-    class ModActorIntra(cmp: Component)(using ClassTag[Component]) extends IntraAnalysis(cmp) with GlobalStoreIntra with ReturnResultIntra:
+            def receive: A[Message] =
+                for
+                    // register receive
+                    cmp <- selfActorCmp
+                    _ <- register(MailboxDep(cmp))
+                    // get the mailbox in order to dequeue a message from it
+                    mb <- mailbox
+                    ms <- nondets(mb.dequeue.map(unit))
+                    (msg, mb1) = ms
+                    // save the resulting mailbox
+                    _ <- get.map(lens.modify(lens.mailboxes)(_ + (cmp -> mb1))) >>= put
+                // return the dequeued message
+                yield msg
+
+    val sequentialSemantics: ModularASchemeSemantics
+
+    type Inter
+    type Intra = sequentialSemantics.State
+
+    def syncInter(vlu: Value, intra: Intra, inter: Inter): Inter
+    def injectInter(inter: Inter, cmp: Component): DynMonad[Value, EffectsMC[Component, Intra]]
+    val emptyWorklist: WorkList[Component]
+    val initialInterState: Inter
+
+    abstract class ModActorIntra(cmp: Component)(using ClassTag[Component]) extends IntraAnalysis(cmp):
+        outer =>
+
         override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            import maf.util.FunctionUtils.WL.*
-            log("==========================================")
-            log(s"analyzing $component")
-            if timeout.reached then throw new TimeoutException()
-            else
-                // the intra analysis consists of a series of ModF inner analyses.
-                val initialBehavior = view(cmp) match
-                    case MainActor        => EmptyBehavior(body(cmp))
-                    case Actor(beh, _, _) => beh
-
-                // TODO: is transfer the correct terminology?
-                def transfer(seenBehavior: FIFOWL[Behavior]): FIFOWL[Behavior] =
-                    log(s"Transfer $seenBehavior")
-                    seenBehavior.addNext { beh =>
-                        val modf = innerModF(this, beh)
-                        modf.analyzeWithTimeout(timeout)
-                        modf.getBehaviors
-                    }
-
-                val behaviors = fixWL(FIFOWL.initial(initialBehavior))(transfer)
-
-                inter.behaviors = inter.behaviors.update(cmp)(_ ++ behaviors)
-
-        /** Send the given message to the given actor */
-        def send(to: ASchemeValues.Actor, m: Msg): Unit =
-            log(s"sending message $m to $to")
-            // compute the component that needs to receive this message
-            val toComponent = actorIdComponent(to.tid)
-            // update the mailbox
-            val oldMailbox = mailboxes(toComponent)
-            val newMailbox = oldMailbox.enqueue(m)
-            // update the global mailbox map
-            mailboxes = mailboxes + (toComponent -> newMailbox)
-
-            if oldMailbox != newMailbox then trigger(MailboxDep(actorIdComponent(to.tid)))
-
-        /** Get access to our mailbox */
-        def receive(): Mailbox =
-            register(MailboxDep(component))
-            mailboxes(component)
-
-        override def doWrite(dep: Dependency): Boolean = dep match
-            case MailboxDep(_) => true
-            case _             => super.doWrite(dep)
-
-        /** Spawn an actor with the given initial behavior */
-        def spawn(beh: Behavior, lexEnv: Environment[Address], pos: Identity): Component =
-            val ctx = allocCtx(component, pos)
-            val cmp = newComponent(Actor(beh, lexEnv, ctx))
-            super.spawn(cmp)
-            cmp
-
-        def actorIdComponent(aid: AID): Component = inter.actorIdComponent(aid)
-
-        def notifyFutures(v: Value): Unit =
-            writeAddr(ActorWaitFutureResolveAddr(cmp), v)
-
-    //
-    // Inner ModF intra-process
-    //
-
-    def innerModF(intra: ModActorIntra, beh: Behavior): InnerModF
-
-    // TODO: rename to SequentialModFAnalysis? or SingleActorModFFactorySingletonProxyDefault?
-    abstract class InnerModF(intra: ModActorIntra, beh: Behavior)
-        extends ModAnalysis[SchemeExp](beh.bdy)
-        with SchemeModActorInnerMonad[Msg]
-        with StandardSchemeModFComponents { modf =>
-
-        import evalM.*
-        import maf.core.Monad.MonadSyntaxOps
-        import maf.core.Monad.MonadIterableOps
-
-        override def warn(msg: String): Unit =
-            log(s"warn: $msg")
-
-        override def intraAnalysis(component: modf.Component): InnerModFIntra =
-            log(s"Analyzing $component")
-            InnerModFIntra(component)
-
-        // SCHEME ENVIRONMENT SETUP
-        lazy val baseEnv = env(intra.component)
-        // SCHEME LATTICE SETUP
-        implicit override lazy val lattice: ASchemeLattice[Value, Address] = inter.lattice
-        type Value = inter.Value
-        lazy val primitives = inter.primitives
-        // MODF ADDRESS ALLOCATION
-        type AllocationContext = inter.AllocationContext
-        def allocVar(id: Identifier, cmp: SchemeModFComponent) = inter.allocVar(id, cmp, intra.component)
-        def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = inter.allocPtr(exp, cmp, intra.component)
-        // GLOBAL STORE SETUP
-        override def store = intra.store
-        override def store_=(s: Map[Addr, Value]) = intra.store = s
-        // SYNCING DEPENDENCIES
-        override def register(target: modf.Component, dep: Dependency) =
-            super.register(target, dep)
-            intra.register(dep)
-        override def trigger(dep: Dependency) =
-            super.trigger(dep)
-            intra.trigger(dep)
-
-        private var behaviors: Set[Behavior] = Set()
-        def getBehaviors: Set[Behavior] = behaviors
-
-        class InnerModFIntra(component: modf.Component) extends IntraAnalysis(component) with BigStepModFIntraT:
-            protected def recordNewBehavior(beh: Value, ags: List[Value]): EvalM[Unit] =
-                nondets(lattice.getBehs(beh).map { beh =>
-                    writeActorArgs(beh, ags, intra.component)
-                    log(s"Recording new behavior $beh")
-                    behaviors = behaviors + beh
-                    unit(())
-                })
-
-            protected def writeActorArgs(beh: Behavior, ags: List[Value], actor: inter.Component): Unit =
-                beh.prs.zip(ags).foreach { case (par, arg) =>
-                    val addr = inter.allocVar(par, Main, actor)
-                    writeAddr(addr, arg)
-                }
-            private def baseEnv: Environment[Address] = inter.view(intra.component) match
-                case c: Actor[_] =>
-                    val adr = allocVar(Identifier("self", Identity.none), component)
-                    val adr2 = allocVar(Identifier("a/self", Identity.none), component)
-                    writeAddr(adr, lattice.actor(ASchemeValues.Actor(c.beh.name, intra.component)))
-                    writeAddr(adr2, lattice.actor(ASchemeValues.Actor(c.beh.name, intra.component)))
-                    super.fnEnv.extend("self", adr).extend("a/self", adr2)
-                case _ => super.fnEnv
-
-            override def fnEnv: Environment[Address] = component match
-                case Main =>
-                    // inject the parameters of the behavior into the component
-                    val prs = beh.prs
-                    val ads = beh.prs.map(inter.allocVar(_, Main, intra.component))
-                    baseEnv.extend(prs.map(_.name).zip(ads))
-                case _ => baseEnv
-
-            val initialState: State = State(fnEnv, intra.receive())
-
-            protected def bindArgs(prs: List[Identifier], vlus: List[Value])(env: Environment[Address]): Environment[Address] =
-                prs.zip(vlus).foldLeft(env) { case (env, (par, vlu)) =>
-                    val addr = allocVar(par, component)
-                    writeAddr(addr, vlu)
-                    env.extend(par.name, addr)
-                }
-
-            // analysis entry point
-            def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-                log(s"Analyzing behavior $beh with body $fnBody")
-                eval(fnBody).run(initialState).foreach { case (vlu, _) => writeResult(vlu) }
-
-            def spawnActor(beh: Value, ags: List[Value], idn: Identity): EvalM[Value] =
-                log(s"Spawning actor with behavior $beh, ags $ags")
-                nondets(
-                  lattice
-                      .getBehs(beh)
-                      .map(beh =>
-                          // spawn the actor
-                          val cmp = intra.spawn(beh, beh.lexEnv, idn)
-                          // write the arguments of the actor
-                          writeActorArgs(beh, ags, cmp)
-                          unit(lattice.actor(ASchemeValues.Actor(beh.name, cmp)))
-                      )
-                )
-    }
+            val _timeout = timeout
+            EffectsM.fixWL[Component, Intra, Inter, Value](
+              cmp,
+              new EffectsM.Configuration {
+                  def inject(inter: Inter, cmp: Component): DynMonad[Value, EffectsMC[Component, Intra]] =
+                      injectInter(inter, cmp)
+                  val emptyWL = inter.emptyWorklist
+                  def sync(vlu: Value, intra: Intra, inter: Inter): Inter = syncInter(vlu, intra, inter)
+                  val initialState: Inter = inter.initialInterState
+                  val timeout = _timeout
+              }
+            )
