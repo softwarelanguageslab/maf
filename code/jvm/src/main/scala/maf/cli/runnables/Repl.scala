@@ -9,6 +9,8 @@ import maf.cli.experiments.SchemeAnalyses
 import maf.language.CScheme.CSchemeParser
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
+import maf.language.AScheme.ASchemeParser
+import maf.util.benchmarks.Timer
 
 object Repl:
     val about: String = """
@@ -25,12 +27,19 @@ object Repl:
 
     private val configurationsHelp: Map[String, String] = Map(
       "modfFS" -> "Flow sensitive ModF",
-      "ci" -> "context-insensitive analysis"
+      "ci" -> "context-insensitive analysis",
+      "actor" -> "default analysis for actors"
+    )
+
+    private val parserHelp: Map[String, String] = Map(
+      "actor" -> "A parser for actor programs.",
+      "default" -> "The default Scheme parser."
     )
 
     private val configurations: Map[String, (SchemeExp) => AnalysisEntry[SchemeExp]] = Map(
       "modfFS" -> SchemeAnalyses.modFFlowSensitive,
-      "ci" -> SchemeAnalyses.contextInsensitiveAnalysis
+      "ci" -> SchemeAnalyses.contextInsensitiveAnalysis,
+      "actor" -> SchemeAnalyses.modActorAnalysis
     )
 
     private def printHelp(): Unit =
@@ -38,6 +47,10 @@ object Repl:
         println(" Supported analyses")
         configurationsHelp.foreach { case (configuration, help) =>
             println(s" * $configuration: $help")
+        }
+        println(" Supported parsers")
+        parserHelp.foreach { case (parser, help) =>
+            println(s" * $parser: $help")
         }
 
     case class ArgParser(
@@ -88,12 +101,18 @@ object Repl:
     private type P = { def parse(e: String): SchemeExp }
     private type A = (SchemeExp) => AnalysisEntry[SchemeExp]
 
-    private def setupParser(parser: Option[String]): P =
-        // there is only one parser supported at the moment, so return that one
-        new {
-            def parse(e: String): SchemeExp =
-                CSchemeParser.parseProgram(e)
-        }
+    private def setupParser(parser: Option[String]): P = parser match
+        case Some("actor") =>
+            new {
+                def parse(e: String): SchemeExp =
+                    ASchemeParser.parseProgram(e)
+            }
+        case _ =>
+            // there is only one parser supported at the moment, so return that one
+            new {
+                def parse(e: String): SchemeExp =
+                    CSchemeParser.parseProgram(e)
+            }
 
     private def setupAnalysis(analysis: String): (SchemeExp) => AnalysisEntry[SchemeExp] =
         configurations.get(analysis).getOrElse(throw new Exception(s"$analysis analysis not found"))
@@ -103,8 +122,9 @@ object Repl:
         val prog = Reader.loadFile(filename)
         val exp = parser.parse(prog)
         val anl = makeAnalysis(exp)
-        anl.analyzeWithTimeout(Timeout.start(10.seconds))
-        println(anl.result)
+        val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(10.seconds)) }
+        anl.printResult
+        println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
 
     /** Runs a REPL that can be used to interactively test the abstract interpreter */
     private def runRepl(parser: P, makeAnalysis: A): Unit =
@@ -114,8 +134,10 @@ object Repl:
             if program != ":q" then
                 val exp = parser.parse(program)
                 val anl = makeAnalysis(exp)
-                anl.analyzeWithTimeout(Timeout.start(10.seconds))
-                println(anl.result)
+                val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(10.seconds)) }
+
+                anl.printResult
+                println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
                 repl()
         repl()
 

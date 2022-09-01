@@ -2,6 +2,7 @@ package maf.modular
 
 import maf.core._
 import maf.util.StringUtil
+import maf.util.StoreUtil
 
 // Dependency that is triggered when an abstract value at address 'addr' is updated
 case class AddrDependency(addr: Address) extends Dependency:
@@ -61,11 +62,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
 
     /** Returns a string representation of the store. */
     def storeString(primitives: Boolean = false): String =
-        val strings = store.map({ case (a, v) => s"${StringUtil.toWidth(a.toString, 50)}: $v" })
-        val filtered = if primitives then strings else strings.filterNot(_.toLowerCase.nn.startsWith("prm"))
-        val size = filtered.size
-        val infoString = "σ" * 150 + s"\nThe store contains $size addresses (primitive addresses ${if primitives then "included" else "excluded"}).\n"
-        filtered.toList.sorted.mkString(infoString, "\n", "\n" + "σ" * 150)
+        StoreUtil.storeString(store, primitives)
 
     override def configString(): String = super.configString() + s"\n  with a global store and a $domainName"
 }

@@ -2,6 +2,8 @@ package maf.modular.scheme.modflocal
 
 import maf.core.*
 import maf.core.Monad.*
+import maf.util.Monoid.*
+import maf.util.MonoidImplicits.*
 import maf.modular.Dependency
 import maf.util.Lens
 import maf.core.worklist.WorkList
@@ -51,14 +53,14 @@ trait EffectsM[M[_], Cmp, S] extends Monad[M]:
     def selfCmp: M[Cmp]
 
     /** Runs the effect-driven intra-analysis on cmp */
-    def run[X](cmp: Cmp, m: M[X]): Set[(X, S)]
+    def run(cmp: Cmp, m: M[Unit]): Set[S]
 
 type EffectsMC[Cmp, S] = [M[_]] =>> EffectsM[M, Cmp, S]
 
 object EffectsM:
     trait Configuration[C, V, Intra, Inter]:
         val emptyWL: WorkList[C]
-        def sync(vlu: V, intra: Intra, inter: Inter): Inter
+        def sync(intra: Intra, inter: Inter): Inter
         val initialState: Inter
         val timeout: Timeout.T
         def inject(inter: Inter, cmp: C): DynMonad[V, EffectsMC[C, Intra]]
@@ -91,7 +93,7 @@ object EffectsM:
      * @tparam V
      *   the type of abstract values used in the analysis
      */
-    def fixWL[C, IS, OS, V](initial: C, conf: Configuration[C, V, IS, OS]): AnalysisResult[OS] =
+    def fixWL[C, IS: EffectLensC[C], OS, V](initial: C, conf: Configuration[C, V, IS, OS]): AnalysisResult[OS] =
         def loop(seen: Set[C], wl: WorkList[C], dep: Map[Dependency, Set[C]], interState: OS): AnalysisResult[OS] =
             if wl.isEmpty then AnalysisResult.Finished(interState)
             else if conf.timeout.reached then AnalysisResult.Timeout(interState)
@@ -99,16 +101,16 @@ object EffectsM:
                 val work = wl.head
                 val nextWL = wl.tail
                 val dyn = conf.inject(interState, work)
+                val lens = summon[EffectLens[C, IS]]
 
-                val anl = dyn.dynMonadInstance.flatMap(dyn.contents)(v =>
-                    for
-                        ws <- dyn.dynMonadInstance.ws
-                        rs <- dyn.dynMonadInstance.rs
-                        cs <- dyn.dynMonadInstance.cs
-                    yield (ws, rs, cs, v)
-                )
+                val intras: Set[IS] = dyn.dynMonadInstance.run(work, dyn.contents.map(_ => ()))
 
-                val ((ws: Set[Dependency], rs: Set[Dependency], cs: Set[C], v: V), intra: IS) = ???
+                // perform a pointwise union
+                val (ws: Set[Dependency], rs: Set[Dependency], cs: Set[C]) =
+                    intras.foldLeft((Set.empty[Dependency], Set.empty[Dependency], Set.empty[C])) { case ((ws, rs, cs), intra) =>
+                        (ws ++ lens.getWrites(intra), rs ++ lens.getReads(intra), cs ++ lens.getCalls(intra))
+                    }
+
                 // spawn all needed components
                 val toSpawn = cs -- seen
                 // register all read dependencies
@@ -116,9 +118,9 @@ object EffectsM:
                 // reanalyze all components that are triggered by a dependency
                 val toReanalyze = ws.flatMap(depNew.get(_).getOrElse(Set()))
                 // synchronize the obtained state to the inter-analysis
-                val newInter = conf.sync(v, intra, interState)
+                val newInter = intras.foldLeft(interState)((inter, intra) => conf.sync(intra, inter))
                 // continue the analysis
-                loop(seen ++ toSpawn, wl ++ toReanalyze ++ toSpawn, depNew, newInter)
+                loop(seen ++ toSpawn, nextWL ++ toReanalyze ++ toSpawn, depNew, newInter)
 
         loop(Set(), conf.emptyWL + initial, Map(), conf.initialState)
 

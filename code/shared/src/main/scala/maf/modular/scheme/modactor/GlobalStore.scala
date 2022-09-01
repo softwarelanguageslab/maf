@@ -1,5 +1,6 @@
 package maf.modular.scheme.modactor
 
+import maf.core.monad.*
 import maf.modular.scheme.modflocal.EffectsMC
 import maf.core.DynMonad
 import maf.core.Monad.*
@@ -34,6 +35,10 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 import maf.core.worklist.FIFOWorkList
 import maf.util.MonoidInstances
+import maf.modular.ReturnAddr
+import maf.modular.scheme.PrmAddr
+import maf.core.IdentityMonad
+import maf.util.StoreUtil
 
 class GlobalStoreModActor(prog: SchemeExp)
     extends SchemeModActorSemantics(prog),
@@ -90,7 +95,7 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     private def sequentialComponentBody(cmp: SchemeModFComponent): SchemeExp = cmp match
         // A component associated with a regular function call
-        case Call((bdy, _), _) => bdy
+        case Call((clo, _), _) => SchemeBegin(clo.body, Identity.none)
         // A component associated with the behavior of an actor
         case BehaviorComponent(beh, _, _) => beh.bdy
         // All other cases are either not supported or already caught by `body`
@@ -136,10 +141,13 @@ class GlobalStoreModActor(prog: SchemeExp)
     //////////////////////////////////////////////////
 
     override def getBehaviors: Map[Component, Set[Behavior]] =
-        _result.behaviors
+        _result.nn.behaviors
 
     override def getMailboxes: Map[Component, Mailbox] =
-        _result.mailboxes
+        _result.nn.mailboxes
+
+    override def printResult: Unit =
+        println(StoreUtil.storeString(_result.nn.sto))
 
     //////////////////////////////////////////////////
     // ModAnalysis
@@ -153,12 +161,12 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     override lazy val initialEnv: Env =
         Environment(primitives.allPrimitives.map { case (name, vlu) =>
-            name -> PrimAddr(name)
+            name -> PrmAddr(name)
         })
 
     override lazy val initialSto: Map[Address, Value] =
         primitives.allPrimitives.map { case (name, vlu) =>
-            PrimAddr(name) -> lattice.primitive(name)
+            PrmAddr(name) -> lattice.primitive(name)
         }.toMap
 
     override def injectInter(inter: Inter, cmp: Component): DynMonad[Value, EffectsMC[Component, Intra]] =
@@ -170,11 +178,13 @@ class GlobalStoreModActor(prog: SchemeExp)
             _ <- get.map(lens.modify(lens.mailboxes)(_ => inter.mailboxes)) >>= put
             // then evalute the expression
             v <- eval(body(cmp))
+            // write the value to the global store at its return address
+            _ <- updateSto(ReturnAddr(cmp, Identity.none), v)
         yield v
 
         DynMonad.from(m)
 
-    def syncInter(vlu: Value, intra: Intra, inter: Inter): Inter =
+    def syncInter(intra: Intra, inter: Inter): Inter =
         // join the global stores together
         val sto = intra.sto.foldLeft(inter.sto) { case (acc, (key, vlu)) =>
             acc + (key -> lattice.join(inter.sto.get(key).getOrElse(lattice.bottom), vlu))
@@ -190,7 +200,7 @@ class GlobalStoreModActor(prog: SchemeExp)
     // Monad Instance
     //////////////////////////////////////////////////
 
-    type Reader = [Y] =>> ReaderT[Set, (Ctx, Env), Y]
+    type Reader = [Y] =>> ReaderT[EitherT_[Intra][Set], (Ctx, Env), Y]
     type A[X] = MonadStateT[IntraState, Reader, X]
 
     given lens: ActorLens[IntraState] = new ActorLens[IntraState] {
@@ -261,7 +271,8 @@ class GlobalStoreModActor(prog: SchemeExp)
         def selfActorCmp: A[Component] =
             get.map(_.self)
         def mbottom[X]: A[X] =
-            lift(ReaderT.lift(Set()))
+            get.flatMap(state => lift(ReaderT.lift(EitherT(Set(Left(state))))))
+
         def mjoin[X: Lattice](x: A[X], y: A[X]): A[X] =
             // in this lattice we do not join
             nondets(List(x, y))
@@ -286,13 +297,23 @@ class GlobalStoreModActor(prog: SchemeExp)
             yield ActorAnalysisComponent(Actor(initialBehavior, initialBehavior.lexEnv, ()), None, Some(ctx))
 
         def nondets[X](xs: Iterable[A[X]]): A[X] =
-            MonadStateT((s) => ReaderT((e) => xs.toList.foldMap(_.run(s).runReader(e))))
+            MonadStateT((s) => ReaderT((e) => EitherT(xs.toList.foldMap(_.run(s).runReader(e).runEither))))
 
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-            MonadStateT((s) => ReaderT.local[Set, (Ctx, Env), (X, IntraState)] { case (ctx, env: Env) => (ctx, f(env)) }(blk.run(s)))
+            import maf.core.SetMonad.*
+            MonadStateT((s) =>
+                ReaderT.local[EitherT_[Intra][Set], (Ctx, Env), (X, IntraState)] { case (ctx, env: Env) => (ctx, f(env)) }(
+                  blk.run(s)
+                )
+            )
 
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-            MonadStateT((s) => ReaderT.local[Set, (Ctx, Env), (X, IntraState)] { case (ctx, env: Env) => (f(ctx), env) }(blk.run(s)))
+            import maf.core.SetMonad.*
+            MonadStateT((s) =>
+                ReaderT.local[EitherT_[Intra][Set], (Ctx, Env), (X, IntraState)] { case (ctx, env: Env) => (f(ctx), env) }(
+                  blk.run(s)
+                )
+            )
 
         def fail[X](err: maf.core.Error): A[X] = mbottom
 
@@ -302,10 +323,13 @@ class GlobalStoreModActor(prog: SchemeExp)
          * @note
          *   it is expected that `m` is a computation that injects the correct store and environment
          */
-        def run[X](cmp: Component, m: A[X]): Set[(X, IntraState)] =
+        def run(cmp: Component, m: A[Unit]): Set[IntraState] =
             val st = IntraState(self = cmp)
             val ev = (componentContext(cmp), environment(cmp))
-            m.run(st).runReader(ev)
+            m.run(st).runReader(ev).runEither.map {
+                case Left(s)       => s
+                case Right((_, s)) => s
+            }
 
     }
 

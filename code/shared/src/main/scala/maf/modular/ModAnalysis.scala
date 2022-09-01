@@ -35,6 +35,9 @@ trait AnalysisEntry[Exp <: Expression]:
     /** The result of the analysis, if any is available */
     def result: Option[Any] = None
 
+    /** Method that defines how to print the result of the analysis */
+    def printResult: Unit = println(result)
+
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some
  * utility functionality.

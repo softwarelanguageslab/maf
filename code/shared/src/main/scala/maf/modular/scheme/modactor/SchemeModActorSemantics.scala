@@ -95,11 +95,6 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
         def idn: Identity = Identity.none
         def printable: Boolean = true
 
-    // An address that points to a primitive value
-    case class PrimAddr(name: String) extends Address:
-        def idn: Identity = Identity.none
-        def printable: Boolean = true
-
     //
     // Messages
     //
@@ -228,15 +223,20 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
             for
                 env <- getEnv
                 ctx <- getCtx
-                _ <- allocateCall(lam, env) >>= spawn
-                cmp <- selfCmp
-                result <- lookupSto(ReturnAddr(cmp, lam.idn))
+                newCmp <- allocateCall(lam, env)
+                _ <- spawn(newCmp)
+                result <- lookupSto(ReturnAddr(newCmp, lam.idn))
             yield result
 
         def updateSto(a: Adr, v: Val): A[Unit] = extendSto(a, v)
 
         def extendSto(a: Adr, v: Val): A[Unit] =
-            /* trigger a write */ trigger(AddrDependency(a)) >>> /* and actually do the write */
+            val doTrigger =
+                Monad.mIf(get.map(lens.getSto).map(_.get(a).getOrElse(lattice.bottom) != v)) /* then */ { trigger(AddrDependency(a)) } /* else  */ {
+                    unit(())
+                }
+            /* trigger a write */
+            doTrigger >>> /* and actually do the write */
                 (get.map(lens.modify(lens.sto)(sto => sto + (a -> lattice.join(sto.get(a).getOrElse(lattice.bottom), v)))) >>= put)
 
         def lookupSto(a: Adr): A[Val] =
@@ -269,7 +269,7 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
     type Inter
     type Intra = State
 
-    def syncInter(vlu: Value, intra: Intra, inter: Inter): Inter
+    def syncInter(intra: Intra, inter: Inter): Inter
     def injectInter(inter: Inter, cmp: Component): DynMonad[Value, EffectsMC[Component, Intra]]
     val emptyWorklist: WorkList[Component]
     lazy val initialInterState: Inter
@@ -286,21 +286,21 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
     ////////////////////////////////
 
     private var isFinished: Boolean = false
-    protected var _result: Inter = initialInterState
+    protected var _result: Inter | Null = null
 
     def finished: Boolean = isFinished
     override def result: Option[Any] = Some(_result)
 
-    def analyzeWithTimeout(timeout: T): Unit =
+    def analyzeWithTimeout(_timeout: T): Unit =
         val result = EffectsM.fixWL[Component, Intra, Inter, Value](
           initialComponent,
           new EffectsM.Configuration {
               def inject(inter: Inter, cmp: Component): DynMonad[Value, EffectsMC[Component, Intra]] =
                   injectInter(inter, cmp)
               val emptyWL = inter.emptyWorklist
-              def sync(vlu: Value, intra: Intra, inter: Inter): Inter = syncInter(vlu, intra, inter)
+              def sync(intra: Intra, inter: Inter): Inter = syncInter(intra, inter)
               val initialState: Inter = inter.initialInterState
-              val timeout = timeout
+              val timeout = _timeout
           }
         ) match
             case EffectsM.AnalysisResult.Finished(inter) => { isFinished = true; inter }

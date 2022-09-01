@@ -12,6 +12,9 @@ case class SetT[M[_]: Monad, X](runSet: M[Set[X]])
 type SetT_ = [M[_]] =>> [X] =>> SetT[M, X]
 
 object SetT:
+    def empty[T[_]: Monad, X]: SetT[T, X] =
+        SetT(Monad[T].unit(Set()))
+
     given [T[_]: Monad]: Monad[SetT_[T]] with
         type M[X] = SetT_[T][X]
         def unit[X](x: X): SetT_[T][X] =
@@ -22,3 +25,7 @@ object SetT:
         yield b)
         def map[X, Y](m: SetT_[T][X])(f: X => Y): SetT_[T][Y] =
             flatMap(m)(f andThen unit)
+
+    given MonadLift[SetT] with
+        def lift[M[_]: Monad, A](m: M[A]): SetT[M, A] =
+            SetT(m.map(Set(_)))
