@@ -29,6 +29,15 @@ trait DynMonad[X, U[_[_]] <: Monad[_]]:
     /** The actual datastructue that represents the monad */
     val contents: M[X]
 
+object DynMonad:
+    def from[W[_]: U, U[_[_]] <: Monad[_], X](m: W[X]): DynMonad[X, U] =
+        val inst = summon[U[W]]
+        new DynMonad {
+            type M[X] = W[X]
+            given dynMonadInstance: U[M] = inst
+            val contents: M[X] = m
+        }
+
 trait Monad[M[_]]:
     def unit[X](x: X): M[X]
     def map[X, Y](m: M[X])(f: X => Y): M[Y]

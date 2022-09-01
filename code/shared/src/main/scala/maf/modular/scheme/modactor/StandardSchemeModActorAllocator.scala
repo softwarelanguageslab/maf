@@ -8,7 +8,7 @@ import maf.modular.scheme.SchemeAddr
 
 trait ModActorNoSensitivity extends SchemeModActorSemantics:
     type ComponentContext = Unit
-    override def allocCtx(currCmp: Component, idn: Identity): ComponentContext = ()
+//override def allocCtx(currCmp: Component, idn: Identity): ComponentContext = ()
 
 trait StandardSchemeModActorAllocator extends SchemeModActorSemantics:
     type AllocationContext = (Component, SchemeModFComponent)

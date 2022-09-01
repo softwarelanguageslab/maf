@@ -16,10 +16,12 @@ object ASchemeValues:
     /** An actor identifier */
     trait AID extends SmartHash with ASchemeValue:
         def removeEnv: AID
+        def removeContext: AID
 
     /** A simple actor identifier based on a sequential integer */
     case class SimpleActorId(id: Int) extends AID:
         def removeEnv: SimpleActorId = this
+        def removeContext: SimpleActorId = this
 
     /**
      * A running actor.

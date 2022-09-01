@@ -19,7 +19,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
 
     type ActorRef = Actor
     type Behavior = ASchemeValues.Behavior
-    type Message
+    type Msg
 
     implicit override lazy val lattice: ASchemeLattice[Val, Adr]
 
@@ -34,13 +34,13 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   the new message wrapped in the analysis monad
          */
-        def mkMessage(tpy: String, arguments: List[Value]): M[Message]
+        def mkMessage(tpy: String, arguments: List[Value]): M[Msg]
 
         /** Get the tag of a message */
-        def getMessageTag(m: Message): String
+        def getMessageTag(m: Msg): String
 
         /** Get the arguments of a message */
-        def getMessageArguments(m: Message): List[Val]
+        def getMessageArguments(m: Msg): List[Val]
 
     trait ActorAnalysisM[M[_]] extends AnalysisM[M], MessageM[M]:
         /**
@@ -64,7 +64,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                 )
             }
 
-        def send(to: ActorRef, m: Message): M[Unit]
+        def send(to: ActorRef, m: Msg): M[Unit]
 
         def nondets[X](xs: Iterable[M[X]]): M[X]
 
@@ -84,7 +84,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   the message wrapped in the analysis monad
          */
-        def receive: M[Message]
+        def receive: M[Msg]
 
         /**
          * Spawn a new actor

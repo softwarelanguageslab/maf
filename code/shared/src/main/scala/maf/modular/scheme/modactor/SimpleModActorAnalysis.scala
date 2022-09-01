@@ -34,15 +34,7 @@ trait ASchemeConstantPropagationDomain extends SchemeDomain:
     final lazy val primitives = new SchemeLatticePrimitives()(lattice)
 
 class SimpleSchemeModActorAnalysis(program: SchemeExp)
-    extends ModAnalysis[SchemeExp](program)
+    extends GlobalStoreModActor(program)
     with ASchemeConstantPropagationDomain
-    with StandardSchemeModActorAllocator
-    with ModActorNoSensitivity
-    with SimpleMessageMailbox
     with PowersetMailboxAnalysis
-    with StandardSchemeModActorComponents
-    with FIFOWorklistAlgorithm[SchemeExp]
-    with SchemeModActorSemantics
-    with SchemeModActorFutures:
-
-    override def intraAnalysis(component: SchemeModActorComponent[ComponentContext]): ModActorIntra = new ModActorIntra(component) {}
+//with SchemeModActorFutures

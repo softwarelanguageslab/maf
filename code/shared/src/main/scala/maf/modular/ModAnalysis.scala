@@ -22,6 +22,10 @@ trait AnalysisEntry[Exp <: Expression]:
     /** Runs the analysis until the given time-out passes */
     def analyzeWithTimeout(timeout: Timeout.T): Unit
 
+    /** Runs the analysis without a time-out */
+    def analyze(): Unit =
+        analyzeWithTimeout(Timeout.none)
+
     /** Returns any metrics collected during the analysis, if any (default returns empty list) */
     def metrics: List[Metric] = List()
 
@@ -138,7 +142,7 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
      * Runs the analysis. A timeout can not be configured (use `analyzeWithTimeout` instead if needed), meaning the method returns only when the
      * analysis has actually terminated. Therefore, this method ensures that the the full (and sound) analysis result is computed.
      */
-    final def analyze(): Unit = analyzeWithTimeout(Timeout.none)
+    final override def analyze(): Unit = analyzeWithTimeout(Timeout.none)
 
     // Exporting an analysis to a file.
 
