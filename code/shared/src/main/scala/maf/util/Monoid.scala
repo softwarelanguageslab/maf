@@ -11,6 +11,12 @@ trait Monoid[M] extends Serializable:
 object Monoid:
     def apply[M: Monoid]: Monoid[M] = implicitly
 
+    extension [L: Monoid](m: Iterable[L])
+        def mconcat: L =
+            var result = Monoid[L].zero
+            for (x <- m) do result = Monoid[L].append(result, x)
+            result
+
     given listMonoid[T]: Monoid[List[T]] with
         def append(x: List[T], y: => List[T]): List[T] = x ++ y
         def zero: List[T] = List()
