@@ -20,7 +20,7 @@ object EitherT:
         def unit[X](x: X): A[X] =
             EitherT(Monad[M].unit(Right(x)))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]): A[Y] =
-            EitherT(m.runEither.flatMap {
+            EitherT(Monad[M].flatMap(m.runEither) {
                 case Left(v)  => Monad[M].unit(Left[E, Y](v))
                 case Right(x) => f(x).runEither
             })

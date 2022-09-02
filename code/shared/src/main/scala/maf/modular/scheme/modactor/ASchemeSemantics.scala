@@ -10,6 +10,12 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.language.AScheme.ASchemeLattice
 import maf.util.Logger
 
+/** The address in the store in which a reference to the current actor is stored */
+case object SelfAdr extends Address {
+    override def printable: Boolean = false
+    override def idn: Identity = Identity.none
+}
+
 trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, SchemeDomain:
     import Monad.*
     import MonadJoin.*
@@ -54,7 +60,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
         def sendMessage(to: Val, tag: String, ags: List[Val]): M[Unit] =
             given Monad[M] = this
             mkMessage(tag, ags).flatMap { msg =>
-                merge(
+                mjoin(
                   lattice
                       .getActors(to)
                       .map { actor =>
@@ -99,7 +105,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
 
     /** Change the behavior of the current actor to the given behavior */
     private def become(beh: Val, ags: List[Val], idn: Identity): A[Unit] =
-        merge(lattice.getBehs(beh).map { beh =>
+        mjoin(lattice.getBehs(beh).map { beh =>
             analysisM.become(beh, ags, idn)
         })
 
@@ -108,63 +114,69 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             allocVar(par).flatMap(addr => extendSto(addr, vlu) >>> unit(env.extend(par.name, addr)))
         }
 
-    override def eval(exp: SchemeExp): A[Val] = exp match
-        // An actor expression evaluates to a behavior
-        case ASchemeActor(parameters, selection, _, name) =>
-            for env <- getEnv
-            yield lattice.beh(Behavior(name, parameters, selection, env))
+    override protected def evalVariable(nam: String): A[Val] = nam match
+        case "self" | "a/self" => selfActor.map(lattice.actor)
+        case _                 => super.evalVariable(nam)
 
-        // Evaluating a create expression spawns a new actor and returns a reference to it
-        case ASchemeCreate(beh, ags, idn) =>
-            for
-                evaluatedBeh <- eval(beh)
-                env <- getEnv
-                evaluatedAgs <- ags.mapM(eval)
-                actorRef <- create(evaluatedBeh, evaluatedAgs, idn)
-            yield lattice.actor(actorRef)
+    override def eval(exp: SchemeExp): A[Val] =
+        println(s"eval $exp")
+        exp match
+            // An actor expression evaluates to a behavior
+            case ASchemeActor(parameters, selection, _, name) =>
+                for env <- getEnv
+                yield lattice.beh(Behavior(name, parameters, selection, env))
 
-        // Sending a message is atomic (asynchronous) and results in nil
-        case ASchemeSend(actorRef, messageTpy, ags, idn) =>
-            for
-                evaluatedActorRef <- eval(actorRef)
-                evaluatedAgs <- ags.mapM(eval)
-                _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs)
-            yield lattice.nil
+            // Evaluating a create expression spawns a new actor and returns a reference to it
+            case ASchemeCreate(beh, ags, idn) =>
+                for
+                    evaluatedBeh <- eval(beh)
+                    env <- getEnv
+                    evaluatedAgs <- ags.mapM(eval)
+                    actorRef <- create(evaluatedBeh, evaluatedAgs, idn)
+                yield lattice.actor(actorRef)
 
-        // Change the behavior of the current actor, and return nil
-        case ASchemeBecome(beh, ags, idn) =>
-            for
-                evaluatedBeh <- eval(beh)
-                evaluatedAgs <- ags.mapM(eval)
-                _ <- become(evaluatedBeh, evaluatedAgs, idn)
-                // we stop the analysis here because the actor is in a suspended state,
-                // waiting for new messages defined by the behavior.
-                //
-                // The intra-actor analysis will restart the analysis when appropriate
-                res <- mbottom[Value]
-            yield res
+            // Sending a message is atomic (asynchronous) and results in nil
+            case ASchemeSend(actorRef, messageTpy, ags, idn) =>
+                for
+                    evaluatedActorRef <- eval(actorRef)
+                    evaluatedAgs <- ags.mapM(eval)
+                    _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs)
+                yield lattice.nil
 
-        // Receive a message from the mailbox
-        case ASchemeSelect(handlers, idn) =>
-            for
-                // select a message from the mailbox
-                msg <- receive
-                _ = { log(s"actor/recv $msg") }
-                // see if there is an applicable handler
-                tag = getMessageTag(msg)
-                args = getMessageArguments(msg)
-                handler = handlers.get(tag)
-                result <-
-                    if handler.isEmpty then mbottom
-                    else
-                        val (pars, bdy) = handler.get
-                        withEnvM(bindArgs(pars, args)) {
-                            Monad.sequence(bdy.map(eval))
-                        } >>= trace(s"actor/recv $msg result")
-            yield lattice.nil
+            // Change the behavior of the current actor, and return nil
+            case ASchemeBecome(beh, ags, idn) =>
+                for
+                    evaluatedBeh <- eval(beh)
+                    evaluatedAgs <- ags.mapM(eval)
+                    _ <- become(evaluatedBeh, evaluatedAgs, idn)
+                    // we stop the analysis here because the actor is in a suspended state,
+                    // waiting for new messages defined by the behavior.
+                    //
+                    // The intra-actor analysis will restart the analysis when appropriate
+                    res <- mbottom[Value]
+                yield res
 
-        case SchemeFuncall(Identifier("terminate", _), _, _) =>
-            // actor termination
-            mbottom
+            // Receive a message from the mailbox
+            case ASchemeSelect(handlers, idn) =>
+                for
+                    // select a message from the mailbox
+                    msg <- receive
+                    _ = { log(s"actor/recv $msg") }
+                    // see if there is an applicable handler
+                    tag = getMessageTag(msg)
+                    args = getMessageArguments(msg)
+                    handler = handlers.get(tag)
+                    result <-
+                        if handler.isEmpty then mbottom
+                        else
+                            val (pars, bdy) = handler.get
+                            withEnvM(bindArgs(pars, args)) {
+                                Monad.sequence(bdy.map(eval))
+                            } >>= trace(s"actor/recv $msg result")
+                yield lattice.nil
 
-        case _ => super.eval(exp)
+            case SchemeFuncall(Identifier("terminate", _), _, _) =>
+                // actor termination
+                mbottom
+
+            case _ => super.eval(exp)

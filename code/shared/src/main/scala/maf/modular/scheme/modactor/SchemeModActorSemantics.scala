@@ -245,12 +245,21 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
 
         def send(to: ActorRef, m: Msg): A[Unit] =
             val receiver = actorIdComponent(to.tid)
+            println(s"sending $to $m")
             // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
-            trigger(MailboxDep(receiver)) >>>
-                (get.map(lens.modify(lens.mailboxes)(mbs => mbs + (receiver -> mbs.apply(receiver).enqueue(m)))) >>= put)
+            //
+            val result = trigger(MailboxDep(receiver)) >>>
+                (get.map(
+                  lens.modify(lens.mailboxes)(mbs =>
+                      mbs + (receiver ->
+                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
+                  )
+                ) >>= put)
+            println(s"send done")
+            result
 
         def mailbox: A[Mailbox] =
-            get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(boxes.apply))
+            get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
 
         def receive: A[Msg] =
             for

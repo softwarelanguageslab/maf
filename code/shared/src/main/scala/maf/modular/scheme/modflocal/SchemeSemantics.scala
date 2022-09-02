@@ -81,7 +81,7 @@ trait SchemeSemantics:
         case sexp.Value.Symbol(s)    => unit(lattice.symbol(s))
         case sexp.Value.Nil          => unit(lattice.nil)
 
-    private def evalVariable(nam: String): A[Val] =
+    protected def evalVariable(nam: String): A[Val] =
         for
             adr <- lookupEnv(nam)
             vlu <- lookupSto(adr)

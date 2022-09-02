@@ -39,6 +39,8 @@ import maf.modular.ReturnAddr
 import maf.modular.scheme.PrmAddr
 import maf.core.IdentityMonad
 import maf.util.StoreUtil
+import maf.language.AScheme.ASchemeValues
+import maf.language.ContractScheme.ContractValues
 
 class GlobalStoreModActor(prog: SchemeExp)
     extends SchemeModActorSemantics(prog),
@@ -267,7 +269,13 @@ class GlobalStoreModActor(prog: SchemeExp)
         import maf.core.monad.MonadLift.*
         def getEnv: A[Env] = map(lift(ReaderT.ask))(_._2)
         def getCtx: A[Ctx] = map(lift(ReaderT.ask))(_._1)
-        def selfActor: A[ActorRef] = ???
+        def selfActor: A[ActorRef] = selfActorCmp.map { case ActorAnalysisComponent(enclosing, _, _) =>
+            enclosing match
+                case MainActor => ???
+                case Actor(beh, _, _) =>
+                    ASchemeValues.Actor(beh.name, enclosing)
+                case _ => throw new Exception("cannot enclose an enclosing actor into an enclosing actor")
+        }
         def selfActorCmp: A[Component] =
             get.map(_.self)
         def mbottom[X]: A[X] =
@@ -297,7 +305,12 @@ class GlobalStoreModActor(prog: SchemeExp)
             yield ActorAnalysisComponent(Actor(initialBehavior, initialBehavior.lexEnv, ()), None, Some(ctx))
 
         def nondets[X](xs: Iterable[A[X]]): A[X] =
-            MonadStateT((s) => ReaderT((e) => EitherT(xs.toList.foldMap(_.run(s).runReader(e).runEither))))
+            MonadStateT((s) =>
+                ReaderT((e) =>
+                    println("running")
+                    EitherT(xs.toList.foldMap(_.run(s).runReader(e).runEither))
+                )
+            )
 
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             import maf.core.SetMonad.*
