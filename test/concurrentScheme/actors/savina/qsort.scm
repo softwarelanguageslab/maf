@@ -50,7 +50,7 @@
                        (become quicksort-actor parent position-relative-to-parent (filter (lambda (x) (= x pivot)) data) (+ num-fragments 1)))))
            (result (data position)
                    (let ((result2
-                          (if (empty? data)
+                          (if (null? data)
                               result
                               (if (equal? position 'position-left)
                                   (append data result)

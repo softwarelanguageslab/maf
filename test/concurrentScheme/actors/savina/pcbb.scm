@@ -70,7 +70,7 @@
                                          (become manager producers consumers available-producers available-consumers (cdr pending-data) terminated-producers)))))
            (exit () (if (and (= (+ 1 terminated-producers) NumProducers) (= (length available-consumers) NumConsumers))
                         (begin
-                          (display (format "available consumers: ~a~n " (length available-consumers)))
+                          (display (display "available consumers: ~a~n " (length available-consumers)))
                           (for-each (lambda (c) (send c exit)) consumers)
                           (terminate))
                         (become manager producers consumers available-producers available-consumers pending-data (+ 1 terminated-producers))))))
