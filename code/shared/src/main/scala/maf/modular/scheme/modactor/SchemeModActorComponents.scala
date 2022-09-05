@@ -49,6 +49,19 @@ case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[U
     override def removeContext: SchemeModActorComponent[Unit] =
         this.copy(ctx = None, innerComponent = None)
 
+    private def showInner: String = innerComponent match
+        case Some(BehaviorComponent(beh, _, _))     => s"<behavior: ${beh.name}:${beh.bdy.idn}>"
+        case Some(SchemeModFComponent.Main)         => s"main"
+        case Some(SchemeModFComponent.Call(clo, _)) => s"<clo: ${clo._1.name}:${clo._1.idn}>"
+        case None                                   => ""
+        case Some(s)                                => s.toString
+
+    override def toString: String =
+        enclosingActor match
+            case MainActor                               => "<aid: MainActor>"
+            case Actor(beh, _, _)                        => s"<aid: ${beh.name}:${beh.bdy.idn}, ${showInner}>"
+            case ActorAnalysisComponent(enclosing, _, _) => enclosing.toString
+
 /**
  * A component that represents the analysis of a particular behavior
  *

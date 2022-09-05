@@ -148,6 +148,7 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
             val concreteState = runConcrete(analysis, concreteRuns, program, b)
 
             //assert(!concreteState.isEmpty, "Concrete execution should have message sends")
+            println(s"Running analyis on $b")
             // Run the abstract interpreter
             analysis.analyze()
 
@@ -157,10 +158,13 @@ trait SchemeModActorMailboxSoundnessTests extends SchemeBenchmarkTests, Concrete
 
 class SchemeModActorMailboxSoundnessTestsAllBenchmarks extends SchemeModActorMailboxSoundnessTests:
     override def benchmarks: Set[String] =
-        Set("test/concurrentScheme/actors/soter/state_factory.scm")
 // Set("test/concurrentScheme/actors/soter/concdb.scm")
-/// SchemeBenchmarkPrograms.actors --
-///     Set("test/concurrentScheme/actors/soter/unsafe_send.scm",
-///         "test/concurrentSchem/actors/savina/qsort.scm",
-///         "test/concurrentScheme/actors/savina/fbank.scm"
-///     )
+        SchemeBenchmarkPrograms.actors --
+            Set(
+              "test/concurrentScheme/actors/soter/unsafe_send.scm",
+              "test/concurrentSchem/actors/savina/qsort.scm",
+              "test/concurrentScheme/actors/savina/fbank.scm",
+              "test/concurrentScheme/actors/savina/ofl.scm", // TODO: very slow, check why.
+              "test/concurrentScheme/actors/savina/sor.scm", // TODO: transform using mutable var boxer (uses set!)
+              "test/concurrentScheme/actors/savina/qsort.scm" // TODO: is unsound in spawned actors?
+            )

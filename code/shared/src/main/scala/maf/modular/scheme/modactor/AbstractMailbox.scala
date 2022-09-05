@@ -2,6 +2,7 @@ package maf.modular.scheme.modactor
 
 import maf.language.AScheme.ASchemeValues.Message
 import maf.language.AScheme.ASchemeValues
+import maf.util.datastructures.SmartUnion
 
 /**
  * An abstract representation of a mailbox.
@@ -43,6 +44,9 @@ trait AbstractMailbox[M]:
     /** Returns all messages in the mailbox */
     def messages: Set[M]
 
+    /** Merge the given mailbox with the current one */
+    def merge(other: AbstractMailbox[M]): AbstractMailbox[M]
+
 /**
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
  * concurrency. In Static Analysis - 20th International Symposium, SAS 2013
@@ -56,6 +60,9 @@ case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
         msgs.map(m => (m, PowersetMailbox(msgs)))
 
     val messages: Set[M] = msgs
+
+    def merge(other: AbstractMailbox[M]): AbstractMailbox[M] = other match
+        case PowersetMailbox(msgs) => this.copy(msgs = SmartUnion.sunion(this.msgs, msgs))
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:

@@ -158,7 +158,7 @@ class GlobalStoreModActor(prog: SchemeExp)
     override def printResult: Unit =
         println(StoreUtil.storeString(_result.nn.sto))
         println(s"Number of spawned actors ${_result.nn.actors.size}")
-        println(s"Number of message sends ${_result.nn.mailboxes.values.toList.size}")
+        println(s"Number of message sends ${_result.nn.mailboxes.values.map(_.messages.size).sum}")
 
     //////////////////////////////////////////////////
     // ModAnalysis
@@ -201,8 +201,18 @@ class GlobalStoreModActor(prog: SchemeExp)
             acc + (key -> lattice.join(inter.sto.get(key).getOrElse(lattice.bottom), vlu))
         }
 
+        // println(s"+++++++ sync, sto size ${sto.keys.size}")
+        // println(s"+++++++ mailbox size ${intra.mailboxes.values.map(_.messages.size).sum}")
+
+        val newMailboxes = intra.mailboxes
+            .foldLeft(inter.mailboxes) { case (mailboxes, (cmp, mailbox)) =>
+                val mailboxInter = inter.mailboxes.get(cmp).getOrElse(emptyMailbox)
+
+                mailboxes + (cmp -> mailboxInter.merge(mailbox))
+            }
+
         inter.copy(sto = sto,
-                   mailboxes = intra.mailboxes,
+                   mailboxes = newMailboxes,
                    behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
                    actors = inter.actors ++ intra.actors
         )
@@ -280,7 +290,8 @@ class GlobalStoreModActor(prog: SchemeExp)
         def getCtx: A[Ctx] = map(lift(ReaderT.ask))(_._1)
         def selfActor: A[ActorRef] = selfActorCmp.map { case a @ ActorAnalysisComponent(enclosing, _, _) =>
             enclosing match
-                case MainActor => ???
+                case MainActor =>
+                    ASchemeValues.Actor(Some("name"), a)
                 case Actor(beh, _, _) =>
                     ASchemeValues.Actor(beh.name, a)
                 case _ => throw new Exception("cannot enclose an enclosing actor into an enclosing actor")
@@ -362,3 +373,4 @@ class GlobalStoreModActor(prog: SchemeExp)
     override def view(cmp: Component): SchemeModActorComponent[Context] = cmp match
         case ActorAnalysisComponent(enclosing, _, _) => ActorAnalysisComponent(enclosing, None, None)
         case a: Actor[_]                             => ActorAnalysisComponent(a, None, None)
+        case MainActor                               => ActorAnalysisComponent(MainActor, None, None)

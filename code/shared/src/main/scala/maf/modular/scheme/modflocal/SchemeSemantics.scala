@@ -34,7 +34,7 @@ trait SchemeSemantics:
                 res <- withEnv(_ => newEnv) { blk }
             yield res
         def lookupEnv(nam: String): M[Adr] =
-            for env <- getEnv yield env(nam)
+            for env <- getEnv yield env.lookup(nam).getOrElse(throw new Exception(s"undefined variable $nam"))
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
             withEnv(_.extend(nam, adr))(blk)
         def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =

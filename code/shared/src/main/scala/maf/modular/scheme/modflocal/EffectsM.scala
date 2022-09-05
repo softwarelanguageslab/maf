@@ -147,8 +147,10 @@ object EffectsM:
                         log(s"=== write dep ===")
                         ws.foreach(w => log(w.toString))
                         log(s"=== spawns ===")
-                        cs.foreach(c => log(c.toString()))
+                        (cs -- seen).foreach(c => log(c.toString()))
+                        log(s"=== total: ${seen.size}")
                         log("==============")
+                        log(s"=== wl size: ${nextWL.toList.size}")
                         log("")
 
                         // spawn all needed components

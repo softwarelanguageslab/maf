@@ -200,16 +200,18 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
             _ <- get.map(lens.modify(lens.actors)(_ + cmp)) >>= put
         yield (maf.language.AScheme.ASchemeValues.Actor(beh.name, cmp))
 
-        override def become(beh: Behavior, ags: List[Value], idn: Identity): A[Unit] = for
-            // put the behavior arguments in the store
-            _ <- beh.prs.mapM(this.allocVar).flatMap(adrs => extendSto(adrs.zip(ags)))
-            // get a reference to ourselves
-            cmp <- selfActorCmp
-            // track the created behaviors
-            _ <- get.map(lens.modify(lens.behaviors)(m => m + (cmp -> (m.get(cmp).getOrElse(Set()) + beh)))) >>= put
-            // create a component for the behavior and spawn it
-            _ <- allocateBehavior(beh, idn) >>= spawn
-        yield ()
+        override def become(beh: Behavior, ags: List[Value], idn: Identity): A[Unit] =
+            for
+                adrs <- beh.prs.mapM(this.allocVar)
+                // put the behavior arguments in the store
+                _ <- extendSto(adrs.zip(ags))
+                // get a reference to ourselves
+                cmp <- selfActorCmp
+                // track the created behaviors
+                _ <- get.map(lens.modify(lens.behaviors)(m => m + (cmp -> (m.get(cmp).getOrElse(Set()) + beh)))) >>= put
+                // create a component for the behavior and spawn it
+                _ <- withEnv(_ => beh.lexEnv.extend(beh.prs.map(_.name).zip(adrs))) { allocateBehavior(beh, idn) } >>= spawn
+            yield ()
 
         override def addrEq: A[MaybeEq[Adr]] = unit(new MaybeEq[Adr] {
             override def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
