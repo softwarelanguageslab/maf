@@ -157,6 +157,8 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     override def printResult: Unit =
         println(StoreUtil.storeString(_result.nn.sto))
+        println(s"Number of spawned actors ${_result.nn.actors.size}")
+        println(s"Number of message sends ${_result.nn.mailboxes.values.toList.size}")
 
     //////////////////////////////////////////////////
     // ModAnalysis
