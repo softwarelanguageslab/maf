@@ -47,7 +47,7 @@ case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[U
         this.copy(enclosingActor = enclosingActor.removeEnv)
 
     override def removeContext: SchemeModActorComponent[Unit] =
-        this.copy(ctx = None)
+        this.copy(ctx = None, innerComponent = None)
 
 /**
  * A component that represents the analysis of a particular behavior

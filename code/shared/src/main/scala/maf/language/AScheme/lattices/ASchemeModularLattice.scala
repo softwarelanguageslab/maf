@@ -14,6 +14,13 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
 
     object ActorT extends AbstractSetType[Actor, Actors]:
         def wrap = Actors.apply
+        lazy val oldLattice: Lattice[Set[Actor]] = summon[Lattice[Set[Actor]]]
+        override val lattice: Lattice[Set[Actor]] = new Lattice[Set[Actor]]:
+            export oldLattice.{subsumes => _, *}
+            def subsumes(x: Set[Actor], y: => Set[Actor]): Boolean =
+                val xs = x.map(a => a.copy(tid = a.tid.removeEnv.removeContext))
+                val ys = y.map(b => b.copy(tid = b.tid.removeEnv.removeContext))
+                oldLattice.subsumes(xs, ys)
 
     object BehaviorT extends AbstractSetType[Behavior, Behaviors]:
         def wrap = Behaviors.apply

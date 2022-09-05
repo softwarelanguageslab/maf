@@ -119,7 +119,6 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
         case _                 => super.evalVariable(nam)
 
     override def eval(exp: SchemeExp): A[Val] =
-        log(s"++ intra - eval $exp")
         exp match
             // An actor expression evaluates to a behavior
             case ASchemeActor(parameters, selection, _, name) =>

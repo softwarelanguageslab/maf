@@ -32,7 +32,7 @@ object ASchemeValues:
      *   The associated actor id (usually represented by a component)
      */
     case class Actor(name: Option[String], tid: AID) extends ASchemeValue:
-        override def toString: String = s"$name"
+        override def toString: String = s"$name, $tid"
         def removeEnv: Actor = this.copy(tid = tid.removeEnv)
 
     /** Represents a behavior */

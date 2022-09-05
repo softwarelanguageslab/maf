@@ -358,4 +358,5 @@ class GlobalStoreModActor(prog: SchemeExp)
     }
 
     override def view(cmp: Component): SchemeModActorComponent[Context] = cmp match
-        case ActorAnalysisComponent(enclosing, _, _) => enclosing
+        case ActorAnalysisComponent(enclosing, _, _) => ActorAnalysisComponent(enclosing, None, None)
+        case a: Actor[_]                             => ActorAnalysisComponent(a, None, None)

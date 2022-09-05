@@ -75,7 +75,8 @@ trait ConcreteComponentsConversion:
             state.spawned = newActor :: state.spawned
 
     protected def concreteToAbstractActor(concr: ConcreteActor): SchemeModActorComponent[Unit] =
-        maf.modular.scheme.modactor.Actor(concr.initialBeh.removeEnv, concr.initialBeh.lexEnv, ())
+        maf.modular.scheme.modactor
+            .ActorAnalysisComponent(maf.modular.scheme.modactor.Actor.apply(concr.initialBeh.removeEnv, concr.initialBeh.lexEnv, ()), None, None)
 
     case class ComparisonVarAddr(ident: Identifier) extends Address:
         override def printable: Boolean = false

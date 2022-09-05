@@ -265,7 +265,6 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
                 // register receive
                 cmp <- selfCmp map enclosing
                 _ <- register(MailboxDep(cmp))
-                _ = { log(s"registered read dep on ${MailboxDep(cmp)}") }
                 // get the mailbox in order to dequeue a message from it
                 mb <- mailbox
                 ms <- nondets(mb.dequeue.map(unit))

@@ -149,6 +149,7 @@ object EffectsM:
                         log(s"=== spawns ===")
                         cs.foreach(c => log(c.toString()))
                         log("==============")
+                        log("")
 
                         // spawn all needed components
                         val toSpawn = cs -- seen
