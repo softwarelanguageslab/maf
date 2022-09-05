@@ -23,8 +23,9 @@ object Repl:
     | * -a ANALYSIS: change the type of analysis 
     | * -f FILENAME: the name of the Scheme file to analyze 
     | * -p PARSER: the parser to use 
-    | * -i: interactive, means that a REPL-like structure will be spawned, but each line in the REPL is ran in an isolated environment
-    | * -perf: run the analysis in performance measuring mode, only works with "-f".
+    | * -i interactive, means that a REPL-like structure will be spawned, but each line in the REPL is ran in an isolated environment
+    | * -perf run the analysis in performance measuring mode, only works with "-f".
+    | * -t TIMEOUT: run the analysis with the given timeout (in seconds). Defaults to 10.
     """.stripMargin
 
     private val configurationsHelp: Map[String, String] = Map(
@@ -61,7 +62,8 @@ object Repl:
         filename: Option[String] = None,
         parser: Option[String] = None,
         interactive: Boolean = false,
-        performance: Boolean = false):
+        performance: Boolean = false,
+        timeout: Long = 10):
         def isEmpty: Boolean = remaining.isEmpty
         def continue(remaining: List[String]): ArgParser = this.copy(remaining = remaining)
         def setAnalysis(analysis: String): ArgParser =
@@ -101,6 +103,9 @@ object Repl:
                 case "-perf" :: rest =>
                     parse(parser.copy(performance = true).continue(rest))
 
+                case "-t" :: timeout :: rest =>
+                    parse(parser.copy(timeout = timeout.toLong).continue(rest))
+
                 case arg =>
                     throw new Exception(s"invalid arguments $arg")
 
@@ -124,13 +129,13 @@ object Repl:
         configurations.get(analysis).getOrElse(throw new Exception(s"$analysis analysis not found"))
 
     /** Method to run the application in file-mode, which reads the file from disk and analyzes it using the configured analysis */
-    private def runFile(filename: String, parser: P, makeAnalysis: A, performance: Boolean): Unit =
+    private def runFile(filename: String, parser: P, makeAnalysis: A, performance: Boolean, timeout: Long): Unit =
         // Regardless of the performance mode, we parse the file only once.
         val prog = Reader.loadFile(filename)
         val exp = parser.parse(prog)
         def runSingle(): Long =
             val anl = makeAnalysis(exp)
-            val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(10.seconds)) }
+            val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
             // Do not print results if we are in perfomance testing mode
             if !performance then
                 anl.printResult
@@ -202,4 +207,4 @@ object Repl:
             val analysisFactory = setupAnalysis(options.analysis.get)
             // either run the file or the repl
             if options.interactive then runRepl(parser, analysisFactory)
-            else runFile(options.filename.get, parser, analysisFactory, options.performance)
+            else runFile(options.filename.get, parser, analysisFactory, options.performance, options.timeout)
