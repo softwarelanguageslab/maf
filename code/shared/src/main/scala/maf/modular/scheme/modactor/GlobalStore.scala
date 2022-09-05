@@ -53,7 +53,7 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
         case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
-        case _                                            => throw new Exception("unknown actor id")
+        case _                                            => throw new Exception(s"unknown actor id $a")
 
     protected def enclosing(cmp: Component): Component = cmp match
         case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
@@ -276,11 +276,11 @@ class GlobalStoreModActor(prog: SchemeExp)
         import maf.core.monad.MonadLift.*
         def getEnv: A[Env] = map(lift(ReaderT.ask))(_._2)
         def getCtx: A[Ctx] = map(lift(ReaderT.ask))(_._1)
-        def selfActor: A[ActorRef] = selfActorCmp.map { case ActorAnalysisComponent(enclosing, _, _) =>
+        def selfActor: A[ActorRef] = selfActorCmp.map { case a @ ActorAnalysisComponent(enclosing, _, _) =>
             enclosing match
                 case MainActor => ???
                 case Actor(beh, _, _) =>
-                    ASchemeValues.Actor(beh.name, enclosing)
+                    ASchemeValues.Actor(beh.name, a)
                 case _ => throw new Exception("cannot enclose an enclosing actor into an enclosing actor")
         }
         def selfActorCmp: A[Component] =
