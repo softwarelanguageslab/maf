@@ -94,6 +94,9 @@ object EffectsM:
      *   the type of abstract values used in the analysis
      */
     def fixWL[C, IS: EffectLensC[C], OS, V](initial: C, conf: Configuration[C, V, IS, OS]): AnalysisResult[OS] =
+        import maf.util.Logger
+        import maf.util.LogOps.*
+        given Logger.Logger = Logger.DisabledLog()
         def loop(seen: Set[C], wl: WorkList[C], dep: Map[Dependency, Set[C]], interState: OS): AnalysisResult[OS] =
             if wl.isEmpty then AnalysisResult.Finished(interState)
             else if conf.timeout.reached then AnalysisResult.Timeout(interState)
@@ -103,6 +106,7 @@ object EffectsM:
                 val dyn = conf.inject(interState, work)
                 val lens = summon[EffectLens[C, IS]]
 
+                log(s"++ inter - analyzing component $work")
                 val intras: Set[IS] = dyn.dynMonadInstance.run(work, dyn.contents.map(_ => ()))
 
                 // perform a pointwise union
@@ -110,6 +114,14 @@ object EffectsM:
                     intras.foldLeft((Set.empty[Dependency], Set.empty[Dependency], Set.empty[C])) { case ((ws, rs, cs), intra) =>
                         (ws ++ lens.getWrites(intra), rs ++ lens.getReads(intra), cs ++ lens.getCalls(intra))
                     }
+
+                log(s"=== read dep ===")
+                rs.foreach(r => log(r.toString))
+                log(s"=== write dep ===")
+                ws.foreach(w => log(w.toString))
+                log(s"=== spawns ===")
+                cs.foreach(c => log(c.toString()))
+                log("==============")
 
                 // spawn all needed components
                 val toSpawn = cs -- seen

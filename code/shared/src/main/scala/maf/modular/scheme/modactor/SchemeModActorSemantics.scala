@@ -68,9 +68,10 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
     import maf.util.LogOps.*
 
     type Component <: AID
-    def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
-        case b: Component => b
-        case _            => throw new Exception("not a properly formatted actor id")
+    def actorIdComponent(a: AID)(using ClassTag[Component]): Component
+
+    /** Returns the enclosing actor of this component */
+    protected def enclosing(cmp: Component): Component
 
     //
     // Methods to view and inject standard components in the components of the user's chosing
@@ -185,7 +186,12 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
         given componentGiven: ClassTag[Component]
 
         override def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): A[ActorRef] = for
-            cmp <- allocateActor(beh, idn)
+            adrs <- beh.prs.mapM(allocVar(_))
+            // Allocate the component in the correct environment
+            cmp <-
+                withEnv(_ => beh.lexEnv.extend(beh.prs.map(_.name).zip(adrs))) {
+                    allocateActor(beh, idn)
+                }
             // allocate actor arguments
             _ <- beh.prs.mapM(allocVar(_)).flatMap(adrs => extendSto(adrs.zip(ags)))
             // spawn the actor
@@ -225,19 +231,16 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
                 ctx <- getCtx
                 newCmp <- allocateCall(lam, env)
                 _ <- spawn(newCmp)
-                result <- lookupSto(ReturnAddr(newCmp, lam.idn))
+                result <- lookupSto(ReturnAddr(newCmp, Identity.none))
             yield result
 
         def updateSto(a: Adr, v: Val): A[Unit] = extendSto(a, v)
 
         def extendSto(a: Adr, v: Val): A[Unit] =
             val doTrigger =
-                Monad.mIf(get.map(lens.getSto).map(_.get(a).getOrElse(lattice.bottom) != v)) /* then */ { trigger(AddrDependency(a)) } /* else  */ {
-                    unit(())
-                }
-            /* trigger a write */
-            doTrigger >>> /* and actually do the write */
-                (get.map(lens.modify(lens.sto)(sto => sto + (a -> lattice.join(sto.get(a).getOrElse(lattice.bottom), v)))) >>= put)
+                trigger(AddrDependency(a))
+            (get.map(lens.modify(lens.sto)(sto => sto + (a -> lattice.join(sto.get(a).getOrElse(lattice.bottom), v))))
+                >>= (putDoIfChanged(doTrigger)))
 
         def lookupSto(a: Adr): A[Val] =
             register(AddrDependency(a)) >>>
@@ -245,27 +248,24 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
 
         def send(to: ActorRef, m: Msg): A[Unit] =
             val receiver = actorIdComponent(to.tid)
-            println(s"sending $to $m")
             // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
             //
-            val result = trigger(MailboxDep(receiver)) >>>
-                (get.map(
-                  lens.modify(lens.mailboxes)(mbs =>
-                      mbs + (receiver ->
-                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
-                  )
-                ) >>= put)
-            println(s"send done")
-            result
+            (get.map(
+              lens.modify(lens.mailboxes)(mbs =>
+                  mbs + (receiver ->
+                      mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
+              )
+            ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) })
 
         def mailbox: A[Mailbox] =
-            get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
+            get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(enclosing).map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
 
         def receive: A[Msg] =
             for
                 // register receive
-                cmp <- selfActorCmp
+                cmp <- selfCmp map enclosing
                 _ <- register(MailboxDep(cmp))
+                _ = { log(s"registered read dep on ${MailboxDep(cmp)}") }
                 // get the mailbox in order to dequeue a message from it
                 mb <- mailbox
                 ms <- nondets(mb.dequeue.map(unit))

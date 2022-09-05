@@ -185,6 +185,14 @@ trait StateOps[S, M[_]] extends Monad[M]:
     def put(snew: S): M[Unit]
     def withState[X](f: S => S)(m: M[X]): M[X]
     def impure[X](f: => X): M[X]
+    def putDoIfChanged(m: M[Unit])(st: S): M[Unit] =
+        import maf.core.Monad.*
+        given Monad[M] = this
+        for
+            oldSt <- get
+            _ <- put(st)
+            result <- if oldSt != st then m else Monad[M].unit(())
+        yield result
 
 class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)]):
     def runValue(init: S) = Monad[M].map(run(init))(_._1)

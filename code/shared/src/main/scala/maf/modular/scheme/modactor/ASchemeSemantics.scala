@@ -119,7 +119,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
         case _                 => super.evalVariable(nam)
 
     override def eval(exp: SchemeExp): A[Val] =
-        println(s"eval $exp")
+        log(s"++ intra - eval $exp")
         exp match
             // An actor expression evaluates to a behavior
             case ASchemeActor(parameters, selection, _, name) =>
@@ -140,6 +140,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                 for
                     evaluatedActorRef <- eval(actorRef)
                     evaluatedAgs <- ags.mapM(eval)
+                    _ = { log(s"++ intra - actor/send $evaluatedActorRef $messageTpy $evaluatedAgs") }
                     _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs)
                 yield lattice.nil
 
@@ -175,7 +176,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                             } >>= trace(s"actor/recv $msg result")
                 yield lattice.nil
 
-            case SchemeFuncall(Identifier("terminate", _), _, _) =>
+            case SchemeFuncall(SchemeVar(Identifier("terminate", _)), _, _) =>
                 // actor termination
                 mbottom
 

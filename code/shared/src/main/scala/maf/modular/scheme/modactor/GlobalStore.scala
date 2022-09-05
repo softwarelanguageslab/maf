@@ -51,8 +51,15 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     val outerClassTag: ClassTag[Component] = summon[ClassTag[Component]]
 
+    def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
+        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
+        case _                                            => throw new Exception("unknown actor id")
+
+    protected def enclosing(cmp: Component): Component = cmp match
+        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
+
     type Context = Unit
-    override type Component = ActorAnalysisComponent[Ctx]
+    override type Component = SchemeModActorComponent[Ctx]
 
     case class IntraState(
         self: Component,
@@ -128,7 +135,7 @@ class GlobalStoreModActor(prog: SchemeExp)
     // Env
     //
 
-    def environment(cmp: ActorAnalysisComponent[Ctx]): Env =
+    def environment(cmp: Component): Env =
         cmp match
             case ActorAnalysisComponent(MainActor, None | Some(SchemeModFComponent.Main), _) => initialEnv
             case ActorAnalysisComponent(Actor(beh, env, ctx), None | Some(SchemeModFComponent.Main), _) =>
@@ -288,7 +295,7 @@ class GlobalStoreModActor(prog: SchemeExp)
             for
                 ctx <- getCtx
                 cmp <- selfActorCmp
-            yield ActorAnalysisComponent(cmp.enclosingActor, Some(SchemeModFComponent.Call((lam, env), None)), Some(ctx))
+            yield ActorAnalysisComponent(enclosing(cmp), Some(SchemeModFComponent.Call((lam, env), None)), Some(ctx))
 
         def allocateBehavior(beh: Behavior, idn: Identity): A[Component] =
             for
@@ -297,18 +304,22 @@ class GlobalStoreModActor(prog: SchemeExp)
                 cmp <- selfActorCmp
                 // TODO: expand environment? check with the code in the semantics
                 env <- getEnv
-            yield ActorAnalysisComponent(cmp.enclosingActor, Some(BehaviorComponent(beh, env, None)), Some(ctx))
+            yield ActorAnalysisComponent(enclosing(cmp), Some(BehaviorComponent(beh, env, None)), Some(ctx))
 
         def allocateActor(initialBehavior: Behavior, idn: Identity): A[Component] =
             // TODO: allocate context?
-            for ctx <- getCtx
-            yield ActorAnalysisComponent(Actor(initialBehavior, initialBehavior.lexEnv, ()), None, Some(ctx))
+            for
+                ctx <- getCtx
+                env <- getEnv
+            yield ActorAnalysisComponent(Actor(initialBehavior, env, ()), None, Some(ctx))
 
         def nondets[X](xs: Iterable[A[X]]): A[X] =
             MonadStateT((s) =>
                 ReaderT((e) =>
-                    println("running")
-                    EitherT(xs.toList.foldMap(_.run(s).runReader(e).runEither))
+                    EitherT({
+                        val result = xs.toList.foldMap(_.run(s).runReader(e).runEither)
+                        if result.isEmpty then Set(Left(s)) else result
+                    })
                 )
             )
 
@@ -328,7 +339,7 @@ class GlobalStoreModActor(prog: SchemeExp)
                 )
             )
 
-        def fail[X](err: maf.core.Error): A[X] = mbottom
+        def fail[X](err: maf.core.Error): A[X] = { println(s"failing with $err"); mbottom }
 
         /**
          * Runs the analysis represented by `m` for the given `cmp`.
@@ -346,4 +357,5 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     }
 
-    override def view(cmp: Component): SchemeModActorComponent[Context] = ???
+    override def view(cmp: Component): SchemeModActorComponent[Context] = cmp match
+        case ActorAnalysisComponent(enclosing, _, _) => enclosing
