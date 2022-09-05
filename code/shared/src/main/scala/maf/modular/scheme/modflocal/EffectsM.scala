@@ -8,6 +8,7 @@ import maf.modular.Dependency
 import maf.util.Lens
 import maf.core.worklist.WorkList
 import maf.util.benchmarks.Timeout
+import akka.japi.Effect
 
 trait EffectLens[C, S] extends Lens[S]:
     /** "write" effects */
@@ -97,44 +98,89 @@ object EffectsM:
         import maf.util.Logger
         import maf.util.LogOps.*
         given Logger.Logger = Logger.DisabledLog()
-        def loop(seen: Set[C], wl: WorkList[C], dep: Map[Dependency, Set[C]], interState: OS): AnalysisResult[OS] =
-            if wl.isEmpty then AnalysisResult.Finished(interState)
-            else if conf.timeout.reached then AnalysisResult.Timeout(interState)
-            else
-                val work = wl.head
-                val nextWL = wl.tail
-                val dyn = conf.inject(interState, work)
-                val lens = summon[EffectLens[C, IS]]
 
-                log(s"++ inter - analyzing component $work")
-                val intras: Set[IS] = dyn.dynMonadInstance.run(work, dyn.contents.map(_ => ()))
+        def fix(loop: EffectDrivenLoop[C, V, OS, IS]): AnalysisResult[OS] = loop match
+            case LoopFinished(result) => result
+            case _                    => fix(loop())
 
-                // perform a pointwise union
-                val (ws: Set[Dependency], rs: Set[Dependency], cs: Set[C]) =
-                    intras.foldLeft((Set.empty[Dependency], Set.empty[Dependency], Set.empty[C])) { case ((ws, rs, cs), intra) =>
-                        (ws ++ lens.getWrites(intra), rs ++ lens.getReads(intra), cs ++ lens.getCalls(intra))
-                    }
+        fix(inject(initial, conf))
 
-                log(s"=== read dep ===")
-                rs.foreach(r => log(r.toString))
-                log(s"=== write dep ===")
-                ws.foreach(w => log(w.toString))
-                log(s"=== spawns ===")
-                cs.foreach(c => log(c.toString()))
-                log("==============")
+    def inject[C, IS: EffectLensC[C], OS, V](initial: C, conf: Configuration[C, V, IS, OS]): EffectDrivenLoop[C, V, OS, IS] =
+        Loop(Set(), conf.emptyWL + initial, Map(), conf.initialState, conf)
 
-                // spawn all needed components
-                val toSpawn = cs -- seen
-                // register all read dependencies
-                val depNew = dep ++ (rs.map(r => (r -> (dep.get(r).getOrElse(Set()) + work))))
-                // reanalyze all components that are triggered by a dependency
-                val toReanalyze = ws.flatMap(depNew.get(_).getOrElse(Set()))
-                // synchronize the obtained state to the inter-analysis
-                val newInter = intras.foldLeft(interState)((inter, intra) => conf.sync(intra, inter))
-                // continue the analysis
-                loop(seen ++ toSpawn, nextWL ++ toReanalyze ++ toSpawn, depNew, newInter)
+    def step[C, IS: EffectLensC[C], OS, V](st: EffectDrivenLoop[C, V, IS, OS]): EffectDrivenLoop[C, V, IS, OS] =
+        st()
 
-        loop(Set(), conf.emptyWL + initial, Map(), conf.initialState)
+    sealed trait EffectDrivenLoop[C, V, Inter, Intra: EffectLensC[C]]:
+        /** Returns true if the loop is finished */
+        def isFinished: Boolean
+
+        /** Returns the component that will be analyzed next */
+        def next: Option[C]
+
+        /** Use the loop as a function */
+        def apply(): EffectDrivenLoop[C, V, Inter, Intra] =
+            import maf.util.Logger
+            import maf.util.LogOps.*
+            given Logger.Logger = Logger.DisabledLog()
+            this match
+                case Loop(seen, wl, dep, interState, conf) =>
+                    if wl.isEmpty then LoopFinished(AnalysisResult.Finished(interState))
+                    else if conf.timeout.reached then LoopFinished(AnalysisResult.Timeout(interState))
+                    else
+                        val work = wl.head
+                        val nextWL = wl.tail
+                        val dyn = conf.inject(interState, work)
+                        val lens = summon[EffectLens[C, Intra]]
+
+                        log(s"++ inter - analyzing component $work")
+                        val intras: Set[Intra] = dyn.dynMonadInstance.run(work, dyn.contents.map(_ => ()))
+
+                        // perform a pointwise union
+                        val (ws: Set[Dependency], rs: Set[Dependency], cs: Set[C]) =
+                            intras.foldLeft((Set.empty[Dependency], Set.empty[Dependency], Set.empty[C])) { case ((ws, rs, cs), intra) =>
+                                (ws ++ lens.getWrites(intra), rs ++ lens.getReads(intra), cs ++ lens.getCalls(intra))
+                            }
+
+                        log(s"=== read dep ===")
+                        rs.foreach(r => log(r.toString))
+                        log(s"=== write dep ===")
+                        ws.foreach(w => log(w.toString))
+                        log(s"=== spawns ===")
+                        cs.foreach(c => log(c.toString()))
+                        log("==============")
+
+                        // spawn all needed components
+                        val toSpawn = cs -- seen
+                        // register all read dependencies
+                        val depNew = dep ++ (rs.map(r => (r -> (dep.get(r).getOrElse(Set()) + work))))
+                        // reanalyze all components that are triggered by a dependency
+                        val toReanalyze = ws.flatMap(depNew.get(_).getOrElse(Set()))
+                        // synchronize the obtained state to the inter-analysis
+                        val newInter = intras.foldLeft(interState)((inter, intra) => conf.sync(intra, inter))
+                        // continue the analysis
+                        Loop(seen ++ toSpawn, nextWL ++ toReanalyze ++ toSpawn, depNew, newInter, conf)
+                case LoopFinished(_) => throw new Exception("loop is finished. no more iterations")
+
+    /**
+     * @tparam C
+     *   the type of the components that are being analyzed
+     * @tparam OS
+     *   the type of the inter-analysis state
+     */
+    case class Loop[C, V, Inter, Intra: EffectLensC[C]](
+        seen: Set[C],
+        wl: WorkList[C],
+        dep: Map[Dependency, Set[C]],
+        interState: Inter,
+        conf: Configuration[C, V, Intra, Inter])
+        extends EffectDrivenLoop[C, V, Inter, Intra]:
+        def isFinished = false
+        def next: Option[C] = Some(wl.head)
+
+    case class LoopFinished[C, V, Inter, Intra: EffectLensC[C]](result: AnalysisResult[Inter]) extends EffectDrivenLoop[C, V, Inter, Intra]:
+        def isFinished: Boolean = false
+        def next: Option[C] = None
 
 /** Represents an effect-producing computation by using a state monad for tracking its state */
 trait EffectsStateM[M[_], Cmp, S: EffectLensC[Cmp]] extends EffectsM[M, Cmp, S], StateOps[S, M]:
