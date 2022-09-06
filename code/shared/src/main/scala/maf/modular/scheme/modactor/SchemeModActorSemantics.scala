@@ -259,6 +259,8 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
               )
             ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) })
 
+        def ask(to: ActorRef, m: Msg): A[Value] = ??? // TODO
+
         def mailbox: A[Mailbox] =
             get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(enclosing).map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
 

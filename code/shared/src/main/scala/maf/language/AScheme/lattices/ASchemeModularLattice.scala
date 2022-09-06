@@ -28,6 +28,9 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
     object FutureT extends AbstractSetType[Future, Futures]:
         def wrap = Futures.apply
 
+    object MessageT extends AbstractSetType[ReifiedMessage, Messages]:
+        def wrap = Messages.apply
+
     case class Actors(actors: Set[Actor]) extends Value, Product1[Set[Actor]]:
         def ord = 27
         def typeName = "ACTOR"
@@ -45,10 +48,18 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
         val tpy = FutureT
         override def toString: String = s"<future>"
 
+    case class Messages(messages: Set[ReifiedMessage]) extends Value, Product1[Set[ReifiedMessage]]:
+        def ord = 30
+        def typeName = "MSG"
+        val tpy = MessageT
+        override def toString: String = s"<message: {${messages.map(_.toString).mkString(",")}}>"
+
     def getActors(x: L): Set[Actor] = x.get(ActorT)
     def getBehs(x: L): Set[Behavior] = x.get(BehaviorT)
     def getFutures(x: L): Set[Future] = x.get(FutureT)
+    def getMessages(x: L): Set[ReifiedMessage] = x.get(MessageT)
 
     def actor(actor: Actor): L = HMap.injected(ActorT, actor)
     def beh(behavior: Behavior): L = HMap.injected(BehaviorT, behavior)
     def future(fut: Future): L = HMap.injected(FutureT, fut)
+    def message(m: ReifiedMessage): L = HMap.injected(MessageT, m)
