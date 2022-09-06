@@ -14,3 +14,5 @@ object Default:
 
     def errorIfDefault[A]: Default[A] = new Default[A]:
         def default: A = throw new Exception("no default")
+
+    def default[A: Default]: A = summon[Default[A]].default

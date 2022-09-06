@@ -62,7 +62,7 @@ import maf.util.benchmarks.Timeout.T
  *
  * In terms of intra-process state, the following information is kept: a mailbox and a current environment.
  */
-abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry[SchemeExp] with ASchemeDomain with ASchemeSemantics:
+abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisEntry[SchemeExp] with ASchemeDomain with ASchemeSemantics:
     inter =>
 
     import maf.util.LogOps.*
@@ -178,7 +178,7 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
         def allocateActor(initialBehavior: Behavior, idn: Identity): A[Component]
 
         /** Allocate an empheral child for the given actor and message */
-        def allocateEmpheralChild(component: Component, M: Msg): A[Component]
+        def allocateEmpheralChild(component: Component, m: Msg): A[Component]
 
         /** Allocate a ModF call component */
         def allocateCall(lam: Lam, env: Environment[Address]): A[Component]

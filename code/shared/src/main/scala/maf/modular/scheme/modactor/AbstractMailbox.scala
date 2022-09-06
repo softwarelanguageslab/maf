@@ -3,6 +3,7 @@ package maf.modular.scheme.modactor
 import maf.language.AScheme.ASchemeValues.Message
 import maf.language.AScheme.ASchemeValues
 import maf.util.datastructures.SmartUnion
+import maf.util.Default
 
 /**
  * An abstract representation of a mailbox.
@@ -63,6 +64,10 @@ case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
 
     def merge(other: AbstractMailbox[M]): AbstractMailbox[M] = other match
         case PowersetMailbox(msgs) => this.copy(msgs = SmartUnion.sunion(this.msgs, msgs))
+
+object PowersetMailbox:
+    given [M]: Default[PowersetMailbox[M]] with
+        def default: PowersetMailbox[M] = PowersetMailbox(Set())
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:

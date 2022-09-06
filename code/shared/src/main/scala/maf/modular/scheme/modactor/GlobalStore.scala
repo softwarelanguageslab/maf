@@ -41,26 +41,12 @@ import maf.core.IdentityMonad
 import maf.util.StoreUtil
 import maf.language.AScheme.ASchemeValues
 import maf.language.ContractScheme.ContractValues
+import maf.language.scheme.lattices.SchemeLattice
+import maf.modular.scheme.modactor.*
+import maf.util.Default
+import maf.lattice.HMap
 
-class GlobalStoreModActor(prog: SchemeExp)
-    extends SchemeModActorSemantics(prog),
-      SimpleMessageMailbox,
-      PowersetMailboxAnalysis,
-      ASchemeConstantPropagationDomain:
-    outer =>
-
-    val outerClassTag: ClassTag[Component] = summon[ClassTag[Component]]
-
-    def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
-        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
-        case _                                            => throw new Exception(s"unknown actor id $a")
-
-    protected def enclosing(cmp: Component): Component = cmp match
-        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
-
-    type Context = Unit
-    override type Component = SchemeModActorComponent[Ctx]
-
+class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Value](using lattice: SchemeLattice[Value, Address]):
     case class IntraState(
         self: Component,
         writes: Set[Dependency] = Set(),
@@ -77,10 +63,62 @@ class GlobalStoreModActor(prog: SchemeExp)
         behaviors: Map[Component, Set[Behavior]] = Map(),
         sto: Map[Address, Value])
 
+    /** Sync the intra state with the current inter state */
+    def sync(intra: IntraState, inter: InterState): InterState =
+        // join the global stores together
+        val sto = intra.sto.foldLeft(inter.sto) { case (acc, (key, vlu)) =>
+            acc + (key -> lattice.join(inter.sto.get(key).getOrElse(lattice.bottom), vlu))
+        }
+
+        // println(s"+++++++ sync, sto size ${sto.keys.size}")
+        // println(s"+++++++ mailbox size ${intra.mailboxes.values.map(_.messages.size).sum}")
+
+        val newMailboxes = intra.mailboxes
+            .foldLeft(inter.mailboxes) { case (mailboxes, (cmp, mailbox)) =>
+                val mailboxInter = inter.mailboxes.get(cmp).getOrElse(Default.default)
+
+                mailboxes + (cmp -> mailboxInter.merge(mailbox).asInstanceOf[Mailbox])
+            }
+
+        inter.copy(sto = sto,
+                   mailboxes = newMailboxes,
+                   behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
+                   actors = inter.actors ++ intra.actors
+        )
+
+trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox, PowersetMailboxAnalysis, ASchemeConstantPropagationDomain:
+    outer =>
+
+    val outerClassTag: ClassTag[Component] = summon[ClassTag[Component]]
+
+    def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
+        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
+        case _                                            => throw new Exception(s"unknown actor id $a")
+
+    protected def enclosing(cmp: Component): Component = cmp match
+        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
+
+    type Context = Unit
+    override type Component = SchemeModActorComponent[Ctx]
+
     import maf.core.SetMonad.*
 
-    type State = IntraState
-    type Inter = InterState
+    //type State = IntraState
+    //type Inter = InterState
+
+    given defaultMailbox: Default[Mailbox] with
+        def default: Mailbox = emptyMailbox
+
+    protected val globalStore = GlobalStoreState[Component, Msg, Mailbox, Value](using defaultMailbox, lattice)
+
+    protected type IntraState = globalStore.IntraState
+    protected type InterState = globalStore.InterState
+
+    implicit def viewIntra(intra: Intra): globalStore.IntraState
+    implicit def viewInter(inter: Inter): globalStore.InterState
+    implicit def injectIntra(intra: globalStore.IntraState): Intra
+    implicit def injectInter(inter: globalStore.InterState): Inter
+
     type Ctx = Context
 
     //////////////////////////////////////////////////
@@ -96,7 +134,7 @@ class GlobalStoreModActor(prog: SchemeExp)
 
     private def enclosingActorBody(cmp: SchemeModActorComponent[Ctx]): SchemeExp = cmp match
         // the main actor is represented by the main Scheme program
-        case MainActor => prog
+        case MainActor => program
         // otherwise we analyze the body of the behavior of the actor
         case Actor(beh, env, ctx) => beh.bdy
         // All other cases are either not supported or already caught by `body`
@@ -168,7 +206,8 @@ class GlobalStoreModActor(prog: SchemeExp)
     override val emptyWorklist = FIFOWorkList.empty
 
     override lazy val initialInterState: Inter =
-        InterState(sto = initialSto)
+        // TODO: to not use implicit conversion but provide explicit one
+        globalStore.InterState(sto = initialSto)
 
     override lazy val initialEnv: Env =
         Environment(primitives.allPrimitives.map { case (name, vlu) =>
@@ -196,91 +235,73 @@ class GlobalStoreModActor(prog: SchemeExp)
         DynMonad.from(m)
 
     def syncInter(intra: Intra, inter: Inter): Inter =
-        // join the global stores together
-        val sto = intra.sto.foldLeft(inter.sto) { case (acc, (key, vlu)) =>
-            acc + (key -> lattice.join(inter.sto.get(key).getOrElse(lattice.bottom), vlu))
-        }
-
-        // println(s"+++++++ sync, sto size ${sto.keys.size}")
-        // println(s"+++++++ mailbox size ${intra.mailboxes.values.map(_.messages.size).sum}")
-
-        val newMailboxes = intra.mailboxes
-            .foldLeft(inter.mailboxes) { case (mailboxes, (cmp, mailbox)) =>
-                val mailboxInter = inter.mailboxes.get(cmp).getOrElse(emptyMailbox)
-
-                mailboxes + (cmp -> mailboxInter.merge(mailbox))
-            }
-
-        inter.copy(sto = sto,
-                   mailboxes = newMailboxes,
-                   behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
-                   actors = inter.actors ++ intra.actors
-        )
+        // TODO: do not use implicit conversion to Inter/Intra here
+        globalStore.sync(intra, inter)
 
     //////////////////////////////////////////////////
     // Monad Instance
     //////////////////////////////////////////////////
 
     type Reader = [Y] =>> ReaderT[EitherT_[Intra][Set], (Ctx, Env), Y]
-    type A[X] = MonadStateT[IntraState, Reader, X]
+    type A[X] = MonadStateT[Intra, Reader, X]
 
-    given lens: ActorLens[IntraState] = new ActorLens[IntraState] {
+    given lens: ActorLens[Intra] = new ActorLens[Intra] {
         //
         // Store
         //
-        def putSto(st: IntraState, sto: Map[Address, Value]): IntraState =
+        def putSto(st: Intra, sto: Map[Address, Value]): Intra =
             st.copy(sto = sto)
-        def getSto(st: IntraState): Map[Address, Value] =
+        def getSto(st: Intra): Map[Address, Value] =
             st.sto
 
         //
         // Mailboxes
         //
-        def putMailboxes(st: IntraState, mb: Map[Component, Mailbox]): IntraState =
+        def putMailboxes(st: Intra, mb: Map[Component, Mailbox]): Intra =
             st.copy(mailboxes = mb)
-        def getMailboxes(st: IntraState): Map[Component, Mailbox] =
+        def getMailboxes(st: Intra): Map[Component, Mailbox] =
             st.mailboxes
 
         //
         // Set of actors spawned
         //
-        def putActors(st: IntraState, actors: Set[Component]): IntraState =
+        def putActors(st: Intra, actors: Set[Component]): Intra =
             st.copy(actors = actors)
-        def getActors(st: IntraState): Set[Component] =
+        def getActors(st: Intra): Set[Component] =
             st.actors
 
         //
         // Set of behaviors discovered during the sequential intra-analysis
         //
-        def putBehaviors(st: IntraState, behs: Map[Component, Set[Behavior]]): IntraState =
+        def putBehaviors(st: Intra, behs: Map[Component, Set[Behavior]]): Intra =
             st.copy(behaviors = behs)
-        def getBehaviors(st: IntraState): Map[Component, Set[Behavior]] =
+        def getBehaviors(st: Intra): Map[Component, Set[Behavior]] =
             st.behaviors
 
         /** "write" effects */
-        def putWrites(s: IntraState, w: Set[Dependency]): IntraState =
+        def putWrites(s: Intra, w: Set[Dependency]): Intra =
             s.copy(writes = w)
-        def getWrites(s: IntraState): Set[Dependency] =
+        def getWrites(s: Intra): Set[Dependency] =
             s.writes
 
         /** "read" effects */
-        def putReads(s: IntraState, w: Set[Dependency]): IntraState =
+        def putReads(s: Intra, w: Set[Dependency]): Intra =
             s.copy(reads = w)
-        def getReads(s: IntraState): Set[Dependency] =
+        def getReads(s: Intra): Set[Dependency] =
             s.reads
 
         /** "call" effects */
-        def putCalls(s: IntraState, c: Set[Component]): IntraState =
+        def putCalls(s: Intra, c: Set[Component]): Intra =
             s.copy(calls = c)
-        def getCalls(s: IntraState): Set[Component] = s.calls
+        def getCalls(s: Intra): Set[Component] = s.calls
 
         /** access to a field called "self" */
-        def getSelfCmp(s: IntraState): Component =
+        def getSelfCmp(s: Intra): Component =
             s.self
     }
 
-    protected val monadInstance: StateOps[IntraState, A] = MonadStateT.stateInstance[IntraState, Reader]
-    implicit val analysisM = new ModularAnalysisM with EffectsStateM[A, Component, IntraState] {
+    protected val monadInstance: StateOps[Intra, A] = MonadStateT.stateInstance[Intra, Reader]
+    implicit val analysisM = new ModularAnalysisM with EffectsStateM[A, Component, Intra] {
         given componentGiven: ClassTag[Component] = outer.outerClassTag
 
         export monadInstance.*
@@ -341,7 +362,7 @@ class GlobalStoreModActor(prog: SchemeExp)
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             import maf.core.SetMonad.*
             MonadStateT((s) =>
-                ReaderT.local[EitherT_[Intra][Set], (Ctx, Env), (X, IntraState)] { case (ctx, env: Env) => (ctx, f(env)) }(
+                ReaderT.local[EitherT_[Intra][Set], (Ctx, Env), (X, Intra)] { case (ctx, env: Env) => (ctx, f(env)) }(
                   blk.run(s)
                 )
             )
@@ -349,7 +370,7 @@ class GlobalStoreModActor(prog: SchemeExp)
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
             import maf.core.SetMonad.*
             MonadStateT((s) =>
-                ReaderT.local[EitherT_[Intra][Set], (Ctx, Env), (X, IntraState)] { case (ctx, env: Env) => (f(ctx), env) }(
+                ReaderT.local[EitherT_[Intra][Set], (Ctx, Env), (X, Intra)] { case (ctx, env: Env) => (f(ctx), env) }(
                   blk.run(s)
                 )
             )
@@ -362,8 +383,9 @@ class GlobalStoreModActor(prog: SchemeExp)
          * @note
          *   it is expected that `m` is a computation that injects the correct store and environment
          */
-        def run(cmp: Component, m: A[Unit]): Set[IntraState] =
-            val st = IntraState(self = cmp)
+        def run(cmp: Component, m: A[Unit]): Set[Intra] =
+            // TODO: for `st` do not use implicit wrapping using injectIntra, but provide explicit one.
+            val st = globalStore.IntraState(self = cmp)
             val ev = (componentContext(cmp), environment(cmp))
             m.run(st).runReader(ev).runEither.map {
                 case Left(s)       => s
@@ -376,3 +398,13 @@ class GlobalStoreModActor(prog: SchemeExp)
         case ActorAnalysisComponent(enclosing, _, _) => ActorAnalysisComponent(enclosing, None, None)
         case a: Actor[_]                             => ActorAnalysisComponent(a, None, None)
         case MainActor                               => ActorAnalysisComponent(MainActor, None, None)
+end GlobalStoreModActor
+
+class SimpleGlobalStoreModActor(prog: SchemeExp) extends SchemeModActorSemantics(prog), GlobalStoreModActor:
+    type State = IntraState
+    type Inter = InterState
+
+    implicit def viewIntra(intra: Intra): globalStore.IntraState = intra
+    implicit def viewInter(inter: Inter): globalStore.InterState = inter
+    implicit def injectIntra(intra: globalStore.IntraState): Intra = intra
+    implicit def injectInter(inter: globalStore.InterState): Inter = inter

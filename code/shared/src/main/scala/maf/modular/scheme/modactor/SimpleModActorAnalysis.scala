@@ -34,7 +34,7 @@ trait ASchemeConstantPropagationDomain extends SchemeDomain:
     final lazy val primitives = new SchemeLatticePrimitives()(lattice)
 
 class SimpleSchemeModActorAnalysis(program: SchemeExp)
-    extends GlobalStoreModActor(program)
+    extends SimpleGlobalStoreModActor(program)
     with ASchemeConstantPropagationDomain
     with PowersetMailboxAnalysis
 //with SchemeModActorFutures

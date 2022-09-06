@@ -31,7 +31,7 @@ object MirrorValues:
  *
  * The trait defines the semantics of a meta-layer for actors, it can be used as an inner-modf layer in an actor analysis.
  */
-trait SchemeModActorMirrors[Beh] extends ASchemeSemantics:
+trait ASchemeMirrorsSemantics[Beh] extends ASchemeSemantics:
     /**
      * Monad for supporting mirror-based reflection
      *
