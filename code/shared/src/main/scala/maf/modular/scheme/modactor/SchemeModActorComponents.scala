@@ -63,6 +63,14 @@ case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[U
             case ActorAnalysisComponent(enclosing, _, _) => enclosing.toString
 
 /**
+ * A component that represents an empheral child in the ask pattern. It is parametrized by the component it is a child of, and the message for which
+ * it is awaiting a response.
+ */
+case class EmpheralChildComponent[Ctx, M](childOf: SchemeModActorComponent[Ctx], m: M) extends SchemeModActorComponent[Ctx]:
+    def removeContext: SchemeModActorComponent[Unit] = this.copy(childOf = childOf.removeContext)
+    override def removeEnv: SchemeModActorComponent[Ctx] = this.copy(childOf = childOf.removeEnv)
+
+/**
  * A component that represents the analysis of a particular behavior
  *
  * @param beh

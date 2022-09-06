@@ -320,11 +320,13 @@ class GlobalStoreModActor(prog: SchemeExp)
             yield ActorAnalysisComponent(enclosing(cmp), Some(BehaviorComponent(beh, env, None)), Some(ctx))
 
         def allocateActor(initialBehavior: Behavior, idn: Identity): A[Component] =
-            // TODO: allocate context?
             for
                 ctx <- getCtx
                 env <- getEnv
             yield ActorAnalysisComponent(Actor(initialBehavior, env, ()), None, Some(ctx))
+
+        def allocateEmpheralChild(component: Component, m: Msg): A[Component] =
+            unit(EmpheralChildComponent[Ctx, Msg](component, m))
 
         def nondets[X](xs: Iterable[A[X]]): A[X] =
             MonadStateT((s) =>

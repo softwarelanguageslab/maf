@@ -177,6 +177,9 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
         /** Allocate a new component for the given actor */
         def allocateActor(initialBehavior: Behavior, idn: Identity): A[Component]
 
+        /** Allocate an empheral child for the given actor and message */
+        def allocateEmpheralChild(component: Component, M: Msg): A[Component]
+
         /** Allocate a ModF call component */
         def allocateCall(lam: Lam, env: Environment[Address]): A[Component]
 
@@ -259,7 +262,22 @@ abstract class SchemeModActorSemantics(program: SchemeExp) extends AnalysisEntry
               )
             ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) })
 
-        def ask(to: ActorRef, m: Msg): A[Value] = ??? // TODO
+        def ask(to: ActorRef, m: Msg): A[Value] =
+            for
+                // create the empheral child
+                self <- selfActorCmp
+                empheralChild <- allocateEmpheralChild(self, m)
+                // read the result from the mailbox
+                _ <- register(MailboxDep(empheralChild))
+                mb <- get.map(lens.getMailboxes).map(_.get(empheralChild).getOrElse(emptyMailbox))
+                ms <- nondets(mb.dequeue.map(unit))
+                (msg, mb1) = ms
+                _ <- get.map(lens.modify(lens.mailboxes)(_ + (empheralChild -> mb1))) >>= put
+                tag = getMessageTag(msg)
+                vlus = getMessageArguments(msg)
+                // make sure that the tag is a receive
+                _ <- guard(tag == "reply" && vlus.size == 1)
+            yield vlus.head
 
         def mailbox: A[Mailbox] =
             get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(enclosing).map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
