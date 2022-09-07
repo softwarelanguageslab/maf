@@ -52,7 +52,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
          * @param mirror
          *   the mirror itself
          */
-        def installMirror(forActor: ActorRef, mirror: MirrorValues.Mirror[ActorRef]): M[Unit]
+        def installMirror(forActor: Value, mirror: MirrorValues.Mirror[ActorRef]): M[Unit]
 
         /**
          * Looks up the mirror for the given actor
@@ -146,4 +146,13 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 } /* otherwise */ { withEnvM(bindArgs(pars, args)) { Monad.sequence(bdy.map(eval)).map(_.last) } }
             yield result
 
+        // (create-with-mirror mirrorRef behavior)
+        case SchemeFuncall(SchemeVar(Identifier("create-with-mirror", _)), mirrorRef :: behavior :: ags, idn) =>
+            for
+                evaluatedMirrorRef <- eval(mirrorRef)
+                evaluatedBehavior <- eval(behavior)
+                evaluatedAgs <- ags.mapM(eval)
+                actor <- create(evaluatedBehavior, evaluatedAgs, idn).map(lattice.actor)
+                _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror)))
+            yield actor
         case _ => super.eval(exp)

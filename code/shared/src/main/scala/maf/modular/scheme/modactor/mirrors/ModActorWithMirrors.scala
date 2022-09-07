@@ -10,6 +10,7 @@ import maf.lattice.HMap
 import maf.modular.scheme.modactor.MirrorValues.Mirror
 import maf.core.LatticeTopUndefined
 import monocle.macros.GenLens
+import maf.language.AScheme.ASchemeValues
 
 trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     /** Encodes whether an actor has a mirror or not */
@@ -18,10 +19,10 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
         case NoMirror
 
         /** The actor only has a mirror at run time, and does not possible have a path where it does not have a mirror */
-        case Mirror(mirrors: Set[MirrorValues.Mirror[ActorRef]])
+        case Mirror(mirrors: Set[MirrorValues.Mirror[ASchemeValues.Actor]])
 
         /** The actor has a mirror, but at some paths also does not have a mirror */
-        case Both(mirror: Set[MirrorValues.Mirror[ActorRef]])
+        case Both(mirror: Set[MirrorValues.Mirror[ASchemeValues.Actor]])
 
     object HasMirror:
         def join(x: HasMirror, y: HasMirror): HasMirror =
@@ -65,12 +66,13 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
                 )
             yield result
 
-        override def installMirror(forActor: ActorRef, m: Mirror[ActorRef]): A[Unit] =
+        override def installMirror(forActor: Value, m: Mirror[ActorRef]): A[Unit] =
             for
                 st <- get
-                mirror = st.mirrors(forActor)
+                actor <- nondets(lattice.getActors(forActor).map(unit))
+                mirror = st.mirrors(actor)
                 // since we are flow insensitive we can only say that there is both no mirror and a mirror installed
-                _ <- put(st.copy(mirrors = st.mirrors + (forActor -> (mirror match
+                _ <- put(st.copy(mirrors = st.mirrors + (actor -> (mirror match
                     case HasMirror.NoMirror   => HasMirror.Both(Set(m))
                     case HasMirror.Mirror(ms) => HasMirror.Both(ms + m)
                     case HasMirror.Both(ms)   => HasMirror.Both(ms + m)

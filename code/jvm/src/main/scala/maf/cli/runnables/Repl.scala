@@ -31,7 +31,8 @@ object Repl:
     private val configurationsHelp: Map[String, String] = Map(
       "modfFS" -> "Flow sensitive ModF",
       "ci" -> "context-insensitive analysis",
-      "actor" -> "default analysis for actors"
+      "actor" -> "default analysis for actors",
+      "mirror" -> "actor analysis with mirrors"
     )
 
     private val parserHelp: Map[String, String] = Map(
@@ -42,7 +43,8 @@ object Repl:
     private val configurations: Map[String, (SchemeExp) => AnalysisEntry[SchemeExp]] = Map(
       "modfFS" -> SchemeAnalyses.modFFlowSensitive,
       "ci" -> SchemeAnalyses.contextInsensitiveAnalysis,
-      "actor" -> SchemeAnalyses.modActorAnalysis
+      "actor" -> SchemeAnalyses.modActorAnalysis,
+      "mirror" -> SchemeAnalyses.modActorWithMirrors
     )
 
     private def printHelp(): Unit =

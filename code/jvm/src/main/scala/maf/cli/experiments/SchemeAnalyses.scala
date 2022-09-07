@@ -17,6 +17,8 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Address
 import scala.reflect.ClassTag
 import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
+import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
+import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -262,6 +264,9 @@ object SchemeAnalyses:
 
     def modActorAnalysis(prg: SchemeExp) =
         new SimpleSchemeModActorAnalysis(prg)
+
+    def modActorWithMirrors(prg: SchemeExp) =
+        new SimpleModActorWithMirrors(prg)
 
     //def scvModAnalysisWithRacketFeaturesWithPathSensitiveStore(prg: SchemeExp) =
     //    import maf.modular.scv.ScvSymbolicStore.given
