@@ -181,7 +181,11 @@ object MonadJoin:
 ///
 
 trait StateOps[S, M[_]] extends Monad[M]:
+    given self: Monad[M] = this
     def get: M[S]
+    def gets[X](f: S => X): M[X] =
+        import maf.core.Monad.*
+        get >>= (f andThen unit)
     def put(snew: S): M[Unit]
     def withState[X](f: S => S)(m: M[X]): M[X]
     def impure[X](f: => X): M[X]

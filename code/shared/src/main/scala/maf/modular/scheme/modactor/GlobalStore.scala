@@ -1,6 +1,7 @@
 package maf.modular.scheme.modactor
 
 import maf.core.monad.*
+import monocle.syntax.all.*
 import maf.modular.scheme.modflocal.EffectsMC
 import maf.core.DynMonad
 import maf.core.Monad.*
@@ -45,6 +46,9 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.modular.scheme.modactor.*
 import maf.util.Default
 import maf.lattice.HMap
+import monocle.PLens
+import monocle.macros.GenIso
+import monocle.Iso
 
 class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Value](using lattice: SchemeLattice[Value, Address]):
     case class IntraState(
@@ -114,10 +118,8 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     protected type IntraState = globalStore.IntraState
     protected type InterState = globalStore.InterState
 
-    implicit def viewIntra(intra: Intra): globalStore.IntraState
-    implicit def viewInter(inter: Inter): globalStore.InterState
-    implicit def injectIntra(intra: globalStore.IntraState): Intra
-    implicit def injectInter(inter: globalStore.InterState): Inter
+    val interLens: monocle.Lens[Inter, globalStore.InterState]
+    val intraLens: monocle.Lens[Intra, globalStore.IntraState]
 
     type Ctx = Context
 
@@ -188,15 +190,15 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     //////////////////////////////////////////////////
 
     override def getBehaviors: Map[Component, Set[Behavior]] =
-        _result.nn.behaviors
+        interLens.get(_result.nn).behaviors
 
     override def getMailboxes: Map[Component, Mailbox] =
-        _result.nn.mailboxes
+        interLens.get(_result.nn).mailboxes
 
     override def printResult: Unit =
-        println(StoreUtil.storeString(_result.nn.sto))
-        println(s"Number of spawned actors ${_result.nn.actors.size}")
-        println(s"Number of message sends ${_result.nn.mailboxes.values.map(_.messages.size).sum}")
+        println(StoreUtil.storeString(interLens.get(_result.nn).sto))
+        println(s"Number of spawned actors ${interLens.get(_result.nn).actors.size}")
+        println(s"Number of message sends ${interLens.get(_result.nn).mailboxes.values.map(_.messages.size).sum}")
 
     //////////////////////////////////////////////////
     // ModAnalysis
@@ -205,9 +207,10 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     // TODO: abstract this in a seperate trait, and provide a mixin
     override val emptyWorklist = FIFOWorkList.empty
 
+    protected def initialInterState(inter: globalStore.InterState): Inter
     override lazy val initialInterState: Inter =
         // TODO: to not use implicit conversion but provide explicit one
-        globalStore.InterState(sto = initialSto)
+        initialInterState(globalStore.InterState(sto = initialSto))
 
     override lazy val initialEnv: Env =
         Environment(primitives.allPrimitives.map { case (name, vlu) =>
@@ -223,9 +226,9 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         import analysisM.*
         val m: A[Value] = for
             // insert the store into the analysis
-            _ <- get.map(lens.modify(lens.sto)(_ => inter.sto)) >>= put
+            _ <- get.map(lens.modify(lens.sto)(_ => interLens.get(inter).sto)) >>= put
             // put the correct mailbox
-            _ <- get.map(lens.modify(lens.mailboxes)(_ => inter.mailboxes)) >>= put
+            _ <- get.map(lens.modify(lens.mailboxes)(_ => interLens.get(inter).mailboxes)) >>= put
             // then evalute the expression
             v <- eval(body(cmp))
             // write the value to the global store at its return address
@@ -233,10 +236,6 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         yield v
 
         DynMonad.from(m)
-
-    def syncInter(intra: Intra, inter: Inter): Inter =
-        // TODO: do not use implicit conversion to Inter/Intra here
-        globalStore.sync(intra, inter)
 
     //////////////////////////////////////////////////
     // Monad Instance
@@ -250,58 +249,60 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         // Store
         //
         def putSto(st: Intra, sto: Map[Address, Value]): Intra =
-            st.copy(sto = sto)
+            intraLens.modify(_.copy(sto = sto))(st)
         def getSto(st: Intra): Map[Address, Value] =
-            st.sto
+            intraLens.get(st).sto
 
         //
         // Mailboxes
         //
         def putMailboxes(st: Intra, mb: Map[Component, Mailbox]): Intra =
-            st.copy(mailboxes = mb)
+            intraLens.modify(_.copy(mailboxes = mb))(st)
         def getMailboxes(st: Intra): Map[Component, Mailbox] =
-            st.mailboxes
+            intraLens.get(st).mailboxes
 
         //
         // Set of actors spawned
         //
         def putActors(st: Intra, actors: Set[Component]): Intra =
-            st.copy(actors = actors)
+            intraLens.modify(_.copy(actors = actors))(st)
         def getActors(st: Intra): Set[Component] =
-            st.actors
+            intraLens.get(st).actors
 
         //
         // Set of behaviors discovered during the sequential intra-analysis
         //
         def putBehaviors(st: Intra, behs: Map[Component, Set[Behavior]]): Intra =
-            st.copy(behaviors = behs)
+            intraLens.modify(_.copy(behaviors = behs))(st)
         def getBehaviors(st: Intra): Map[Component, Set[Behavior]] =
-            st.behaviors
+            intraLens.get(st).behaviors
 
         /** "write" effects */
         def putWrites(s: Intra, w: Set[Dependency]): Intra =
-            s.copy(writes = w)
+            intraLens.modify(_.copy(writes = w))(s)
         def getWrites(s: Intra): Set[Dependency] =
-            s.writes
+            intraLens.get(s).writes
 
         /** "read" effects */
         def putReads(s: Intra, w: Set[Dependency]): Intra =
-            s.copy(reads = w)
+            intraLens.modify(_.copy(reads = w))(s)
         def getReads(s: Intra): Set[Dependency] =
-            s.reads
+            intraLens.get(s).reads
 
         /** "call" effects */
         def putCalls(s: Intra, c: Set[Component]): Intra =
-            s.copy(calls = c)
-        def getCalls(s: Intra): Set[Component] = s.calls
+            intraLens.modify(_.copy(calls = c))(s)
+        def getCalls(s: Intra): Set[Component] = intraLens.get(s).calls
 
         /** access to a field called "self" */
         def getSelfCmp(s: Intra): Component =
-            s.self
+            intraLens.get(s).self
     }
 
     protected val monadInstance: StateOps[Intra, A] = MonadStateT.stateInstance[Intra, Reader]
-    implicit val analysisM = new ModularAnalysisM with EffectsStateM[A, Component, Intra] {
+    implicit val analysisM: GlobalStoreAnalysisM
+
+    trait GlobalStoreAnalysisM extends ModularAnalysisM with EffectsStateM[A, Component, Intra] {
         given componentGiven: ClassTag[Component] = outer.outerClassTag
 
         export monadInstance.*
@@ -318,7 +319,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
                 case _ => throw new Exception("cannot enclose an enclosing actor into an enclosing actor")
         }
         def selfActorCmp: A[Component] =
-            get.map(_.self)
+            get.map(intraLens.get andThen (_.self))
         def mbottom[X]: A[X] =
             get.flatMap(state => lift(ReaderT.lift(EitherT(Set(Left(state))))))
 
@@ -385,7 +386,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
          */
         def run(cmp: Component, m: A[Unit]): Set[Intra] =
             // TODO: for `st` do not use implicit wrapping using injectIntra, but provide explicit one.
-            val st = globalStore.IntraState(self = cmp)
+            val st = initialIntra(cmp, globalStore.IntraState(self = cmp))
             val ev = (componentContext(cmp), environment(cmp))
             m.run(st).runReader(ev).runEither.map {
                 case Left(s)       => s
@@ -393,6 +394,8 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             }
 
     }
+
+    protected def initialIntra(cmp: Component, st: globalStore.IntraState): Intra
 
     override def view(cmp: Component): SchemeModActorComponent[Context] = cmp match
         case ActorAnalysisComponent(enclosing, _, _) => ActorAnalysisComponent(enclosing, None, None)
@@ -404,7 +407,12 @@ class SimpleGlobalStoreModActor(prog: SchemeExp) extends SchemeModActorSemantics
     type State = IntraState
     type Inter = InterState
 
-    implicit def viewIntra(intra: Intra): globalStore.IntraState = intra
-    implicit def viewInter(inter: Inter): globalStore.InterState = inter
-    implicit def injectIntra(intra: globalStore.IntraState): Intra = intra
-    implicit def injectInter(inter: globalStore.InterState): Inter = inter
+    implicit val analysisM: GlobalStoreAnalysisM = new GlobalStoreAnalysisM {}
+    val intraLens = Iso[IntraState, IntraState](identity)(identity)
+    val interLens = Iso[InterState, InterState](identity)(identity)
+
+    protected def initialIntra(cmp: Component, st: IntraState): Intra = st
+    protected def initialInterState(inter: InterState): Inter = inter
+
+    def syncInter(intra: Intra, inter: Inter): Inter =
+        globalStore.sync(intra, inter)
