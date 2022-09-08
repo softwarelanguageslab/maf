@@ -75,7 +75,7 @@ object ASchemeCompiler extends BaseSchemeCompiler:
               (wait-for-termination a))
             """))
 
-        case Ident("reply") :::: actorRef :::: args =>
+        case Ident("reply" | "reply-to") :::: actorRef :::: args =>
             given ExpansionContext = ExpansionContext(exp.idn)
             tailcall(_compile(expand"""
               (send $actorRef answer . $args)"""))

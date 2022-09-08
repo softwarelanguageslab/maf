@@ -1,11 +1,12 @@
+
 (define mirror (mirror "mirror" () 
    ;; block all sends
-   (send (sender m) 
-         (reply sender 'fail)
+   (send (interpreter m) 
+         (reply-to interpreter 'fail)
          (error "could not send"))
 
    ;; keep the original handler
-   (receive (sender msg handler) (reply sender handler))))
+   (receive (interpreter msg handler) (reply-to interpreter handler))))
 
 (define my-behavior (actor "test" () 
    (do-send (n) 
