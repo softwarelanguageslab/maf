@@ -34,19 +34,19 @@ object ASchemeCompiler extends BaseSchemeCompiler:
         case _ => throw new Exception(s"Invalid syntax for actor message handler list at ${sexp.idn}")
 
     override def _compile(exp: SExp): TailCalls.TailRec[SchemeExp] = exp match
-        case IdentWithIdentity("actor", actorIdn) :::: SExpValue(Value.String(name), _) :::: args :::: msgs =>
+        case IdentWithIdentity(tpy @ ("actor" | "mirror"), actorIdn) :::: SExpValue(Value.String(name), _) :::: args :::: msgs =>
             for
                 cplArgsComp <- tailcall(compileArgs(args))
                 (cplArgs, None) = cplArgsComp
                 cplMsgs <- tailcall(compileHandlers(msgs))
-            yield ASchemeActor(cplArgs, ASchemeSelect(cplMsgs.toMap, args.idn), actorIdn, Some(name))
+            yield ASchemeActor(cplArgs, ASchemeSelect(cplMsgs.toMap, args.idn), actorIdn, Some(name), tpy == "mirror")
 
-        case IdentWithIdentity("actor", actorIdn) :::: args :::: msgs =>
+        case IdentWithIdentity(tpy @ ("actor" | "mirror"), actorIdn) :::: args :::: msgs =>
             for
                 cplArgsComp <- tailcall(compileArgs(args))
                 (cplArgs, None) = cplArgsComp
                 cplMsgs <- tailcall(compileHandlers(msgs))
-            yield ASchemeActor(cplArgs, ASchemeSelect(cplMsgs.toMap, args.idn), actorIdn, None)
+            yield ASchemeActor(cplArgs, ASchemeSelect(cplMsgs.toMap, args.idn), actorIdn, None, tpy == "mirror")
 
         case IdentWithIdentity("become", becomeIdn) :::: beh :::: args =>
             for

@@ -96,8 +96,9 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     val outerClassTag: ClassTag[Component] = summon[ClassTag[Component]]
 
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
-        case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
-        case _                                            => throw new Exception(s"unknown actor id $a")
+        case ActorAnalysisComponent(enclosingActor, _, _)              => enclosingActor
+        case e: EmpheralChildComponent[Ctx @unchecked, Msg @unchecked] => e
+        case _                                                         => throw new Exception(s"unknown actor id $a")
 
     protected def enclosing(cmp: Component): Component = cmp match
         case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
@@ -222,9 +223,12 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             PrmAddr(name) -> lattice.primitive(name)
         }.toMap
 
+    protected def injectOther(inter: Inter, cmp: Component): A[Unit] = analysisM.unit(())
     override def injectInter(inter: Inter, cmp: Component): DynMonad[Value, EffectsMC[Component, Intra]] =
         import analysisM.*
         val m: A[Value] = for
+            // inject some other state in the intra analysis
+            _ <- injectOther(inter: Inter, cmp: Component)
             // insert the store into the analysis
             _ <- get.map(lens.modify(lens.sto)(_ => interLens.get(inter).sto)) >>= put
             // put the correct mailbox

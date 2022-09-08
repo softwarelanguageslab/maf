@@ -36,11 +36,12 @@ object ASchemeValues:
         def removeEnv: Actor = this.copy(tid = tid.removeEnv)
 
     /** Represents a behavior */
-    case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp, lexEnv: Environment[Address]) extends ASchemeValue:
+    case class Behavior(name: Option[String], prs: List[Identifier], bdy: SchemeExp, lexEnv: Environment[Address], isMirror: Boolean)
+        extends ASchemeValue:
         def removeEnv: Behavior = this.copy(lexEnv = Environment.empty)
         override def toString: String = s"<behavior: $name>"
 
-    def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty)
+    def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty, false)
 
     /** The class of futures supported by AScheme */
     sealed trait Future extends ASchemeValue

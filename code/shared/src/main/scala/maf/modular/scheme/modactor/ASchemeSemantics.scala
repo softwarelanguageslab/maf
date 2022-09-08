@@ -124,9 +124,9 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
     override def eval(exp: SchemeExp): A[Val] =
         exp match
             // An actor expression evaluates to a behavior
-            case ASchemeActor(parameters, selection, _, name) =>
+            case ASchemeActor(parameters, selection, _, name, isMirror) =>
                 for env <- getEnv
-                yield lattice.beh(Behavior(name, parameters, selection, env))
+                yield lattice.beh(Behavior(name, parameters, selection, env, isMirror))
 
             // Evaluating a create expression spawns a new actor and returns a reference to it
             case ASchemeCreate(beh, ags, idn) =>

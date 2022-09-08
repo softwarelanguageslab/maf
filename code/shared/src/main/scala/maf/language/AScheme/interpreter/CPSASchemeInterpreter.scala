@@ -494,8 +494,8 @@ class CPSASchemeInterpreter(
         case _ => super.apply(v, cc)
 
     override def eval(exp: SchemeExp, env: Env, version: Version, cc: Continuation): State = exp match
-        case ASchemeActor(parameters, selection, idn, name) =>
-            Kont(inject(Behavior(name, parameters, selection, env)), cc)
+        case ASchemeActor(parameters, selection, idn, name, _) =>
+            Kont(inject(Behavior(name, parameters, selection, env, false)), cc)
 
         case ASchemeCreate(behavior, arguments, idn) =>
             Step(behavior, env, BecoCreaC(arguments, env, false, exp.idn, cc))

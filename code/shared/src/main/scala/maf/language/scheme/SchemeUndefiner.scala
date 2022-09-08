@@ -157,7 +157,7 @@ trait UndefinerTester:
                 check(actorRef, false) || args.foldLeft[Result](false)(_ || check(_, false))
             case ASchemeAwait(future, _) =>
                 check(future, false)
-            case ASchemeActor(_, ASchemeSelect(handlers, _), _, _) =>
+            case ASchemeActor(_, ASchemeSelect(handlers, _), _, _, _) =>
                 handlers.values.foldLeft[Result](false) { case (result, (_, bdy)) => result || check(bdy, true) }
 
             case _ =>

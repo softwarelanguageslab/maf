@@ -162,7 +162,7 @@ trait SchemeSemantics:
     protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
         prm.call(app, ags)
 
-    private def applyClosures(app: App, fun: Val, ags: List[Val]): A[Val] =
+    protected def applyClosures(app: App, fun: Val, ags: List[Val]): A[Val] =
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
             for

@@ -9,6 +9,8 @@ import maf.language.AScheme.ASchemeValues.*
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.AScheme.ASchemeLattice
+import maf.util.Logger
+import maf.modular.scheme.modactor.MirrorValues.Mirror
 
 object MirrorValues:
     /**
@@ -19,7 +21,7 @@ object MirrorValues:
      * @param tid
      *   an actor reference for the actor running the mirror
      */
-    case class Mirror[Ref](name: String, tid: Ref)
+    case class Mirror[Ref](name: Option[String], tid: Ref)
 
 /**
  * Adds support for mirror-based reflection.
@@ -32,6 +34,8 @@ object MirrorValues:
  * The trait defines the semantics of a meta-layer for actors, it can be used as an inner-modf layer in an actor analysis.
  */
 trait ASchemeMirrorsSemantics extends ASchemeSemantics:
+    import maf.util.LogOps.*
+
     /**
      * Monad for supporting mirror-based reflection
      *
@@ -52,7 +56,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
          * @param mirror
          *   the mirror itself
          */
-        def installMirror(forActor: Value, mirror: MirrorValues.Mirror[ActorRef]): M[Unit]
+        def installMirror(forActor: Value, mirror: MirrorValues.Mirror[ActorRef], strong: Boolean = false): M[Unit]
 
         /**
          * Looks up the mirror for the given actor
@@ -86,18 +90,31 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      *   the location of the send, can be used for deciding on the mirror context
      */
     private def mirrorAsk(actorRef: ActorRef, tag: String, ags: List[Value], sender: ActorRef, idn: Identity): A[Value] =
-        mkMessage(tag, lattice.actor(sender) :: ags) >>= { m => ask(actorRef, m) }
+        mkMessage(tag, ags) >>= { m => ask(actorRef, m) }
+
+    /** Checks whether the given actor represents a mirror */
+    private def mirrorFlagSet(actor: Actor): Boolean = actor.tid match
+        case ActorAnalysisComponent(enclosingActor, _, _) => mirrorFlagSet(Actor(None, enclosingActor))
+        case maf.modular.scheme.modactor.Actor(beh, _, _) => beh.isMirror
 
     private def interceptCreate(beh: Value, ags: List[Value], idn: Identity): A[Value] = intercept { mirror =>
         // TODO: actually put the arguments in a scheme list. Figure out a precise allocation scheme for this.
         selfActor.flatMap(self => mirrorAsk(mirror.tid, "create", beh :: ags, self, idn))
     } /* otherwise */ {
         // base behavior
-        create(beh, ags, idn).map(lattice.actor)
+        create(beh, ags, idn)
+            .map(actor =>
+                if mirrorFlagSet(actor) then lattice.mirrors(Mirror(actor.name, actor))
+                else lattice.actor(actor)
+            )
     }
 
-    private def applyThunk(lam: Value, idn: Identity): A[Value] =
-        mjoin(lattice.getClosures(lam).map(clo => applyClosure(SchemeFuncall(clo._1, List(), Identity.none), clo._1, List(), List())))
+    def reifyMessage(m: Msg): Message[Value]
+
+    private def applyThunk(lam: Value, idn: Identity, ags: List[Value]): A[Value] =
+        mjoin(
+          lattice.getClosures(lam).map(clo => withEnvM(_ => bindArgs(clo._1.args, ags)(clo._2)) { Monad.sequence(clo._1.body.map(eval)).map(_.last) })
+        )
 
     private def reifyHandler(prs: List[Identifier], bdy: List[SchemeExp], lexEnv: Environment[Address]): Value =
         lattice.closure((SchemeLambda(None, prs, bdy, None, bdy.head.idn), lexEnv))
@@ -115,7 +132,10 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 evaluatedActor <- eval(actorRef)
                 evaluatedAgs <- Monad.sequence(ags.map(eval))
                 self <- selfActor
-                result <- intercept { mirror => mirrorAsk(mirror.tid, "send", evaluatedActor :: evaluatedAgs, self, idn) } /* otherwise */ {
+                message <- mkMessage(tag, evaluatedAgs)
+                result <- intercept { mirror =>
+                    mirrorAsk(mirror.tid, "send", evaluatedActor :: List(lattice.message(reifyMessage(message))), self, idn)
+                } /* otherwise */ {
                     sendMessage(evaluatedActor, tag, evaluatedAgs).map(_ => lattice.nil)
                 }
             yield result
@@ -132,6 +152,11 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 tag = getMessageTag(msg)
                 args = getMessageArguments(msg)
                 handler = handlers.get(tag)
+                _ <-
+                    if handler.isEmpty then
+                        // TODO: actually register an eror
+                        mbottom
+                    else unit(())
                 (pars, bdy) = handler.get
                 // reify the message in an abstract value
                 reifiedMessage = lattice.message(Message(getMessageTag(msg), getMessageArguments(msg)))
@@ -141,9 +166,11 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                         self <- selfActor
                         env <- getEnv
                         lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, reifyHandler(pars, bdy, env)), self, idn)
-                        result <- applyThunk(lam, idn)
+                        result <- applyThunk(lam, idn, args)
                     yield result
-                } /* otherwise */ { withEnvM(bindArgs(pars, args)) { Monad.sequence(bdy.map(eval)).map(_.last) } }
+                } /* otherwise */ {
+                    withEnvM(bindArgs(pars, args)) { Monad.sequence(bdy.map(eval)).map(_.last) }
+                }
             yield result
 
         // (create-with-mirror mirrorRef behavior)
@@ -153,6 +180,16 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 evaluatedBehavior <- eval(behavior)
                 evaluatedAgs <- ags.mapM(eval)
                 actor <- create(evaluatedBehavior, evaluatedAgs, idn).map(lattice.actor)
-                _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror)))
+                _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror, strong = true)))
+                _ = log(s"+++ intra mirror installed on $actor")
             yield actor
+
+        // For testing purposes
+        case SchemeFuncall(SchemeVar(Identifier("error", _)), List(message), _) =>
+            for
+                m <- eval(message)
+                _ = log(s"+++ intra error $m")
+                result <- mbottom[Value]
+            yield result
+
         case _ => super.eval(exp)

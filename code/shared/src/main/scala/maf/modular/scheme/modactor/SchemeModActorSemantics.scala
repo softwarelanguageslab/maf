@@ -267,6 +267,9 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 // create the empheral child
                 self <- selfActorCmp
                 empheralChild <- allocateEmpheralChild(self, m)
+                // send the message to "to"
+                nm <- mkMessage(getMessageTag(m), lattice.actor(ASchemeValues.Actor(None, empheralChild)) :: getMessageArguments(m))
+                _ <- send(to, nm)
                 // read the result from the mailbox
                 _ <- register(MailboxDep(empheralChild))
                 mb <- get.map(lens.getMailboxes).map(_.get(empheralChild).getOrElse(emptyMailbox))
@@ -276,7 +279,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 tag = getMessageTag(msg)
                 vlus = getMessageArguments(msg)
                 // make sure that the tag is a receive
-                _ <- guard(tag == "reply" && vlus.size == 1)
+                _ <- guard(tag == "answer" && vlus.size == 1)
             yield vlus.head
 
         def mailbox: A[Mailbox] =

@@ -11,11 +11,11 @@ object ASchemeLexicalAddresser extends BaseSchemeLexicalAddresser:
             ASchemeCreate(translate(beh, lenv), arguments.map(translate(_, lenv)), idn)
         case ASchemeBecome(beh, args, idn) =>
             ASchemeBecome(translate(beh, lenv), args.map(translate(_, lenv)), idn)
-        case ASchemeActor(prs, ASchemeSelect(hndlrs, selIdn), idn, name) =>
+        case ASchemeActor(prs, ASchemeSelect(hndlrs, selIdn), idn, name, isMirror) =>
             val bdyLenv = lenv.newFrame.extend(prs)
             val lexHandlers = hndlrs.map { case (msg, (prs, bdy)) =>
                 val hndlLenv = bdyLenv.newFrame.extend(prs)
                 (msg -> (prs, translate(bdy, hndlLenv)))
             }
-            ASchemeActor(prs, ASchemeSelect(lexHandlers.toMap, selIdn), idn, name)
+            ASchemeActor(prs, ASchemeSelect(lexHandlers.toMap, selIdn), idn, name, isMirror)
         case _ => super.translate(exp, lenv)

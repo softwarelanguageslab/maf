@@ -552,7 +552,8 @@ case class ASchemeActor(
     parameters: List[Identifier],
     selection: SchemeExp,
     idn: Identity,
-    name: Option[String])
+    name: Option[String],
+    isMirror: Boolean)
     extends ASchemeExp:
     def fv: Set[String] =
         selection.fv -- parameters.map(_.name)
