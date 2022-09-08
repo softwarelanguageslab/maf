@@ -21,7 +21,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
     import MonadJoin.*
     import maf.util.LogOps.*
 
-    given Logger.Logger = Logger.DisabledLog()
+    given Logger.Logger = Logger.ConsoleLog()
 
     type ActorRef = Actor
     type Behavior = ASchemeValues.Behavior

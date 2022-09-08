@@ -8,6 +8,7 @@ import maf.lattice.HMap
 import maf.lattice.AbstractSetType
 import maf.language.AScheme.ASchemeLattice
 import maf.modular.scheme.modactor.MirrorValues.Mirror
+import maf.modular.scheme.modactor.MirrorValues.Envelope
 
 class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
     extends ModularSchemeLattice[A, S, B, I, R, C, Sym],
@@ -34,6 +35,10 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
 
     object MirrorT extends AbstractSetType[Mirror[Actor], Mirrors]:
         def wrap = Mirrors.apply
+
+    object EnvelopeT extends AbstractSetType[Envelope[Actor, L], Envelopes]:
+        def wrap = Envelopes.apply
+
     case class Actors(actors: Set[Actor]) extends Value, Product1[Set[Actor]]:
         def ord = 27
         def typeName = "ACTOR"
@@ -63,14 +68,22 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
         val tpy = MirrorT
         override def toString: String = s"<mirror>"
 
+    case class Envelopes(envelopes: Set[Envelope[Actor, L]]) extends Value, Product1[Set[Envelope[Actor, L]]]:
+        def ord = 32
+        def typeName = "ENL"
+        val tpy = EnvelopeT
+        override def toString: String = s"<envelope $envelopes>"
+
     def getActors(x: L): Set[Actor] = x.get(ActorT)
     def getBehs(x: L): Set[Behavior] = x.get(BehaviorT)
     def getFutures(x: L): Set[Future] = x.get(FutureT)
     def getMessages(x: L): Set[ReifiedMessage] = x.get(MessageT)
     def getMirrors(x: L): Set[Mirror[Actor]] = x.get(MirrorT)
+    def getEnvelopes(x: L): Set[Envelope[Actor, L]] = x.get(EnvelopeT)
 
     def actor(actor: Actor): L = HMap.injected(ActorT, actor)
     def beh(behavior: Behavior): L = HMap.injected(BehaviorT, behavior)
     def future(fut: Future): L = HMap.injected(FutureT, fut)
     def mirrors(x: Mirror[Actor]): L = HMap.injected(MirrorT, x)
     def message(m: ReifiedMessage): L = HMap.injected(MessageT, m)
+    def envelope(e: Envelope[Actor, L]): L = HMap.injected(EnvelopeT, e)

@@ -4,6 +4,7 @@ import maf.core.*
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.AScheme.ASchemeValues.{Actor, Behavior, Future, Message}
 import maf.modular.scheme.modactor.MirrorValues.Mirror
+import maf.modular.scheme.modactor.MirrorValues.Envelope
 
 trait ASchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
     type ReifiedMessage = Message[L]
@@ -32,8 +33,14 @@ trait ASchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
     /** Extract mirrors from this value */
     def getMirrors(x: L): Set[Mirror[Actor]]
 
+    /** Extract the envelopes from the value */
+    def getEnvelopes(x: L): Set[Envelope[Actor, L]]
+
     /** Inject a messages in the abstract domain */
     def message(m: ReifiedMessage): L
 
     /** Injects a mirror in the abstract domain */
     def mirrors(m: Mirror[Actor]): L
+
+    /** Injects an envelope in the abstract domain */
+    def envelope(e: Envelope[Actor, L]): L

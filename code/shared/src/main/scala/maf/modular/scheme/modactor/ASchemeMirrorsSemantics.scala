@@ -11,6 +11,7 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.language.AScheme.ASchemeLattice
 import maf.util.Logger
 import maf.modular.scheme.modactor.MirrorValues.Mirror
+import maf.modular.scheme.modactor.MirrorValues.Envelope
 
 object MirrorValues:
     /**
@@ -22,6 +23,10 @@ object MirrorValues:
      *   an actor reference for the actor running the mirror
      */
     case class Mirror[Ref](name: Option[String], tid: Ref)
+
+    /** An envelope represents a message send as a value by combining the receiver and the message itself */
+    case class Envelope[Ref, Value](receiver: Ref, message: Message[Value]):
+        override def toString: String = s"($receiver, $message)"
 
 /**
  * Adds support for mirror-based reflection.
@@ -110,6 +115,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     }
 
     def reifyMessage(m: Msg): Message[Value]
+    def abstractMessage(m: Message[Value]): Msg
 
     private def applyThunk(lam: Value, idn: Identity, ags: List[Value]): A[Value] =
         mjoin(
@@ -133,8 +139,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 evaluatedAgs <- Monad.sequence(ags.map(eval))
                 self <- selfActor
                 message <- mkMessage(tag, evaluatedAgs)
+                envelope = lattice.envelope(Envelope(self, reifyMessage(message)))
                 result <- intercept { mirror =>
-                    mirrorAsk(mirror.tid, "send", evaluatedActor :: List(lattice.message(reifyMessage(message))), self, idn)
+                    mirrorAsk(mirror.tid, "send", List(envelope), self, idn)
                 } /* otherwise */ {
                     sendMessage(evaluatedActor, tag, evaluatedAgs).map(_ => lattice.nil)
                 }
@@ -169,6 +176,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                         result <- applyThunk(lam, idn, args)
                     yield result
                 } /* otherwise */ {
+                    log(s"base receive $handler $tag $args")
                     withEnvM(bindArgs(pars, args)) { Monad.sequence(bdy.map(eval)).map(_.last) }
                 }
             yield result
@@ -183,6 +191,19 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror, strong = true)))
                 _ = log(s"+++ intra mirror installed on $actor")
             yield actor
+
+        case SchemeFuncall(SchemeVar(Identifier("base/send-envelope", _)), List(envelopeExpression), _) =>
+            for
+                evaluatedEnvelope <- eval(envelopeExpression)
+                _ = log(s"+++ base/send-envelope $evaluatedEnvelope")
+                // get the envelopes from the abstract domain
+                envelope <- nondets(lattice.getEnvelopes(evaluatedEnvelope).map(unit))
+                // get the receiver, and message from the envelope
+                receiver = envelope.receiver
+                message = envelope.message
+                // send the message to the specified receiver
+                result <- send(receiver, abstractMessage(message)).map(_ => lattice.nil)
+            yield result
 
         // For testing purposes
         case SchemeFuncall(SchemeVar(Identifier("error", _)), List(message), _) =>

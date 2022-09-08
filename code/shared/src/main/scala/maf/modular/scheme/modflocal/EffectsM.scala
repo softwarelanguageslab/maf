@@ -122,7 +122,7 @@ object EffectsM:
         def apply(): EffectDrivenLoop[C, V, Inter, Intra] =
             import maf.util.Logger
             import maf.util.LogOps.*
-            given Logger.Logger = Logger.DisabledLog()
+            given Logger.Logger = Logger.ConsoleLog()
             this match
                 case Loop(seen, wl, dep, interState, conf) =>
                     if wl.isEmpty then LoopFinished(AnalysisResult.Finished(interState))
