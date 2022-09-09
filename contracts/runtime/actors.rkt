@@ -6,6 +6,11 @@
   create-with-mirror
   base/fail
   become 
+  envelope 
+  envelope-receiver
+  envelope-message
+  message-tag 
+  message-arguments
   terminate
   wait-until-termination
   base/send-envelope
