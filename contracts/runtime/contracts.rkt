@@ -32,7 +32,7 @@
       (base/reply interpreter (base/create-with-mirror (base/create base-contracts) beh arguments))
       (become message-send-tracker contract sent-messages))
     ;; Impossible to receive a message at this point in time since the base actor is processing one
-    (receive (interpreter msg handler) (base/fail "could not handle message while processing a message"))
+    (receive (interpreter msg handler) (base/fail interpreter "could not handle message while processing a message"))
     ;; Track which messages the base actor sends
     (send (interpreter envelope)
       (if (is-allowed-to-send? contract (envelope-message envelope))
@@ -181,5 +181,11 @@
 
 ;; Checks the contract against the messages that have been send during the execution of the message handler
 (define (sent-history-satisfies-contract? receiver-contract sent-messages)
-  'todo
-  #t)
+  ;; we currently only support checking contracts of the ensures/c* type 
+  (unless (ensures/c receiver-contract)
+    (error "not an ensures/c contract"))
+  ;; the ensures/c contract checks whether the actor has sent all the required messages 
+  (let 
+    ;; todo: also check message arguments, but that should perhaps ve done in is-allowed-to-sent? 
+    ((all-tags (map message/c-tag (ensures/c-messages receiver-contract))))
+    (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages)))))

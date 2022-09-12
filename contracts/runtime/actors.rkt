@@ -169,7 +169,13 @@ The actor system provides meta-programming faculities for intercession and intro
 (define (behavior-handler beh)
   (ensure behavior? beh "should be a behavior")
   (let ((msg (thread-receive)))
-    (behavior-handle-message beh msg)))
+    (let ((status (fail-continuation (call-with-current-continuation 
+                                       (lambda (cc) 
+                                         (install-fail-continuation! cc)
+                                         cc)))))
+    (if (eq? failure 'fail)
+        (behavior-handler beh)
+        (behavior-handle-message beh msg)))))
 
 ;; Handle a message from an actor
 (define (behavior-handle-message beh msg)
@@ -181,14 +187,14 @@ The actor system provides meta-programming faculities for intercession and intro
       (message-arguments msg))))
 
 ;; Dynamic state of a running actor
-(struct actor-state (self mirror))
+(struct actor-state (self mirror fail))
 
 ;; A thread-local parameter to keep track of the actor state
 (define *actor-state* (make-parameter '()))
 
 ;; install thread local state
 (define (install-state! self mirror) 
-  (*actor-state* (actor-state self mirror)))
+  (*actor-state* (actor-state self mirror #f)))
 
 ;; Retrieve the `self` of the current actor 
 (define (self)
@@ -200,6 +206,14 @@ The actor system provides meta-programming faculities for intercession and intro
   (and (actor-state? (*actor-state*)) (actor-state-mirror (*actor-state*))))
 
 (define get-mirror has-mirror)
+
+;; Installs the failure continuation into the current actor's context 
+(define (install-fail-continuation! cnt) 
+  (ensure actor-state? (*actor-state*) "actor state should be initialized")
+  (let ((original (*actor-state*)))
+     ((*actor-state*) (actor-state (actor-state-self orginal)
+                                   (actor-state-mirror original)
+                                   cnt))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Mirror API 
@@ -215,7 +229,8 @@ The actor system provides meta-programming faculities for intercession and intro
 (define (mirror! new-mirror)
   (ensure actor-state? (*actor-state*) "actor state should be initialized")
   (*actor-state* (actor-state (actor-state-self (self))
-                              new-mirror)))
+                              new-mirror
+                              (actor-state-fail (self)))))
 
 ;; Equivalent to `actor`
 (define-syntax mirror 
