@@ -36,19 +36,16 @@
     ;; Track which messages the base actor sends
     (send (interpreter envelope)
       (if (is-allowed-to-send? contract (envelope-message envelope))
-          (begin 
-             (base-intercept-send interpreter envelope)
-             (become message-send-tracker contract (cons (envelope-message envelope) sent-messages)))
-          ;; Cause an error on the base-level if the send fails
-          (begin 
-             (base/fail interpreter "not allowed to send")
-             (become message-send-tracker contract sent-messages))))
+        (begin 
+          (base-intercept-send interpreter envelope)
+          (become message-send-tracker contract (cons (envelope-message envelope) sent-messages)))
+        ;; Cause an error on the base-level if the send fails
+        (base/fail interpreter "not allowed to send"))
     ;; Must be sent in order finalize the tracker and check whether all the contracts have been satisfied 
     ;; by the message sent history.
     (check-contract () 
        (unless (sent-history-satisfies-contract? contract sent-messages)
-         (base/fail interpreter "message history did not satisfy the contract")
-         (become base-contracts)))))
+         (base/fail interpreter "message history did not satisfy the contract")))
            
 (define base-contracts 
   (mirror "base-contracts" () 
@@ -93,7 +90,7 @@
 
           
 (define (enable-contracts!)
-  (install-mirror! (create base-contracts)))
+  (mirror! (create base-contracts)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Sender side contracts 

@@ -173,7 +173,7 @@ The actor system provides meta-programming faculities for intercession and intro
                                        (lambda (cc) 
                                          (install-fail-continuation! cc)
                                          cc)))))
-    (if (eq? failure 'fail)
+    (if (eq? status 'fail)
         (behavior-handler beh)
         (behavior-handle-message beh msg)))))
 
@@ -215,6 +215,11 @@ The actor system provides meta-programming faculities for intercession and intro
                                    (actor-state-mirror original)
                                    cnt))))
 
+;; Jumps back to the failure continuation with the 'fail value
+;; effectively ends the current turn.
+(define (fail-turn)
+  ((actor-state-fail (*actor-state*)) 'fail))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Mirror API 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -243,6 +248,7 @@ The actor system provides meta-programming faculities for intercession and intro
 ;; Causes the actor on the base level to error
 ;; Needs a reference to the ephemeral actor spawned by the base interpreter
 (define (base/fail interpreter message) 
+  (fail-turn)
   (send interpreter fail message))
 
 
