@@ -7,7 +7,9 @@
 
 (define player 
   (actor "player" (team-id)
-    (get-team (reply-to) (reply reply-to team-id))))
+    (get-team (reply-to)
+              (reply reply-to team-id)
+              (become player team-id))))
 
 (define player/c (behavior/c 
                    (integer?)

@@ -57,7 +57,7 @@ The actor system provides meta-programming faculities for intercession and intro
 (define-syntax become 
   (syntax-rules ()
     ((become behavior argument ...)
-     (behavior-handler (behavior argument ...)))))
+     (behavior argument ...))))
 
 (define-syntax self/m
   (syntax-id-rules ()
@@ -122,10 +122,10 @@ The actor system provides meta-programming faculities for intercession and intro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Messages
-(struct message (tag arguments))
+(struct message (tag arguments) #:transparent)
 
 ;; Envelopes
-(struct envelope (receiver message))
+(struct envelope (receiver message) #:transparent)
 
 ;; An actor is described by its thread 
 (struct actor (tid) #:transparent)
@@ -147,17 +147,20 @@ The actor system provides meta-programming faculities for intercession and intro
 ;; Low-level function for creating an actor
 (define (actor-create mirror behavior-constructor . arguments)
   (ensure procedure? behavior "should be procedure that evaluates to a behavior")
-  (let* 
-    ((tid (thread (lambda ()
-       (let ((self (thread-receive))
-             (initial-behavior (apply behavior-constructor arguments)))
-         (log/create self initial-behavior arguments)
-         (install-state! self mirror)
-         (behavior-handler initial-behavior)))))
-     (new-actor (actor tid)))
+  (intercept 
+     (let* 
+       ((tid (thread (lambda ()
+          (let ((self (thread-receive))
+                (initial-behavior (apply behavior-constructor arguments)))
+            (log/create self initial-behavior arguments)
+            (install-state! self mirror)
+            (behavior-handler initial-behavior)))))
+        (new-actor (actor tid)))
 
-    (thread-send tid new-actor)
-    new-actor))
+       (thread-send tid new-actor)
+       new-actor)
+     ;; meta-level 
+     (ask (get-mirror) create behavior-constructor arguments)))
 
 ;; Terminate the given actor
 (define (actor-terminate actor)
@@ -183,7 +186,7 @@ The actor system provides meta-programming faculities for intercession and intro
                                          cc))))
     (if (eq? status 'fail)
         (behavior-handler beh)
-        (behavior-handle-message beh msg)))))
+        (behavior-handler (behavior-handle-message beh msg))))))
 
 ;; Handle a message from an actor
 (define (behavior-handle-message beh msg)
@@ -256,16 +259,16 @@ The actor system provides meta-programming faculities for intercession and intro
 ;; Causes the actor on the base level to error
 ;; Needs a reference to the ephemeral actor spawned by the base interpreter
 (define (base/fail interpreter message) 
-  (fail-turn)
-  (send interpreter fail message))
+  (send interpreter fail message)
+  (fail-turn))
 
 ;; Base level reply, circumvents any installed mirror
 (define-syntax base/reply 
   (syntax-rules () 
-    ((base/reply receiver tag arguments ...) 
+    ((base/reply receiver arguments ...) 
      (intercept 
-       (reply receiver (quote tag) arguments ...)
-       (reply receiver (quote tag) arguments ...)))))
+       (reply receiver arguments ...)
+       (reply receiver arguments ...)))))
 
 ;; Base level send, circumvents any installed mirror
 (define-syntax base/send 
@@ -277,7 +280,9 @@ The actor system provides meta-programming faculities for intercession and intro
 
 ;; Creates a new mirror with an actor without going through the meta-layer
 (define (base/create-with-mirror mirror behavior . arguments)
-  (apply actor-create mirror behavior arguments))
+  (intercept 
+     (apply actor-create mirror behavior arguments)
+     (apply actor-create mirror behavior arguments)))
 
 ;; Creates a new actor without going through the meta-layer
 (define (base/create behavior . arguments) 

@@ -16,7 +16,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; A Message that carries an additional contract to be checked at the receiver side.
-(struct contracted-message message (contract) )
+(struct contracted-message message (contract) #:transparent)
 
 ;; An actor reference that has a contract attached to it
 ;; Usually created by create/c
@@ -33,7 +33,7 @@
   (mirror "message-send-tracker" (contract sent-messages) 
     ;; Same behavior as "base-contracts"
     (create (interpreter beh arguments) 
-      (base/reply interpreter (base/create-with-mirror (base/create base-contracts) beh arguments))
+      (base/reply interpreter (apply base/create-with-mirror (base/create base-contracts) beh arguments))
       (become message-send-tracker contract sent-messages))
     ;; Impossible to receive a message at this point in time since the base actor is processing one
     (receive (interpreter msg handler) (base/fail interpreter "could not handle message while processing a message"))
@@ -57,7 +57,7 @@
     ;; Intercepting "create" allows us to install the contract mirror on newly created actors
     (create (interpreter beh arguments) 
       ;; We are using base/* versions of all the actor related primtiives in order to directly go to the base layer 
-      (base/reply interpreter (base/create-with-mirror (base/create base-contracts) beh arguments))
+      (base/reply interpreter (apply base/create-with-mirror (base/create base-contracts) beh arguments))
       (become base-contracts))
     ;; Intercepting "send" allows us to send messages to other types of actors, and check whether 
     ;; the arguments of the message satisfy the message contract before sending them.
@@ -66,15 +66,16 @@
       ;; If the message is a contracted message we should return a different handler.
       ;; The handler should check whether the contract have been satisfied.
       (if (contracted-message? msg) 
-          (begin 
+          (let ((mirror-self self)) 
             (reply-to interpreter (lambda args 
                                     ;; lambda executed locally on the base-level
-                                    (apply handler args)
-                                    ;; we create a temporary actor here such that the error is executed 
-                                    ;; at the base level
-                                    (let ((temporary (create (actor "temp" () (fail (m) (error m))))))
-                                      (base/send self check-contract temporary))))
-            (become message-send-tracker (contracted-message-contract msg)))
+                                    (let ((new-behavior (apply handler args)))
+                                       ;; we create a temporary actor here such that the error is executed 
+                                       ;; at the base level
+                                       (let ((temporary (create (actor "temp" () (fail (m) (error m))))))
+                                         (base/send mirror-self check-contract temporary)
+                                         new-behavior))))
+            (become message-send-tracker (contracted-message-contract msg) '()))
           (begin 
             (reply-to interpreter handler)
             (become base-contracts))))))
@@ -133,7 +134,7 @@
      (behavior/c* (list (message/c (quote tag) (list argument-contract ...) behavior-contract) ...)))))
 
 ;; A contract on a specific message.
-(struct message/c (tag arguments behavior-contract))
+(struct message/c (tag arguments behavior-contract) #:transparent)
 
 ;; Checks whether the given message contract matches the given tag
 (define (matches-tag message-contract tag)
@@ -183,7 +184,7 @@
 ;;
 ;; With sugaring:
 ;; (ensures/c ((display (integer?))))
-(struct ensures/c* (messages))
+(struct ensures/c* (messages) #:transparent)
 
 ;; Syntactic sugar support
 (define-syntax ensures/c 
@@ -205,7 +206,8 @@
   (let 
     ;; todo: also check message arguments, but that should perhaps ve done in is-allowed-to-sent? 
     ((all-tags (map message/c-tag (ensures/c*-messages receiver-contract))))
-    (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages)))))
+    (and (not (null? sent-messages)) 
+         (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utilities
