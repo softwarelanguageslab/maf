@@ -1,5 +1,6 @@
 #lang racket
 
+(require (for-syntax syntax/parse))
 (require acontracts/actors) 
 (provide 
   enable-contracts!
@@ -9,6 +10,9 @@
   ensures/c*
   message/c
   create-with-contract
+  unconstrainted/c
+  any-recipient 
+  specific-recipient
   (rename-out (create-with-contract create/c)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -63,6 +67,8 @@
     ;; the arguments of the message satisfy the message contract before sending them.
     (send (interpreter envelope) (base-intercept-send interpreter envelope))
     (receive (interpreter msg handler)
+      ;; TODO: also pass in original behavior/c contract such that we can check whether we promised 
+      ;; to be able to process a particular message.
       ;; If the message is a contracted message we should return a different handler.
       ;; The handler should check whether the contract have been satisfied.
       (if (contracted-message? msg) 
@@ -126,19 +132,33 @@
 ;;                      (increment (actor? integer?) (ensures/c ((display (integer?)))))))
 (struct behavior/c* (messages))
 
+(define-syntax (translate-message-contract stx)
+  (syntax-parse stx
+   ;; A catch-all pattern
+   [((~literal _) behavior-contract) #'(message/c '() '() behavior-contract any-recipient)]
+   ;; format as ocumented in behavior/c
+   [(tag (argument-contract ...) behavior-contract) #'(message/c (quote tag) (list argument-contract ...) behavior-contract any-recipient)]
+   ;; catch-all
+   [contract contract]))
+
 ;; Syntactic sugar support
 (define-syntax behavior/c 
   (syntax-rules ()
     ;; TODO: incorperate constructor-contract
-    ((behavior/c (constructor-contract ...) (tag (argument-contract ...) behavior-contract) ...)
-     (behavior/c* (list (message/c (quote tag) (list argument-contract ...) behavior-contract) ...)))))
+    ;; TODO: match against "_" and translate to message-_/c
+    ((behavior_c (constructor-contract ...) message-contract ...)
+     (behavior/c* (list (translate-message-contract message-contract) ...)))))
 
 ;; A contract on a specific message.
-(struct message/c (tag arguments behavior-contract) #:transparent)
+(struct message/c (tag arguments behavior-contract intented-recipient) #:transparent)
+
+;; A catch-all message
+(define message-_/c (message/c '() '() (lambda idc unconstrained/c) #f))
 
 ;; Checks whether the given message contract matches the given tag
 (define (matches-tag message-contract tag)
-  (eq? (message/c-tag message-contract) tag))
+  (or (eq? (message/c-tag message-contract) '()) ;; matches any tag
+      (eq? (message/c-tag message-contract) tag)))
 
 ;; Find the correct message contract in a list of message contracts for the given tag
 ;; Returns #f if no matching contract is found.
@@ -170,11 +190,23 @@
               (base/fail interpreter "contract violated")
               #f)
             (begin
-               (message/c-behavior-contract contract)))))))
+               ((message/c-behavior-contract contract) arguments)))))))
+
+;; Represents any valid recipient
+(define any-recipient (lambda (actual-actor) #t))
+
+;; Represents a specific recipient
+(define (specific-recipient actor) 
+  (lambda (actual-actor) (eq? actor actual-actor)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Receiver side contracts
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; unconstrained/c 
+
+;; This contracts does not put any additional constraints on the behavior of the actor 
+(define unconstrained/c (ensures/c* '()))
 
 ;; ensures/c
 
@@ -189,8 +221,9 @@
 ;; Syntactic sugar support
 (define-syntax ensures/c 
   (syntax-rules ()
-    ((ensures/c ((tag (argument-contract ...) ...))) 
-     (ensures/c* (list (message/c (quote tag) (list argument-contract ...) #f) ...)))))
+    ((ensures/c (tag (argument-contract ...) intended-recipient) ...)
+     (ensures/c* (list (message/c (quote tag) (list argument-contract ...) (lambda idc unconstrained/c) intended-recipient) ...)))))
+
 
 ;; Checks whether the given message is allowed to be sent by the given contract
 (define (is-allowed-to-send? receiver-contract message)
@@ -206,8 +239,9 @@
   (let 
     ;; todo: also check message arguments, but that should perhaps ve done in is-allowed-to-sent? 
     ((all-tags (map message/c-tag (ensures/c*-messages receiver-contract))))
-    (and (not (null? sent-messages)) 
-         (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages))))))
+    (or (null? all-tags) 
+        (and (not (null? sent-messages)) 
+         (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utilities
