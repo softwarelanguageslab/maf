@@ -8,7 +8,7 @@
 (define player 
   (actor "player" (team-id)
     (get-team (reply-to)
-              (reply reply-to team-id)
+              ; REMOVED: (reply reply-to team-id) -- should make ensures/c fail
               (become player team-id))))
 
 (define player/c (behavior/c 
