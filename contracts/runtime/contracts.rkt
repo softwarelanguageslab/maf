@@ -5,18 +5,22 @@
   enable-contracts!
   behavior/c
   behavior/c* 
-  message/c)
+  ensures/c 
+  ensures/c*
+  message/c
+  create-with-contract
+  (rename-out (create-with-contract create/c)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Contract foundations
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; A Message that carries an additional contract to be checked at the receiver side.
-(struct contract-message message (receiver-contracts) )
+(struct contracted-message message (contract) )
 
 ;; An actor reference that has a contract attached to it
 ;; Usually created by create/c
-(struct contracted-actor actor (contract))
+(struct contracted-actor actor-struct (contract))
 
 ;; Create an actor that has the given contract attached to it
 (define-syntax create/c
@@ -40,12 +44,13 @@
           (base-intercept-send interpreter envelope)
           (become message-send-tracker contract (cons (envelope-message envelope) sent-messages)))
         ;; Cause an error on the base-level if the send fails
-        (base/fail interpreter "not allowed to send"))
+        (base/fail interpreter "not allowed to send")))
     ;; Must be sent in order finalize the tracker and check whether all the contracts have been satisfied 
     ;; by the message sent history.
-    (check-contract () 
+    (check-contract (interpreter) 
        (unless (sent-history-satisfies-contract? contract sent-messages)
-         (base/fail interpreter "message history did not satisfy the contract")))
+         (base/fail interpreter "message history did not satisfy the contract"))
+       (become base-contracts))))
            
 (define base-contracts 
   (mirror "base-contracts" () 
@@ -53,7 +58,7 @@
     (create (interpreter beh arguments) 
       ;; We are using base/* versions of all the actor related primtiives in order to directly go to the base layer 
       (base/reply interpreter (base/create-with-mirror (base/create base-contracts) beh arguments))
-      (become base-contracts)
+      (become base-contracts))
     ;; Intercepting "send" allows us to send messages to other types of actors, and check whether 
     ;; the arguments of the message satisfy the message contract before sending them.
     (send (interpreter envelope) (base-intercept-send interpreter envelope))
@@ -62,35 +67,47 @@
       ;; The handler should check whether the contract have been satisfied.
       (if (contracted-message? msg) 
           (begin 
-            (reply-to interpreter (lambda args 'todo))
-            (base/become message-send-tracker (contracted-message-contract msg)))
+            (reply-to interpreter (lambda args 
+                                    ;; lambda executed locally on the base-level
+                                    (apply handler args)
+                                    ;; we create a temporary actor here such that the error is executed 
+                                    ;; at the base level
+                                    (let ((temporary (create (actor "temp" () (fail (m) (error m))))))
+                                      (base/send self check-contract temporary))))
+            (become message-send-tracker (contracted-message-contract msg)))
           (begin 
             (reply-to interpreter handler)
-            (become base-contracts)))))))
+            (become base-contracts))))))
 
 ;; Base behavior for the contract system when a message is being send.
-(define (base-intercept-send interpreter envelope)
-   (let* ((receiver  (envelope-receiver envelope))
-          (message   (envelope-message envelope))
+(define (base-intercept-send interpreter ev)
+   (let* ((receiver  (envelope-receiver ev))
+          (message   (envelope-message ev))
           (tag       (message-tag message))
           (arguments (message-arguments message)))
 
       ;; if the receiver is a contracted actor, we need to check whether the send side contracts have been satisfied
       (let*
         ((message (if (contracted-actor? receiver)
-          (contracted-message message (check-sender-contracts interpreter (contracted-actor-contract reveiver) tag arguments))
+          (contracted-message tag arguments (check-sender-contracts interpreter (contracted-actor-contract receiver) tag arguments))
           message))
-         (envelope (envelope receiver message)))
-
+         (ev (envelope receiver message)))
 
          ;; continue with the regular send
          (base/reply interpreter 'ok)
-         (base/send-envelope envelope)
+         (base/send-envelope ev)
          (become base-contracts))))
 
           
 (define (enable-contracts!)
   (mirror! (create base-contracts)))
+
+(define-syntax create-with-contract
+  (syntax-rules () 
+    ((create-with-contract contract behavior arguments ...) 
+     (contracted-actor 
+       (actor-tid (create behavior arguments ...))
+       contract))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Sender side contracts 
@@ -111,15 +128,16 @@
 ;; Syntactic sugar support
 (define-syntax behavior/c 
   (syntax-rules ()
-    ((behavior/c (tag (argument-contract ...) behavior-contract) ...)
+    ;; TODO: incorperate constructor-contract
+    ((behavior/c (constructor-contract ...) (tag (argument-contract ...) behavior-contract) ...)
      (behavior/c* (list (message/c (quote tag) (list argument-contract ...) behavior-contract) ...)))))
 
 ;; A contract on a specific message.
 (struct message/c (tag arguments behavior-contract))
 
 ;; Checks whether the given message contract matches the given tag
-(define (matches-tag mesasge-contract tag)
-  (eq? (message/c-tag message-contracts) tag))
+(define (matches-tag message-contract tag)
+  (eq? (message/c-tag message-contract) tag))
 
 ;; Find the correct message contract in a list of message contracts for the given tag
 ;; Returns #f if no matching contract is found.
@@ -132,7 +150,7 @@
 
 (define (apply-contract cont argument)
   ;; TODO: provide accurate blame information
-  (contract cont argument 'pos 'neg))
+  (cont argument))
 
 ;; Checks whether the sender contracts are correct
 (define (check-sender-contracts interpreter contract tag arguments)
@@ -140,16 +158,18 @@
     (if (not contract)
         ;; TODO: make the error message more precise such that it can be used for soundness testing
         ;; and it provides accurate blame information.
-        (base/fail interpreter "actor does not respond to message")
+        (begin 
+          (base/fail interpreter "actor does not respond to message"))
         ;; the contract can be found so we can check whether the arguments satisfy the contract
         (let ((argument-contracts (message/c-arguments contract)))
           ;; if one of the contracts is not satisfied we should signal an error
-          (if (forall (map apply-contract argument-contracts arguments))
+          (if (not (forall (map apply-contract argument-contracts arguments)))
             (begin 
                ;; TODO: provide more accurate blame information about the contract violation
               (base/fail interpreter "contract violated")
               #f)
-            (message/c-behavior-contract contract))))))
+            (begin
+               (message/c-behavior-contract contract)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Receiver side contracts
@@ -168,21 +188,31 @@
 ;; Syntactic sugar support
 (define-syntax ensures/c 
   (syntax-rules ()
-    ((ensures/c ((tag (argument-contract ...)) ...))
-     (ensures/c* (list (message/c (quote tag) (list argument-contract ...)) ...)))))
+    ((ensures/c ((tag (argument-contract ...) ...))) 
+     (ensures/c* (list (message/c (quote tag) (list argument-contract ...) #f) ...)))))
 
 ;; Checks whether the given message is allowed to be sent by the given contract
-(define (is-allowed-to-sent? receiver-contract message)
+(define (is-allowed-to-send? receiver-contract message)
   ;; currently ensures/c does not impose any restrictions on which messages are allowed to be sent
   #t)
 
 ;; Checks the contract against the messages that have been send during the execution of the message handler
 (define (sent-history-satisfies-contract? receiver-contract sent-messages)
   ;; we currently only support checking contracts of the ensures/c* type 
-  (unless (ensures/c receiver-contract)
+  (unless (ensures/c*? receiver-contract)
     (error "not an ensures/c contract"))
   ;; the ensures/c contract checks whether the actor has sent all the required messages 
   (let 
     ;; todo: also check message arguments, but that should perhaps ve done in is-allowed-to-sent? 
-    ((all-tags (map message/c-tag (ensures/c-messages receiver-contract))))
+    ((all-tags (map message/c-tag (ensures/c*-messages receiver-contract))))
     (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utilities
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (forall booleans) 
+  (if (null? booleans)
+      #t
+      (and (car booleans) 
+           (forall (cdr booleans)))))

@@ -1,6 +1,9 @@
 #lang racket
 
 (provide 
+  (rename-out [actor actor-struct])
+  actor?
+  actor-tid
   create 
   send 
   create-with-mirror
@@ -9,11 +12,16 @@
   envelope 
   envelope-receiver
   envelope-message
+  message
   message-tag 
   message-arguments
   terminate
   wait-until-termination
   base/send-envelope
+  base/create-with-mirror
+  base/create
+  base/reply
+  base/send
   mirror
   mirror! 
   ask 
@@ -169,10 +177,10 @@ The actor system provides meta-programming faculities for intercession and intro
 (define (behavior-handler beh)
   (ensure behavior? beh "should be a behavior")
   (let ((msg (thread-receive)))
-    (let ((status (fail-continuation (call-with-current-continuation 
+    (let ((status (call-with-current-continuation 
                                        (lambda (cc) 
                                          (install-fail-continuation! cc)
-                                         cc)))))
+                                         cc))))
     (if (eq? status 'fail)
         (behavior-handler beh)
         (behavior-handle-message beh msg)))))
@@ -190,7 +198,7 @@ The actor system provides meta-programming faculities for intercession and intro
 (struct actor-state (self mirror fail))
 
 ;; A thread-local parameter to keep track of the actor state
-(define *actor-state* (make-parameter '()))
+(define *actor-state* (make-parameter (actor-state #f #f #f)))
 
 ;; install thread local state
 (define (install-state! self mirror) 
@@ -211,7 +219,7 @@ The actor system provides meta-programming faculities for intercession and intro
 (define (install-fail-continuation! cnt) 
   (ensure actor-state? (*actor-state*) "actor state should be initialized")
   (let ((original (*actor-state*)))
-     ((*actor-state*) (actor-state (actor-state-self orginal)
+     (*actor-state* (actor-state (actor-state-self original)
                                    (actor-state-mirror original)
                                    cnt))))
 
@@ -233,9 +241,9 @@ The actor system provides meta-programming faculities for intercession and intro
 ;; Changes the mirror of the current actor
 (define (mirror! new-mirror)
   (ensure actor-state? (*actor-state*) "actor state should be initialized")
-  (*actor-state* (actor-state (actor-state-self (self))
+  (*actor-state* (actor-state (actor-state-self (*actor-state*))
                               new-mirror
-                              (actor-state-fail (self)))))
+                              (actor-state-fail (*actor-state*)))))
 
 ;; Equivalent to `actor`
 (define-syntax mirror 
@@ -251,11 +259,36 @@ The actor system provides meta-programming faculities for intercession and intro
   (fail-turn)
   (send interpreter fail message))
 
+;; Base level reply, circumvents any installed mirror
+(define-syntax base/reply 
+  (syntax-rules () 
+    ((base/reply receiver tag arguments ...) 
+     (intercept 
+       (reply receiver (quote tag) arguments ...)
+       (reply receiver (quote tag) arguments ...)))))
+
+;; Base level send, circumvents any installed mirror
+(define-syntax base/send 
+  (syntax-rules ()
+    ((send actor tag argument ...)
+     (intercept
+        (actor-send actor (quote tag) (list argument ...))
+        (actor-send actor (quote tag) (list argument ...))))))
+
+;; Creates a new mirror with an actor without going through the meta-layer
+(define (base/create-with-mirror mirror behavior . arguments)
+  (apply actor-create mirror behavior arguments))
+
+;; Creates a new actor without going through the meta-layer
+(define (base/create behavior . arguments) 
+  (apply actor-create #f behavior arguments))
+
 
 ;; Sends the message that is contained in the envelope to the receiver in the envelope
 (define (base/send-envelope envelope)
   (ensure envelope? envelope "should be an envelope")
-  (actor-send-message (envelope-receiver envelope)
+  (actor-send-message 
+              (envelope-receiver envelope)
               (envelope-message envelope)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
