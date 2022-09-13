@@ -1,7 +1,6 @@
 #lang racket
 
-(require "../contracts.rkt")
-(require "../actors.rkt")
+(require acontracts)
 
 (enable-contracts!)
 

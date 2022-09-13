@@ -1,6 +1,6 @@
 #lang racket
 
-(require "./actors.rkt")
+(require acontracts/actors) 
 (provide 
   enable-contracts!
   behavior/c
