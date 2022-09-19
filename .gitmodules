@@ -1,0 +1,3 @@
+[submodule "acontracts"]
+	path = acontracts
+	url = https://github.com/bramvdbogaerde/acontracts
