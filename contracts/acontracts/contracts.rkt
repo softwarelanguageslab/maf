@@ -244,6 +244,13 @@
          (forall (map (lambda (v) (member all-tags v)) (map message-tag sent-messages)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Useful (small) contracts 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (self?/c actor)
+  (eq? self actor)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Utilities
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
