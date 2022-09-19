@@ -86,16 +86,18 @@
   (protocol/c (requester aggregator services)
       start
       [start 
-        ;; the aggreagot should when receiving a request 
+        ;; the aggregator should when receiving a request 
         ;; query the aggregated services 
-        (message/c* request request-arguments 
-                   (ensures/c* (forall services (lambda (service)
-                                                  (message/c* message/any 
-                                                              arguments/any 
-                                                              (lambda idc unconstrained/c )
-                                                              aggregator
-                                                              (specific-recipient service))))))
-        (become wait-for-services)]
+         (sequence 
+            (forall services (lambda (service)
+              (message/c* request request-arguments 
+                         (ensures/c* 
+                           (message/c* message/any 
+                                       arguments/any 
+                                       (lambda idc unconstrained/c)
+                                       aggregator
+                                       (specific-recipient service))))))
+            (become wait-for-services))]
       [wait-for-services
         ;; then it should wait for the services to respond
         (sequence 

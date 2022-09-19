@@ -4,15 +4,20 @@
 (require acontracts/actors) 
 (provide 
   enable-contracts!
+  ;; Behavior related contracts
   behavior/c
   behavior/c* 
   ensures/c 
   ensures/c*
-  message/c
-  create-with-contract
   unconstrainted/c
-  any-recipient 
-  specific-recipient
+  ;; Message contracts
+  message/c
+  ;; Actors monitored by contract creation
+  create-with-contract
+  ;; Contracts on the sender/recipient of a message
+  any-actor 
+  specific-actor
+  one-of
   (rename-out (create-with-contract create/c)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -193,11 +198,15 @@
                ((message/c-behavior-contract contract) arguments)))))))
 
 ;; Represents any valid recipient
-(define any-recipient (lambda (actual-actor) #t))
+(define any-actor (lambda (actual-actor) #t))
 
 ;; Represents a specific recipient
-(define (specific-recipient actor) 
+(define (specific-actor actor) 
   (lambda (actual-actor) (eq? actor actual-actor)))
+
+;; Represents a recipient that is one of the given recipients
+(define (one-of actors)
+  (lambda (actual-actor) (member actual-actor actors)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Receiver side contracts

@@ -28,6 +28,14 @@
   (rename-out [reply reply-to])
   (rename-out [self/m self])
   reply
+  ;; create-behavior and make-handlers are meta-functions that can be used on a base-level
+  ;; to create behavior and handler values without using the actor syntax.
+  ;; TODO: behavior does not actually have the correct signature for the meta code in session.rtk 
+  ;; this should be changed so that self and the sender are also included.
+  ;; for this the semantics should be changed such that each message (or its envelope) also includes the sender.
+  (rename-out [behavior create-behavior])
+  make-handlers
+  ;; Syntax for defining behaviors.
   (rename-out [behavior/macro actor]))
 
 #|
@@ -166,6 +174,10 @@ The actor system provides meta-programming faculities for intercession and intro
 (define (actor-terminate actor)
   (ensure actor? actor "should be an actor")
   (kill-thread (actor-tid actor)))
+
+;; A function that constructs handlers for use in an instance of the `behavior` struct
+(define (make-handlers association-list)
+  (make-hash association-list))
 
 ;; A structure defining a behavior. 
 ;; It consists of an optional name and some handlers
