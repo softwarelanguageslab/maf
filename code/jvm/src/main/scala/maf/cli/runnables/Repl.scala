@@ -30,6 +30,7 @@ object Repl:
 
     private val configurationsHelp: Map[String, String] = Map(
       "modfFS" -> "Flow sensitive ModF",
+      "modf" -> "Normal ModF Analysis",
       "ci" -> "context-insensitive analysis",
       "actor" -> "default analysis for actors",
       "mirror" -> "actor analysis with mirrors"
@@ -41,6 +42,7 @@ object Repl:
     )
 
     private val configurations: Map[String, (SchemeExp) => AnalysisEntry[SchemeExp]] = Map(
+      "modf" -> SchemeAnalyses.contextInsensitiveAnalysis,
       "modfFS" -> SchemeAnalyses.modFFlowSensitive,
       "ci" -> SchemeAnalyses.contextInsensitiveAnalysis,
       "actor" -> SchemeAnalyses.modActorAnalysis,
