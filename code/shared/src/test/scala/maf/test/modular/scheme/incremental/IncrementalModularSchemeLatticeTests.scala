@@ -40,7 +40,7 @@ trait IncrementalModularSchemeLatticeTests extends AnyPropSpec:
 
     private lazy val values = List(num1, num2, rea1, rea2, str1, str2, cha1, cha2, boo1, boo2, prm1, prm2, sym1, sym2, cns1, cns2, poi1, poi2)
 
-    lazy val origLattice: ModularSchemeLattice[_, _, _, _, _, _, _]
+    lazy val origLattice = wrapper.schemeLattice
 
     // Test lattice operations.
     SchemeOp.unaryOperators.foreach { op =>
@@ -78,6 +78,7 @@ trait IncrementalModularSchemeLatticeTests extends AnyPropSpec:
         }
     }
 
+    // Test join.
     private val vs = List(num1, rea1, str1, cha1, boo1, prm1, sym1, cns1, poi1) // Some reduction to avoid duplicate test names.
     vs.foreach { v1 =>
         vs.filterNot(_.toString == v1.toString).foreach { v2 =>
@@ -96,5 +97,4 @@ end IncrementalModularSchemeLatticeTests
 
 class IncrementalModularSchemeTypeLatticeTests extends IncrementalModularSchemeLatticeTests:
     lazy val wrapper = IncrementalSchemeTypeDomain.modularLattice
-    lazy val origLattice = SchemeTypeDomain.modularLattice
 end IncrementalModularSchemeTypeLatticeTests
