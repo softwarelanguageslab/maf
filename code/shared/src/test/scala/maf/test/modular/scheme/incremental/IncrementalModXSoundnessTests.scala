@@ -152,10 +152,12 @@ trait noCY extends IncrementalModXSoundnessTests:
         super.runAnalysisWithConfiguration(program, benchmark, config.copy(cyclicValueInvalidation = false))
 
 trait STwithoutCIwithWI extends IncrementalModXSoundnessTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
+    override val configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
     override def isSlow(b: Benchmark) = true
 trait STwithCIWI extends IncrementalModXSoundnessTests:
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
+    override val configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
     override def isSlow(b: Benchmark) = true
 trait STwithoutWIWithCI extends IncrementalModXSoundnessTests:
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && c.componentInvalidation)

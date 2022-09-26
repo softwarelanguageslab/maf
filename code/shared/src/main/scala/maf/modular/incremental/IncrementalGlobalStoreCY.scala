@@ -20,8 +20,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     var implicitFlows: List[Set[Addr]] = Nil
 
     override def updateAnalysis(timeout: Timeout.T): Unit =
-        if configuration.cyclicValueInvalidation then
-            SCAs = computeSCAs()
+        if configuration.cyclicValueInvalidation then SCAs = computeSCAs()
         super.updateAnalysis(timeout)
 
     override def deleteComponent(cmp: Component): Unit =
@@ -52,7 +51,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-              flowsR = flowsR + (write -> (flowsR(write) ++ reads))
+                flowsR = flowsR + (write -> (flowsR(write) ++ reads))
             }
         }
         var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
@@ -62,25 +61,27 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             }
         }
         oldFlowsR.exists { case (w, rs) =>
-          rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store(w), oldStore(w))
+            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store(w), oldStore(w))
         }
 
-    /** Refines a SCA by putting every address to its new incoming value. Computes the values to refine each address of a SCA and then performes the refinement. */
+    /**
+     * Refines a SCA by putting every address to its new incoming value. Computes the values to refine each address of a SCA and then performes the
+     * refinement.
+     */
     def refineSCA(sca: SCA): Unit =
         sca.foreach { a =>
             // Computation of the new value + remove provenance and data flow that is no longer valid.
             val v = provenance(a).foldLeft(lattice.bottom) { case (acc, (c, v)) =>
-              if dataFlowR(c)(a).intersect(sca).isEmpty
-              then lattice.join(acc, v)
-              else
-                  // Delete the provenance of non-incoming values (i.e., flows within the SCA).
-                  provenance += (a -> (provenance(a) - c))
-                  // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
-                  // REMARK: check reason + impact
-                  cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
-                  // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
-                  dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
-                  acc
+                if dataFlowR(c)(a).intersect(sca).isEmpty then lattice.join(acc, v)
+                else
+                    // Delete the provenance of non-incoming values (i.e., flows within the SCA).
+                    provenance += (a -> (provenance(a) - c))
+                    // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
+                    // REMARK: check reason + impact
+                    cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
+                    // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
+                    dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
+                    acc
             }
             // Refine the store. TODO remove when v is bottom!
             store += (a -> v)

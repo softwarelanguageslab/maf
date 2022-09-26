@@ -49,7 +49,8 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
     def flowInformationToDotGraph(fileName: String): Unit =
         // Type of graph elements. One type suffices for both nodes and edges.
-        case class GE(label: String, color: Color = Colors.White, override val shape: String = "", metadata: GraphMetadata = GraphMetadataNone) extends GraphElement
+        case class GE(label: String, color: Color = Colors.White, override val shape: String = "", metadata: GraphMetadata = GraphMetadataNone)
+            extends GraphElement
         // Colour nodes by SCA.
         val nodeColors = computeSCAs().toList.zipWithIndex
             .flatMap({ case (sca, index) => val color = palette(index); sca.map(v => (v, color)) })
@@ -58,10 +59,14 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         // Generate the nodes. Create a mapping from addresses to graph elements (nodes).
         val nodes: Map[Addr, GE] =
             (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
-                .map(addr => (addr,
-                    GE(addr.toString,
+                .map(addr =>
+                    (addr,
+                     GE(addr.toString,
                         if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else nodeColors(addr),
-                        if addr.isInstanceOf[LitAddr[_]] then "triangle" else "box")))
+                        if addr.isInstanceOf[LitAddr[_]] then "triangle" else "box"
+                     )
+                    )
+                )
                 .toMap
         // Compute the edges.
         var edges: Set[(GE, GE, AdrDep)] =
@@ -118,4 +123,4 @@ class IncrementalDataFlowVisualiser[Expr <: Expression] extends IncrementalGloba
             super.commit()
 
     end IncrementalDataFlowVisualiserIntra
-*/
+ */

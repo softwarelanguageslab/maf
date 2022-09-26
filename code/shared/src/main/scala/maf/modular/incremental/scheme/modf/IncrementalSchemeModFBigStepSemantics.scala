@@ -50,11 +50,9 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemantics with In
         override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] =
             // sorry for the Monad, Jens...
             // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
-            if configuration.cyclicValueInvalidation
-            then
+            if configuration.cyclicValueInvalidation then
                 val a = LitAddr(exp)
-                for
-                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking.
+                for value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield value
             else super.evalLiteralValue(literal, exp)

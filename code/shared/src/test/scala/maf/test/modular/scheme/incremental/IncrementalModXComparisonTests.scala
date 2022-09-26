@@ -77,17 +77,23 @@ trait IncrementalModXComparisonTests extends SchemeBenchmarkTests:
             }
 
 trait withoutCICYwithWI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
+    override def configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
 trait withoutCYwithCIWI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
+    override def configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
 trait withoutWICYwithCI extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
+    override def configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => !c.writeInvalidation && c.componentInvalidation && !c.cyclicValueInvalidation)
 trait withoutCIWICY extends IncrementalModXComparisonTests:
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => !c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
-trait withoutCIwithWICY extends IncrementalModXComparisonTests :
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && c.cyclicValueInvalidation)
-trait withCIWICY extends IncrementalModXComparisonTests :
-    override def configurations: List[IncrementalConfiguration] = allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && c.cyclicValueInvalidation)
+    override def configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => !c.writeInvalidation && !c.componentInvalidation && !c.cyclicValueInvalidation)
+trait withoutCIwithWICY extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => c.writeInvalidation && !c.componentInvalidation && c.cyclicValueInvalidation)
+trait withCIWICY extends IncrementalModXComparisonTests:
+    override def configurations: List[IncrementalConfiguration] =
+        allConfigurations.filter(c => c.writeInvalidation && c.componentInvalidation && c.cyclicValueInvalidation)
 
 trait ModFComparisonTests extends IncrementalModXComparisonTests:
 

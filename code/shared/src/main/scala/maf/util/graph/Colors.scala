@@ -25,4 +25,21 @@ object Colors:
     lazy val darkColors: List[Color] = List(DarkBlue)
     lazy val greyScale: List[Color] = List(Grey, Black, White)
     lazy val palette: List[Color] = softColors ++ brightColors ++ darkColors ++ greyScale // Some nicer ordering of colours.
-    lazy val allColors: List[Color] = List(Green, Yellow, BabyBlue, Grass, Pink, BrightYellow, Blue, SoftGreen, Red, BlueGreen, DullOrange, DarkBlue, Olive, PinkOrange, Grey, Black, White)
+    lazy val allColors: List[Color] = List(Green,
+                                           Yellow,
+                                           BabyBlue,
+                                           Grass,
+                                           Pink,
+                                           BrightYellow,
+                                           Blue,
+                                           SoftGreen,
+                                           Red,
+                                           BlueGreen,
+                                           DullOrange,
+                                           DarkBlue,
+                                           Olive,
+                                           PinkOrange,
+                                           Grey,
+                                           Black,
+                                           White
+    )

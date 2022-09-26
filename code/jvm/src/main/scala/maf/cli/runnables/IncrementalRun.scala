@@ -37,11 +37,15 @@ object IncrementalRun extends App:
         with LIFOWorklistAlgorithm[SchemeExp]
         with IncrementalDataFlowVisualisation[SchemeExp] {
         override def focus(a: Addr): Boolean = a.toString.contains("x@54:20")
-        mode = Mode.Step // Mode.Select
-        stepFocus = 1//13//10//23//119
+        mode = Mode.Coarse // Mode.Step // Mode.Select
+        stepFocus = 1 //13//10//23//119
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
+            new IntraAnalysis(cmp)
+                with IncrementalSchemeModFBigStepIntra
+                with IncrementalGlobalStoreCYIntraAnalysis
+                with IncrementalLoggingIntra
+                with IncrementalVisualIntra
     }
 
     // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
@@ -84,38 +88,46 @@ object IncrementalRun extends App:
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
     val modFbenchmarks: List[String] = List(
-     //  "test/DEBUG1.scm",
-        "test/DEBUG2.scm"
-     // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
+      //  "test/DEBUG1.scm",
+      //    "test/DEBUG2.scm"
+      "test/DEBUG3.scm"
+      //  "test/changes/scheme/generated/R5RS_gambit_earley-4.scm"
+      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
       // "test/changes/scheme/satMiddle.scm",
-       //"test/changes/scheme/satFine.scm",
+      //"test/changes/scheme/satFine.scm",
       //"test/changes/scheme/reinforcingcycles/implicit-paths.scm",
-       //"test/DEBUG3.scm",
+      //"test/DEBUG3.scm",
       // "test/changes/scheme/nbody-processed.scm"
-     // "test/changes/scheme/browse.scm"
+      // "test/changes/scheme/browse.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
 
-        modFbenchmarks.foreach { bench =>
-            try {
-                println(s"***** $bench *****")
-                val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-                val a = new Analysis(text, allOptimisations)
-                println("interp")
-                interpretProgram(bench)
-                println("init")
-                a.analyzeWithTimeout(newTimeout())
-                assert(a.finished)
+    modFbenchmarks.foreach { bench =>
+        try {
+            println(s"***** $bench *****")
+            val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+            val a = new Analysis(text, ci_di_wi)
+            val b = new Analysis(text, ci_wi)
+            println("init")
+            a.analyzeWithTimeout(newTimeout())
+            b.analyzeWithTimeout(newTimeout())
 
-                println("upd")
-                a.updateAnalysis(newTimeout())
+            println("upd")
+            a.updateAnalysis(newTimeout())
+            b.updateAnalysis(newTimeout())
+            checkEqState(a, b)
 
-            } catch {
-                case e: Exception =>
-                    e.printStackTrace(System.out)
-            }
+            // val c = new Analysis(text, ci_di_wi)
+            // c.version = New
+            // c.analyzeWithTimeout(newTimeout())
+            // checkEqState(a, c)
+            // checkEqState(b, c)
+        } catch {
+            case e: Exception =>
+                e.printStackTrace(System.out)
         }
+    }
     println("\n\n**Done**\n\n")
 end IncrementalRun
 
@@ -152,4 +164,4 @@ object IncrementalExtraction extends App:
                 (loop 0))))
   _0)
 
-*/
+ */
