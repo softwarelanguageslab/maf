@@ -351,7 +351,6 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
 
         /* Tracking message sends */
         def trackSend(st: Intra, from: Component, to: Component, tag: String): Intra =
-            println(s"Tracking send $from $to $tag")
             intraLens.modify(intra => intra.copy(sends = intra.sends + (from -> (to, tag))))(st)
 
     }

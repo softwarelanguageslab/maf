@@ -1,5 +1,6 @@
 package maf.language.AScheme
 
+import maf.core.Monad
 import maf.language.scheme.BaseSchemeCompiler
 import maf.language.sexp.*
 import maf.language.scheme.*
@@ -83,6 +84,13 @@ object ASchemeCompiler extends BaseSchemeCompiler:
         case Ident("await") :::: future :::: SNil(_) =>
             tailcall(_compile(future)).map(ASchemeAwait(_, exp.idn))
 
+        case Ident("message/c") :::: Ident(tag) :::: contractArguments :::: ensuresContract :::: SNil(_) =>
+            for
+                `contractArguments′` <- SExpUtils.smapM(contractArguments, ((e: SExp) => tailcall(_compile(e))))
+                `ensuresContract′` <- tailcall(_compile(ensuresContract))
+            yield AContractSchemeMessage(tag, `contractArguments′`, `ensuresContract′`, exp.idn)
+
         case Ident(tag) if actorReserved.contains(tag) =>
             throw new Exception(s"Invalid syntax for $tag at ${exp.idn}")
+
         case _ => super._compile(exp)

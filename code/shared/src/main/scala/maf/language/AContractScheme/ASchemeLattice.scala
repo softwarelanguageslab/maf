@@ -4,9 +4,10 @@ import maf.core.*
 import maf.language.scheme.*
 import maf.language.scheme.lattices.*
 import maf.language.AContractScheme.AContractSchemeValues.*
+import maf.language.AScheme.ASchemeLattice
 
 /** A lattice that includes contract values for the actor language */
-trait AContractSchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
+trait AContractSchemeLattice[L, A <: Address] extends ASchemeLattice[L, A]:
     /** Inject an ensures/c value in the abstract domain */
     def ensuresC(nww: EnsuresC[L]): L
 

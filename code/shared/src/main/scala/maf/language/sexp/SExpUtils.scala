@@ -1,6 +1,8 @@
 package maf.language.sexp
 
 import maf.core.Identity
+import maf.core.Monad
+import maf.core.Monad.*
 
 object SExpUtils:
     object :::: :
@@ -26,6 +28,15 @@ object SExpUtils:
         case SExpPair(car, cdr, _) =>
             f(car) :: smap(cdr, f)
         case snil => List()
+
+    /** Same as smap but executed in a monadic context */
+    def smapM[A, M[_]: Monad](lst: SExp, f: (SExp) => M[A]): M[List[A]] = lst match
+        case SExpPair(car, cdr, _) =>
+            for
+                v <- f(car)
+                r <- smapM(cdr, f)
+            yield (v :: r)
+        case snil => Monad[M].unit(List())
 
     /**
      * Converts the given s-expression to a Scala list.

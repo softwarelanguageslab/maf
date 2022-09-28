@@ -1,6 +1,6 @@
 package maf.language.symbolic.lattices
 
-import maf.language.symbolic.*
+import maf.language.symbolic.{Var => _, *}
 import maf.lattice.interfaces.BoolLattice
 import maf.core.{Lattice, LatticeTopUndefined}
 

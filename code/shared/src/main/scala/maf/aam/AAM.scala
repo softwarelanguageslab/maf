@@ -41,6 +41,10 @@ trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
     protected type Result = Trampoline[Set[State]]
     protected type SingleResult = Trampoline[State]
 
+    // Scala typecheck is not smart enough to derrive the type of the monad in `done`, which is why we
+    // provide a very specific implementation here.
+    def done[T](v: T): Trampoline[T] = Trampoline.done[IdentityMonad.Id, T](v)
+
     /**
      * The type of configuration, in classic AAM w/o otimisations this is equal to the state. In optimized AAM ,various parts of the state that is
      * passed to the `step` function might be removed.

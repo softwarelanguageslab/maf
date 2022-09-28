@@ -337,6 +337,13 @@ trait BaseSchemeMonadicUndefiner:
                 result <- mk(ASchemeActor(parameters, ASchemeSelect(undefinedHandlers, selIdn), idn, name, isMirror))
             yield result
 
+        case AContractSchemeMessage(tag, contracts, ensureContract, idn) =>
+            for
+                `contracts′` <- contracts.mapM(undefineSingle)
+                `ensureContract′` <- undefineSingle(ensureContract)
+                result <- mk(AContractSchemeMessage(tag, `contracts′`, `ensureContract′`, idn))
+            yield result
+
 object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
     import BaseSchemeMonadicUndefiner.*
     import maf.core.Monad.MonadSyntaxOps
