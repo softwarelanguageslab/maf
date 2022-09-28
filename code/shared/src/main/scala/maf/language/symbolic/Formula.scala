@@ -2,6 +2,7 @@ package maf.language.symbolic
 
 import maf.language.scheme.*
 import maf.core.*
+import maf.core.Monad.*
 import maf.core.Position.*
 import maf.core.Monad.MonadSyntaxOps
 import maf.core.Monad.MonadIterableOps
@@ -51,6 +52,84 @@ case object EmptyFormula extends Formula:
     def replace(changes: Map[SchemeExp, SchemeExp]): Formula = EmptyFormula
     def variables: List[String] = List()
 
+/** A non-ground logical variable */
+case class Var(id: Int) extends Formula:
+    /** To use a variable inside a symbolic expression it has to be converted to an actual Scheme variable. */
+    def symbolic: SchemeVar = Symbolic.LogicVar(id)
+    override def toString: String = s"?$id"
+
+    def elements: Set[Formula] = Set(this)
+    def mapOptionM[M[_]: Monad](f: SchemeExp => M[Option[SchemeExp]]): M[Option[Formula]] = Monad[M].unit(Some(this))
+    def splitConj: List[Formula] = List()
+    def splitDisj: List[Formula] = List()
+    def size: Int = 0
+    def replace(changes: Map[SchemeExp, SchemeExp]): Formula = this
+    def variables: List[String] = List()
+
+/** Monad to keep track of symbolic allocation and unifying variables */
+trait SymbolicAllocator[M[_]] extends Monad[M]:
+    /** Allocates a non-ground logical variable that can be unified with other variables */
+    def freshVariable: M[Var]
+
+    /**
+     * Unifies the variable with the given formula
+     *
+     * @param v
+     *   the variable to unify
+     * @param formula
+     *   the formula to unify the variable with.
+     */
+    def unify(v: Var, formula: Formula | SchemeExp): M[Unit]
+
+    /** Retrieve the value of the given unified variable */
+    def value(v: Var): M[Formula | SchemeExp]
+
+    /** Convience value such that the monad operations work */
+    implicit val self: Monad[M] = this
+
+    /** Replace all logical variables with their unifications */
+    def replaceAll(formula: Formula): M[Formula] =
+        def replaceExp(e: SchemeExp): M[SchemeExp] = e match
+            case Symbolic.Funcall(op, ops, idn) =>
+                for
+                    op_ <- replaceExp(op)
+                    ops_ <- ops.mapM(replaceExp(_))
+                yield Symbolic.Funcall(op_, ops_, idn)
+            case v @ Symbolic.Value(_, _) => unit(v)
+            case v @ Symbolic.Var(_)      => unit(v)
+            case v @ Symbolic.LogicVar(id) =>
+                value(Var(id)).map {
+                    case e: SchemeExp => e
+                    case _            => throw new Exception(s"cannot replace an expression with a formula for $v")
+                }
+
+        def replace(part: Formula): M[Formula] = part match
+            case v: Var =>
+                value(v).map {
+                    case f: Formula => f
+                    case _          => throw new Exception(s"cannot replace a formula with an expression for $v")
+                }
+            case Conjunction(es) =>
+                es.mapM(replace).map(_.toSet).map(Conjunction.apply)
+            case Disjunction(es) =>
+                es.mapM(replace).map(_.toSet).map(Disjunction.apply)
+            case Assertion(e) =>
+                replaceExp(e) map Assertion.apply
+            case e => unit(e)
+
+        replace(formula)
+
+/**
+ * The symbolic assertion language is a subset of the actual scheme language.
+ *
+ * It features:
+ *   - Function application
+ *   - Literal values
+ *   - Variables
+ *   - Logical Variables
+ *
+ * It does not feature any special forms such as if, define, ...
+ */
 object Symbolic:
     type Symbolic = SchemeExp
 
@@ -66,6 +145,8 @@ object Symbolic:
         case VarId(s) if s.startsWith("x") => List(s)
         case _                             => List()
 
+    type VarId = SchemeVar
+
     object VarId:
         def apply(id: String): SchemeVar = SchemeVar(Identifier(id, Identity.none))
         def unapply(other: Any): Option[String] =
@@ -73,6 +154,41 @@ object Symbolic:
                 case SchemeVar(Identifier(name, _))       => Some(name)
                 case SchemeVarLex(Identifier(name, _), _) => Some(name)
                 case _                                    => None
+
+    /**
+     * A reference to a particular field of a struct.
+     *
+     * For example: forall m. m.tag = "display" where m.tag is a reference of id `m` and `tag` is the field. In S-expression syntax this would look
+     * like: (ref m tag).
+     */
+    object Ref:
+        def apply(id: String, field: String): SchemeExp =
+            SchemeFuncall(SchemeVar(Identifier("ref", Identity.none)),
+                          List(SchemeVar(Identifier(id, Identity.none)), SchemeVar(Identifier(field, Identity.none))),
+                          Identity.none
+            )
+
+        def unapply(ref: SchemeExp): Option[(String, String)] = ref match
+            case SchemeFuncall(SchemeVar(Identifier("ref", _)), List(SchemeVar(Identifier(id, _)), SchemeVar(Identifier(field, _))), _) =>
+                Some((id, field))
+            case _ => None
+
+    /** Represents a logic variable, for example ?1 */
+    object LogicVar:
+        def apply(id: Int): SchemeVar = SchemeVar(Identifier(s"?$id", Identity.none))
+        def unapply(vrr: SchemeExp): Option[(Int)] = vrr match
+            case SchemeVar(Identifier(nam, _)) if nam.startsWith("?") =>
+                Some(nam.split('?')(1).toInt)
+            case _ => None
+
+    /** A λ-abstraction, which is equivalent to a ∀, or can be instantiated with a specific expression */
+    object Lam:
+        def apply(x: Identifier, bdy: Symbolic): Symbolic =
+            SchemeLambda(None, List(x), List(bdy), None, Identity.none)
+
+        def unapply(lam: Symbolic): Option[(Identifier, Symbolic)] = lam match
+            case SchemeLambda(_, List(x), List(bdy), None, _) => Some((x, bdy))
+            case _                                            => None
 
     object SymbolicCompiler extends BaseSchemeCompiler:
         override def _compile(exp: SExp): TailRec[SchemeExp] = exp match
