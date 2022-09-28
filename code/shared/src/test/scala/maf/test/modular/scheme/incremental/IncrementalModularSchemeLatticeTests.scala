@@ -98,3 +98,7 @@ end IncrementalModularSchemeLatticeTests
 class IncrementalModularSchemeTypeLatticeTests extends IncrementalModularSchemeLatticeTests:
     lazy val wrapper = IncrementalSchemeTypeDomain.modularLattice
 end IncrementalModularSchemeTypeLatticeTests
+
+class IncrementalModularSchemeCPLatticeTests extends IncrementalModularSchemeLatticeTests:
+    lazy val wrapper = IncrementalSchemeConstantPropagationDomain.modularLattice
+end IncrementalModularSchemeCPLatticeTests

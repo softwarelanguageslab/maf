@@ -132,7 +132,8 @@ jobs:
       matrix:
         test_class: [
           IncrementalModXMachineryTests,
-          IncrementalModularSchemeLatticeTests,
+          IncrementalModularSchemeTypeLatticeTests,
+          IncrementalModularSchemeCPLatticeTests,
 
           ModFComparisonTestsWI,
           ModFComparisonTestsCIWI,
