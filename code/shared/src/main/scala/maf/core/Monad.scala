@@ -5,6 +5,8 @@ import maf.util.LogOps
 import maf.util.Logger
 import maf.util.Show
 import maf.core.monad.MonadLift
+import scala.util.control.TailCalls
+import scala.util.control.TailCalls.TailRec
 
 //
 // Monad
@@ -122,6 +124,18 @@ object Monad:
     given idMonadFail[E]: Monad[Id] with MonadError[Id, E] with
         export idMonad.*
         def fail[X](e: E): Id[X] = throw new Exception(e.toString)
+
+    // Compatibility layer to support Tailcall using our monad operations
+    given tailcallMonad: Monad[TailRec] with
+        private type M[X] = TailRec[X]
+        def unit[X](x: X): M[X] =
+            TailCalls.done(x)
+
+        def map[X, Y](m: M[X])(f: X => Y): M[Y] =
+            m.map(f)
+
+        def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] =
+            m.flatMap(f)
 
     /** For any Monad M provides a way to merge a set of such monads into a single monad-wrapped value using the join of the given lattice */
     def merge[X: Lattice, M[_]: Monad](xs: List[M[X]]): M[X] = xs match

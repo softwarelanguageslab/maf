@@ -26,6 +26,7 @@ object Repl:
     | * -i interactive, means that a REPL-like structure will be spawned, but each line in the REPL is ran in an isolated environment
     | * -perf run the analysis in performance measuring mode, only works with "-f".
     | * -t TIMEOUT: run the analysis with the given timeout (in seconds). Defaults to 10.
+    | * -dot  set flag to enable outputting a FILENAME.dot file that contains a visualisation of results of the analysis, only works with "-f"
     """.stripMargin
 
     private val configurationsHelp: Map[String, String] = Map(
@@ -67,6 +68,7 @@ object Repl:
         parser: Option[String] = None,
         interactive: Boolean = false,
         performance: Boolean = false,
+        dot: Boolean = false,
         timeout: Long = 10):
         def isEmpty: Boolean = remaining.isEmpty
         def continue(remaining: List[String]): ArgParser = this.copy(remaining = remaining)
@@ -110,6 +112,9 @@ object Repl:
                 case "-t" :: timeout :: rest =>
                     parse(parser.copy(timeout = timeout.toLong).continue(rest))
 
+                case "-dot" :: rest =>
+                    parse(parser.copy(dot = true).continue(rest))
+
                 case arg =>
                     throw new Exception(s"invalid arguments $arg")
 
@@ -133,7 +138,14 @@ object Repl:
         configurations.get(analysis).getOrElse(throw new Exception(s"$analysis analysis not found"))
 
     /** Method to run the application in file-mode, which reads the file from disk and analyzes it using the configured analysis */
-    private def runFile(filename: String, parser: P, makeAnalysis: A, performance: Boolean, timeout: Long): Unit =
+    private def runFile(
+        filename: String,
+        parser: P,
+        makeAnalysis: A,
+        performance: Boolean,
+        timeout: Long,
+        dot: Boolean
+      ): Unit =
         // Regardless of the performance mode, we parse the file only once.
         val prog = Reader.loadFile(filename)
         val exp = parser.parse(prog)
@@ -144,6 +156,8 @@ object Repl:
             if !performance then
                 anl.printResult
                 println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
+            // Print a dot graph if the dot option has been enabled
+            if dot then anl.toDot(filename.replace("/", "_").nn + ".dot")
             elapsed
 
         val warmUpTimes = 5
@@ -205,10 +219,12 @@ object Repl:
             assert(options.analysis.isDefined, "define an analysis type using the -a argument")
             // ensure that -perf is only used in combination with -f
             assert(if options.performance then options.filename.isDefined else true, "performance measuring mode must be used in file mode")
+            // ensure that "-dot" is combined with "-f"
+            assert(if options.dot then options.filename.isDefined else true, "-dot can only be combined with -f")
             // setup the parser
             val parser = setupParser(options.parser)
             // setup the analysis
             val analysisFactory = setupAnalysis(options.analysis.get)
             // either run the file or the repl
             if options.interactive then runRepl(parser, analysisFactory)
-            else runFile(options.filename.get, parser, analysisFactory, options.performance, options.timeout)
+            else runFile(options.filename.get, parser, analysisFactory, options.performance, options.timeout, options.dot)

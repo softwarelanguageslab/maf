@@ -46,6 +46,10 @@ enum Label:
     case MON // Monitor
     case CHK // Check expression
 
+    // Contract language for actors
+    case MCC // message/c contract
+    case ENS // ensure/c contract
+
     // Racket module system (used in the contract language)
     case PROV // Provide expression
     case PCO // Provide contract-out element

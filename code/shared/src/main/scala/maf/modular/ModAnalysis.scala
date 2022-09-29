@@ -6,6 +6,8 @@ import maf.util.benchmarks.Timeout
 import scala.concurrent.duration._
 
 import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import maf.util.graph.Graph.apply
+import maf.util.graph.DotGraph
 
 // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
 // a dependency represents a part of the global analysis state (such as a location in the global analysis' store)
@@ -37,6 +39,18 @@ trait AnalysisEntry[Exp <: Expression]:
 
     /** Method that defines how to print the result of the analysis */
     def printResult: Unit = println(result)
+
+    /**
+     * Method that renders a Dot graph of the components and the dependencies between them and writes it to a file
+     *
+     * @param filename
+     *   the name of output file
+     * @note
+     *   this operation generates an empty dot graph by default
+     */
+    def toDot(filename: String): Unit =
+        val g = DotGraph.empty
+        g.toFile(filename)
 
 /**
  * Base class of a modular analysis. Specifies the elements (fields, methods, and types) to be provided to instantiate the analysis, and provides some

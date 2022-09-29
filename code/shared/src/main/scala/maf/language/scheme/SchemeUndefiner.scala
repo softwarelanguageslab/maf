@@ -160,6 +160,10 @@ trait UndefinerTester:
             case ASchemeActor(_, ASchemeSelect(handlers, _), _, _, _) =>
                 handlers.values.foldLeft[Result](false) { case (result, (_, bdy)) => result || check(bdy, true) }
 
+            case AContractSchemeMessage(tag, argumentContracts, ensureContract, _) =>
+                // Nothing is allowed to have defines in them
+                argumentContracts.foldLeft[Result](false) { case (result, contract) => check(contract, false) } || check(ensureContract, false)
+
             case _ =>
                 //false
                 throw new Exception(s"unrecongized expression $s")

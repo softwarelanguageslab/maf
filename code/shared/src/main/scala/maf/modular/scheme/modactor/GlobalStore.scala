@@ -1,5 +1,6 @@
 package maf.modular.scheme.modactor
 
+import maf.util.graph.*
 import maf.core.monad.*
 import monocle.syntax.all.*
 import maf.modular.scheme.modflocal.EffectsMC
@@ -49,22 +50,39 @@ import maf.lattice.HMap
 import monocle.PLens
 import monocle.macros.GenIso
 import monocle.Iso
+import maf.util.graph.GraphElement
 
 class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Value](using lattice: SchemeLattice[Value, Address]):
     case class IntraState(
+        /** Keep track of the component that is currently being analysed */
         self: Component,
+        /** Keep track of the set of writes that the intra-analysis has discovered */
         writes: Set[Dependency] = Set(),
+        /** Keep track of the set of reads that the intra-analysis has discovered */
         reads: Set[Dependency] = Set(),
+        /** Keep track of the set of components that have been called */
         calls: Set[Component] = Set(),
+        /** Keep track of the mailbox for each actor */
         mailboxes: Map[Component, Mailbox] = Map(),
+        /** Keep track of the set of spawned actors */
         actors: Set[Component] = Set(),
+        /** Keep track of the set of behaviors that a specific actor can have */
         behaviors: Map[Component, Set[Behavior]] = Map(),
+        /** Keep track of the sends. Represented by a mapping from sender to (receiver, tag) */
+        sends: Set[(Component, (Component, String))] = Set(),
+        /** Keep track of the global store */
         sto: Map[Address, Value] = Map())
 
     case class InterState(
+        /** Set of mailboxes */
         mailboxes: Map[Component, Mailbox] = Map(),
+        /** Set of spawned actors */
         actors: Set[Component] = Set(),
+        /* Mapping from components to the set of behaviors */
         behaviors: Map[Component, Set[Behavior]] = Map(),
+        /** Keep track of the message sends */
+        sends: Set[(Component, (Component, String))] = Set(),
+        /** Global store */
         sto: Map[Address, Value])
 
     /** Sync the intra state with the current inter state */
@@ -84,10 +102,14 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
                 mailboxes + (cmp -> mailboxInter.merge(mailbox).asInstanceOf[Mailbox])
             }
 
-        inter.copy(sto = sto,
-                   mailboxes = newMailboxes,
-                   behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
-                   actors = inter.actors ++ intra.actors
+        val newSends = intra.sends ++ inter.sends
+
+        inter.copy(
+          sto = sto,
+          mailboxes = newMailboxes,
+          behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
+          actors = inter.actors ++ intra.actors,
+          sends = newSends
         )
 
 trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox, PowersetMailboxAnalysis, ASchemeConstantPropagationDomain:
@@ -201,6 +223,31 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         println(s"Number of spawned actors ${interLens.get(_result.nn).actors.size}")
         println(s"Number of message sends ${interLens.get(_result.nn).mailboxes.values.map(_.messages.size).sum}")
 
+    /** Render the message sends between components as a dot graph */
+    override def toDot(filename: String): Unit =
+        case class ComponentGraphElement(label: String) extends GraphElement:
+            def color = Colors.White
+            def metadata = GraphMetadataNone
+
+        case class MessageSendEdge(label: String) extends GraphElement:
+            def color = Colors.Black
+            def metadata = GraphMetadataNone
+
+        val G = new DotGraph[GraphElement, GraphElement]().G.typeclass
+        val g = G.empty
+        val sends = interLens.get(_result.nn).sends
+        val outputGraph = sends.foldLeft(g) {
+            case (g, (from, (to, tag))) => {
+                val fromN = ComponentGraphElement(from.toString)
+                val toN = ComponentGraphElement(to.toString)
+                val edge = MessageSendEdge(tag)
+
+                G.addEdge(g, fromN, edge, toN)
+            }
+        }
+        println(s"Got sends $sends")
+        outputGraph.toFile(filename)
+
     //////////////////////////////////////////////////
     // ModAnalysis
     //////////////////////////////////////////////////
@@ -301,6 +348,11 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         /** access to a field called "self" */
         def getSelfCmp(s: Intra): Component =
             intraLens.get(s).self
+
+        /* Tracking message sends */
+        def trackSend(st: Intra, from: Component, to: Component, tag: String): Intra =
+            intraLens.modify(intra => intra.copy(sends = intra.sends + (from -> (to, tag))))(st)
+
     }
 
     protected val monadInstance: StateOps[Intra, A] = MonadStateT.stateInstance[Intra, Reader]

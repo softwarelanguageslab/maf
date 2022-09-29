@@ -163,6 +163,9 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
         def getBehaviors(st: S): Map[Component, Set[Behavior]]
         def behaviors = (putBehaviors, getBehaviors)
 
+        /* Tracking message sends */
+        def trackSend(st: S, from: Component, to: Component, tag: String): S
+
     implicit override val analysisM: ModularAnalysisM
 
     /** A monad that supports mondular analysis semantics needs to have a notion of "effects" */
@@ -255,12 +258,17 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
             val receiver = actorIdComponent(to.tid)
             // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
             //
-            (get.map(
-              lens.modify(lens.mailboxes)(mbs =>
-                  mbs + (receiver ->
-                      mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
-              )
-            ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) })
+            for
+                _ <- get.map(
+                  lens.modify(lens.mailboxes)(mbs =>
+                      mbs + (receiver ->
+                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
+                  )
+                ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) }
+                self <- selfCmp
+                // Track the message send
+                _ <- get.map(st => lens.trackSend(st, self, receiver, getMessageTag(m))) >>= put
+            yield ()
 
         def ask(to: ActorRef, m: Msg): A[Value] =
             for

@@ -698,6 +698,20 @@ case class ContractSchemeContractOut(
     def label: Label = PCO
     def subexpressions: List[Expression] = List(contract)
 
+///////////////////////////////////////////////////////
+// Contracts for actors
+///////////////////////////////////////////////////////
+
+/* Syntax for message/c based contracts */
+case class AContractSchemeMessage(tag: String, argumentContracts: List[SchemeExp], ensureContract: SchemeExp, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = (argumentContracts.flatMap(_.fv) ++ ensureContract.fv).toSet
+    def label: Label = MCC
+    def subexpressions: List[Expression] = ensureContract :: argumentContracts
+
+///////////////////////////////////////////////////////
+// Racket Utilities
+///////////////////////////////////////////////////////
+
 abstract class MakeStruct extends ContractSchemeExp:
     def fv: Set[String] = Set()
     def subexpressions: List[Expression] = List()
