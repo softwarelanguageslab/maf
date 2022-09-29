@@ -1,6 +1,7 @@
 package maf.language.symbolic
 
 import maf.language.scheme.*
+import maf.language.sexp.{Value => SValue}
 import maf.core.*
 import maf.core.Monad.*
 import maf.core.Position.*
@@ -66,10 +67,17 @@ case class Var(id: Int) extends Formula:
     def replace(changes: Map[SchemeExp, SchemeExp]): Formula = this
     def variables: List[String] = List()
 
+trait SymbolicStoreM[M[_]] extends Monad[M]:
+    def lookup(adr: Address): M[Symbolic.Symbolic]
+    def store(adr: Address, s: Symbolic.Symbolic): M[Unit]
+
 /** Monad to keep track of symbolic allocation and unifying variables */
 trait SymbolicAllocator[M[_]] extends Monad[M]:
     /** Allocates a non-ground logical variable that can be unified with other variables */
     def freshVariable: M[Var]
+
+    /** Creates a universally quantified variable */
+    def fresh: M[Symbolic.Var]
 
     /**
      * Unifies the variable with the given formula
@@ -138,6 +146,11 @@ object Symbolic:
 
     export maf.language.scheme.{SchemeFuncall => Funcall, SchemeValue => Value, SchemeVar => Var}
 
+    // Some extensions methods making building symbolic expressions easier
+    extension (s: Symbolic)
+        def ===(other: Symbolic): Symbolic =
+            Funcall(VarId("="), List(s, other), Identity.none)
+
     /** Returns a set of symbolic variables (eg. identifiers starting with x) in the given symbolic expression. */
     def variables(sym: Symbolic): List[String] = sym match
         case Funcall(fexp, fargs, _) =>
@@ -162,11 +175,8 @@ object Symbolic:
      * like: (ref m tag).
      */
     object Ref:
-        def apply(id: String, field: String): SchemeExp =
-            SchemeFuncall(SchemeVar(Identifier("ref", Identity.none)),
-                          List(SchemeVar(Identifier(id, Identity.none)), SchemeVar(Identifier(field, Identity.none))),
-                          Identity.none
-            )
+        def apply(id: SchemeVar, field: String): SchemeExp =
+            SchemeFuncall(SchemeVar(Identifier("ref", Identity.none)), List(id, SchemeVar(Identifier(field, Identity.none))), Identity.none)
 
         def unapply(ref: SchemeExp): Option[(String, String)] = ref match
             case SchemeFuncall(SchemeVar(Identifier("ref", _)), List(SchemeVar(Identifier(id, _)), SchemeVar(Identifier(field, _))), _) =>
@@ -189,6 +199,18 @@ object Symbolic:
         def unapply(lam: Symbolic): Option[(Identifier, Symbolic)] = lam match
             case SchemeLambda(_, List(x), List(bdy), None, _) => Some((x, bdy))
             case _                                            => None
+
+    object Lit:
+        /** Convience method such that literals can be created using Lit */
+        def apply(s: Any): Symbolic = SchemeValue(
+          (s match
+              case s: String  => SValue.String(s)
+              case i: Integer => SValue.Integer(BigInt(i))
+              case r: Double  => SValue.Real(r)
+              case b: Boolean => SValue.Boolean(b)
+          ),
+          Identity.none
+        )
 
     object SymbolicCompiler extends BaseSchemeCompiler:
         override def _compile(exp: SExp): TailRec[SchemeExp] = exp match
