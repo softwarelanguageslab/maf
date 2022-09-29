@@ -12,6 +12,7 @@ import maf.util.benchmarks.Timeout
 import maf.language.AScheme.ASchemeParser
 import maf.util.benchmarks.Timer
 import maf.util.benchmarks.Statistics
+import maf.cli.experiments.aam.AAMAnalyses
 
 object Repl:
     val about: String = """
@@ -32,6 +33,7 @@ object Repl:
     private val configurationsHelp: Map[String, String] = Map(
       "modfFS" -> "Flow sensitive ModF",
       "modf" -> "Normal ModF Analysis",
+      "aam" -> "AAM-style analysis",
       "ci" -> "context-insensitive analysis",
       "actor" -> "default analysis for actors",
       "mirror" -> "actor analysis with mirrors"
@@ -43,6 +45,7 @@ object Repl:
     )
 
     private val configurations: Map[String, (SchemeExp) => AnalysisEntry[SchemeExp]] = Map(
+      "aam" -> AAMAnalyses.aamBase,
       "modf" -> SchemeAnalyses.contextInsensitiveAnalysis,
       "modfFS" -> SchemeAnalyses.modFFlowSensitive,
       "ci" -> SchemeAnalyses.contextInsensitiveAnalysis,
@@ -154,6 +157,7 @@ object Repl:
             val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
             // Do not print results if we are in perfomance testing mode
             if !performance then
+                if !anl.finished then println("Analysis timed out")
                 anl.printResult
                 println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
             // Print a dot graph if the dot option has been enabled

@@ -142,6 +142,8 @@ trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
     /** Reduces a state to a configuration */
     protected def asConf(state: State, sys: System): Conf
 
+    private var _result: Option[AnalysisResult[Any, Val, Conf]] = None
+
     /** Analyze the given expression and return the set of (non-invalid) state */
     def analyze[G](
         expr: Expr,
@@ -151,7 +153,8 @@ trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
       ): AnalysisResult[G, Val, Conf] =
         val s0 = inject(expr)
         val (sys, graph1) = fix(timeout)(s0, graph)
-        AnalysisResult(graph1, sys.finalStates.flatMap(extractValue(_)), sys.allConfs)
+        _result = Some(AnalysisResult(graph1, sys.finalStates.flatMap(extractValue(_)), sys.allConfs))
+        _result.get.asInstanceOf[AnalysisResult[G, Val, Conf]]
 
     def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf]
 
