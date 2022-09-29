@@ -252,30 +252,36 @@ object ConstantPropagation:
             def random(n: R): R = n match
                 case Constant(_) => Top
                 case _           => n
-            def log(n: R): R = n match
-                case Constant(x) => Constant(scala.math.log(x))
-                case _           => n
+            def log(n: R): R = n match // Todo: use MayFail here or support imaginary numbers.
+                case Constant(x) if 0 <= x => Constant(scala.math.log(x))
+                case Top         => Top
+                case _           => Bottom
             def sin(n: R): R = n match
                 case Constant(x) => Constant(scala.math.sin(x))
                 case _           => n
-            def asin(n: R): R = n match
-                case Constant(x) => Constant(scala.math.asin(x))
-                case _           => n
+            def asin(n: R): R = n match // TODO: use MayFail here for when x out of bounds
+                case Constant(x) if -1 <= x && x <= 1 => Constant(scala.math.asin(x))
+                case Top         => Top
+                case _           => Bottom
             def cos(n: R): R = n match
                 case Constant(x) => Constant(scala.math.cos(x))
                 case _           => n
-            def acos(n: R): R = n match
-                case Constant(x) => Constant(scala.math.acos(x))
-                case _           => n
-            def tan(n: R): R = n match
-                case Constant(x) => Constant(scala.math.tan(x))
+            def acos(n: R): R = n match // TODO: use MayFail here for when x out of bounds
+                case Constant(x) if -1 <= x && x <= 1 => Constant(scala.math.acos(x))
+                case Top         => Top
+                case _           => Bottom
+            def tan(n: R): R = n match // TODO: use MayFail here for when x out of bounds
+                case Constant(x) => scala.math.tan(x) match
+                    case Double.NaN => Bottom
+                    case n          => Constant(n)
                 case _           => n
             def atan(n: R): R = n match
                 case Constant(x) => Constant(scala.math.atan(x))
                 case _           => n
-            def sqrt(n: R): R = n match
-                case Constant(x) => Constant(scala.math.sqrt(x))
-                case _           => n
+            def sqrt(n: R): R = n match // Todo: use MayFail here or support imaginary numbers.
+                case Constant(x) if 0 <= x => Constant(scala.math.sqrt(x))
+                case Top         => Top
+                case _           => Bottom
             private def binop(
                 op: (Double, Double) => Double,
                 n1: R,
