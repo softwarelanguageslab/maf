@@ -151,6 +151,10 @@ object Symbolic:
         def ===(other: Symbolic): Symbolic =
             Funcall(VarId("="), List(s, other), Identity.none)
 
+        /** Convience method to model application in the symbolic language */
+        def apply(args: Symbolic*): Symbolic =
+            Funcall(s, args.toList, Identity.none)
+
     /** Returns a set of symbolic variables (eg. identifiers starting with x) in the given symbolic expression. */
     def variables(sym: Symbolic): List[String] = sym match
         case Funcall(fexp, fargs, _) =>

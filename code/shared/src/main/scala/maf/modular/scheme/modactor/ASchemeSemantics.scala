@@ -71,6 +71,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             }
 
         def send(to: ActorRef, m: Msg): M[Unit]
+        def send_(to: ActorRef)(m: Msg): M[Unit] = send(to, m)
 
         /** Same as sends but "blocks" until an answer has been received */
         def ask(to: ActorRef, m: Msg): M[Value]
