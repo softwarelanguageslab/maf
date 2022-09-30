@@ -154,11 +154,11 @@ trait MonadStack[M[_]: Monad] extends ASchemeSemantics:
 
     private val monadInst: StateOps[State, A] = MonadStateT.stateInstance[State, Reader]
 
-    given m: ActorAnalysisM[A] with
-        export monadInst.*
+//@given m: ActorAnalysisM[A] with
+//@    export monadInst.*
 
-    override val analysisM: ActorAnalysisM[A] = m
+//@override val analysisM: ActorAnalysisM[A] = m
 
 /** Then we can implement a large part of the AnalysisM and ActorAnalysisM monads */
 
-class SimpleASchemeSymbolicSemantics extends ASchemeSymbolicSemantics, ASchemeConstantPropagationDomain, MonadStack[Set]
+//class SimpleASchemeSymbolicSemantics extends ASchemeSymbolicSemantics, ASchemeConstantPropagationDomain, MonadStack[Set]
