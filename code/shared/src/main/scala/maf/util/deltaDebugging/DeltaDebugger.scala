@@ -1,4 +1,4 @@
-package maf.util.DeltaDebugging
+package maf.util.deltaDebugging
 
 abstract class DeltaDebugger[C <: Change, T <: TestCase[C]]
 (factory: List[C] => T, test: T => Boolean) {

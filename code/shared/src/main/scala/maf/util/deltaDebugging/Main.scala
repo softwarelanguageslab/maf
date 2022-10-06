@@ -1,4 +1,4 @@
-package maf.util.DeltaDebugging
+package maf.util.deltaDebugging
 
 object Main {
     case class ListChange(s: String, id: Int = ListChange.newID()) extends Change
