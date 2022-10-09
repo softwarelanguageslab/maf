@@ -1,4 +1,4 @@
-package maf.util.deltaDebugging
+package dd
 
 abstract class TestCase[+C <: Change](val changes: List[C])
 
