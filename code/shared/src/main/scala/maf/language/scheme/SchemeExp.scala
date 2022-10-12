@@ -12,6 +12,11 @@ import maf.util.Show
 sealed trait SchemeExp extends Expression:
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
+    def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      if this == subExpression then
+        replacement
+      else replaceLower(subExpression, replacement)
+    def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
 
 object SchemeExp:
     given Show[SchemeExp] with
@@ -75,6 +80,8 @@ case class SchemeLambda(
         val b = body.mkString(" ")
         s"(lambda ($a) $b)"
     def varArgId: Option[Identifier] = None
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeLambda(name, args, body.map(_.replace(subExpression, replacement)), annotation, idn)
     override def prettyString(indent: Int): String =
         s"(lambda (${args.mkString(" ")})\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
@@ -93,6 +100,8 @@ case class SchemeVarArgLambda(
         val b = body.mkString(" ")
         s"(lambda $a $b)"
     def varArgId: Option[Identifier] = Some(vararg)
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeVarArgLambda(name, args, vararg, body.map(_.replace(subExpression, replacement)), annotation, idn)
     override def prettyString(indent: Int): String =
         val a =
             if args.isEmpty then vararg.toString
@@ -114,6 +123,10 @@ case class SchemeFuncall(
     override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
     val label: Label = FNC
     def subexpressions: List[Expression] = f :: args
+
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeFuncall(f.replace(subExpression, replacement), args.map(a => a.replace(subExpression, replacement)), idn)
+
     override def prettyString(indent: Int): String =
         if this.toString.length < 100 then this.toString
         else
@@ -134,6 +147,13 @@ case class SchemeIf(
     override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
+
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeIf(cond.replace(subExpression, replacement),
+                    cons.replace(subExpression, replacement),
+                    alt.replace(subExpression, replacement),
+                    idn)
+
     override def prettyString(indent: Int): String =
         if this.toString.size < 50 then this.toString
         else
@@ -170,6 +190,10 @@ case class SchemeLet(
         s"(let ($bi) $bo)"
     def fv: Set[String] =
         bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
+
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeLet(bindings.map(b => (b._1, b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
+
     val label: Label = LET
     def letName: String = "let"
 
@@ -191,6 +215,8 @@ case class SchemeLetStar(
                 }
             )
             ._2 ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeLetStar(bindings.map(b => (b._1 , b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
     val label: Label = LTS
     def letName: String = "let*"
 
@@ -210,6 +236,8 @@ case class SchemeLetrec(
             .toSet
     val label: Label = LTR
     def letName: String = "letrec"
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeLetrec(bindings.map(b => (b._1, b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
     if bindings.size > bindings.map(_._1.name).toSet.size then
         throw new Exception(
           s"Illegal letrec: duplicate definitions (${idn.pos}): ${bindings.map(_._1.name).groupBy(name => name).view.mapValues(_.size).toList.filter(_._2 > 1).sorted.map(p => s"${p._1} (${p._2})").mkString("{", ", ", "}")}."
@@ -247,6 +275,8 @@ case class SchemeSet(
     idn: Identity)
     extends SchemeSetExp:
     override def toString: String = s"(set! $variable $value)"
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeSet(variable, value.replace(subExpression, replacement), idn)
 
 case class SchemeSetLex(
     variable: Identifier,
@@ -254,6 +284,8 @@ case class SchemeSetLex(
     value: SchemeExp,
     idn: Identity)
     extends SchemeSetExp:
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeSetLex(variable, lexAddr, value.replace(subExpression, replacement), idn)
     override def toString = s"(set! $variable $value)"
 
 /** A begin clause: (begin body...) */
@@ -265,6 +297,8 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
     override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
     val label: Label = BEG
     def subexpressions: List[Expression] = exps
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeBegin(exps.map(e => e.replace(subExpression, replacement)), idn)
     override def prettyString(indent: Int): String =
         s"(begin\n${exps.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
@@ -388,6 +422,9 @@ case class SchemeDefineVariable(
     override val height: Int = 1 + value.height
     val label: Label = DFV
     def subexpressions: List[Expression] = List(name, value)
+
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeDefineVariable(name, value.replace(subExpression, replacement), idn)
     override def prettyString(indent: Int): String = s"(define $name ${value.prettyString(nextIndent(indent))})"
 
 /** Function definition of the form (define (f arg ...) body) */
@@ -474,9 +511,13 @@ sealed trait SchemeVarExp extends SchemeExp:
     def subexpressions: List[Expression] = List(id)
 
 case class SchemeVar(id: Identifier) extends SchemeVarExp:
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeVar(id)
     override def toString: String = id.name
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeVarLex(id, lexAddr)
     override def toString: String = id.name
 
 object SchemePair:
@@ -494,6 +535,9 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     override val height: Int = 1
     val label: Label = VAL
     def subexpressions: List[Expression] = List()
+
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeValue(value, idn)
     override lazy val hash: Int = (label, value).hashCode()
 
 /** An assertion (assert <exp>) */
@@ -501,6 +545,8 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
     override def toString: String = s"(assert $exp)"
     def fv: Set[String] = exp.fv
     val label: Label = ASS
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeAssert(exp, idn)
     def subexpressions: List[Expression] = List(exp)
 
 /** Creates explicit (mutable) reference */
