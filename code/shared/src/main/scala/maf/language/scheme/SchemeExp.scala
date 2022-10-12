@@ -13,7 +13,7 @@ sealed trait SchemeExp extends Expression:
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
     def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
-      if this == subExpression then
+      if this eq subExpression then
         replacement
       else replaceLower(subExpression, replacement)
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
