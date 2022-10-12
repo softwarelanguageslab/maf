@@ -1,4 +1,4 @@
-package dd
+package TurgutThesis.dd
 
 object Main {
     case class ListChange(s: String, id: Int = ListChange.newID()) extends Change

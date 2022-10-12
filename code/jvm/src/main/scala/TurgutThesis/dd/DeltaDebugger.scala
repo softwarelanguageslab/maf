@@ -1,4 +1,4 @@
-package dd
+package TurgutThesis.dd
 
 abstract class DeltaDebugger[C <: Change, T <: TestCase[C]]
 (factory: List[C] => T, test: T => Boolean) {
