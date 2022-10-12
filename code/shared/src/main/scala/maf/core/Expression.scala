@@ -1,5 +1,8 @@
 package maf.core
 
+import maf.language.change.ChangeExp
+import maf.language.scheme.SchemeExp
+import maf.language.sexp.SExp
 import maf.util.SmartHash
 
 /** An expression */
@@ -29,6 +32,24 @@ trait Expression extends SmartHash:
             subExpressions = sub ::: subExpressions
             toExplore = sub
         subExpressions
+
+    def size: Int = allSubexpressions.size
+
+    def levelNodes(level: Int): List[Expression] = {
+        if level == 0 then
+            List(this)
+        else
+            var depth = 0
+            var res: List[Expression] = List()
+            var toExplore = this.subexpressions
+            while toExplore.nonEmpty do
+                depth += 1
+                var sub = toExplore.flatMap(_.subexpressions)
+                if depth == level then
+                    res = sub
+                toExplore = sub
+            res
+    }
 
     /**
      * Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses.
