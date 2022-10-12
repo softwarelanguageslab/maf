@@ -10,13 +10,28 @@ import maf.util.Show
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
-    def prettyString(indent: Int = 0): String = toString()
-    def nextIndent(current: Int): Int = current + 3
+    def levelNodes(level: Int): List[SchemeExp] = {
+      if level == 0 then
+        List(this)
+      else
+        var depth = 0
+        var res: List[SchemeExp] = List()
+        var toExplore = this.subexpressions
+        while toExplore.nonEmpty do
+          depth += 1
+          var sub = toExplore.flatMap(_.subexpressions)
+          if depth == level then
+            res = sub.collect { case s: SchemeExp => s }
+          toExplore = sub
+        res
+    }
     def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       if this eq subExpression then
         replacement
       else replaceLower(subExpression, replacement)
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
+    def prettyString(indent: Int = 0): String = toString()
+    def nextIndent(current: Int): Int = current + 3
 
 object SchemeExp:
     given Show[SchemeExp] with
