@@ -9,14 +9,12 @@ object TaintLattice:
      *
      *      May Be Tainted
      *            |
-     *         Tainted
      *            |
      *        Untainted
      *
-    */
+     */
     sealed trait TL
     case object Untainted extends TL
-    case object Tainted extends TL
     case object MayBeTainted extends TL
 
     class TaintLattice extends Lattice[TL]:
@@ -24,27 +22,20 @@ object TaintLattice:
         override def isBottom(x: TL): Boolean = x == Untainted
         val top: TL = MayBeTainted
 
-        def join(x: TL, y: => TL): TL = (x, y) match {
-            case (Untainted, _) => y
-            case (_, Untainted) => x
-            case (MayBeTainted, _) => x
-            case (_, MayBeTainted) => y
-            case (Tainted, Tainted) => x
-            case _ => MayBeTainted
+        def join(x: TL, y: => TL): TL = x match {
+            case Untainted => y
+            case _ => x
         }
 
         def subsumes(x: TL, y: => TL): Boolean = x match {
             case MayBeTainted => true
-            case Tainted => y != MayBeTainted
             case _ => y == Untainted
         }
 
         // TODO: check implementation
         def eql[B: BoolLattice](x: TL, y: TL): B = (x, y) match {
             case (Untainted, Untainted) => BoolLattice[B].inject(true)
-            case (Tainted, Tainted) => BoolLattice[B].inject(true)
-            case (MayBeTainted, _) => BoolLattice[B].top
-            case (_, MayBeTainted) => BoolLattice[B].top
+            case (MayBeTainted, MayBeTainted) => BoolLattice[B].top
             case _ => BoolLattice[B].inject(false)
         }
 
