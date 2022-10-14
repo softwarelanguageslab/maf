@@ -815,3 +815,26 @@ case class SymbolicVar(nam: String, adr: maf.core.Address) extends SchemeExp:
     def fv: Set[String] = Set()
     def subexpressions: List[Expression] = List()
     def label = SVR
+
+
+//
+// For taint analysis
+//
+
+case class SchemeSource(vr: SchemeVar, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = vr.id.toString
+    def label: Label = Label.SRC
+    def subexpressions: List[Expression] = List(vr)
+    override val height: Int = Math.max(vr.height) + 1
+
+case class SchemeSink(vr: SchemeVar, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = vr.id.toString
+    def label: Label = Label.SNK
+    def subexpressions: List[Expression] = List(vr)
+    override val height: Int = Math.max(vr.height) + 1
+
+case class SchemeSanitizer(vr: SchemeVar, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = vr.id.toString
+    def label: Label = Label.SAN
+    def subexpressions: List[Expression] = List(vr)
+    override val height: Int = Math.max(vr.height) + 1
