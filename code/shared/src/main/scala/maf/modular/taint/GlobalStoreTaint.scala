@@ -1,4 +1,4 @@
-package maf.modular.df
+package maf.modular.taint
 
 import maf.core.Expression
 import maf.language.change.CodeVersion.*
@@ -14,7 +14,7 @@ import maf.util.graph.Tarjan
 
 import scala.collection.immutable.*
 
-trait GlobalStoreDF[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr]:
+trait GlobalStoreTaint[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr]:
     inter =>
 
     /** The implicit flows cover flows that are formed implicitly, i.e., through conditional branching. */
@@ -24,13 +24,13 @@ trait GlobalStoreDF[Expr <: Expression] extends ModAnalysis[Expr] with GlobalSto
      * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
      *
      * @note
-     *   The data is separated by components, so it can be reset upon the reanalysis of a component.
+     *   The data is NOT separated by components, it does not need to be reset upon the reanalysis of a component.
      * @note
      *   We could also store it as R ~> Set[W], but the current approach seems slightly easier (doesn't require a foreach over the set `reads`).
      */
-    var dataFlowR: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+    var dataFlowR: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set()) // changed: not separated by cmp (as it is not incremental)
 
-    trait GlobalStoreDFIntra extends IntraAnalysis with GlobalStoreIntra:
+    trait GlobalStoreTaintIntra extends IntraAnalysis with GlobalStoreIntra:
         intra =>
 
         /** Map of address dependencies W ~> Set[R]. */
@@ -39,7 +39,6 @@ trait GlobalStoreDF[Expr <: Expression] extends ModAnalysis[Expr] with GlobalSto
 
         override def readAddr(addr: Addr): Value =
             lattice.addAddress(super.readAddr(addr), addr)
-            super.readAddr(addr)
 
         override def writeAddr(addr: Addr, value: Value): Boolean =
             // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
@@ -51,9 +50,11 @@ trait GlobalStoreDF[Expr <: Expression] extends ModAnalysis[Expr] with GlobalSto
 
         override def commit(): Unit =
             super.commit()
-            dataFlowR += (component -> dataFlow)
+            dataFlow.foreach { case (a, as) =>
+                dataFlowR += (a -> (dataFlowR(a) ++ as))
+            }
 
-    end GlobalStoreDFIntra
+    end GlobalStoreTaintIntra
 
     override def configString(): String = super.configString() + s"\n  with CY capabilities"
-end GlobalStoreDF
+end GlobalStoreTaint

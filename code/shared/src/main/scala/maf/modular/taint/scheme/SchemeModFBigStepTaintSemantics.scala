@@ -1,11 +1,11 @@
-package maf.modular.df.scheme
+package maf.modular.taint.scheme
 
 import maf.core.IdentityMonad
 import maf.language.change.CodeVersion.*
 import maf.core.*
 import maf.language.scheme.*
 import maf.language.sexp
-import maf.modular.df.*
+import maf.modular.taint.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
@@ -13,11 +13,43 @@ import maf.util.benchmarks.Timeout
 import maf.modular.*
 
 /** Implements big-step semantics for a Scheme DF analysis. * */
-trait SchemeModFBigStepDFSemantics extends ModAnalysis[SchemeExp] with BigStepModFSemantics with IncrementalSchemeDomain with GlobalStoreDF[SchemeExp]:
+trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigStepModFSemantics with IncrementalSchemeDomain with GlobalStoreTaint[SchemeExp]:
 
     override def warn(msg: String): Unit = ()
 
-    trait SchemeModFBigStepDFIntra extends IntraAnalysis with BigStepModFIntra with GlobalStoreDFIntra:
+    var badFlows: Set[(Addr, Addr)] = Set()
+
+    trait SchemeModFBigStepTaintIntra extends IntraAnalysis with BigStepModFIntra with GlobalStoreTaintIntra:
+
+        override def eval(exp: SchemeExp): TEvalM.EvalM[Value] = exp match
+            case SchemeSource(name, _) =>
+                // Like evalVariable, but adds a source tag.
+                //val a = SrcAddr(name)
+                //evalVariable(name).map(v => { write(a, v); read(a) }) // Store threading is needed for sanitizers to be able to stop the trace. TODO is it?
+                evalVariable(name).map(v => lattice.addAddress(v, SrcAddr(name)))
+            case SchemeSanitizer(name, _) =>
+                val a = SanAddr(name)
+                evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) })
+                //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
+            case SchemeSink(name, _) =>
+                evalVariable(name).map(v => {traceDataFlow(lattice.getAddresses(v)); v})
+            case _ => super.eval(exp)
+
+        def traceDataFlow(addr: Set[Addr]): Unit =
+            var work: Set[Addr] = addr
+            while work.nonEmpty do
+                val first = work.head
+                work = work - first
+                val prev: Set[Addr] = dataFlowR(first)
+                val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
+                if src.nonEmpty
+                then
+                    // A harmful flow was found.
+                    src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
+                prev.foreach { p =>
+                  if !p.isInstanceOf[SanAddr[_]]
+                  then work += p
+                }
 
         /**
          * Evaluation of a conditional that handles implicit value flows.
@@ -47,6 +79,6 @@ trait SchemeModFBigStepDFSemantics extends ModAnalysis[SchemeExp] with BigStepMo
         else super.evalLiteralValue(literal, exp)
      */
 
-    override def intraAnalysis(cmp: Component): SchemeModFBigStepDFIntra
+    override def intraAnalysis(cmp: Component): SchemeModFBigStepTaintIntra with GlobalStoreTaintIntra
 
     override def configString(): String = super.configString() + "\n  applying incremental big-step ModF Scheme semantics"

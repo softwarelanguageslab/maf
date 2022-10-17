@@ -821,20 +821,20 @@ case class SymbolicVar(nam: String, adr: maf.core.Address) extends SchemeExp:
 // For taint analysis
 //
 
-case class SchemeSource(vr: SchemeVar, idn: Identity) extends SchemeExp:
-    def fv: Set[String] = vr.id.toString
+case class SchemeSource(name: Identifier, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = Set(name.toString)
     def label: Label = Label.SRC
-    def subexpressions: List[Expression] = List(vr)
-    override val height: Int = Math.max(vr.height) + 1
+    def subexpressions: List[Expression] = List(name)
+    override val height: Int = name.height + 1
 
-case class SchemeSink(vr: SchemeVar, idn: Identity) extends SchemeExp:
-    def fv: Set[String] = vr.id.toString
+case class SchemeSink(name: Identifier, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = Set(name.toString)
     def label: Label = Label.SNK
-    def subexpressions: List[Expression] = List(vr)
-    override val height: Int = Math.max(vr.height) + 1
+    def subexpressions: List[Expression] = List(name)
+    override val height: Int = name.height + 1
 
-case class SchemeSanitizer(vr: SchemeVar, idn: Identity) extends SchemeExp:
-    def fv: Set[String] = vr.id.toString
+case class SchemeSanitizer(name: Identifier, idn: Identity) extends SchemeExp:
+    def fv: Set[String] = Set(name.toString)
     def label: Label = Label.SAN
-    def subexpressions: List[Expression] = List(vr)
-    override val height: Int = Math.max(vr.height) + 1
+    def subexpressions: List[Expression] = List(name)
+    override val height: Int = name.height + 1
