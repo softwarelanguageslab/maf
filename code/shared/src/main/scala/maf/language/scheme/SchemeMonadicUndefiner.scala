@@ -238,8 +238,8 @@ trait BaseSchemeMonadicUndefiner:
                 _ <- bind(name, undefinedExp)
             yield List()
 
-        // variables and valus do not contain any subexpressions
-        case _: SchemeVar | _: SchemeVarLex | _: SchemeValue => mk(exps)
+        // variables and valus do not contain any subexpressions, neither do sources, sanitizers and sinks
+        case _: SchemeVar | _: SchemeVarLex | _: SchemeValue | _: SchemeSource | _: SchemeSanitizer | _: SchemeSink => mk(exps)
 
         case SchemeAssert(exp, idn) =>
             undefineSingle(exp) flatMap (exp => mk(SchemeAssert(exp, idn)))

@@ -4,6 +4,7 @@ import maf.cli.experiments.SchemeAnalyses
 import maf.core.{Identifier, Monad}
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.*
+import maf.language.taint.TaintSchemeParser
 import maf.modular.*
 import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain
@@ -22,7 +23,7 @@ import scala.language.unsafeNulls
 
 object AnalyzeProgram extends App:
     def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: SchemeExp => A, timeout: () => Timeout.T): A =
-        val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+        val text = TaintSchemeParser.parseProgram(Reader.loadFile(bench))
         val a = analysis(text)
         print(s"Analysis of $bench ")
         try {
@@ -94,8 +95,5 @@ object AnalyzeProgram extends App:
         // for(i <- 1 to 10) {
         //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
         val a = runAnalysis(b, program => taintAnalysis(program), () => Timeout.start(Duration(10, MINUTES)))
-        a.badFlows.foreach(println)
-        println("--")
-        a.dataFlowR.foreach(println)
-        //  }
+        println(a.taintResult())
     })

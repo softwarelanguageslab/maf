@@ -19,6 +19,11 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
 
     var badFlows: Set[(Addr, Addr)] = Set()
 
+    def taintResult(): String =
+        if badFlows.isEmpty
+        then "No bad flows found."
+        else "Some source values may reach sinks:" + badFlows.map(f => s"${f._1} => ${f._2}").mkString("\n", "\n", "\n")
+
     trait SchemeModFBigStepTaintIntra extends IntraAnalysis with BigStepModFIntra with GlobalStoreTaintIntra:
 
         override def eval(exp: SchemeExp): TEvalM.EvalM[Value] = exp match
