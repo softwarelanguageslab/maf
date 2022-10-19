@@ -7,3 +7,21 @@
 (define x-ss (sanitize x-s))
 (define z2 (+ x-ss y))
 (define z2-s (sink z2))
+
+(define fun-select-base 1)
+(define fun-select (source fun-select-base))
+(define target 0)
+(define (f) (set! target #t))
+(define (g) (set! target "false"))
+((list-ref (list f g) fun-select))
+(sink target)
+
+(define crit #t)
+(define password-visible (source crit))
+(define password "foo")
+(define (display-password)
+  (if password-visible
+    (let ((result (display password)))
+      (sink result))
+    (display "not allowed")))
+(display-password)
