@@ -1,4 +1,4 @@
-package TurgutThesis.gtr
+package maf.TurgutsThesis.gtr
 
 import maf.language.scheme.{SchemeBegin, SchemeExp, SchemeFuncall, SchemeLambda, SchemeLet}
 
@@ -34,4 +34,3 @@ def deleteChild(node: SchemeExp): List[SchemeExp] =
         res = res.::(SchemeBegin(exps.take(i) ++ exps.drop(i + 1), idn))
       res
     case _ => List()
-  

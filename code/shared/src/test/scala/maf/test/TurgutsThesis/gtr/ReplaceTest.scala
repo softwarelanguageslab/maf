@@ -1,4 +1,4 @@
-package TurgutThesis.gtr
+package maf.test.TurgutsThesis.gtr
 
 import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeIf, SchemeParser, SchemeValue}
 import maf.core.NoCodeIdentity

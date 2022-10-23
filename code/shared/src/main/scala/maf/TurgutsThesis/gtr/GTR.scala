@@ -1,4 +1,4 @@
-package TurgutThesis.gtr
+package maf.TurgutsThesis.gtr
 
 import maf.language.scheme.SchemeExp
 import maf.core.Expression
