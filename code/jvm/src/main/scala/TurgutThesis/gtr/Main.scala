@@ -5,14 +5,18 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 
 object Main {
   def main(args: Array[String]): Unit = {
-    val t: SchemeFuncall = SchemeParser.parseProgramText("(* (if 10 5 3) (/ 10 2))").head.asInstanceOf[SchemeFuncall]
-    println(t)
-    val operator: SchemeExp = t.f
-    println(operator)
-    val newTree = t.replace(operator, SchemeBegin(List(operator, operator), NoCodeIdentity))
-    println(newTree)
+    val programText: String =
+      "(begin " +
+        "(if (= x 5) #t #f)" +
+        "(begin (+ x 2) (* 100 100) (if #f #f #f)))"
 
-    val reduced = GTR.reduce(t, sexp => sexp.isInstanceOf[SchemeIf], List(substituteByChild))
+    val t = SchemeParser.parseProgramText(programText).last
+
+    println(t)
+    val reduced = GTR.reduce(t,
+      t => t.isInstanceOf[SchemeBegin] && t.asInstanceOf[SchemeBegin].exps.length == 1,
+      List(substituteByChild, deleteChild))
+
     println(reduced)
   }
 }

@@ -14,16 +14,7 @@ sealed trait SchemeExp extends Expression:
       if level == 0 then
         List(this)
       else
-        var depth = 0
-        var res: List[SchemeExp] = List()
-        var toExplore = this.subexpressions
-        while toExplore.nonEmpty do
-          depth += 1
-          var sub = toExplore.flatMap(_.subexpressions)
-          if depth == level then
-            res = sub.collect { case s: SchemeExp => s }
-          toExplore = sub
-        res
+        this.subexpressions.collect { case s: SchemeExp => s }.flatMap(s => s. levelNodes (level - 1))
     }
     def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       if this eq subExpression then
