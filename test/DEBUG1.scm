@@ -25,3 +25,7 @@
       (sink result))
     (display "not allowed")))
 (display-password)
+
+(define a #t)
+(define (set-a) (set! a #f))
+(if a (set-a))

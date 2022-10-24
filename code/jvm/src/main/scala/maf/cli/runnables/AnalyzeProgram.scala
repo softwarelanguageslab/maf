@@ -94,6 +94,7 @@ object AnalyzeProgram extends App:
     bench.foreach({ b =>
         // for(i <- 1 to 10) {
         //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
-        val a = runAnalysis(b, program => taintAnalysis(program), () => Timeout.start(Duration(10, MINUTES)))
+        val a = runAnalysis(b, program => taintAnalysis(program), () => Timeout.start(Duration(1, MINUTES)))
+        println(a.finished)
         println(a.taintResult())
     })
