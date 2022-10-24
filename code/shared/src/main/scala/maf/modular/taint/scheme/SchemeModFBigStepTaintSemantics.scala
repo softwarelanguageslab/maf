@@ -42,19 +42,23 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
 
         def traceDataFlow(addr: Set[Addr]): Unit =
             var work: Set[Addr] = addr
+            var visited: Set[Addr] = Set()
             while work.nonEmpty do
                 val first = work.head
                 work = work - first
-                val prev: Set[Addr] = dataFlowR(first)
-                val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
-                if src.nonEmpty
+                if !visited.contains(first)
                 then
-                    // A harmful flow was found.
-                    src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
-                prev.foreach { p =>
-                  if !p.isInstanceOf[SanAddr[_]]
-                  then work += p
-                }
+                    visited = visited + first
+                    val prev: Set[Addr] = dataFlowR(first)
+                    val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
+                    if src.nonEmpty
+                    then
+                        // A harmful flow was found.
+                        src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
+                    prev.foreach { p =>
+                      if !p.isInstanceOf[SanAddr[_]]
+                      then work += p
+                    }
 
         /**
          * Evaluation of a conditional that handles implicit value flows.
