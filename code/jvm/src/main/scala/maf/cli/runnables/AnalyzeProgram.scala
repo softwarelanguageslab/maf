@@ -43,7 +43,7 @@ object AnalyzeProgram extends App:
         a
 
     val bench: List[String] = List(
-      "test/DEBUG1.scm"
+      "test/taint/tainted-function-select.scm"
     )
 
     // Used by webviz.
@@ -95,6 +95,9 @@ object AnalyzeProgram extends App:
         // for(i <- 1 to 10) {
         //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
         val a = runAnalysis(b, program => taintAnalysis(program), () => Timeout.start(Duration(1, MINUTES)))
-        println(a.finished)
         println(a.taintResult())
+        println(a.program.prettyString())
+        a.dataFlowR.foreach(println)
+        println()
+        a.implicitFlows.foreach(println)
     })
