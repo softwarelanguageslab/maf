@@ -1,11 +1,6 @@
-package maf.TurgutsThesis.gtr
+package maf.TurgutsThesis.gtr.transformations
 
 import maf.language.scheme.{SchemeBegin, SchemeExp, SchemeFuncall, SchemeLambda, SchemeLet}
-
-def substituteByChild(node: SchemeExp): List[SchemeExp] =
-  node.subexpressions.collect {
-    case s: SchemeExp => s
-  }
 
 def deleteChild(node: SchemeExp): List[SchemeExp] =
   var res: List[SchemeExp] = List()
@@ -13,8 +8,9 @@ def deleteChild(node: SchemeExp): List[SchemeExp] =
     case SchemeLambda(name, args, body, annotation, idn) =>
       for(i <- args.indices)
         res = res.::(SchemeLambda(name, args.take(i) ++ args.drop(i + 1), body, annotation, idn))
-      for(i <- body.indices)
-        res = res.::(SchemeLambda(name, args, body.take(i) ++ body.drop(i + 1), annotation, idn))
+        if body.length > 1 then
+          for (i <- body.indices)
+            res = res.::(SchemeLambda(name, args, body.take(i) ++ body.drop(i + 1), annotation, idn))
       res
     case SchemeFuncall(f, args, idn) =>
       if args.nonEmpty then

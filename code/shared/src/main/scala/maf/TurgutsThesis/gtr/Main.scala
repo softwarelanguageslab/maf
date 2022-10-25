@@ -1,5 +1,6 @@
 package maf.TurgutsThesis.gtr
 
+import maf.TurgutsThesis.gtr.transformations.{substituteByChild, deleteChild}
 import maf.core.NoCodeIdentity
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLetrec, SchemeLettishExp, SchemeParser, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 

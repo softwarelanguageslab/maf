@@ -6,14 +6,17 @@ import maf.core.Expression
 import scala.annotation.tailrec
 
 object GTR:
-  def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, templates: List[SchemeExp => List[SchemeExp]]): SchemeExp =
+  @tailrec
+  def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[SchemeExp => List[SchemeExp]]): SchemeExp =
     var reducedTree: SchemeExp = tree
     for(lvl <- 0 to reducedTree.height)
-      for(template <- templates)
+      for(template <- transformations)
         reducedTree = reduceLevelNodes(reducedTree, reducedTree.levelNodes(lvl), oracle, template)
-    reducedTree
+    if tree.size == reducedTree.size then
+      reducedTree
+    else reduce(reducedTree, oracle, transformations)
 
-  private def reduceLevelNodes(tree: SchemeExp, lvlNodes: List[SchemeExp], oracle: SchemeExp => Boolean, template: SchemeExp => List[SchemeExp]): SchemeExp =
+  private def reduceLevelNodes(tree: SchemeExp, lvlNodes: List[SchemeExp], oracle: SchemeExp => Boolean, transformation: SchemeExp => List[SchemeExp]): SchemeExp =
     var reducedTree: SchemeExp = tree
     var conf: Map[SchemeExp, SchemeExp] = Map()
     for(node <- lvlNodes)
@@ -24,7 +27,7 @@ object GTR:
       var improvementFound = false
       for(node <- lvlNodes)
         var currentReplacement = conf(node)
-        for(candidateReplacement <- template(node))
+        for(candidateReplacement <- transformation(node))
           if candidateReplacement.size < currentReplacement.size then
             val newTree = reducedTree.replace(currentReplacement, candidateReplacement)
             if oracle(newTree) then
