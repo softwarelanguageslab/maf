@@ -3,6 +3,7 @@ package maf.modular.taint.scheme
 import maf.core.IdentityMonad
 import maf.language.change.CodeVersion.*
 import maf.core.*
+import maf.core.Position.Position
 import maf.language.scheme.*
 import maf.language.sexp
 import maf.modular.taint.*
@@ -11,6 +12,7 @@ import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
 import maf.util.benchmarks.Timeout
 import maf.modular.*
+import maf.modular.scheme.modf.SchemeModFComponent.Call
 
 /** Implements big-step semantics for a Scheme DF analysis. * */
 trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigStepModFSemantics with IncrementalSchemeDomain with GlobalStoreTaint[SchemeExp]:
@@ -73,20 +75,57 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
                 adr = implicitFlows.flatten.toSet
                 resVal <- cond(prdVal, eval(csq), eval(alt))
                 _ = { implicitFlows = implicitFlows.tail }
-            // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
+                // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
             yield lattice.addAddresses(resVal, adr)
 
-    /*
-    /** Evaluation of a literal value that adds a "literal address" as source. */
-    override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] =
-        // sorry for the Monad, Jens...
-        if configuration.cyclicValueInvalidation then
-            val a = LitAddr(exp)
-            for value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking.
-            // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
-            yield value
-        else super.evalLiteralValue(literal, exp)
-     */
+        override protected def applyClosuresM(
+                                        fun: Value,
+                                        args: List[(SchemeExp, Value)],
+                                        cll: Position,
+                                        ctx: ContextBuilder = DefaultContextBuilder,
+                                    ): M[Value] =
+            val arity = args.length
+            val closures = lattice.getClosures(fun)
+            val explicitFlows = lattice.getAddresses(fun) // Added
+            MonadJoin[M].mfoldMap(closures)((clo) =>
+                (clo match {
+                    case (SchemeLambda(_, prs, _, _, _), _) =>
+                        if prs.length == arity then
+                            val argVals = args.map(_._2)
+                            for
+                                context <- ctx.allocM(clo, argVals, cll, component)
+                                targetCall = Call(clo, context)
+                                targetCmp <- newComponentM(targetCall)
+                                _ = bindArgs(targetCmp, prs, argVals)
+                                _ <- ctx.beforeCall(targetCmp, prs, clo)
+                                result = call(targetCmp)
+                                updatedResult <- afterCall(result, targetCmp, cll)
+                            yield
+                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
+                                updatedResult
+                        else baseEvalM.fail(ArityError(cll, prs.length, arity))
+                    case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
+                        if prs.length <= arity then
+                            val (fixedArgs, varArgs) = args.splitAt(prs.length)
+                            val fixedArgVals = fixedArgs.map(_._2)
+
+                            for
+                                varArgVal <- allocateList(varArgs)
+                                context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
+                                targetCall = Call(clo, context)
+                                targetCmp <- newComponentM(targetCall)
+                                _ = bindArgs(targetCmp, prs, fixedArgVals)
+                                _ = bindArg(targetCmp, vararg, varArgVal)
+                                _ <- ctx.beforeCall(targetCmp, prs, clo)
+                                result = call(targetCmp)
+                                updatedResult <- afterCall(result, targetCmp, cll)
+                            yield
+                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
+                                updatedResult
+                        else baseEvalM.fail(VarArityError(cll, prs.length, arity))
+                    case _ => Monad[M].unit(lattice.bottom)
+                })
+            )
 
     override def intraAnalysis(cmp: Component): SchemeModFBigStepTaintIntra with GlobalStoreTaintIntra
 

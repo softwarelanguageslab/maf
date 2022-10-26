@@ -281,14 +281,14 @@ trait BaseSchemeModFSemanticsM
         protected def append(appendExp: SchemeExp)(l1: (SchemeExp, Value), l2: (SchemeExp, Value)): Value =
             //TODO [difficult]: implement append
             throw new Exception("NYI -- append")
-        private def bindArg(
+        protected def bindArg(
             component: Component,
             par: Identifier,
             arg: Value
           ): Unit =
             writeAddr(allocVar(par, component), arg)
 
-        private def bindArgs(
+        protected def bindArgs(
             component: Component,
             pars: List[Identifier],
             args: List[Value]
