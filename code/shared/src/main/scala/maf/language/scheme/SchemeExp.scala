@@ -10,12 +10,12 @@ import maf.util.Show
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
-    def levelNodes(level: Int): List[SchemeExp] = {
+    def levelNodes(level: Int): List[SchemeExp] =
       if level == 0 then
         List(this)
       else
         this.subexpressions.collect { case s: SchemeExp => s }.flatMap(s => s. levelNodes (level - 1))
-    }
+    def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp = ???
     def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       if this eq subExpression then
         replacement
@@ -86,6 +86,9 @@ case class SchemeLambda(
         val b = body.mkString(" ")
         s"(lambda ($a) $b)"
     def varArgId: Option[Identifier] = None
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeLambda(name, args, body.filterNot(fnc).map(_.deleteChildren(fnc)), annotation, idn)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLambda(name, args, body.map(_.replace(subExpression, replacement)), annotation, idn)
     override def prettyString(indent: Int): String =
@@ -106,6 +109,9 @@ case class SchemeVarArgLambda(
         val b = body.mkString(" ")
         s"(lambda $a $b)"
     def varArgId: Option[Identifier] = Some(vararg)
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeVarArgLambda(name, args, vararg, body.filterNot(fnc).map(_.deleteChildren(fnc)), annotation, idn)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(_.replace(subExpression, replacement)), annotation, idn)
     override def prettyString(indent: Int): String =
@@ -129,6 +135,11 @@ case class SchemeFuncall(
     override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
     val label: Label = FNC
     def subexpressions: List[Expression] = f :: args
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      if fnc(f) && args.nonEmpty then
+        //We assume that there must be an argument that can now become the func operator
+        SchemeFuncall(args.find(a => !fnc(a)).get, args.filterNot(fnc).tail.map(_.deleteChildren(fnc)), idn)
+      else SchemeFuncall(f, args.filterNot(fnc).map(_.deleteChildren(fnc)), idn)
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeFuncall(f.replace(subExpression, replacement), args.map(a => a.replace(subExpression, replacement)), idn)
@@ -153,6 +164,13 @@ case class SchemeIf(
     override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeIf(
+        cond.deleteChildren(fnc),
+        cons.deleteChildren(fnc),
+        alt.deleteChildren(fnc),
+        idn
+      )
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeIf(cond.replace(subExpression, replacement),
@@ -197,6 +215,13 @@ case class SchemeLet(
     def fv: Set[String] =
         bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
 
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeLet(
+        bindings.filterNot(binding => fnc(binding._2)).map(binding => (binding._1, binding._2.deleteChildren(fnc))),
+        body.filterNot(fnc).map(_.deleteChildren(fnc)),
+        idn
+      )
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLet(bindings.map(b => (b._1, b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
 
@@ -221,6 +246,14 @@ case class SchemeLetStar(
                 }
             )
             ._2 ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
+
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeLetStar(
+        bindings.filterNot(binding => fnc(binding._2)).map(binding => (binding._1, binding._2.deleteChildren(fnc))),
+        body.filterNot(fnc).map(_.deleteChildren(fnc)),
+        idn
+      )
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLetStar(bindings.map(b => (b._1 , b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
     val label: Label = LTS
@@ -242,6 +275,14 @@ case class SchemeLetrec(
             .toSet
     val label: Label = LTR
     def letName: String = "letrec"
+
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeLetrec(
+        bindings.filterNot(binding => fnc(binding._2)).map(binding => (binding._1, binding._2.deleteChildren(fnc))),
+        body.filterNot(fnc).map(_.deleteChildren(fnc)),
+        idn
+      )
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLetrec(bindings.map(b => (b._1, b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
     if bindings.size > bindings.map(_._1.name).toSet.size then
@@ -281,6 +322,10 @@ case class SchemeSet(
     idn: Identity)
     extends SchemeSetExp:
     override def toString: String = s"(set! $variable $value)"
+
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeSet(variable, value.deleteChildren(fnc), idn)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeSet(variable, value.replace(subExpression, replacement), idn)
 
@@ -290,6 +335,10 @@ case class SchemeSetLex(
     value: SchemeExp,
     idn: Identity)
     extends SchemeSetExp:
+
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeSetLex(variable, lexAddr, value.deleteChildren(fnc), idn)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeSetLex(variable, lexAddr, value.replace(subExpression, replacement), idn)
     override def toString = s"(set! $variable $value)"
@@ -303,6 +352,10 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
     override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
     val label: Label = BEG
     def subexpressions: List[Expression] = exps
+
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeBegin(exps.filterNot(fnc).map(_.deleteChildren(fnc)), idn)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeBegin(exps.map(e => e.replace(subExpression, replacement)), idn)
     override def prettyString(indent: Int): String =
@@ -429,6 +482,9 @@ case class SchemeDefineVariable(
     val label: Label = DFV
     def subexpressions: List[Expression] = List(name, value)
 
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeDefineVariable(name, value.deleteChildren(fnc), idn)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeDefineVariable(name, value.replace(subExpression, replacement), idn)
     override def prettyString(indent: Int): String = s"(define $name ${value.prettyString(nextIndent(indent))})"
@@ -517,11 +573,16 @@ sealed trait SchemeVarExp extends SchemeExp:
     def subexpressions: List[Expression] = List(id)
 
 case class SchemeVar(id: Identifier) extends SchemeVarExp:
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeVar(id)
+
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVar(id)
     override def toString: String = id.name
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeVarLex(id, lexAddr)
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVarLex(id, lexAddr)
     override def toString: String = id.name
@@ -542,6 +603,8 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     val label: Label = VAL
     def subexpressions: List[Expression] = List()
 
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeValue(value, idn)
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeValue(value, idn)
     override lazy val hash: Int = (label, value).hashCode()
@@ -551,6 +614,9 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
     override def toString: String = s"(assert $exp)"
     def fv: Set[String] = exp.fv
     val label: Label = ASS
+
+    override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
+      SchemeAssert(exp.deleteChildren(fnc), idn)
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeAssert(exp, idn)
     def subexpressions: List[Expression] = List(exp)

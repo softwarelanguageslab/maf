@@ -1,9 +1,9 @@
 package maf.test.TurgutsThesis.gtr
 
-import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeIf, SchemeParser, SchemeValue}
 import maf.core.NoCodeIdentity
-import org.scalatest.flatspec.AnyFlatSpec
+import maf.language.scheme.*
 import maf.language.sexp.Value.Real
+import org.scalatest.flatspec.AnyFlatSpec
 
 class ReplaceTest extends AnyFlatSpec {
   "A schemeExp" should "be able to replace a subexpression by a replacement, and replace it back" in {

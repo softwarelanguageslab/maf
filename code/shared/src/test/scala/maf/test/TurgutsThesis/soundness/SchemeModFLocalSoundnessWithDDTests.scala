@@ -1,11 +1,12 @@
-package maf.test.TurgutsThesis.gtr
+package maf.test.TurgutsThesis.soundness
 
 import maf.core.Position
-import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.language.scheme.primitives.SchemePrelude
+import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAdaptiveWideningPolicyB, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.test.TurgutsThesis.soundness.{SchemeModFLocalSoundnessTests, SchemeSoundnessWithDeltaDebuggingTests}
 import maf.test.VariousSequentialBenchmarks
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:

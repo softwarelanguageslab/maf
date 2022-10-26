@@ -1,7 +1,7 @@
-package maf.test.TurgutsThesis.gtr
+package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.GTR
-import maf.TurgutsThesis.gtr.transformations.{substituteByChild, deleteChild}
+import maf.TurgutsThesis.gtr.transformations.{deleteChild, substituteByChild}
 import maf.core.Identity
 import maf.language.CScheme.*
 import maf.language.scheme.*
@@ -84,6 +84,7 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
             "ORIGINAL PROGRAM: \n" +
             program.size + "\n" +
             "REDUCED PROGRAM: \n" +
-            reduced.size
+            reduced.size + "\n" +
+            reduced
           )
       }
