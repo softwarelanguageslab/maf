@@ -100,4 +100,6 @@ object AnalyzeProgram extends App:
         a.dataFlowR.foreach(println)
         println()
         a.implicitFlows.foreach(println)
+        println()
+        a.implicitFlowsCut.foreach({case (c, as) => as.foreach(a => println(s"$c $a"))})
     })
