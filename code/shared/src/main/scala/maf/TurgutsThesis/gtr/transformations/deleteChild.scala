@@ -14,32 +14,13 @@ def deleteChildLettishExp(lettishExp: SchemeLettishExp,
     res = res.::(factoryMethod(bindings, body.take(i) ++ body.drop(i + 1), idn))
 
   for (i <- bindings.indices)
-    def deleteFnc(exp: SchemeExp): Boolean =
-      exp match
-        case exp: SchemeLambdaExp =>
-          exp.body.forall(deleteFnc)
-        case SchemeFuncall(f, args, idn) =>
-          deleteFnc(f) && args.forall(deleteFnc)
-        case SchemeIf(cond, cons, alt, idn) =>
-          deleteFnc(cond) &&
-            deleteFnc(cons) &&
-            deleteFnc(alt)
-        case exp: SchemeLettishExp =>
-          exp.body.forall(deleteFnc)
-        case exp: SchemeSetExp =>
-          deleteFnc(exp.value)
-        case SchemeBegin(exps, idn) =>
-          exps.forall(deleteFnc)
-        case SchemeDefineVariable(name, value, idn) =>
-          deleteFnc(value)
-        case exp: SchemeVarExp =>
-          exp.id eql bindings(i)._1
-        case SchemeAssert(exp, idn) =>
-          deleteFnc(exp)
-        case _ => false
+    val id = bindings(i)._1
+    val tpl = lettishExp.dropIdentifier(id)
+    val referencesShallowDropped = tpl._1
+    val referencesDeepDropped = tpl._2
 
-    val bindingAndReferencesDropped = factoryMethod(bindings.take(i) ++ bindings.drop(i + 1), body, idn).deleteChildren(deleteFnc)
-    res = res.::(bindingAndReferencesDropped)
+    res = res.::(referencesShallowDropped)
+    res = res.::(referencesDeepDropped)
 
   res
 }
