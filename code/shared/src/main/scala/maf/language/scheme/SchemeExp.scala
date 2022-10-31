@@ -25,7 +25,17 @@ sealed trait SchemeExp extends Expression:
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
-
+    def parent(subExp: SchemeExp): Option[SchemeExp] =
+      val subSchemeExps = subexpressions.collect({
+        case s: SchemeExp => s
+      })
+      if subSchemeExps.isEmpty then
+        None
+      else if subSchemeExps.contains(subExp) then
+        Some(this)
+      else subSchemeExps.find(subExp => {
+        subExp.parent(subExp).nonEmpty
+      })
 
 object SchemeExp:
     given Show[SchemeExp] with
@@ -69,13 +79,15 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     def lambdaName: String = name.getOrElse(s"λ@${idn.pos}")
     // free variables
     lazy val fv: Set[String] = SchemeBody.fv(body) -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
-    // height
+
+  // height
     override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
     def annotation: Option[(String, String)]
     def label: Label = LAM
     def subexpressions: List[Expression] = args ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
     override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
+
 
 case class SchemeLambda(
     name: Option[String],
@@ -102,6 +114,31 @@ case class SchemeLambda(
       if remainingBody.nonEmpty then
         Some(SchemeLambda(name, args, remainingBody, annotation, idn))
       else None
+
+    def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
+      val argDropped = SchemeLambda(name, args.filterNot(arg => arg equals id), body, annotation, idn)
+
+      val referencesShallowDropped = SchemeLambda(
+        argDropped.name,
+        argDropped.args,
+        argDropped.body.map(_.shallowDeleteIdentifier(id)).collect({
+          case Some(exp) => exp
+        }),
+        annotation,
+        idn
+      )
+
+      val referencesDeepDropped = SchemeLambda(
+        argDropped.name,
+        argDropped.args,
+        argDropped.body.map(_.deepDeleteIdentifier(id)).collect({
+          case Some(exp) => exp
+        }),
+        annotation,
+        idn
+      )
+
+      (referencesShallowDropped, referencesDeepDropped) //2 different ways of dropping an identifier exist: shallow or deep
 
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeLambda(name, args, body.filterNot(fnc).map(_.deleteChildren(fnc)), annotation, idn)
@@ -139,6 +176,33 @@ case class SchemeVarArgLambda(
       if remainingBody.nonEmpty then
         Some(SchemeVarArgLambda(name, args, vararg, remainingBody, annotation, idn))
       else None
+
+    def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
+      val argDropped = SchemeVarArgLambda(name, args.filterNot(arg => arg equals id), vararg, body, annotation, idn)
+
+      val referencesShallowDropped = SchemeVarArgLambda(
+        argDropped.name,
+        argDropped.args,
+        argDropped.vararg,
+        argDropped.body.map(_.shallowDeleteIdentifier(id)).collect({
+          case Some(exp) => exp
+        }),
+        annotation,
+        idn
+      )
+
+      val referencesDeepDropped = SchemeVarArgLambda(
+        argDropped.name,
+        argDropped.args,
+        argDropped.vararg,
+        argDropped.body.map(_.deepDeleteIdentifier(id)).collect({
+          case Some(exp) => exp
+        }),
+        annotation,
+        idn
+      )
+
+      (referencesShallowDropped, referencesDeepDropped) //2 different ways of dropping an identifier exist: shallow or deep
 
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.filterNot(fnc).map(_.deleteChildren(fnc)), annotation, idn)

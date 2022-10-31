@@ -85,6 +85,6 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
             program.size + "\n" +
             "REDUCED PROGRAM: \n" +
             reduced.size + "\n" +
-            reduced
+            reduced.prettyString()
           )
       }
