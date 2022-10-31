@@ -15,20 +15,72 @@ import maf.modular.*
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 
 /** Implements big-step semantics for a Scheme DF analysis. * */
-trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigStepModFSemantics with IncrementalSchemeDomain with GlobalStoreTaint[SchemeExp]:
+trait SchemeModFBigStepTaintSemantics
+    extends ModAnalysis[SchemeExp]
+    with BigStepModFSemanticsT
+    with IncrementalSchemeDomain
+    with GlobalStoreTaint[SchemeExp]:
+
+    type EvalM[X] = TaintEvalM[X]
+    implicit val evalM: TEvalM[EvalM] = new MonadTaintEvalM {}
+
+    case class TaintEvalM[+X](run: (List[Set[Addr]], Environment[Address]) => Option[X]):
+        def flatMap[Y](f: X => TaintEvalM[Y]): TaintEvalM[Y] =
+            TaintEvalM((implicitFlows, env) => run(implicitFlows, env).flatMap(res => f(res).run(implicitFlows, env)))
+        def map[Y](f: X => Y): TaintEvalM[Y] = TaintEvalM((imF, env) => run(imF, env).map(f))
+
+        def fail[X](e: Error): EvalM[X] =
+            throw new Exception(e.toString)
+
+    trait MonadTaintEvalM extends TEvalM[TaintEvalM]:
+        def map[X, Y](m: TaintEvalM[X])(f: X => Y): TaintEvalM[Y] = m.map(f)
+        def flatMap[X, Y](m: TaintEvalM[X])(f: X => TaintEvalM[Y]): TaintEvalM[Y] = m.flatMap(f)
+        def unit[X](x: X): TaintEvalM[X] = TaintEvalM((_, _) => Some(x))
+        def mzero[X]: TaintEvalM[X] = TaintEvalM((_, _) => None)
+        //def guard(cnd: Boolean): TaintEvalM[Unit] = if cnd then TaintEvalM(_ => Some(())) else mzero
+        // TODO: Scala probably already has something for this?
+        implicit class MonadicOps[X](xs: Iterable[X]):
+            def foldLeftM[Y](y: Y)(f: (Y, X) => TaintEvalM[Y]): TaintEvalM[Y] = xs match
+                case Nil     => unit(y)
+                case x :: xs => f(y, x).flatMap(acc => xs.foldLeftM(acc)(f))
+            def mapM[Y](f: X => TaintEvalM[Y]): TaintEvalM[List[Y]] = xs match
+                case Nil => unit(Nil)
+                case x :: xs =>
+                    for
+                        fx <- f(x)
+                        rest <- xs.mapM(f)
+                    yield fx :: rest
+            def mapM_(f: X => TaintEvalM[Unit]): TaintEvalM[Unit] = xs match
+                case Nil     => unit(())
+                case x :: xs => f(x).flatMap(_ => xs.mapM_(f))
+        def getEnv: TaintEvalM[Environment[Address]] = TaintEvalM((_, env) => Some(env))
+        // TODO: withExtendedEnv would make more sense
+        def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => TaintEvalM[X]): TaintEvalM[X] =
+            TaintEvalM((imF, env) => ev.run(imF, f(env)))
+        def merge[X: Lattice](x: TaintEvalM[X], y: TaintEvalM[X]): TaintEvalM[X] = TaintEvalM { (imF, env) =>
+            (x.run(imF, env), y.run(imF, env)) match
+                case (None, yres)             => yres
+                case (xres, None)             => xres
+                case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
+        }
+
+        def fail[X](e: Error): TaintEvalM[X] =
+            throw new Exception(e.toString)
 
     override def warn(msg: String): Unit = ()
 
     var badFlows: Set[(Addr, Addr)] = Set()
 
     def taintResult(): String =
-        if badFlows.isEmpty
-        then "No bad flows found."
+        if badFlows.isEmpty then "No bad flows found."
         else "Some source values may reach sinks:" + badFlows.map(f => s"${f._1} => ${f._2}").mkString("\n", "\n", "\n")
 
-    trait SchemeModFBigStepTaintIntra extends IntraAnalysis with BigStepModFIntra with GlobalStoreTaintIntra:
+    trait SchemeModFBigStepTaintIntra extends IntraAnalysis with BigStepModFIntraT with GlobalStoreTaintIntra:
+        // analysis entry point
+        def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
+            eval(fnBody).run(List(), fnEnv).foreach(res => writeResult(res))
 
-        override def eval(exp: SchemeExp): TEvalM.EvalM[Value] = exp match
+        override def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeSource(name, _) =>
                 // Like evalVariable, but adds a source tag.
                 //val a = SrcAddr(name)
@@ -37,9 +89,9 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
             case SchemeSanitizer(name, _) =>
                 val a = SanAddr(name, context(component))
                 evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) })
-                //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
+            //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
             case SchemeSink(name, _) =>
-                evalVariable(name).map(v => {traceDataFlow(lattice.getAddresses(v)); v})
+                evalVariable(name).map(v => { traceDataFlow(lattice.getAddresses(v)); v })
             case _ => super.eval(exp)
 
         def traceDataFlow(addr: Set[Addr]): Unit =
@@ -48,18 +100,15 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
             while work.nonEmpty do
                 val first = work.head
                 work = work - first
-                if !visited.contains(first)
-                then
+                if !visited.contains(first) then
                     visited = visited + first
                     val prev: Set[Addr] = dataFlowR(first)
                     val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
-                    if src.nonEmpty
-                    then
+                    if src.nonEmpty then
                         // A harmful flow was found.
                         src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
                     prev.foreach { p =>
-                      if !p.isInstanceOf[SanAddr[_]]
-                      then work += p
+                        if !p.isInstanceOf[SanAddr[_]] then work += p
                     }
 
         /**
@@ -75,15 +124,15 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
                 adr = implicitFlows.flatten.toSet
                 resVal <- cond(prdVal, eval(csq), eval(alt))
                 _ = { implicitFlows = implicitFlows.tail }
-                // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
+            // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
             yield lattice.addAddresses(resVal, adr)
 
         override protected def applyClosuresM(
-                                        fun: Value,
-                                        args: List[(SchemeExp, Value)],
-                                        cll: Position,
-                                        ctx: ContextBuilder = DefaultContextBuilder,
-                                    ): M[Value] =
+            fun: Value,
+            args: List[(SchemeExp, Value)],
+            cll: Position,
+            ctx: ContextBuilder = DefaultContextBuilder,
+          ): M[Value] =
             val arity = args.length
             val closures = lattice.getClosures(fun)
             val explicitFlows = lattice.getAddresses(fun) // Added
@@ -101,7 +150,9 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
-                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
+                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp,
+                                                                                                                Set()
+                                ) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
                                 updatedResult
                         else baseEvalM.fail(ArityError(cll, prs.length, arity))
                     case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
@@ -120,7 +171,9 @@ trait SchemeModFBigStepTaintSemantics extends ModAnalysis[SchemeExp] with BigSte
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
-                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
+                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp,
+                                                                                                                Set()
+                                ) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
                                 updatedResult
                         else baseEvalM.fail(VarArityError(cll, prs.length, arity))
                     case _ => Monad[M].unit(lattice.bottom)
