@@ -25,16 +25,16 @@ sealed trait SchemeExp extends Expression:
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
-    def parent(subExp: SchemeExp): Option[SchemeExp] =
+    def parent(someDescendant: SchemeExp): Option[SchemeExp] =
       val subSchemeExps = subexpressions.collect({
         case s: SchemeExp => s
       })
       if subSchemeExps.isEmpty then
         None
-      else if subSchemeExps.contains(subExp) then
+      else if subSchemeExps.contains(someDescendant) then
         Some(this)
       else subSchemeExps.find(subExp => {
-        subExp.parent(subExp).nonEmpty
+        subExp.parent(someDescendant).nonEmpty
       })
 
 object SchemeExp:
