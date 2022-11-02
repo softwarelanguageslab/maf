@@ -23,6 +23,8 @@ sealed trait SchemeExp extends Expression:
         replacement
       else replaceLower(subExpression, replacement)
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
+    def map(f: SchemeExp => SchemeExp): SchemeExp = f(this).mapLower(f)
+    def mapLower(f: SchemeExp => SchemeExp): SchemeExp = ???
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
     def parent(someDescendant: SchemeExp): Option[SchemeExp] =
@@ -145,6 +147,8 @@ case class SchemeLambda(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLambda(name, args, body.map(_.replace(subExpression, replacement)), annotation, idn)
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeLambda(name, args, body.map(sexp => sexp.map(f)), annotation, idn)
     override def prettyString(indent: Int): String =
         s"(lambda (${args.mkString(" ")})\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
@@ -209,6 +213,8 @@ case class SchemeVarArgLambda(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(_.replace(subExpression, replacement)), annotation, idn)
+    override def map(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeVarArgLambda(name, args, vararg, body.map(sexp => sexp.map(f)), annotation, idn)
     override def prettyString(indent: Int): String =
         val a =
             if args.isEmpty then vararg.toString
@@ -253,6 +259,9 @@ case class SchemeFuncall(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeFuncall(f.replace(subExpression, replacement), args.map(a => a.replace(subExpression, replacement)), idn)
+
+    override def mapLower(fnc: SchemeExp => SchemeExp): SchemeExp =
+      SchemeFuncall(f.map(fnc), args.map(a => a.map(fnc)), idn)
 
     override def prettyString(indent: Int): String =
         if this.toString.length < 100 then this.toString
@@ -305,6 +314,9 @@ case class SchemeIf(
                     cons.replace(subExpression, replacement),
                     alt.replace(subExpression, replacement),
                     idn)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeIf(cond.map(f), cons.map(f), alt.map(f), idn)
 
     override def prettyString(indent: Int): String =
         if this.toString.size < 50 then this.toString
@@ -398,6 +410,9 @@ case class SchemeLet(
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLet(bindings.map(b => (b._1, b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
 
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeLet(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
+
     override def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
       super.dropIdentifier(id, SchemeLet.apply)
 
@@ -452,6 +467,10 @@ case class SchemeLetStar(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLetStar(bindings.map(b => (b._1 , b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeLetStar(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
+
     val label: Label = LTS
     def letName: String = "let*"
 
@@ -500,6 +519,10 @@ case class SchemeLetrec(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeLetrec(bindings.map(b => (b._1, b._2.replace(subExpression, replacement))), body.map(exp => exp.replace(subExpression, replacement)), idn)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeLetrec(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
+
     if bindings.size > bindings.map(_._1.name).toSet.size then
         throw new Exception(
           s"Illegal letrec: duplicate definitions (${idn.pos}): ${bindings.map(_._1.name).groupBy(name => name).view.mapValues(_.size).toList.filter(_._2 > 1).sorted.map(p => s"${p._1} (${p._2})").mkString("{", ", ", "}")}."
@@ -560,6 +583,9 @@ case class SchemeSet(
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeSet(variable, value.replace(subExpression, replacement), idn)
 
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeSet(variable, value.map(f), idn)
+
 case class SchemeSetLex(
     variable: Identifier,
     lexAddr: LexicalRef,
@@ -588,6 +614,10 @@ case class SchemeSetLex(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeSetLex(variable, lexAddr, value.replace(subExpression, replacement), idn)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeSetLex(variable, lexAddr, value.map(f), idn)
+
     override def toString = s"(set! $variable $value)"
 
 /** A begin clause: (begin body...) */
@@ -616,6 +646,10 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeBegin(exps.map(e => e.replace(subExpression, replacement)), idn)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeBegin(exps.map(e => e.map(f)), idn)
+
     override def prettyString(indent: Int): String =
         s"(begin\n${exps.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
@@ -761,6 +795,10 @@ case class SchemeDefineVariable(
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeDefineVariable(name, value.replace(subExpression, replacement), idn)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeDefineVariable(name, value.map(f), idn)
+
     override def prettyString(indent: Int): String = s"(define $name ${value.prettyString(nextIndent(indent))})"
 
 /** Function definition of the form (define (f arg ...) body) */
@@ -862,6 +900,10 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
 
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVar(id)
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeVar(id)
+
     override def toString: String = id.name
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
@@ -878,6 +920,8 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeVarLex(id, lexAddr)
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeVarLex(id, lexAddr)
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeVarLex(id, lexAddr)
     override def toString: String = id.name
 
@@ -905,6 +949,8 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
       SchemeValue(value, idn)
     override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeValue(value, idn)
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeValue(value, idn)
     override lazy val hash: Int = (label, value).hashCode()
 
 /** An assertion (assert <exp>) */
@@ -925,8 +971,6 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
 
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeAssert(exp.deleteChildren(fnc), idn)
-    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeAssert(exp, idn)
     def subexpressions: List[Expression] = List(exp)
 
 /** Creates explicit (mutable) reference */
