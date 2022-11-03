@@ -15,15 +15,16 @@ sealed trait SchemeExp extends Expression:
         List(this)
       else
         this.subexpressions.collect { case s: SchemeExp => s }.flatMap(s => s. levelNodes (level - 1))
-    def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] = ???
     def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] = ???
     def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp = ???
     def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
-      if this eq subExpression then
-        replacement
-      else replaceLower(subExpression, replacement)
+      this.map(e => {
+        if e eql subExpression then
+          replacement
+        else e
+      })
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
-    def map(f: SchemeExp => SchemeExp): SchemeExp = f(this).mapLower(f)
+    def map(f: SchemeExp => SchemeExp): SchemeExp = f(this.mapLower(f))
     def mapLower(f: SchemeExp => SchemeExp): SchemeExp = ???
     def sexpCopy(): SchemeExp = ???
     def prettyString(indent: Int = 0): String = toString()
@@ -108,11 +109,6 @@ case class SchemeLambda(
     override def sexpCopy(): SchemeExp =
       SchemeLambda(name, args, body.map(_.sexpCopy()), annotation, idn)
 
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingBody = body.map(_.deepDeleteIdentifier(id)).collect({
         case Some(exp) => exp
@@ -120,32 +116,7 @@ case class SchemeLambda(
       if remainingBody.nonEmpty then
         Some(SchemeLambda(name, args, remainingBody, annotation, idn))
       else None
-
-    def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
-      val argDropped = SchemeLambda(name, args.filterNot(arg => arg equals id), body, annotation, idn)
-
-      val referencesShallowDropped = SchemeLambda(
-        argDropped.name,
-        argDropped.args,
-        argDropped.body.map(_.shallowDeleteIdentifier(id)).collect({
-          case Some(exp) => exp
-        }),
-        annotation,
-        idn
-      )
-
-      val referencesDeepDropped = SchemeLambda(
-        argDropped.name,
-        argDropped.args,
-        argDropped.body.map(_.deepDeleteIdentifier(id)).collect({
-          case Some(exp) => exp
-        }),
-        annotation,
-        idn
-      )
-
-      (referencesShallowDropped, referencesDeepDropped) //2 different ways of dropping an identifier exist: shallow or deep
-
+  
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeLambda(name, args, body.filterNot(fnc).map(_.deleteChildren(fnc)), annotation, idn)
 
@@ -175,11 +146,6 @@ case class SchemeVarArgLambda(
     override def sexpCopy(): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(_.sexpCopy()), annotation, idn)
 
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingBody = body.map(_.deepDeleteIdentifier(id)).collect({
         case Some(exp) => exp
@@ -187,34 +153,7 @@ case class SchemeVarArgLambda(
       if remainingBody.nonEmpty then
         Some(SchemeVarArgLambda(name, args, vararg, remainingBody, annotation, idn))
       else None
-
-    def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
-      val argDropped = SchemeVarArgLambda(name, args.filterNot(arg => arg equals id), vararg, body, annotation, idn)
-
-      val referencesShallowDropped = SchemeVarArgLambda(
-        argDropped.name,
-        argDropped.args,
-        argDropped.vararg,
-        argDropped.body.map(_.shallowDeleteIdentifier(id)).collect({
-          case Some(exp) => exp
-        }),
-        annotation,
-        idn
-      )
-
-      val referencesDeepDropped = SchemeVarArgLambda(
-        argDropped.name,
-        argDropped.args,
-        argDropped.vararg,
-        argDropped.body.map(_.deepDeleteIdentifier(id)).collect({
-          case Some(exp) => exp
-        }),
-        annotation,
-        idn
-      )
-
-      (referencesShallowDropped, referencesDeepDropped) //2 different ways of dropping an identifier exist: shallow or deep
-
+      
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.filterNot(fnc).map(_.deleteChildren(fnc)), annotation, idn)
 
@@ -251,13 +190,6 @@ case class SchemeFuncall(
 
     override def sexpCopy(): SchemeExp =
       SchemeFuncall(f.sexpCopy(), args.map(_.sexpCopy()), idn)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if f.shallowDeleteIdentifier(id).isEmpty then
-        None
-      else if args.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingSubexps = (List(f) ++ args).map(_.deepDeleteIdentifier(id)).collect({
@@ -296,11 +228,6 @@ case class SchemeIf(
 
     override def sexpCopy(): SchemeExp =
       SchemeIf(cond.sexpCopy(), cons.sexpCopy(), alt.sexpCopy(), idn)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if List(cond, cons, alt).exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingSubexps = List(cond, cons, alt).map(_.deepDeleteIdentifier(id)).collect({
@@ -356,22 +283,17 @@ sealed trait SchemeLettishExp extends SchemeExp:
         s"($id (${first}${rest})\n$bo)"
 
     def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) = ???
-
     protected def dropIdentifier(id: Identifier,
                                  factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): (SchemeExp, SchemeExp) =
       val bindingDropped = factoryMethod(bindings.filterNot(b => b._1 equals id), body, idn)
 
-      val referencesShallowDropped = factoryMethod(
-        bindingDropped.bindings.map(binding => (binding._1, binding._2.shallowDeleteIdentifier(id))).collect({
-          case (id, Some(exp)) => (id, exp)
-        }),
-        bindingDropped.body.map(_.shallowDeleteIdentifier(id)).collect({
-          case Some(exp) => exp
-        }),
-        idn
-      )
+      val shallowDropped = bindingDropped.deleteChildren(e => {
+        e.allSubexpressions.find(e => e eql id) match
+          case Some(value) => true
+          case None => false
+      })
 
-      val referencesDeepDropped = factoryMethod(
+      val deepDropped = factoryMethod(
         bindingDropped.bindings.map(binding => (binding._1, binding._2.deepDeleteIdentifier(id))).collect({
           case (id, Some(exp)) => (id, exp)
         }),
@@ -381,7 +303,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
         idn
       )
 
-      (referencesShallowDropped, referencesDeepDropped) //2 different ways of dropping an identifier exist: shallow or deep
+      (shallowDropped, deepDropped) //2 different ways of dropping an identifier exist: shallow or deep
 
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
@@ -399,13 +321,6 @@ case class SchemeLet(
 
     override def sexpCopy(): SchemeExp =
       SchemeLet(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if bindings.exists(_._2.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingBindings = bindings.map(b => (b._1, b._2.deepDeleteIdentifier(id))).collect({
@@ -457,13 +372,6 @@ case class SchemeLetStar(
     override def sexpCopy(): SchemeExp =
       SchemeLetStar(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if bindings.exists(_._2.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingBindings = bindings.map(b => (b._1, b._2.deepDeleteIdentifier(id))).collect({
         case (id, Some(exp)) => (id, exp)
@@ -512,13 +420,6 @@ case class SchemeLetrec(
 
     override def sexpCopy(): SchemeExp =
       SchemeLetrec(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if bindings.exists(_._2.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val remainingBindings = bindings.map(b => (b._1, b._2.deepDeleteIdentifier(id))).collect({
@@ -586,14 +487,6 @@ case class SchemeSet(
     override def sexpCopy(): SchemeExp =
       SchemeSet(variable, value.sexpCopy(), idn)
 
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if variable eql id then
-        None
-      else
-        value.shallowDeleteIdentifier(id) match
-          case Some(exp) => Some(copy(value = exp))
-          case None => None
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       value.deepDeleteIdentifier(id) match
         case Some(exp) =>
@@ -620,14 +513,6 @@ case class SchemeSetLex(
 
     override def sexpCopy(): SchemeExp =
       SchemeSetLex(variable, lexAddr, value.sexpCopy(), idn)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if variable eql id then
-        None
-      else
-        value.shallowDeleteIdentifier(id) match
-          case Some(exp) => Some(copy(value = exp))
-          case None => None
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       value.deepDeleteIdentifier(id) match
@@ -660,11 +545,6 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
 
     override def sexpCopy(): SchemeExp =
       SchemeBegin(exps.map(_.sexpCopy()), idn)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if exps.exists(_.shallowDeleteIdentifier(id).isEmpty) then
-        None
-      else Some(copy())
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       val deletedExps = exps.map(_.deepDeleteIdentifier(id)).collect({
@@ -808,14 +688,6 @@ case class SchemeDefineVariable(
     override def sexpCopy(): SchemeExp =
       SchemeDefineVariable(name, value.sexpCopy(), idn)
 
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if name eql id then
-        None
-      else
-        value.shallowDeleteIdentifier(id) match
-          case Some(exp) => Some(copy(value = exp))
-          case None => None
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if name eql id then
         None
@@ -922,11 +794,6 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
     override def sexpCopy(): SchemeExp =
       SchemeVar(id)
 
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if this.id eql id then
-        None
-      else Some(copy())
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if this.id eql id then
         None
@@ -946,11 +813,6 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
     override def sexpCopy(): SchemeExp =
       SchemeVarLex(id, lexAddr)
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      if this.id eql id then
-        None
-      else Some(copy())
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if this.id eql id then
@@ -982,9 +844,6 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     def subexpressions: List[Expression] = List()
     override def sexpCopy(): SchemeExp =
       SchemeValue(value, idn)
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      Some(copy())
-
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       Some(copy())
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
@@ -1000,11 +859,6 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
     override def toString: String = s"(assert $exp)"
     def fv: Set[String] = exp.fv
     val label: Label = ASS
-
-    override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
-      exp.shallowDeleteIdentifier(id) match
-        case Some(exp) => Some(copy(exp = exp))
-        case None => None
 
     override def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       exp.deepDeleteIdentifier(id) match
