@@ -25,6 +25,7 @@ sealed trait SchemeExp extends Expression:
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
     def map(f: SchemeExp => SchemeExp): SchemeExp = f(this).mapLower(f)
     def mapLower(f: SchemeExp => SchemeExp): SchemeExp = ???
+    def sexpCopy(): SchemeExp = ???
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
     def parent(someDescendant: SchemeExp): Option[SchemeExp] =
@@ -104,6 +105,9 @@ case class SchemeLambda(
         s"(lambda ($a) $b)"
     def varArgId: Option[Identifier] = None
 
+    override def sexpCopy(): SchemeExp =
+      SchemeLambda(name, args, body.map(_.sexpCopy()), annotation, idn)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
         None
@@ -167,6 +171,9 @@ case class SchemeVarArgLambda(
         val b = body.mkString(" ")
         s"(lambda $a $b)"
     def varArgId: Option[Identifier] = Some(vararg)
+
+    override def sexpCopy(): SchemeExp =
+      SchemeVarArgLambda(name, args, vararg, body.map(_.sexpCopy()), annotation, idn)
 
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if body.exists(_.shallowDeleteIdentifier(id).isEmpty) then
@@ -242,6 +249,9 @@ case class SchemeFuncall(
         SchemeFuncall(args.find(a => !fnc(a)).get, args.filterNot(fnc).tail.map(_.deleteChildren(fnc)), idn)
       else SchemeFuncall(f, args.filterNot(fnc).map(_.deleteChildren(fnc)), idn)
 
+    override def sexpCopy(): SchemeExp =
+      SchemeFuncall(f.sexpCopy(), args.map(_.sexpCopy()), idn)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if f.shallowDeleteIdentifier(id).isEmpty then
         None
@@ -283,6 +293,9 @@ case class SchemeIf(
     override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
+
+    override def sexpCopy(): SchemeExp =
+      SchemeIf(cond.sexpCopy(), cons.sexpCopy(), alt.sexpCopy(), idn)
 
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if List(cond, cons, alt).exists(_.shallowDeleteIdentifier(id).isEmpty) then
@@ -384,6 +397,9 @@ case class SchemeLet(
     def fv: Set[String] =
         bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
 
+    override def sexpCopy(): SchemeExp =
+      SchemeLet(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if bindings.exists(_._2.shallowDeleteIdentifier(id).isEmpty) then
         None
@@ -438,6 +454,9 @@ case class SchemeLetStar(
             )
             ._2 ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
 
+    override def sexpCopy(): SchemeExp =
+      SchemeLetStar(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if bindings.exists(_._2.shallowDeleteIdentifier(id).isEmpty) then
         None
@@ -490,6 +509,9 @@ case class SchemeLetrec(
             .toSet
     val label: Label = LTR
     def letName: String = "letrec"
+
+    override def sexpCopy(): SchemeExp =
+      SchemeLetrec(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if bindings.exists(_._2.shallowDeleteIdentifier(id).isEmpty) then
@@ -561,6 +583,9 @@ case class SchemeSet(
     extends SchemeSetExp:
     override def toString: String = s"(set! $variable $value)"
 
+    override def sexpCopy(): SchemeExp =
+      SchemeSet(variable, value.sexpCopy(), idn)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if variable eql id then
         None
@@ -592,6 +617,9 @@ case class SchemeSetLex(
     value: SchemeExp,
     idn: Identity)
     extends SchemeSetExp:
+
+    override def sexpCopy(): SchemeExp =
+      SchemeSetLex(variable, lexAddr, value.sexpCopy(), idn)
 
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if variable eql id then
@@ -629,6 +657,9 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
     override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
     val label: Label = BEG
     def subexpressions: List[Expression] = exps
+
+    override def sexpCopy(): SchemeExp =
+      SchemeBegin(exps.map(_.sexpCopy()), idn)
 
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if exps.exists(_.shallowDeleteIdentifier(id).isEmpty) then
@@ -774,6 +805,9 @@ case class SchemeDefineVariable(
     val label: Label = DFV
     def subexpressions: List[Expression] = List(name, value)
 
+    override def sexpCopy(): SchemeExp =
+      SchemeDefineVariable(name, value.sexpCopy(), idn)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if name eql id then
         None
@@ -885,6 +919,9 @@ sealed trait SchemeVarExp extends SchemeExp:
     def subexpressions: List[Expression] = List(id)
 
 case class SchemeVar(id: Identifier) extends SchemeVarExp:
+    override def sexpCopy(): SchemeExp =
+      SchemeVar(id)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if this.id eql id then
         None
@@ -907,6 +944,9 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
     override def toString: String = id.name
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
+    override def sexpCopy(): SchemeExp =
+      SchemeVarLex(id, lexAddr)
+
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       if this.id eql id then
         None
@@ -940,6 +980,8 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     override val height: Int = 1
     val label: Label = VAL
     def subexpressions: List[Expression] = List()
+    override def sexpCopy(): SchemeExp =
+      SchemeValue(value, idn)
     override def shallowDeleteIdentifier(id: Identifier): Option[SchemeExp] =
       Some(copy())
 
