@@ -9,7 +9,7 @@ class deepDeleteIdentifierTest extends AnyFlatSpec {
     def testCode(programText: String, expected: String = "(let () )"): Unit =
       val letExp: SchemeLet = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLet]
       val id = letExp.bindings.head._1
-      val deepDeleted = letExp.dropIdentifier(id)._2
+      val deepDeleted = letExp.deepDeleteIdentifier(id)
 
       assert(deepDeleted.toString == expected)
 

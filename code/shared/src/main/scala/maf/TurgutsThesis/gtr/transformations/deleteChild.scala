@@ -44,9 +44,8 @@ def deleteChildLettishExp(lettishExp: SchemeLettishExp,
 
   for (i <- bindings.indices)
     val id = bindings(i)._1
-    val tpl = lettishExp.dropIdentifier(id)
-    val referencesShallowDropped = tpl._1
-    val referencesDeepDropped = tpl._2
+    val referencesShallowDropped = lettishExp.shallowDropIdentifier(id)
+    val referencesDeepDropped = lettishExp.deepDropIdentifier(id)
 
     res = res.::(referencesShallowDropped)
     res = res.::(referencesDeepDropped)

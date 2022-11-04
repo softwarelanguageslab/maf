@@ -1,11 +1,12 @@
 package maf.language.scheme
 
-import maf.core._
+import maf.core.*
 import maf.language.change.ChangeExp
-import maf.language.sexp._
+import maf.language.sexp.*
 import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
+import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show
 
 /** Abstract syntax of Scheme programs */
@@ -26,6 +27,38 @@ sealed trait SchemeExp extends Expression:
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
     def map(f: SchemeExp => SchemeExp): SchemeExp = f(this.mapLower(f))
     def mapLower(f: SchemeExp => SchemeExp): SchemeExp = ???
+    def forEach(f: SchemeExp => Unit): Unit =
+      this.map(e => {
+        f(e)
+        e
+      })
+
+    def findUndefinedVariables(): List[Identifier] = {
+      var usedSet: List[Identifier] = List()
+      var definedSet: List[Identifier] = List()
+
+      def add(l: List[Identifier], i: Identifier): List[Identifier] =
+        if !l.exists(id => id.name equals i.name) then
+          l.::(i)
+        else l
+
+      this.forEach(e => {
+        e match
+          case exp: SchemeLambdaExp =>
+            exp.args.foreach(identifier => definedSet = add(definedSet, identifier))
+          case exp: SchemeLettishExp =>
+            exp.bindings.map(_._1).foreach(identifier => definedSet = add(definedSet, identifier))
+          case SchemeDefineVariable(name, value, idn) =>
+            definedSet = add(definedSet, name)
+          case exp: SchemeVarExp =>
+            if !(SchemePrelude.primNames contains exp.id.name) && exp.id.name.head.isLetter then
+              usedSet = add(usedSet, exp.id)
+          case any => any
+      })
+
+      usedSet.filterNot(usedId => definedSet.exists(definedId => definedId.name equals usedId.name))
+    }
+
     def sexpCopy(): SchemeExp = ???
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
@@ -282,17 +315,11 @@ sealed trait SchemeLettishExp extends SchemeExp:
         val bo = body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")
         s"($id (${first}${rest})\n$bo)"
 
-    def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) = ???
-    protected def dropIdentifier(id: Identifier,
-                                 factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): (SchemeExp, SchemeExp) =
+    def deepDropIdentifier(id: Identifier): SchemeExp = ???
+
+    protected def deepDropIdentifier(id: Identifier,
+                           factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): SchemeExp =
       val bindingDropped = factoryMethod(bindings.filterNot(b => b._1 equals id), body, idn)
-
-      val shallowDropped = bindingDropped.deleteChildren(e => {
-        e.allSubexpressions.find(e => e eql id) match
-          case Some(value) => true
-          case None => false
-      })
-
       val deepDropped = factoryMethod(
         bindingDropped.bindings.map(binding => (binding._1, binding._2.deepDeleteIdentifier(id))).collect({
           case (id, Some(exp)) => (id, exp)
@@ -303,7 +330,32 @@ sealed trait SchemeLettishExp extends SchemeExp:
         idn
       )
 
-      (shallowDropped, deepDropped) //2 different ways of dropping an identifier exist: shallow or deep
+      val deepUndefinedVars = deepDropped.findUndefinedVariables()
+      if deepUndefinedVars.isEmpty then
+        deepDropped
+      else deepDropped.deepDropIdentifier(deepUndefinedVars.head, factoryMethod)
+
+    def shallowDropIdentifier(id: Identifier): SchemeExp = ???
+
+    def shallowDropIdentifier(id: Identifier,
+                              factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): SchemeExp =
+
+      val bindingDropped = factoryMethod(bindings.filterNot(b => b._1 equals id), body, idn)
+
+      val shallowDropped: SchemeLettishExp = bindingDropped.deleteChildren(letChild => {
+        letChild.allSubexpressions.exists(exp => {
+          exp match
+            case varExp: SchemeVarExp =>
+              varExp.id.name equals id.name
+            case any => false
+        })
+      }).asInstanceOf[SchemeLettishExp]
+
+      val shallowUndefinedVars = shallowDropped.findUndefinedVariables()
+
+      if shallowUndefinedVars.isEmpty then
+        shallowDropped
+      else shallowDropped.shallowDropIdentifier(shallowUndefinedVars.head, factoryMethod)
 
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
@@ -344,8 +396,11 @@ case class SchemeLet(
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeLet(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
 
-    override def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
-      super.dropIdentifier(id, SchemeLet.apply)
+    override def shallowDropIdentifier(id: Identifier): SchemeExp =
+      super.shallowDropIdentifier(id, SchemeLet.apply)
+
+    override def deepDropIdentifier(id: Identifier): SchemeExp =
+      super.deepDropIdentifier(id, SchemeLet.apply)
 
     val label: Label = LET
     def letName: String = "let"
@@ -382,8 +437,11 @@ case class SchemeLetStar(
 
       Some(SchemeLetStar(remainingBindings, remainingBody, idn))
 
-    override def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
-      super.dropIdentifier(id, SchemeLetStar.apply)
+    override def shallowDropIdentifier(id: Identifier): SchemeExp =
+      super.shallowDropIdentifier(id, SchemeLetStar.apply)
+
+    override def deepDropIdentifier(id: Identifier): SchemeExp =
+      super.deepDropIdentifier(id, SchemeLetStar.apply)
 
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeLetStar(
@@ -430,8 +488,11 @@ case class SchemeLetrec(
       })
       Some(SchemeLetrec(remainingBindings, remainingBody, idn))
 
-    override def dropIdentifier(id: Identifier): (SchemeExp, SchemeExp) =
-      super.dropIdentifier(id, SchemeLetrec.apply)
+    override def shallowDropIdentifier(id: Identifier): SchemeExp =
+      super.shallowDropIdentifier(id, SchemeLetrec.apply)
+
+    override def deepDropIdentifier(id: Identifier): SchemeExp =
+      super.deepDropIdentifier(id, SchemeLetrec.apply)
 
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeLetrec(
