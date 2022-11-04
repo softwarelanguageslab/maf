@@ -345,8 +345,8 @@ sealed trait SchemeLettishExp extends SchemeExp:
       val shallowDropped: SchemeLettishExp = bindingDropped.deleteChildren(letChild => {
         letChild.allSubexpressions.exists(exp => {
           exp match
-            case varExp: SchemeVarExp =>
-              varExp.id.name equals id.name
+            case subId: Identifier =>
+              subId.name equals id.name
             case any => false
         })
       }).asInstanceOf[SchemeLettishExp]

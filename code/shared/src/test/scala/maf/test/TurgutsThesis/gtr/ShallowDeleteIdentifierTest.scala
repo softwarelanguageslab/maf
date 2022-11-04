@@ -20,8 +20,8 @@ class ShallowDeleteIdentifierTest extends AnyFlatSpec {
     val programText1: String =
       "(let " +
         "((x 5))" +
-          "(+ y x)" +
-          "(x y y)" +
+          "(+ 10 x)" +
+          "(x 5 9)" +
           "(x x x))"
 
     testCode(programText1)
@@ -30,20 +30,22 @@ class ShallowDeleteIdentifierTest extends AnyFlatSpec {
     val programText2: String =
       "(let " +
         "((x 5))" +
+        "(define y 10)" +
           "(if (= x 0) y y)" +
           "(if (= y 0) (+ x 10) y)" +
           "(if (= y 0) y (+ x 10)))"
 
-    testCode(programText2)
+    testCode(programText2, "(let () (define y 10))")
 
     //code 3: identifier in set!
     val programText3: String =
       "(let " +
-        "((x 5))" +
+        "((x 5)" +
+         "(y 9))" +
           "(set! y (+ x 10))" +
           "(set! x (+ y y)))"
 
-    testCode(programText3)
+    testCode(programText3, "(let ((y 9)) )")
 
     //code 4: identifier in define
     val programText4: String =
