@@ -14,7 +14,7 @@ object Main {
     val t = SchemeParser.parseProgramText(programText).last
 
     println(t)
-    val reduced = QuickGTR.reduce(t,
+    val reduced = GTR.reduce(t,
       t => t.isInstanceOf[SchemeBegin] && t.asInstanceOf[SchemeBegin].exps.length == 1,
       List(SubstituteByChild, DeleteChildSimple, DeleteChildIdentifier))
 
