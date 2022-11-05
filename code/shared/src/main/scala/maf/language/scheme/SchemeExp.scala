@@ -19,11 +19,9 @@ sealed trait SchemeExp extends Expression:
     def deepDeleteIdentifier(id: Identifier): Option[SchemeExp] = ???
     def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp = ???
     def replace(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
-      this.map(e => {
-        if e eql subExpression then
-          replacement
-        else e
-      })
+      if this eq subExpression then
+        replacement
+      else replaceLower(subExpression, replacement)
     def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp = ???
     def map(f: SchemeExp => SchemeExp): SchemeExp = f(this.mapLower(f))
     def mapLower(f: SchemeExp => SchemeExp): SchemeExp = ???
@@ -339,9 +337,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
 
     def shallowDropIdentifier(id: Identifier,
                               factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): SchemeExp =
-
-      val bindingDropped = factoryMethod(bindings.filterNot(b => b._1 equals id), body, idn)
-
+      val bindingDropped = factoryMethod(bindings.filterNot(b => b._1.name equals id.name), body, idn)
       val shallowDropped: SchemeLettishExp = bindingDropped.deleteChildren(letChild => {
         letChild.allSubexpressions.exists(exp => {
           exp match
@@ -925,6 +921,12 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
       exp.deepDeleteIdentifier(id) match
         case Some(exp) => Some(copy(exp = exp))
         case None => None
+
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeAssert(exp.map(f), idn)
+
+    override def replaceLower(subExpression: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeAssert(exp.replace(subExpression, replacement), idn)
 
     override def deleteChildren(fnc: SchemeExp => Boolean): SchemeExp =
       SchemeAssert(exp.deleteChildren(fnc), idn)
