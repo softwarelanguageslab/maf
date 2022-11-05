@@ -4,7 +4,6 @@ import maf.core.NoCodeIdentity
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLet, SchemeLettishExp, SchemeParser, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 import maf.language.sexp.Value.Real
 import org.scalatest.flatspec.AnyFlatSpec
-import maf.TurgutsThesis.gtr.transformations.deleteChildLettishExp
 
 class ShallowDropIdentifierTest extends AnyFlatSpec {
   "GTR" should "be able to shallow delete identifiers" in {
