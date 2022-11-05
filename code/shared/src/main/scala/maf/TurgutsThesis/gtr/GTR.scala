@@ -24,9 +24,10 @@ object GTR:
     def improve(): Unit =
       var improvementFound = false
       for(node <- lvlNodes)
-        for(candidateTree <- transformation.transform(reducedTree, node))
+        for((candidateTree, candidateIdx) <- transformation.transform(reducedTree, node).zipWithIndex)
           if candidateTree.size < reducedTree.size then
             if oracle(candidateTree) then
+              transformation.hit(candidateTree, candidateIdx)
               improvementFound = true
               reducedTree = candidateTree
       if improvementFound then improve()

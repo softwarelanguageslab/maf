@@ -4,8 +4,8 @@ import maf.language.scheme.SchemeExp
 
 abstract class Transformation:
   def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp]
-  val name: String
-  var hits: Int = 0
+  protected val name: String
+  private var hits: Int = 0
   def hit(tree: SchemeExp, idx: Int): Unit =
     hits += 1
-    println("transformation " + name + " " + " hit the oracle!")
+    println("transformation " + name + " " + " hits oracle w idx: " + idx)
