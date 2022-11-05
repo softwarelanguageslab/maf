@@ -6,15 +6,15 @@ import maf.language.sexp.Value.Real
 import org.scalatest.flatspec.AnyFlatSpec
 import maf.TurgutsThesis.gtr.transformations.deleteChildLettishExp
 
-class ShallowDeleteIdentifierTest extends AnyFlatSpec {
+class ShallowDropIdentifierTest extends AnyFlatSpec {
   "GTR" should "be able to shallow delete identifiers" in {
     def testCode(programText: String, expected: String = "(let () )"): Unit =
       val letExp: SchemeLet = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLet]
       val id = letExp.bindings.head._1
       val shallowDeleted = letExp.shallowDropIdentifier(id)
 
-      println(shallowDeleted.toString)
-      //assert(shallowDeleted.toString == expected)
+      //println(shallowDeleted.toString)
+      assert(shallowDeleted.toString == expected)
 
     //code 1: identifier in appl
     val programText1: String =
