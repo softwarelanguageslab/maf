@@ -11,9 +11,10 @@ object GTR:
   def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
     var reducedTree: SchemeExp = tree
     for(lvl <- 0 to reducedTree.height)
-      for(template <- transformations)
-        reducedTree = reduceLevelNodes(reducedTree, reducedTree.levelNodes(lvl), oracle, template)
+      for(transformation <- transformations)
+        reducedTree = reduceLevelNodes(reducedTree, reducedTree.levelNodes(lvl), oracle, transformation)
     if tree.size == reducedTree.size then
+      println("total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
       reducedTree
     else reduce(reducedTree, oracle, transformations)
 

@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.soundness
 
-import maf.TurgutsThesis.gtr.GTR
+import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
 import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, SubstituteByChild}
 import maf.core.Identity
 import maf.language.CScheme.*
