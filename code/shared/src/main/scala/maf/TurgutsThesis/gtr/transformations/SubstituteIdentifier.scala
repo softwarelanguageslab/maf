@@ -34,9 +34,9 @@ object SubstituteIdentifier extends Transformation:
       case lettishExp: SchemeLettishExp =>
         for(id <- lettishExp.bindings.map(_._1))
           replaceIdWithAllValues(lettishExp, id).foreach(replacement => res = res.::(replacement))
-      case SchemeDefineVariable(name, value, idn) =>
-        res = replaceIdWithAllValues(tree, name)
+      case sexp@SchemeDefineVariable(name, value, idn) =>
+        return replaceIdWithAllValues(tree, name).map(tree => tree.deleteChildren(child => child == sexp))
       case _ =>
 
     res.map(newNode => tree.replace(node, newNode))
-
+    
