@@ -46,14 +46,10 @@ object DeleteChildSimple extends Transformation:
 
     for (i <- bindings.indices)
       val id = bindings(i)._1
-      //val referencesShallowDropped = lettishExp.shallowDropIdentifier(id)
-      //val referencesDeepDropped = lettishExp.deepDropIdentifier(id)
       //the line below is still needed, even when using shallow/deep dropping, because shallow/deep dropping cannot remove primitives (e.g. __top_level_cons)
       val bindingDropped = factoryMethod(bindings.take(i) ++ bindings.drop(i + 1), body, idn)
 
       res = res.::(bindingDropped)
-      //res = res.::(referencesDeepDropped)
-      //res = res.::(referencesShallowDropped)
 
     res
   }
