@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
-import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, RemoveCalls, RemoveCallsAndReplaceByBody, SubstituteByChild, SubstituteIdentifier}
+import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParam, SubstituteByChild, SubstituteIdentifier, SubstituteIdentifierCalls}
 import maf.core.Identity
 import maf.language.CScheme.*
 import maf.language.scheme.*
@@ -83,7 +83,17 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
                 true
               else false
             },
-            List(SubstituteByChild, DeleteChildSimple, DeleteChildIdentifier, SubstituteIdentifier, RemoveCalls, RemoveCallsAndReplaceByBody)
+            List(
+              SubstituteByChild,
+              DeleteChildSimple,
+              DeleteChildIdentifier,
+              SubstituteIdentifier,
+              RemoveCalls,
+              RemoveCallsAndReplaceByBody,
+              RemoveLambdaParam,
+              IfToBegin,
+              SubstituteIdentifierCalls
+            )
           )
           fail(
             "FAILED\n: " +

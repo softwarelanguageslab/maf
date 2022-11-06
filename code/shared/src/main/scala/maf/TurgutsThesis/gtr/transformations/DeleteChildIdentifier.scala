@@ -10,20 +10,15 @@ object DeleteChildIdentifier extends Transformation:
   def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
     var res: List[SchemeExp] = List()
     node match
-      case s: SchemeLet =>
-        res = deleteChildLettishExp(s, SchemeLet.apply)
-      case s: SchemeLetStar =>
-        res = deleteChildLettishExp(s, SchemeLetStar.apply)
-      case s: SchemeLetrec =>
-        res = deleteChildLettishExp(s, SchemeLetrec.apply)
+      case s: SchemeLettishExp =>
+        res = deleteChildLettishExp(s)
       case _ =>
 
     res.map(nodeSubstitute => {
       tree.replace(node, nodeSubstitute)
     })
 
-  def deleteChildLettishExp(lettishExp: SchemeLettishExp,
-                            factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): List[SchemeExp] =
+  def deleteChildLettishExp(lettishExp: SchemeLettishExp): List[SchemeExp] =
     var res: List[SchemeExp] = List()
     val bindings = lettishExp.bindings
 
