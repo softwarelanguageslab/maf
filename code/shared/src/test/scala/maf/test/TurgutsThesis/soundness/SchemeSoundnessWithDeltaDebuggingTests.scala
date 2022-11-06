@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
-import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, SubstituteByChild, SubstituteIdentifier}
+import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, RemoveCalls, RemoveCallsAndReplaceByBody, SubstituteByChild, SubstituteIdentifier}
 import maf.core.Identity
 import maf.language.CScheme.*
 import maf.language.scheme.*
@@ -73,14 +73,21 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
 
         val failureMsg = runAndCompare(program)
         if failureMsg.nonEmpty then
+          var newFailureMsg = failureMsg
           val reduced = GTR.reduce(
             program,
-            p => runAndCompare(p).nonEmpty,
-            List(SubstituteByChild, DeleteChildSimple, DeleteChildIdentifier, SubstituteIdentifier)
+            p => {
+              val nextFailureMsg = runAndCompare(p)
+              if nextFailureMsg.nonEmpty then
+                newFailureMsg = nextFailureMsg
+                true
+              else false
+            },
+            List(SubstituteByChild, DeleteChildSimple, DeleteChildIdentifier, SubstituteIdentifier, RemoveCalls, RemoveCallsAndReplaceByBody)
           )
           fail(
             "FAILED\n: " +
-            failureMsg + "\n" +
+            newFailureMsg + "\n" +
             "ORIGINAL PROGRAM: \n" +
             program.size + "\n" +
             "REDUCED PROGRAM: \n" +
