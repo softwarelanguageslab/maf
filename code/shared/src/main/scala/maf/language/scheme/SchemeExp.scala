@@ -48,7 +48,7 @@ sealed trait SchemeExp extends Expression:
     def replaceLower(path: List[Int], replacement: SchemeExp): SchemeExp = ???
     /** map & forEach */
     def map(f: SchemeExp => SchemeExp): SchemeExp =
-      val newTree = mapAux(f)
+      val newTree = mapAux(f).sexpCopy()
       newTree.setPaths()
       newTree
     def mapAux(f: SchemeExp => SchemeExp): SchemeExp = f(this.mapLower(f))
