@@ -10,4 +10,4 @@ object SubstituteByChild extends Transformation:
       case s: SchemeExp => s
     }
     
-    children.foreach(addReplacement)
+    addReplacements(children)

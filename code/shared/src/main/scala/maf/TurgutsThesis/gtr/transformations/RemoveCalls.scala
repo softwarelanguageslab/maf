@@ -14,7 +14,7 @@ object RemoveCalls extends Transformation:
           val lambdaId = lambdaBinding._1
 
           val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-            case SchemeFuncall(f: SchemeVarExp, args, idn) =>
+            case SchemeFuncall(f: SchemeVarExp, _, _) =>
               f.id.name == lambdaId.name
             case _ => false
           })
@@ -24,19 +24,15 @@ object RemoveCalls extends Transformation:
               addTree(tree)
             case _ =>
 
-      case SchemeDefineVariable(name, value, idn) =>
-        value match
-          case lambda: SchemeLambdaExp =>
-            val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-              case SchemeFuncall(f: SchemeVarExp, args, idn) =>
-                f.id.name == name.name
-              case _ => false
-            })
+      case SchemeDefineVariable(name, lambda: SchemeLambdaExp, _) =>
+        val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
+          case SchemeFuncall(f: SchemeVarExp, _, _) =>
+            f.id.name == name.name
+          case _ => false
+        })
 
-            applsRemoved match
-              case Some(tree) => addTree(tree)
-              case _ =>
-
+        applsRemoved match
+          case Some(tree) => addTree(tree)
           case _ =>
 
       case _ =>
