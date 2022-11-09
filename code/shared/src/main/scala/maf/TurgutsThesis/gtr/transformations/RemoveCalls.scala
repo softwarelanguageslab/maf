@@ -3,9 +3,7 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 
 object RemoveCalls extends Transformation:
   override protected val name: String = "RemoveCalls"
-  override def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] = {
-    var resTrees: List[SchemeExp] = List()
-
+  override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     node match
       case exp: SchemeLettishExp =>
         val lambdaBindings = exp.bindings.collect({
@@ -23,7 +21,7 @@ object RemoveCalls extends Transformation:
           
           applsRemoved match
             case Some(tree) =>
-              resTrees = resTrees.::(tree)
+              addTree(tree)
             case _ =>
 
       case SchemeDefineVariable(name, value, idn) =>
@@ -36,12 +34,10 @@ object RemoveCalls extends Transformation:
             })
 
             applsRemoved match
-              case Some(tree) => resTrees = List(tree)
+              case Some(tree) => addTree(tree)
               case _ =>
 
           case _ =>
 
       case _ =>
-
-    resTrees
   }

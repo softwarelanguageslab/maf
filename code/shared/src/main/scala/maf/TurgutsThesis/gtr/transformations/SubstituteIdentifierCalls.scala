@@ -25,21 +25,18 @@ object SubstituteIdentifierCalls extends Transformation:
       replaceIdWith(exp, id, Value.Symbol("S")),
     )
 
-  override def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
-    var res: List[SchemeExp] = List()
+  override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case exp: SchemeLambdaExp =>
         for(arg <- exp.args)
-          replaceIdWithAllValues(exp, arg).foreach(replacement => res = res.::(replacement))
+          addReplacements(replaceIdWithAllValues(exp, arg))
       case lettishExp: SchemeLettishExp =>
         for(id <- lettishExp.bindings.map(_._1))
-          replaceIdWithAllValues(lettishExp, id).foreach(replacement => res = res.::(replacement))
+          addReplacements(replaceIdWithAllValues(lettishExp, id))
       case sexp@SchemeDefineVariable(name, value, idn) =>
         val candidateTrees: List[SchemeExp] = replaceIdWithAllValues(tree, name).map(tree =>
           tree.deleteChildren(child => child == sexp)).collect({
           case Some(e) => e
         })
-        return candidateTrees
+        addTrees(candidateTrees)
       case _ =>
-
-    res.map(newNode => tree.replace(node.path, newNode))

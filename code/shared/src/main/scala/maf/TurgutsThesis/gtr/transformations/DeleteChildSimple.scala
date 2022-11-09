@@ -5,51 +5,41 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 
 object DeleteChildSimple extends Transformation:
   override val name: String = "DeleteChildSimple"
-  def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
-    var res: List[SchemeExp] = List()
+  def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case SchemeLambda(name, args, body, annotation, idn) =>
         for (i <- args.indices)
-          res = res.::(SchemeLambda(name, args.take(i) ++ args.drop(i + 1), body, annotation, idn))
+          addReplacement(SchemeLambda(name, args.take(i) ++ args.drop(i + 1), body, annotation, idn))
           if body.length > 1 then
             for (i <- body.indices)
-              res = res.::(SchemeLambda(name, args, body.take(i) ++ body.drop(i + 1), annotation, idn))
+              addReplacement(SchemeLambda(name, args, body.take(i) ++ body.drop(i + 1), annotation, idn))
       case SchemeFuncall(f, args, idn) =>
         if args.nonEmpty then
-          res = res.::(SchemeFuncall(args.head, args.tail, idn))
+          addReplacement(SchemeFuncall(args.head, args.tail, idn))
           for (i <- args.indices)
-            res = res.::(SchemeFuncall(f, args.take(i) ++ args.drop(i + 1), idn))
+            addReplacement(SchemeFuncall(f, args.take(i) ++ args.drop(i + 1), idn))
       case SchemeBegin(exps, idn) =>
         for (i <- exps.indices)
-          res = res.::(SchemeBegin(exps.take(i) ++ exps.drop(i + 1), idn))
+          addReplacement(SchemeBegin(exps.take(i) ++ exps.drop(i + 1), idn))
       case s: SchemeLet =>
-        res = deleteChildLettishExp(s, SchemeLet.apply)
+        deleteChildLettishExp(s, SchemeLet.apply)
       case s: SchemeLetStar =>
-        res = deleteChildLettishExp(s, SchemeLetStar.apply)
+        deleteChildLettishExp(s, SchemeLetStar.apply)
       case s: SchemeLetrec =>
-        res = deleteChildLettishExp(s, SchemeLetrec.apply)
+        deleteChildLettishExp(s, SchemeLetrec.apply)
       case _ =>
 
-    res.map(nodeSubstitute => {
-      tree.replace(node.path, nodeSubstitute)
-    })
-
   def deleteChildLettishExp(lettishExp: SchemeLettishExp,
-                            factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): List[SchemeExp] = {
-    var res: List[SchemeExp] = List()
+                            factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): Unit = {
     val bindings = lettishExp.bindings
     val body = lettishExp.body
     val idn = lettishExp.idn
 
     for (i <- body.indices)
-      res = res.::(factoryMethod(bindings, body.take(i) ++ body.drop(i + 1), idn))
+      addReplacement(factoryMethod(bindings, body.take(i) ++ body.drop(i + 1), idn))
 
     for (i <- bindings.indices)
-      val id = bindings(i)._1
       //the line below is still needed, even when using shallow/deep dropping, because shallow/deep dropping cannot remove primitives (e.g. __top_level_cons)
       val bindingDropped = factoryMethod(bindings.take(i) ++ bindings.drop(i + 1), body, idn)
-
-      res = res.::(bindingDropped)
-
-    res
+      addReplacement(bindingDropped)
   }

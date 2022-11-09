@@ -5,8 +5,9 @@ import maf.language.scheme.SchemeExp
 object SubstituteByChild extends Transformation:
   override val name: String = "SubstituteByChild"
 
-  override def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
+  override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     val children = node.subexpressions.collect {
       case s: SchemeExp => s
     }
-    children.map(child => tree.replace(node.path, child))
+    
+    children.foreach(addReplacement)

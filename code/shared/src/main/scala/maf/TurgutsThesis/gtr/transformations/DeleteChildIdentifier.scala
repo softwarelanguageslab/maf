@@ -7,19 +7,13 @@ import maf.language.scheme.{SchemeBegin, SchemeExp, SchemeFuncall, SchemeLambda,
 object DeleteChildIdentifier extends Transformation:
   override val name: String = "DeleteChildIdentifier"
 
-  def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
-    var res: List[SchemeExp] = List()
+  def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case s: SchemeLettishExp =>
-        res = deleteChildLettishExp(s)
+        deleteChildLettishExp(s)
       case _ =>
 
-    res.map(nodeSubstitute => {
-      tree.replace(node.path, nodeSubstitute)
-    })
-
-  def deleteChildLettishExp(lettishExp: SchemeLettishExp): List[SchemeExp] =
-    var res: List[SchemeExp] = List()
+  def deleteChildLettishExp(lettishExp: SchemeLettishExp): Unit =
     val bindings = lettishExp.bindings
 
     for (i <- bindings.indices)
@@ -27,10 +21,5 @@ object DeleteChildIdentifier extends Transformation:
       val referencesShallowDropped = lettishExp.shallowDropIdentifier(id)
       val referencesDeepDropped = lettishExp.deepDropIdentifier(id)
 
-      res = res.::(referencesDeepDropped)
-      res = res.::(referencesShallowDropped)
-
-    res
-
-
-
+      addReplacement(referencesDeepDropped)
+      addReplacement(referencesShallowDropped)

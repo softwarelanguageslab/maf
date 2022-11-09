@@ -5,9 +5,7 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 object RemoveLambdaParam extends Transformation:
   override protected val name: String = "removeLambdaParam"
 
-  override def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] = {
-    var resTrees: List[SchemeExp] = List()
-
+  override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     def removeLambdaParam(lambda: SchemeLambdaExp, id: Identifier): Unit = {
       for ((arg, argIdx) <- lambda.args.zipWithIndex)
         val reducedLambda = lambda match
@@ -26,7 +24,7 @@ object RemoveLambdaParam extends Transformation:
             case _ => sexp
         })
 
-        resTrees = resTrees.::(callsReducedTree)
+        addTree(callsReducedTree)
     }
 
     node match
@@ -45,9 +43,4 @@ object RemoveLambdaParam extends Transformation:
         removeLambdaParam(lambda, name)
       case _ =>
 
-    if resTrees.nonEmpty && tree.size < 20 then
-      println("tree: " + tree.prettyString())
-      println("cand: " + resTrees.head.prettyString())
-
-    resTrees
   }

@@ -4,13 +4,9 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 object IfToBegin extends Transformation:
   override protected val name: String = "IfToBegin"
 
-  override def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
-    var substitutes: List[SchemeExp] = List()
-
+  override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case SchemeIf(cond, cons, alt, idn) =>
-        substitutes = substitutes.::(SchemeBegin(List(cond, cons), idn))
-        substitutes = substitutes.::(SchemeBegin(List(cond, alt), idn))
+        addReplacement(SchemeBegin(List(cond, cons), idn))
+        addReplacement(SchemeBegin(List(cond, alt), idn))
       case _ =>
-
-    substitutes.map(substitute => tree.replace(node.path, substitute))

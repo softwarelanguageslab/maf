@@ -4,9 +4,7 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 
 object RemoveCallsAndReplaceByBody extends Transformation:
   override protected val name: String = "RemoveCallsAndReplaceByBody"
-  override def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] = {
-    var resTrees: List[SchemeExp] = List()
-
+  override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     node match
       case exp: SchemeLettishExp =>
         val lambdaBindings = exp.bindings.collect({
@@ -18,7 +16,7 @@ object RemoveCallsAndReplaceByBody extends Transformation:
           val lambdaId = lambdaBinding._1
 
           val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-            case SchemeFuncall(f: SchemeVarExp, args, idn) =>
+            case SchemeFuncall(f: SchemeVarExp, _, _) =>
               f.id.name == lambdaId.name
             case _ => false
           })
@@ -30,14 +28,14 @@ object RemoveCallsAndReplaceByBody extends Transformation:
                   SchemeBegin(lambda.body, NoCodeIdentity)
                 else sexp
               })
-              resTrees = resTrees.::(candidate)
+              addTree(candidate)
             case _ =>
 
-      case SchemeDefineVariable(name, value, idn) =>
+      case SchemeDefineVariable(name, value, _) =>
         value match
           case lambda: SchemeLambdaExp =>
             val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-              case SchemeFuncall(f: SchemeVarExp, args, idn) =>
+              case SchemeFuncall(f: SchemeVarExp, _, _) =>
                 f.id.name == name.name
               case _ => false
             })
@@ -49,12 +47,10 @@ object RemoveCallsAndReplaceByBody extends Transformation:
                     SchemeBegin(lambda.body, NoCodeIdentity)
                   else sexp
                 })
-                resTrees = List(candidate)
+                addTree(candidate)
               case _ =>
 
           case _ =>
 
       case _ =>
-
-    resTrees
   }
