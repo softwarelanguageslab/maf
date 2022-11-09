@@ -22,6 +22,16 @@ class MapTest extends AnyFlatSpec {
     assert(beginExp.toString == "(begin 5 10)")
   }
 
+  "A SchemeExp" should "contain path information after map" in {
+    val t: SchemeFuncall = SchemeParser.parseProgramText("(* (if #t 5 3) (begin 5 10))").head.asInstanceOf[SchemeFuncall]
+    val mapped: SchemeFuncall = t.map(e => {
+      e match
+        case SchemeIf(cond, cons, alt, idn) => SchemeIf(alt, alt, alt, idn).sexpCopy()
+        case any => any
+    }).asInstanceOf[SchemeFuncall]
+
+    assert(mapped.args.head.asInstanceOf[SchemeIf].cond.path equals List(1, 0))
+  }
 
   "A SchemeExp" should "be deep mappable" in {
     val t: SchemeFuncall = SchemeParser.parseProgramText("(* (if #t 5 3) (begin (begin (if #t 2 1))))").head.asInstanceOf[SchemeFuncall]
