@@ -13,7 +13,7 @@ object GTR:
     reduceLoop(tree, oracle, transformations)
 
   @tailrec
-  def reduceLoop(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
+  private def reduceLoop(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
     var reducedTree: SchemeExp = tree
     for(lvl <- 0 to reducedTree.height)
       for(transformation <- transformations)

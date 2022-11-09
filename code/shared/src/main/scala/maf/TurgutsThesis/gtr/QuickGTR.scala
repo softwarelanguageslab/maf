@@ -11,8 +11,8 @@ object QuickGTR:
     //call setPaths() first on the tree before we really start reducing
     tree.setPaths()
     reduceLoop(tree, oracle, transformations)
-    
-  def reduceLoop(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
+
+  private def reduceLoop(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
     var reducedTree: SchemeExp = tree
     for(lvl <- 0 to reducedTree.height)
       for(transformation <- transformations)
