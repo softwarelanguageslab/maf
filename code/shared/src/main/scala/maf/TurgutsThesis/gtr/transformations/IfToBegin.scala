@@ -13,4 +13,4 @@ object IfToBegin extends Transformation:
         substitutes = substitutes.::(SchemeBegin(List(cond, alt), idn))
       case _ =>
 
-    substitutes.map(substitute => tree.replace(node, substitute))
+    substitutes.map(substitute => tree.replace(node.path, substitute))

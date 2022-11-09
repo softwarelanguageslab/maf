@@ -42,4 +42,4 @@ object SubstituteIdentifierCalls extends Transformation:
         return candidateTrees
       case _ =>
 
-    res.map(newNode => tree.replace(node, newNode))
+    res.map(newNode => tree.replace(node.path, newNode))

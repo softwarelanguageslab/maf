@@ -9,4 +9,4 @@ object SubstituteByChild extends Transformation:
     val children = node.subexpressions.collect {
       case s: SchemeExp => s
     }
-    children.map(child => tree.replace(node, child))
+    children.map(child => tree.replace(node.path, child))

@@ -31,7 +31,7 @@ object DeleteChildSimple extends Transformation:
       case _ =>
 
     res.map(nodeSubstitute => {
-      tree.replace(node, nodeSubstitute)
+      tree.replace(node.path, nodeSubstitute)
     })
 
   def deleteChildLettishExp(lettishExp: SchemeLettishExp,
