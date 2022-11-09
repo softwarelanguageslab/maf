@@ -27,15 +27,6 @@ class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
       with SchemeModFLocalAdaptiveWideningPolicyA(n)
-  override def isSlow(b: Benchmark): Boolean =
-    Set(
-      "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
-      "test/R5RS/various/mceval.scm", // TIMES OUT
-      // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
-      "test/R5RS/various/infinite-1.scm",
-      "test/R5RS/various/infinite-2.scm",
-      "test/R5RS/various/infinite-3.scm",
-    ).contains(b)
 
 class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
   def l = 10
@@ -47,13 +38,3 @@ class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
       with SchemeModFLocalAdaptiveWideningPolicyB(l)
-  override def isSlow(b: Benchmark): Boolean =
-    Set(
-      "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
-      "test/R5RS/various/mceval.scm", // TIMES OUT
-      // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
-      "test/R5RS/various/infinite-1.scm",
-      "test/R5RS/various/infinite-2.scm",
-      "test/R5RS/various/infinite-3.scm",
-    ).contains(b)
-
