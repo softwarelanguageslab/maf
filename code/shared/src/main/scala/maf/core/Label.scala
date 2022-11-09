@@ -66,7 +66,7 @@ enum Label:
     // Symbolic language
     case HOL // a symbolic hole
     case SVR // a symbolic variable
-    
+
     // Taint analysis
     case SRC // Source
     case SNK // Sink

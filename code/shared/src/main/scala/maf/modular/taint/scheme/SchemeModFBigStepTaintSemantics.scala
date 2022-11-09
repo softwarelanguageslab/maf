@@ -22,15 +22,14 @@ trait SchemeModFBigStepTaintSemantics
     with GlobalStoreTaint[SchemeExp]:
 
     type EvalM[X] = TaintEvalM[X]
-    implicit val evalM: TEvalM[EvalM] = new MonadTaintEvalM {}
+    implicit val evalM: MonadTaintEvalM = new MonadTaintEvalM {}
 
-    case class TaintEvalM[+X](run: (List[Set[Addr]], Environment[Address]) => Option[X]):
+    case class TaintEvalM[+X](run: (Set[Address], Environment[Address]) => Option[X]):
         def flatMap[Y](f: X => TaintEvalM[Y]): TaintEvalM[Y] =
             TaintEvalM((implicitFlows, env) => run(implicitFlows, env).flatMap(res => f(res).run(implicitFlows, env)))
         def map[Y](f: X => Y): TaintEvalM[Y] = TaintEvalM((imF, env) => run(imF, env).map(f))
 
-        def fail[X](e: Error): EvalM[X] =
-            throw new Exception(e.toString)
+        def fail[X](e: Error): EvalM[X] = throw new Exception(e.toString)
 
     trait MonadTaintEvalM extends TEvalM[TaintEvalM]:
         def map[X, Y](m: TaintEvalM[X])(f: X => Y): TaintEvalM[Y] = m.map(f)
@@ -57,6 +56,9 @@ trait SchemeModFBigStepTaintSemantics
         // TODO: withExtendedEnv would make more sense
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => TaintEvalM[X]): TaintEvalM[X] =
             TaintEvalM((imF, env) => ev.run(imF, f(env)))
+        def getImplicitTaint: TaintEvalM[Set[Address]] = TaintEvalM((t, _) => Some(t))
+        def withImplicitTaint[X](ts: Set[Addr])(ev: => TaintEvalM[X]): TaintEvalM[X] = TaintEvalM((imF, env) => ev.run(ts, env))
+        def addImplicitTaint[X](ts: Set[Addr])(ev: => TaintEvalM[X]): TaintEvalM[X] = TaintEvalM((imF, env) => ev.run(imF ++ ts, env))
         def merge[X: Lattice](x: TaintEvalM[X], y: TaintEvalM[X]): TaintEvalM[X] = TaintEvalM { (imF, env) =>
             (x.run(imF, env), y.run(imF, env)) match
                 case (None, yres)             => yres
@@ -64,8 +66,7 @@ trait SchemeModFBigStepTaintSemantics
                 case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
         }
 
-        def fail[X](e: Error): TaintEvalM[X] =
-            throw new Exception(e.toString)
+        def fail[X](e: Error): TaintEvalM[X] = mzero // throw new Exception(e.toString)
 
     override def warn(msg: String): Unit = ()
 
@@ -76,9 +77,11 @@ trait SchemeModFBigStepTaintSemantics
         else "Some source values may reach sinks:" + badFlows.map(f => s"${f._1} => ${f._2}").mkString("\n", "\n", "\n")
 
     trait SchemeModFBigStepTaintIntra extends IntraAnalysis with BigStepModFIntraT with GlobalStoreTaintIntra:
+        import evalM._
+
         // analysis entry point
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(List(), fnEnv).foreach(res => writeResult(res))
+            eval(fnBody).run(Set[Addr](), fnEnv).foreach(res => writeResult(res))
 
         override def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeSource(name, _) =>
@@ -93,6 +96,13 @@ trait SchemeModFBigStepTaintSemantics
             case SchemeSink(name, _) =>
                 evalVariable(name).map(v => { traceDataFlow(lattice.getAddresses(v)); v })
             case _ => super.eval(exp)
+
+        // Add the implicit taint to the value written.
+        override protected def write(adr: Addr, v: Value): TaintEvalM[Unit] =
+            for
+                iTaint <- getImplicitTaint
+                res <- super.write(adr, lattice.addAddresses(v, iTaint))
+            yield res
 
         def traceDataFlow(addr: Set[Addr]): Unit =
             var work: Set[Addr] = addr
@@ -119,11 +129,12 @@ trait SchemeModFBigStepTaintSemantics
         override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
             for
                 prdVal <- eval(prd)
+                iTaint <- getImplicitTaint
                 // Implicit flows go from the predicate to the branches of the conditional.
-                _ = { implicitFlows = lattice.getAddresses(prdVal) :: implicitFlows }
-                adr = implicitFlows.flatten.toSet
-                resVal <- cond(prdVal, eval(csq), eval(alt))
-                _ = { implicitFlows = implicitFlows.tail }
+                adr = lattice.getAddresses(prdVal) ++ iTaint
+                resVal <- withImplicitTaint(adr) {
+                    cond(prdVal, eval(csq), eval(alt))
+                }
             // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
             yield lattice.addAddresses(resVal, adr)
 
@@ -135,7 +146,7 @@ trait SchemeModFBigStepTaintSemantics
           ): M[Value] =
             val arity = args.length
             val closures = lattice.getClosures(fun)
-            val explicitFlows = lattice.getAddresses(fun) // Added
+            val explicitFlows = lattice.getAddresses(fun) // Added TODO is this needed?
             MonadJoin[M].mfoldMap(closures)((clo) =>
                 (clo match {
                     case (SchemeLambda(_, prs, _, _, _), _) =>
@@ -147,12 +158,12 @@ trait SchemeModFBigStepTaintSemantics
                                 targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, argVals)
                                 _ <- ctx.beforeCall(targetCmp, prs, clo)
-                                result = call(targetCmp)
+                                iTaint <- getImplicitTaint
+                                result = call(targetCmp) // TODO make sure the implicit flows are added to the component even when bottom is returned!
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
-                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp,
-                                                                                                                Set()
-                                ) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
+                                implicitFlowsCut =
+                                    implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
                                 updatedResult
                         else baseEvalM.fail(ArityError(cll, prs.length, arity))
                     case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
@@ -168,12 +179,12 @@ trait SchemeModFBigStepTaintSemantics
                                 _ = bindArgs(targetCmp, prs, fixedArgVals)
                                 _ = bindArg(targetCmp, vararg, varArgVal)
                                 _ <- ctx.beforeCall(targetCmp, prs, clo)
+                                iTaint <- getImplicitTaint
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
-                                implicitFlowsCut = implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp,
-                                                                                                                Set()
-                                ) ++ explicitFlows ++ implicitFlows.flatten.toSet)) // Added
+                                implicitFlowsCut =
+                                    implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
                                 updatedResult
                         else baseEvalM.fail(VarArityError(cll, prs.length, arity))
                     case _ => Monad[M].unit(lattice.bottom)

@@ -132,8 +132,8 @@ trait UndefinerTester:
                 check(nw, allowed)
 
             // Tains
-            case SchemeSource(name, _) => false
-            case SchemeSink(name, _) => false
+            case SchemeSource(name, _)    => false
+            case SchemeSink(name, _)      => false
             case SchemeSanitizer(name, _) => false
 
             // ContractScheme

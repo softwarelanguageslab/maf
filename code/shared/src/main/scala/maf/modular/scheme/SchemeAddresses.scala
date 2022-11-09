@@ -27,7 +27,7 @@ case class LitAddr[Context](exp: SchemeExp) extends SchemeAddr[Context]:
 case class SrcAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = nam.idn
-case class SanAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Context] :
+case class SanAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = nam.idn
 

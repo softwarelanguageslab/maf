@@ -17,10 +17,9 @@ import scala.collection.immutable.*
 trait GlobalStoreTaint[Expr <: Expression] extends ModAnalysis[Expr] with GlobalStore[Expr] with IncrementalAbstractDomain[Expr]:
     inter =>
 
-    /** The implicit flows cover flows that are formed implicitly, i.e., through conditional branching. */
-    var implicitFlows: List[Set[Addr]] = Nil
-
-    /** The implicit flows cut at the module boundary, and the implicit flows created at the module boundary due to e.g., a higher-order function call. */
+    /**
+     * The implicit flows cut at the module boundary, and the implicit flows created at the module boundary due to e.g., a higher-order function call.
+     */
     var implicitFlowsCut: Map[Component, Set[Addr]] = Map() // Flows that decide on function calls. Needed e.g., for side-effecting functions not depending on arguments.
 
     /**
@@ -45,7 +44,7 @@ trait GlobalStoreTaint[Expr <: Expression] extends ModAnalysis[Expr] with Global
 
         override def writeAddr(addr: Addr, value: Value): Boolean =
             // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
-            val dependentAddresses = SmartUnion.sunion(SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet), implicitFlowsCut.getOrElse(component, Set()))
+            val dependentAddresses = SmartUnion.sunion(lattice.getAddresses(value), implicitFlowsCut.getOrElse(component, Set()))
             // Store the dependencies.
             val newDependencies = SmartUnion.sunion(dataFlow(addr), dependentAddresses)
             dataFlow += (addr -> newDependencies)

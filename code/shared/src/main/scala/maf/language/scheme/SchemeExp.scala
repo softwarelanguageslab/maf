@@ -816,7 +816,6 @@ case class SymbolicVar(nam: String, adr: maf.core.Address) extends SchemeExp:
     def subexpressions: List[Expression] = List()
     def label = SVR
 
-
 //
 // For taint analysis
 //

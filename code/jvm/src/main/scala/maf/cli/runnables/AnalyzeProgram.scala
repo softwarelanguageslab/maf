@@ -43,7 +43,7 @@ object AnalyzeProgram extends App:
         a
 
     val bench: List[String] = List(
-      "test/taint/tainted-function-select.scm"
+      "test/DEBUG2.scm"
     )
 
     // Used by webviz.
@@ -88,7 +88,9 @@ object AnalyzeProgram extends App:
             with SchemeModFBigStepTaintSemantics
             with IncrementalSchemeTypeDomain
             with GlobalStoreTaint[SchemeExp] {
-            override def intraAnalysis(cmp: SchemeModFComponent): SchemeModFBigStepTaintIntra = new IntraAnalysis(cmp) with SchemeModFBigStepTaintIntra with GlobalStoreTaintIntra
+            override def intraAnalysis(
+                cmp: SchemeModFComponent
+              ): SchemeModFBigStepTaintIntra = new IntraAnalysis(cmp) with SchemeModFBigStepTaintIntra with GlobalStoreTaintIntra
         }
 
     bench.foreach({ b =>
@@ -99,7 +101,6 @@ object AnalyzeProgram extends App:
         println(a.program.prettyString())
         a.dataFlowR.foreach(println)
         println()
-        a.implicitFlows.foreach(println)
         println()
-        a.implicitFlowsCut.foreach({case (c, as) => as.foreach(a => println(s"$c $a"))})
+        a.implicitFlowsCut.foreach({ case (c, as) => as.foreach(a => println(s"$c $a")) })
     })
