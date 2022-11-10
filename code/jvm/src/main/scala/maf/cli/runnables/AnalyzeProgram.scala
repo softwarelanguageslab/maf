@@ -43,7 +43,13 @@ object AnalyzeProgram extends App:
         a
 
     val bench: List[String] = List(
-      "test/DEBUG2.scm"
+      "test/DEBUG2.scm",
+      "test/taint/implicit-flow.scm",
+        "test/taint/sanitized-flow.scm",
+        "test/taint/side-effecting-function.scm",
+        "test/taint/simple-flow.scm",
+        "test/taint/tainted-function-choice-1.scm",
+        "test/taint/tainted-function-choice-2.scm"
     )
 
     // Used by webviz.
@@ -97,10 +103,12 @@ object AnalyzeProgram extends App:
         // for(i <- 1 to 10) {
         //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
         val a = runAnalysis(b, program => taintAnalysis(program), () => Timeout.start(Duration(1, MINUTES)))
+        println(b)
         println(a.taintResult())
-        println(a.program.prettyString())
-        a.dataFlowR.foreach(println)
         println()
-        println()
-        a.implicitFlowsCut.foreach({ case (c, as) => as.foreach(a => println(s"$c $a")) })
+        //println(a.program.prettyString())
+       // a.dataFlowR.foreach(println)
+        //println()
+        //println()
+        //a.implicitFlowsCut.foreach({ case (c, as) => as.foreach(a => println(s"$c $a")) })
     })

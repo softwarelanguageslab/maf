@@ -94,7 +94,13 @@ trait SchemeModFBigStepTaintSemantics
                 evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) })
             //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
             case SchemeSink(name, _) =>
-                evalVariable(name).map(v => { traceDataFlow(lattice.getAddresses(v)); v })
+                for
+                    // For sinks, use implicit _and_ explicit taint for tracing!
+                    v <- evalVariable(name)
+                    iFlow <- getImplicitTaint
+                    eFlow = lattice.getAddresses(v)
+                    _ = traceDataFlow(iFlow ++ eFlow)
+                yield v
             case _ => super.eval(exp)
 
         // Add the implicit taint to the value written.
