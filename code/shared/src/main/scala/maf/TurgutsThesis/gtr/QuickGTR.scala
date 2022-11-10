@@ -9,7 +9,6 @@ import scala.annotation.tailrec
 object QuickGTR:
   def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
     //call setPaths() first on the tree before we really start reducing
-    tree.setPaths()
     reduceLoop(tree, oracle, transformations)
 
   private def reduceLoop(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
@@ -19,7 +18,7 @@ object QuickGTR:
         reducedTree = reduceLevelNodes(reducedTree, reducedTree.levelNodes(lvl), oracle, transformation)
         if !(reducedTree == tree) then
           return reduceLoop(reducedTree, oracle, transformations)
-    println("total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
+    println("QuickGTR total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
     tree
 
   private def reduceLevelNodes(tree: SchemeExp, lvlNodes: List[SchemeExp], oracle: SchemeExp => Boolean, transformation: Transformation): SchemeExp =

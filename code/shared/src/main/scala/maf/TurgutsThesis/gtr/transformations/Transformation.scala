@@ -20,12 +20,13 @@ abstract class Transformation:
 
   /** Template method transform definition */
   def transform(tree: SchemeExp, node: SchemeExp): List[SchemeExp] =
+    require(tree.contains(node))
     trees = List()
     replacements = List()
 
     transformAndAdd(tree, node) //should fill trees and replacements
 
-    trees ++ replacements.map(r => tree.replace(node.path, r))
+    trees ++ replacements.map(r => tree.replace(node, r))
 
   /** transformAndAdd is a subclass responsibility */
   def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit

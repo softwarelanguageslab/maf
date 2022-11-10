@@ -14,7 +14,7 @@ object RemoveLambdaParam extends Transformation:
           case SchemeVarArgLambda(name, args, vararg, body, annotation, idn) =>
             SchemeVarArgLambda(name, args.take(argIdx) ++ args.drop(argIdx + 1), vararg, body, annotation, idn)
 
-        val lambdaReplacedTree = tree.replace(lambda.path, reducedLambda)
+        val lambdaReplacedTree = tree.replace(lambda, reducedLambda)
         val callsReducedTree = lambdaReplacedTree.map(sexp => {
           sexp match
             case SchemeFuncall(f: SchemeVarExp, fArgs, idn) =>
