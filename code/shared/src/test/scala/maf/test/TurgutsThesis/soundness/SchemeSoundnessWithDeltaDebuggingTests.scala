@@ -74,7 +74,7 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
         val failureMsg = runAndCompare(program)
         if failureMsg.nonEmpty then
           var newFailureMsg = failureMsg
-          val reduced = GTR.reduce(
+          val reduced = QuickGTR.reduce(
             program,
             p => {
               val nextFailureMsg = runAndCompare(p)
