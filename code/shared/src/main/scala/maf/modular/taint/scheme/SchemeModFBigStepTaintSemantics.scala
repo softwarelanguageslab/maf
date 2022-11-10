@@ -72,7 +72,25 @@ trait SchemeModFBigStepTaintSemantics
 
     var badFlows: Set[(Addr, Addr)] = Set()
 
+    def traceDataFlow(addr: Set[Addr]): Unit =
+        var work: Set[Addr] = addr
+        var visited: Set[Addr] = Set()
+        while work.nonEmpty do
+            val first = work.head
+            work = work - first
+            if !visited.contains(first) then
+                visited = visited + first
+                val prev: Set[Addr] = dataFlowR(first)
+                val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
+                if src.nonEmpty then
+                // A harmful flow was found.
+                    src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
+                prev.foreach { p =>
+                    if !p.isInstanceOf[SanAddr[_]] then work += p
+                }
+
     def taintResult(): String =
+        traceDataFlow(store.keySet.filter(_.isInstanceOf[SnkAddr[_]]))
         if badFlows.isEmpty then "No bad flows found."
         else "Some source values may reach sinks:" + badFlows.map(f => s"${f._1} => ${f._2}").mkString("\n", "\n", "\n")
 
@@ -94,13 +112,10 @@ trait SchemeModFBigStepTaintSemantics
                 evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) }) // lattice.removeAddresses(v) })
             //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
             case SchemeSink(name, _) =>
-                for
-                    // For sinks, use implicit _and_ explicit taint for tracing!
-                    v <- evalVariable(name)
-                    iFlow <- getImplicitTaint
-                    eFlow = lattice.getAddresses(v)
-                    _ = traceDataFlow(iFlow ++ eFlow)
-                yield v
+                // Thread sinks through the store so they can be found again afterwards.
+                // Tracing afterwards is needed since components may not be reanalysed when the arguments remain the same (but the explicit taints change).
+                val a = SnkAddr(name, context(component))
+                evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) })
             case _ => super.eval(exp)
 
         // Add the implicit taint to the value written.
@@ -109,23 +124,6 @@ trait SchemeModFBigStepTaintSemantics
                 iTaint <- getImplicitTaint
                 res <- super.write(adr, lattice.addAddresses(v, iTaint))
             yield res
-
-        def traceDataFlow(addr: Set[Addr]): Unit =
-            var work: Set[Addr] = addr
-            var visited: Set[Addr] = Set()
-            while work.nonEmpty do
-                val first = work.head
-                work = work - first
-                if !visited.contains(first) then
-                    visited = visited + first
-                    val prev: Set[Addr] = dataFlowR(first)
-                    val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
-                    if src.nonEmpty then
-                        // A harmful flow was found.
-                        src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
-                    prev.foreach { p =>
-                        if !p.isInstanceOf[SanAddr[_]] then work += p
-                    }
 
         /**
          * Evaluation of a conditional that handles implicit value flows.

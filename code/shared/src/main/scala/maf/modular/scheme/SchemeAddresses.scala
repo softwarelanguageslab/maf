@@ -30,6 +30,9 @@ case class SrcAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Co
 case class SanAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = nam.idn
+case class SnkAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Context]:
+    def printable = true
+    def idn: Identity = nam.idn
 
 case class PrmAddr(nam: String) extends SchemeAddr[Nothing]:
     def printable = false

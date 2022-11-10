@@ -3,6 +3,6 @@
 (define (b)
   (define v #t)
   (define v-s (source v))
-  (if v-s (f v-s)))
+  (if v-s (f #t)))
 (a)
 (b)
