@@ -1,5 +1,6 @@
 package maf.cli.runnables
 
+import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.SchemeAnalyses
 import maf.core.{Identifier, Monad}
 import maf.language.CScheme.CSchemeParser
@@ -42,15 +43,7 @@ object AnalyzeProgram extends App:
         }
         a
 
-    val bench: List[String] = List(
-      "test/DEBUG2.scm",
-      "test/taint/implicit-flow.scm",
-        "test/taint/sanitized-flow.scm",
-        "test/taint/side-effecting-function.scm",
-        "test/taint/simple-flow.scm",
-        "test/taint/tainted-function-choice-1.scm",
-        "test/taint/tainted-function-choice-2.scm"
-    )
+    val bench: List[String] = List("test/DEBUG2.scm") //SchemeBenchmarkPrograms.fromFolder("test/taint")().toList
 
     // Used by webviz.
     def newStandardAnalysis(text: String) =

@@ -168,8 +168,11 @@ trait SchemeModFBigStepTaintSemantics
                                 result = call(targetCmp) // TODO make sure the implicit flows are added to the component even when bottom is returned!
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
+                                val old = implicitFlowsCut.getOrElse(targetCmp, Set())
                                 implicitFlowsCut =
                                     implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
+                                if old != implicitFlowsCut.getOrElse(targetCmp, Set())
+                                then addToWorkList(targetCmp)
                                 updatedResult
                         else baseEvalM.fail(ArityError(cll, prs.length, arity))
                     case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
@@ -189,8 +192,11 @@ trait SchemeModFBigStepTaintSemantics
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
+                                val old = implicitFlowsCut.getOrElse(targetCmp, Set())
                                 implicitFlowsCut =
                                     implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
+                                if old != implicitFlowsCut.getOrElse(targetCmp, Set())
+                                then addToWorkList(targetCmp)
                                 updatedResult
                         else baseEvalM.fail(VarArityError(cll, prs.length, arity))
                     case _ => Monad[M].unit(lattice.bottom)

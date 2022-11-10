@@ -3,6 +3,4 @@
 (define x-s (source x))
 (if x-s
   (let ((san (sanitize x-s)))
-    (sink san)
-    (display san))
-  #f)
+    (sink san)))
