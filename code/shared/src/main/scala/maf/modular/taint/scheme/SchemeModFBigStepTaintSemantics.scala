@@ -89,9 +89,9 @@ trait SchemeModFBigStepTaintSemantics
                 //val a = SrcAddr(name)
                 //evalVariable(name).map(v => { write(a, v); read(a) }) // Store threading is needed for sanitizers to be able to stop the trace. TODO is it?
                 evalVariable(name).map(v => lattice.addAddress(v, SrcAddr(name, context(component))))
-            case SchemeSanitizer(name, _) =>
+            case SchemeSanitizer(name, _) => // TODO why can't we just remove the flow information?
                 val a = SanAddr(name, context(component))
-                evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) })
+                evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) }) // lattice.removeAddresses(v) })
             //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
             case SchemeSink(name, _) =>
                 for
