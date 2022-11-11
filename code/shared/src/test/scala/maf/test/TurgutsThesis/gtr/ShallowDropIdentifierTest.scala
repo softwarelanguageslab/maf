@@ -7,13 +7,15 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class ShallowDropIdentifierTest extends AnyFlatSpec {
   "GTR" should "be able to shallow delete identifiers" in {
-    def testCode(programText: String, expected: String = "(let () )"): Unit =
+    def testCode(programText: String, expected: String = "(let () 'done)"): Unit =
       val letExp: SchemeLet = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLet]
       val id = letExp.bindings.head._1
       val shallowDeleted = letExp.shallowDropIdentifier(id)
-
-      //println(shallowDeleted.toString)
-      assert(shallowDeleted.toString == expected)
+      shallowDeleted match
+        case Some(exp) =>
+          //println(exp)
+          assert(exp.toString == expected)
+        case _ =>
 
     //code 1: identifier in appl
     val programText1: String =
@@ -21,7 +23,8 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
       |    ((x 5))
       |  (+ 10 x)
       |  (x 5 9)
-      |  (x x x))""".stripMargin
+      |  (x x x)
+      |  'done)""".stripMargin
 
     testCode(programText1)
 
@@ -42,15 +45,17 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
         |    ((x 5)
         |     (y 9))
         |  (set! y (+ x 10))
-        |  (set! x (+ y y)))""".stripMargin
+        |  (set! x (+ y y))
+        |  'done)""".stripMargin
 
-    testCode(programText3, "(let ((y 9)) )")
+    testCode(programText3, "(let ((y 9)) 'done)")
 
     //code 4: identifier in define
     val programText4: String =
       """(let
         |    ((x 5))
-        |  (define y (+ 10 (+ x 10))))""".stripMargin
+        |  (define y (+ 10 (+ x 10)))
+        |  'done)""".stripMargin
 
     testCode(programText4)
 
@@ -59,7 +64,8 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
     """(let
       |    ((x 5))
       |  (let ((y x)) 10)
-      |  (let* ((z 10)) x))""".stripMargin
+      |  (let* ((z 10)) x)
+      |  'done)""".stripMargin
 
     testCode(programText5)
 
@@ -68,7 +74,7 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
       """(let
         |    ((x 5))
         |  (lambda (y z) (+ 100 (+ 100 x)))
-        |  )""".stripMargin
+        |  'done)""".stripMargin
 
     testCode(programText6)
 
@@ -93,7 +99,8 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
         |    ((x 5)
         |     (y (+ 10 x)))
         |  (* y x)
-        |  (begin 10 (+ y 10)))
+        |  (begin 10 (+ y 10))
+        |  'done)
         |""".stripMargin
 
     testCode(programText8)
@@ -104,7 +111,7 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
         |  (let ((y 10))
         |    (* y x)
         |    (begin 10 (+ y 10))
-        |    )
+        |    'done)
         |  )""".stripMargin
 
     testCode(programText9)

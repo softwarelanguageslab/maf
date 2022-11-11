@@ -18,8 +18,9 @@ object DeleteChildIdentifier extends Transformation:
 
     for (i <- bindings.indices)
       val id = bindings(i)._1
-      val referencesShallowDropped = lettishExp.shallowDropIdentifier(id)
+      lettishExp.shallowDropIdentifier(id) match
+        case Some(exp) => addReplacement(exp)
+        case _ =>
       val referencesDeepDropped = lettishExp.deepDropIdentifier(id)
 
       addReplacement(referencesDeepDropped)
-      addReplacement(referencesShallowDropped)

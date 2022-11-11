@@ -4,7 +4,7 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 import org.scalatest.flatspec.AnyFlatSpec
 
 class DeleteChildrenTest extends AnyFlatSpec {
-  "A Scheme exp" should "be able to delete its children" in {
+  "A SchemeExp" should "be able to delete its children" in {
 
     def testCode(programText: String, deleter: SchemeExp => Boolean): Unit = {
       val letExp: SchemeLet = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLet]
@@ -12,7 +12,7 @@ class DeleteChildrenTest extends AnyFlatSpec {
       println(letExp.deleteChildren(deleter))
     }
 
-    val programText8: String =
+    val programText: String =
       """(let ((x 5)
         |      (y (+ 10 x)))
         |  (* y x)
@@ -21,11 +21,30 @@ class DeleteChildrenTest extends AnyFlatSpec {
         |  (begin 10 (+ y 10)))
         |""".stripMargin
     
-    testCode(programText8, sexp => {
+    testCode(programText, sexp => {
       sexp match
         case exp: SchemeVarExp =>
           exp.id.name == "x"
         case _ => false
     })
+  }
+
+
+  "A SchemeExp" should "return None if it must be deleted" in {
+    val programText: String =
+      """(let ((x 5)
+        |      (y (+ 10 x)))
+        |  x)
+        |""".stripMargin
+
+    val letExp: SchemeLet = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLet]
+
+    val deleted = letExp.deleteChildren(exp =>
+      exp match
+        case s: SchemeVarExp => true
+        case _ => false
+    )
+
+    assert(deleted.isEmpty)
   }
 }
