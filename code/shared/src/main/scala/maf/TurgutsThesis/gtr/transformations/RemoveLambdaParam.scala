@@ -3,7 +3,7 @@ import maf.core.{Identifier, Identity}
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambda, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarArgLambda, SchemeVarExp, SymbolicHole, SymbolicVar}
 
 object RemoveLambdaParam extends Transformation:
-  override protected val name: String = "removeLambdaParam"
+  override val name: String = "removeLambdaParam"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     def removeLambdaParam(lambda: SchemeLambdaExp, id: Identifier): Unit = {

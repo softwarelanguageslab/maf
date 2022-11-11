@@ -2,7 +2,7 @@ package maf.TurgutsThesis.gtr.transformations
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 
 object RemoveCalls extends Transformation:
-  override protected val name: String = "RemoveCalls"
+  override val name: String = "RemoveCalls"
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     node match
       case exp: SchemeLettishExp =>

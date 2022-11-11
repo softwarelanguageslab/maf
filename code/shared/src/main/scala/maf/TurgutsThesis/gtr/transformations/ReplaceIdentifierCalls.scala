@@ -4,7 +4,7 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 import maf.language.sexp.Value
 
 object ReplaceIdentifierCalls extends Transformation with Replacing:
-  override protected val name: String = "SubstituteIdentifierCalls"
+  override val name: String = "ReplaceIdentifierCalls"
 
   def replaceCallWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =
     replaceWithAllValues(exp, subExp => {
@@ -21,15 +21,10 @@ object ReplaceIdentifierCalls extends Transformation with Replacing:
           addReplacements(replaceCallWithAllValues(exp, arg))
 
       case lettishExp: SchemeLettishExp =>
-        val lambdaBindings = lettishExp.bindings.collect({
-          case (identifier, lambda: SchemeLambdaExp) => (identifier, lambda)
-        })
-        for(id <- lambdaBindings.map(_._1))
+        for(id <- lettishExp.bindings.map(_._1))
           addReplacements(replaceCallWithAllValues(lettishExp, id))
 
       case SchemeDefineVariable(name, _, _) =>
-        tree.deleteChildren(child => child == node) match
-          case Some(tree) =>
-            addTrees(replaceCallWithAllValues(tree, name))
-          case _ =>
+        addTrees(replaceCallWithAllValues(tree, name))
+
       case _ =>

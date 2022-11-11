@@ -2,7 +2,7 @@ package maf.TurgutsThesis.gtr.transformations
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 
 object IfToBegin extends Transformation:
-  override protected val name: String = "IfToBegin"
+  override val name: String = "IfToBegin"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match

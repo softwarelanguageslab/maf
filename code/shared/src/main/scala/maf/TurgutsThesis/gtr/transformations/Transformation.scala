@@ -26,12 +26,13 @@ abstract class Transformation:
 
     transformAndAdd(tree, node) //should fill trees and replacements
 
-    trees ++ replacements.map(r => tree.replace(node, r))
+    (trees ++ replacements.map(r => tree.replace(node, r)))
+      .filterNot(newTree => tree eql newTree) //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
 
   /** transformAndAdd is a subclass responsibility */
   def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit
 
-  protected val name: String
+  val name: String
   private var hits: Int = 0
   def getHits: Int = hits
   def hit(tree: SchemeExp, idx: Int): Unit =
