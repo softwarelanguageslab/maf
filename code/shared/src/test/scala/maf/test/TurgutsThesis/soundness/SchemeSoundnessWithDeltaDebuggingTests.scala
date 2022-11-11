@@ -1,8 +1,8 @@
 package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
-import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParam, SubstituteByChild, ReplaceIdentifier, ReplaceIdentifierCalls}
-import maf.core.Identity
+import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParam, ReplaceIdentifier, ReplaceIdentifierCalls, SubstituteByChild}
+import maf.core.{Identity, NoCodeIdentity}
 import maf.language.CScheme.*
 import maf.language.scheme.*
 import maf.language.scheme.interpreter.*
@@ -71,17 +71,12 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
           }
         }
 
-        val failureMsg = runAndCompare(program)
+        var failureMsg = runAndCompare(program)
         if failureMsg.nonEmpty then
-          var newFailureMsg = failureMsg
           val reduced = QuickGTR.reduce(
             program,
             p => {
-              val nextFailureMsg = runAndCompare(p)
-              if nextFailureMsg.nonEmpty then
-                newFailureMsg = nextFailureMsg
-                true
-              else false
+              runAndCompare(p).nonEmpty //non-empty failure msg
             },
             List(
               SubstituteByChild,
@@ -95,9 +90,13 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
               ReplaceIdentifierCalls
             )
           )
+
+          val parsedAgain = SchemeParser.parseProgram(reduced.prettyString()) //parse again, to generate file-related information (e.g. bug is at offset 20-25)
+          failureMsg = runAndCompare(parsedAgain)
+
           fail(
             "FAILED\n: " +
-            newFailureMsg + "\n" +
+            failureMsg + "\n" +
             "ORIGINAL PROGRAM: \n" +
             program.size + "\n" +
             "REDUCED PROGRAM: \n" +

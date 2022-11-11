@@ -20,6 +20,11 @@ sealed trait SchemeExp extends Expression:
     /** deleteChildren */
     def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] = ???
     /** Replace */
+    def safeReplace(node: SchemeExp, replacement: SchemeExp): SchemeExp =
+      val replaced = replace(node, replacement)
+      if this eql replaced then
+        throw new IllegalArgumentException("Replacement is suspicious: may not have replaced anything")
+      else replaced
     def replace(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       if this == node then
         replacement

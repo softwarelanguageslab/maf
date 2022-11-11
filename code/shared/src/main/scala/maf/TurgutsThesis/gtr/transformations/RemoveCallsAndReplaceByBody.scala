@@ -15,41 +15,29 @@ object RemoveCallsAndReplaceByBody extends Transformation:
           val lambda = lambdaBinding._2
           val lambdaId = lambdaBinding._1
 
-          val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
+          val lambdaReplaced = tree.safeReplace(lambda, SchemeBegin(lambda.body, lambda.idn))
+
+          val callsRemoved = lambdaReplaced.deleteChildren({
             case SchemeFuncall(f: SchemeVarExp, _, _) =>
               f.id.name == lambdaId.name
             case _ => false
           })
 
-          applsRemoved match
-            case Some(tree) =>
-              val candidate = tree.map(sexp => {
-                if sexp eql lambda then
-                  SchemeBegin(lambda.body, NoCodeIdentity)
-                else sexp
-              })
-              addTree(candidate)
+          callsRemoved match
+            case Some(tree) => addTree(tree)
             case _ =>
 
-      case SchemeDefineVariable(name, value, _) =>
-        value match
-          case lambda: SchemeLambdaExp =>
-            val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-              case SchemeFuncall(f: SchemeVarExp, _, _) =>
-                f.id.name == name.name
-              case _ => false
-            })
+      case SchemeDefineVariable(name, lambda: SchemeLambdaExp, _) =>
+        val lambdaReplaced = tree.safeReplace(lambda, SchemeBegin(lambda.body, lambda.idn))
 
-            applsRemoved match
-              case Some(tree) =>
-                val candidate = tree.map(sexp => {
-                  if sexp eql lambda then
-                    SchemeBegin(lambda.body, NoCodeIdentity)
-                  else sexp
-                })
-                addTree(candidate)
-              case _ =>
+        val callsRemoved = lambdaReplaced.deleteChildren({
+          case SchemeFuncall(f: SchemeVarExp, _, _) =>
+            f.id.name == name.name
+          case _ => false
+        })
 
+        callsRemoved match
+          case Some(tree) => addTree(tree)
           case _ =>
 
       case _ =>

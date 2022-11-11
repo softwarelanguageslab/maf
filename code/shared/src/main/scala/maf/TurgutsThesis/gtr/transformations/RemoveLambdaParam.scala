@@ -7,7 +7,7 @@ object RemoveLambdaParam extends Transformation:
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     def removeLambdaParam(lambda: SchemeLambdaExp, id: Identifier): Unit = {
-      for ((arg, argIdx) <- lambda.args.zipWithIndex)
+      for ((_, argIdx) <- lambda.args.zipWithIndex)
         val reducedLambda = lambda match
           case SchemeLambda(name, args, body, annotation, idn) =>
             SchemeLambda(name, args.take(argIdx) ++ args.drop(argIdx + 1), body, annotation, idn)
@@ -33,11 +33,8 @@ object RemoveLambdaParam extends Transformation:
           case (identifier, lambda: SchemeLambdaExp) => (identifier, lambda)
         })
 
-        if lambdaBindings.length < 3 then //otherwise, this gets very expensive
-          for (lambdaBinding <- lambdaBindings)
-            val lambdaId = lambdaBinding._1
-            val lambdaExp = lambdaBinding._2
-            removeLambdaParam(lambdaExp, lambdaId)
+        for (lambdaBinding <- lambdaBindings)
+          removeLambdaParam(lambdaBinding._2, lambdaBinding._1)
 
       case SchemeDefineVariable(name, lambda: SchemeLambdaExp, _) =>
         removeLambdaParam(lambda, name)

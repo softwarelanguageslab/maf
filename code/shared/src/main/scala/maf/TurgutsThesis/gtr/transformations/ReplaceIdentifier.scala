@@ -1,5 +1,5 @@
 package maf.TurgutsThesis.gtr.transformations
-import maf.core.{Identifier, NoCodeIdentity}
+import maf.core.Identifier
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 import maf.language.sexp.Value
 
@@ -22,6 +22,6 @@ object ReplaceIdentifier extends Transformation with Replacing:
       case lettishExp: SchemeLettishExp =>
         for(id <- lettishExp.bindings.map(_._1))
           addReplacements(replaceIdWithAllValues(lettishExp, id))
-      case sexp@SchemeDefineVariable(name, _, _) =>
+      case SchemeDefineVariable(name, _, _) =>
         addTrees(replaceIdWithAllValues(tree, name))
       case _ =>

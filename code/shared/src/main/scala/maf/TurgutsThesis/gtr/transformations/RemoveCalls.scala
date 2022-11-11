@@ -24,7 +24,7 @@ object RemoveCalls extends Transformation:
               addTree(tree)
             case _ =>
 
-      case SchemeDefineVariable(name, lambda: SchemeLambdaExp, _) =>
+      case SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
         val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
           case SchemeFuncall(f: SchemeVarExp, _, _) =>
             f.id.name == name.name
