@@ -1,6 +1,6 @@
 package maf.TurgutsThesis.gtr
 
-import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, SubstituteByChild}
+import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, ReplaceByChild}
 import maf.core.NoCodeIdentity
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLetrec, SchemeLettishExp, SchemeParser, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 
@@ -16,7 +16,7 @@ object Main {
     println(t)
     val reduced = GTR.reduce(t,
       t => t.isInstanceOf[SchemeBegin] && t.asInstanceOf[SchemeBegin].exps.length == 1,
-      List(SubstituteByChild, DeleteChildSimple, DeleteChildIdentifier))
+      List(ReplaceByChild, DeleteChildSimple, DeleteChildIdentifier))
 
     println(reduced)
   }
