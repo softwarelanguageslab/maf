@@ -3,27 +3,16 @@ import maf.core.{Identifier, NoCodeIdentity}
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
 import maf.language.sexp.Value
 
-object SubstituteIdentifier extends Transformation:
+object ReplaceIdentifier extends Transformation with Replacing:
   override protected val name: String = "SubstituteIdentifier"
 
-  def replaceIdWith(exp: SchemeExp, id: Identifier, value: Value): SchemeExp =
-    exp.map(subExp => {
+  def replaceIdWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =
+    replaceWithAllValues(exp, subExp => {
       subExp match
         case varExp: SchemeVarExp =>
-          if varExp.id.name equals id.name then
-            SchemeValue(value, NoCodeIdentity)
-          else varExp
-        case any => any
+          varExp.id.name equals id.name
+        case _ => false
     })
-
-  def replaceIdWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =
-    List(
-      replaceIdWith(exp, id, Value.Integer(1)),
-      replaceIdWith(exp, id, Value.String("S")),
-      replaceIdWith(exp, id, Value.Boolean(true)),
-      replaceIdWith(exp, id, Value.Boolean(false)),
-      replaceIdWith(exp, id, Value.Symbol("S")),
-    )
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
@@ -34,9 +23,8 @@ object SubstituteIdentifier extends Transformation:
         for(id <- lettishExp.bindings.map(_._1))
           addReplacements(replaceIdWithAllValues(lettishExp, id))
       case sexp@SchemeDefineVariable(name, _, _) =>
-        val candidateTrees: List[SchemeExp] = replaceIdWithAllValues(tree, name).map(tree =>
-          tree.deleteChildren(child => child == sexp)).collect({
-            case Some(e) => e
-          })
-        addTrees(candidateTrees)
+        tree.deleteChildren(child => child == sexp) match
+          case Some(tree) =>
+            addTrees(replaceIdWithAllValues(tree, name))
+          case _ =>
       case _ =>
