@@ -20,12 +20,10 @@ sealed trait SchemeExp extends Expression:
     /** deleteChildren */
     def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] = ???
     /** Replace */
-    def safeReplace(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      val replaced = replace(node, replacement)
-      if this eql replaced then
-        throw new IllegalArgumentException("Replacement is suspicious: may not have replaced anything")
-      else replaced
     def replace(node: SchemeExp, replacement: SchemeExp): SchemeExp =
+      require(this.contains(node)) //a safety check, ensuring replacement can occur
+      replaceThis(node, replacement)
+    def replaceThis(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       if this == node then
         replacement
       else replaceLower(node, replacement)
@@ -168,7 +166,7 @@ case class SchemeLambda(
       else Some(SchemeLambda(name, args, newBody, annotation, idn))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeLambda(name, args, body.map(_.replace(node, replacement)), annotation, idn)
+      SchemeLambda(name, args, body.map(_.replaceThis(node, replacement)), annotation, idn)
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeLambda(name, args, body.map(sexp => sexp.map(f)), annotation, idn)
     override def prettyString(indent: Int): String =
@@ -210,7 +208,7 @@ case class SchemeVarArgLambda(
       else Some(SchemeVarArgLambda(name, args, vararg, newBody, annotation, idn))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeVarArgLambda(name, args, vararg, body.map(_.replace(node, replacement)), annotation, idn)
+      SchemeVarArgLambda(name, args, vararg, body.map(_.replaceThis(node, replacement)), annotation, idn)
     override def map(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(sexp => sexp.map(f)), annotation, idn)
     override def prettyString(indent: Int): String =
@@ -254,7 +252,7 @@ case class SchemeFuncall(
       else Some(SchemeFuncall(remainingSubexps.head, remainingSubexps.tail, idn))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeFuncall(f.replace(node, replacement), args.map(a => a.replace(node, replacement)), idn)
+      SchemeFuncall(f.replaceThis(node, replacement), args.map(a => a.replaceThis(node, replacement)), idn)
 
     override def mapLower(fnc: SchemeExp => SchemeExp): SchemeExp =
       SchemeFuncall(f.map(fnc), args.map(a => a.map(fnc)), idn)
@@ -304,9 +302,9 @@ case class SchemeIf(
       else None
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeIf(cond.replace(node, replacement),
-                    cons.replace(node, replacement),
-                    alt.replace(node, replacement),
+      SchemeIf(cond.replaceThis(node, replacement),
+                    cons.replaceThis(node, replacement),
+                    alt.replaceThis(node, replacement),
                     idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
@@ -418,7 +416,7 @@ case class SchemeLet(
       ))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeLet(bindings.map(b => (b._1, b._2.replace(node, replacement))), body.map(exp => exp.replace(node, replacement)), idn)
+      SchemeLet(bindings.map(b => (b._1, b._2.replaceThis(node, replacement))), body.map(exp => exp.replaceThis(node, replacement)), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeLet(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
@@ -486,7 +484,7 @@ case class SchemeLetStar(
       ))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeLetStar(bindings.map(b => (b._1 , b._2.replace(node, replacement))), body.map(exp => exp.replace(node, replacement)), idn)
+      SchemeLetStar(bindings.map(b => (b._1 , b._2.replaceThis(node, replacement))), body.map(exp => exp.replaceThis(node, replacement)), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeLetStar(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
@@ -545,7 +543,7 @@ case class SchemeLetrec(
       ))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeLetrec(bindings.map(b => (b._1, b._2.replace(node, replacement))), body.map(exp => exp.replace(node, replacement)), idn)
+      SchemeLetrec(bindings.map(b => (b._1, b._2.replaceThis(node, replacement))), body.map(exp => exp.replaceThis(node, replacement)), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeLetrec(bindings.map(b => (b._1, b._2.map(f))), body.map(sexp => sexp.map(f)), idn)
@@ -605,7 +603,7 @@ case class SchemeSet(
         case None => None
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeSet(variable, value.replace(node, replacement), idn)
+      SchemeSet(variable, value.replaceThis(node, replacement), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeSet(variable, value.map(f), idn)
@@ -634,7 +632,7 @@ case class SchemeSetLex(
         case None => None
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeSetLex(variable, lexAddr, value.replace(node, replacement), idn)
+      SchemeSetLex(variable, lexAddr, value.replaceThis(node, replacement), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeSetLex(variable, lexAddr, value.map(f), idn)
@@ -666,7 +664,7 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
       }), idn))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeBegin(exps.map(e => e.replace(node, replacement)), idn)
+      SchemeBegin(exps.map(e => e.replaceThis(node, replacement)), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeBegin(exps.map(e => e.map(f)), idn)
@@ -812,7 +810,7 @@ case class SchemeDefineVariable(
         case None => None
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeDefineVariable(name, value.replace(node, replacement), idn)
+      SchemeDefineVariable(name, value.replaceThis(node, replacement), idn)
 
     override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeDefineVariable(name, value.map(f), idn)
@@ -981,7 +979,7 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
       SchemeAssert(exp.map(f), idn)
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      SchemeAssert(exp.replace(node, replacement), idn)
+      SchemeAssert(exp.replaceThis(node, replacement), idn)
 
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
       exp.deleteChildren(fnc) match

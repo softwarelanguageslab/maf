@@ -15,7 +15,7 @@ object RemoveCallsAndReplaceByBody extends Transformation:
           val lambda = lambdaBinding._2
           val lambdaId = lambdaBinding._1
 
-          val lambdaReplaced = tree.safeReplace(lambda, SchemeBegin(lambda.body, lambda.idn))
+          val lambdaReplaced = tree.replace(lambda, SchemeBegin(lambda.body, lambda.idn))
 
           val callsRemoved = lambdaReplaced.deleteChildren({
             case SchemeFuncall(f: SchemeVarExp, _, _) =>
@@ -28,7 +28,7 @@ object RemoveCallsAndReplaceByBody extends Transformation:
             case _ =>
 
       case SchemeDefineVariable(name, lambda: SchemeLambdaExp, _) =>
-        val lambdaReplaced = tree.safeReplace(lambda, SchemeBegin(lambda.body, lambda.idn))
+        val lambdaReplaced = tree.replace(lambda, SchemeBegin(lambda.body, lambda.idn))
 
         val callsRemoved = lambdaReplaced.deleteChildren({
           case SchemeFuncall(f: SchemeVarExp, _, _) =>
