@@ -23,8 +23,8 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
       val shallowDeleted = schemeLambdaExp.shallowDropIdentifier(arg)
       shallowDeleted match
         case Some(exp) =>
-          println(exp)
-          //assert(exp.toString == expected)
+          //println(exp)
+          assert(exp.toString == expected)
         case None =>
           assert(expected == "None")
 

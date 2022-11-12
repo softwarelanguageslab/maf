@@ -21,6 +21,6 @@ object DeleteChildIdentifier extends Transformation:
       lettishExp.shallowDropIdentifier(id) match
         case Some(exp) => addReplacement(exp)
         case _ =>
-      val referencesDeepDropped = lettishExp.deepDropIdentifier(id)
-
-      addReplacement(referencesDeepDropped)
+      lettishExp.deepDropIdentifier(id) match
+        case Some(exp) => addReplacement(exp)
+        case _ =>
