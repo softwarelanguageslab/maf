@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
-import maf.TurgutsThesis.gtr.transformations.{DeleteChildIdentifier, DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParam, ReplaceIdentifier, ReplaceIdentifierCalls, ReplaceByChild}
+import maf.TurgutsThesis.gtr.transformations.{DropLetIdentifier, DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParamWithDeepDrop, ReplaceIdentifier, ReplaceIdentifierCalls, ReplaceByChild}
 import maf.core.{Identity, NoCodeIdentity}
 import maf.language.CScheme.*
 import maf.language.scheme.*
@@ -76,16 +76,20 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
           val reduced = QuickGTR.reduce(
             program,
             p => {
+              /** without the line below, one might have undefined variables that are never needed dynamically (e.g. dead-code)
+               *  And that brings shallow/deep dropping into an infinite loop, since they try to drop all undefined variables
+               */
+              (p.findUndefinedVariables() equals List()) &&
               runAndCompare(p).nonEmpty //non-empty failure msg
             },
             List(
               ReplaceByChild,
               DeleteChildSimple,
-              DeleteChildIdentifier,
+              DropLetIdentifier,
               ReplaceIdentifier,
               RemoveCalls,
               RemoveCallsAndReplaceByBody,
-              RemoveLambdaParam,
+              RemoveLambdaParamWithDeepDrop,
               IfToBegin,
               ReplaceIdentifierCalls
             )

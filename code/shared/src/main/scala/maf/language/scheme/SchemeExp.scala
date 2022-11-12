@@ -6,6 +6,7 @@ import maf.language.sexp.*
 import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
+import maf.TurgutsThesis.primitiveOpNames.PrimitiveOpNames
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show
 
@@ -16,7 +17,7 @@ sealed trait SchemeExp extends Expression:
         List(this)
       else
         this.subexpressions.collect { case s: SchemeExp => s }.flatMap(s => s. levelNodes (level - 1))
-    def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] = ???
+    def deepDropIdentifier(id: Identifier): Option[SchemeExp] = ???
     /** deleteChildren */
     def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] = ???
     /** Replace */
@@ -39,6 +40,43 @@ sealed trait SchemeExp extends Expression:
     /** contains */
     def contains(exp: SchemeExp): Boolean =
       this == exp || this.allSubexpressions.contains(exp)
+    /** usedSet */
+    def usedSet(): List[Identifier] =
+      var usedSet: List[Identifier] = List()
+
+      def add(i: Identifier): Unit =
+        if !usedSet.exists(id => id.name equals i.name) then
+          usedSet = usedSet.::(i)
+
+      this.forEach(e => {
+        e match
+          case exp: SchemeVarExp =>
+            if !(PrimitiveOpNames.allNames contains exp.id.name) then
+              add(exp.id)
+          case _ =>
+      })
+
+      usedSet
+    /** definedSet */
+    def definedSet(): List[Identifier] =
+      var definedSet: List[Identifier] = List()
+
+      def add(i: Identifier): Unit =
+        if !definedSet.exists(id => id.name equals i.name) then
+          definedSet = definedSet.::(i)
+
+      this.forEach(e => {
+        e match
+          case exp: SchemeLambdaExp =>
+            exp.args.foreach(identifier => add(identifier))
+          case exp: SchemeLettishExp =>
+            exp.bindings.map(_._1).foreach(identifier => add(identifier))
+          case SchemeDefineVariable(name, value, idn) =>
+            add(name)
+          case _ =>
+      })
+
+      definedSet
     /** findUndefinedVariables */
     def findUndefinedVariables(): List[Identifier] = {
       var usedSet: List[Identifier] = List()
@@ -58,7 +96,7 @@ sealed trait SchemeExp extends Expression:
           case SchemeDefineVariable(name, value, idn) =>
             definedSet = add(definedSet, name)
           case exp: SchemeVarExp =>
-            if !(SchemePrelude.primNames contains exp.id.name) && exp.id.name.head.isLetter then
+            if !(PrimitiveOpNames.allNames contains exp.id.name) then
               usedSet = add(usedSet, exp.id)
           case any => any
       })
@@ -132,7 +170,6 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
     override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
     def shallowDropIdentifier(id: Identifier): Option[SchemeExp]
-    def deepDropIdentifier(id: Identifier): Option[SchemeExp]
 
 case class SchemeLambda(
     name: Option[String],
@@ -150,12 +187,12 @@ case class SchemeLambda(
     override def sexpCopy(): SchemeExp =
       SchemeLambda(name, args, body.map(_.sexpCopy()), annotation, idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingBody = body.map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val remainingBody = body.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
       if remainingBody.nonEmpty then
-        Some(SchemeLambda(name, args, remainingBody, annotation, idn))
+        Some(SchemeLambda(name, args.filterNot(_.name equals id.name), remainingBody, annotation, idn))
       else None
 
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
@@ -176,7 +213,7 @@ case class SchemeLambda(
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       val paramDropped = SchemeLambda(name, args.filterNot(a => a.name equals id.name), body, annotation, idn)
 
-      paramDropped.deleteChildren(lambdaChild => {
+      val dropped = paramDropped.deleteChildren(lambdaChild => {
         lambdaChild.allSubexpressions.exists(exp => {
           exp match
             case subId: Identifier =>
@@ -185,19 +222,17 @@ case class SchemeLambda(
         })
       })
 
-    def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
-      val newBody = body.map(_.deepDropIdentifierAux(id)).collect({
-        case Some(exp) => exp
-      })
+      dropped match
+        case Some(lambdaExp) =>
+          val definedSet = this.definedSet()
+          val definedSetAfterDrop = lambdaExp.definedSet()
+          val lostBindings = definedSet.filterNot(preDefinedId => definedSetAfterDrop.exists(postDefinedId => postDefinedId.name equals preDefinedId.name))
 
-      if newBody.isEmpty then
-        None
-      else 
-        val lambda = SchemeLambda(name, args.filterNot(a => a.name equals id.name), newBody, annotation, idn)
-        val undefined = lambda.findUndefinedVariables()
-        if undefined.isEmpty then
-          Some(lambda)
-        else lambda.deepDropIdentifier(undefined.head)
+          lostBindings.foldRight(dropped)((lostBinding, maybeLet) => maybeLet match
+            case Some(lambda: SchemeLambdaExp) => lambda.shallowDropIdentifier(lostBinding)
+            case _ => None
+          )
+        case _ => None
 
 
 case class SchemeVarArgLambda(
@@ -219,8 +254,8 @@ case class SchemeVarArgLambda(
     override def sexpCopy(): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(_.sexpCopy()), annotation, idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingBody = body.map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val remainingBody = body.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
       if remainingBody.nonEmpty then
@@ -245,43 +280,7 @@ case class SchemeVarArgLambda(
             else s"(${args.mkString(" ")} . $vararg)"
         s"(lambda $a\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
-    override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
-      val paramDropped =
-        if id.name equals vararg.name then
-          SchemeLambda(name, args, body, annotation, idn) //vararg is dropped
-        else SchemeVarArgLambda(name, args.filterNot(a => a.name equals id.name), vararg, body, annotation, idn)
-
-      paramDropped.deleteChildren(lambdaChild => {
-        lambdaChild.allSubexpressions.exists(exp => {
-          exp match
-            case subId: Identifier =>
-              subId.name equals id.name
-            case _ => false
-        })
-      })
-
-    def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
-      val newBody = body.map(_.deepDropIdentifierAux(id)).collect({
-        case Some(exp) => exp
-      })
-
-      val lambda = SchemeLambda(name, args.filterNot(a => a.name equals id.name), newBody, annotation, idn)
-      val undefined = lambda.findUndefinedVariables()
-      if undefined.isEmpty then
-        Some(lambda)
-      else 
-
-      if newBody.isEmpty then
-        None
-      else 
-        val lambda = 
-          if id.name == vararg.name then 
-            SchemeLambda(name, args, newBody, annotation, idn)
-          else SchemeVarArgLambda(name, args.filterNot(a => a.name equals id.name), vararg, newBody, annotation, idn)
-        val undefined = lambda.findUndefinedVariables()
-        if undefined.isEmpty then
-          Some(lambda)
-        else lambda.deepDropIdentifier(undefined.head)
+    override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = ???
 
 /** A function call: (f args...) */
 case class SchemeFuncall(
@@ -309,8 +308,8 @@ case class SchemeFuncall(
     override def sexpCopy(): SchemeExp =
       SchemeFuncall(f.sexpCopy(), args.map(_.sexpCopy()), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingSubexps = (List(f) ++ args).map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val remainingSubexps = (List(f) ++ args).map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
       if remainingSubexps.isEmpty then
@@ -347,8 +346,8 @@ case class SchemeIf(
     override def sexpCopy(): SchemeExp =
       SchemeIf(cond.sexpCopy(), cons.sexpCopy(), alt.sexpCopy(), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingSubexps = List(cond, cons, alt).map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val remainingSubexps = List(cond, cons, alt).map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
       if remainingSubexps.length == 3 then
@@ -418,28 +417,6 @@ sealed trait SchemeLettishExp extends SchemeExp:
         ))
       else None
 
-    def deepDropIdentifier(id: Identifier): Option[SchemeExp] = ???
-
-    protected def deepDropIdentifier(id: Identifier,
-                                     factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): Option[SchemeExp] =
-      val newBody = body.map(_.deepDropIdentifierAux(id)).collect({
-        case Some(exp) => exp
-      })
-
-      if newBody.isEmpty then
-        None
-      else
-        val newBindings = bindings.filterNot(b => b._1.name equals id.name).map(b => (b._1, b._2.deepDropIdentifierAux(id))).collect({
-          case (id, Some(exp)) => (id, exp)
-        })
-        val deepDropped = factoryMethod(newBindings, //binding dropped
-                                        newBody,
-                                        idn)
-        val deepUndefinedVars = deepDropped.findUndefinedVariables()
-        if deepUndefinedVars.isEmpty then
-          Some(deepDropped)
-        else deepDropped.deepDropIdentifier(deepUndefinedVars.head, factoryMethod)
-
     def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = ???
 
     def shallowDropIdentifier(id: Identifier,
@@ -455,11 +432,15 @@ sealed trait SchemeLettishExp extends SchemeExp:
       }).asInstanceOf[Option[SchemeLettishExp]]
 
       shallowDropped match
-        case Some(exp) =>
-          val shallowUndefinedVars = exp.findUndefinedVariables()
-          if shallowUndefinedVars.isEmpty then
-            Some(exp)
-          else exp.shallowDropIdentifier(shallowUndefinedVars.head, factoryMethod)
+        case Some(letExp) =>
+          val definedSet = this.definedSet()
+          val definedSetAfterDrop = letExp.definedSet()
+          val lostBindings = definedSet.filterNot(preDefinedId => definedSetAfterDrop.exists(postDefinedId => postDefinedId.name equals preDefinedId.name))
+
+          lostBindings.foldRight(shallowDropped: Option[SchemeExp])((lostBinding, maybeLet) => maybeLet match
+            case Some(let: SchemeLettishExp) => let.shallowDropIdentifier(lostBinding, factoryMethod)
+            case _ => None
+          )
         case _ => None
 
 
@@ -479,14 +460,22 @@ case class SchemeLet(
     override def sexpCopy(): SchemeExp =
       SchemeLet(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingBindings = bindings.map(b => (b._1, b._2.deepDropIdentifierAux(id))).collect({
-        case (id, Some(exp)) => (id, exp)
-      })
-      val remainingBody = body.map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val deepDroppedBindings = bindings.filterNot(b => b._1.name equals id.name).map(b => (b._1, b._2.deepDropIdentifier(id)))
+      val remainingBindings = deepDroppedBindings.collect({ case (identifier, Some(exp)) => (identifier, exp)})
+      val lostBindings = deepDroppedBindings.collect({case (identifier, None) => identifier})
+
+      val remainingBody = body.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
-      Some(SchemeLet(remainingBindings, remainingBody, idn))
+      if remainingBody.isEmpty then
+        None
+      else if lostBindings.isEmpty then
+        Some(SchemeLet(remainingBindings, remainingBody, idn))
+      else lostBindings.foldRight(Some(SchemeLet(remainingBindings, remainingBody, idn)): Option[SchemeExp])((lostBinding, maybeLet) => maybeLet match
+        case Some(let) => let.deepDropIdentifier(lostBinding)
+        case _ => None
+      )
 
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
       deleteChildren(fnc, SchemeLet.apply)
@@ -499,9 +488,6 @@ case class SchemeLet(
 
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLet.apply)
-
-    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
-      super.deepDropIdentifier(id, SchemeLet.apply)
 
     val label: Label = LET
     def letName: String = "let"
@@ -528,21 +514,25 @@ case class SchemeLetStar(
     override def sexpCopy(): SchemeExp =
       SchemeLetStar(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingBindings = bindings.map(b => (b._1, b._2.deepDropIdentifierAux(id))).collect({
-        case (id, Some(exp)) => (id, exp)
-      })
-      val remainingBody = body.map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val deepDroppedBindings = bindings.filterNot(b => b._1.name equals id.name).map(b => (b._1, b._2.deepDropIdentifier(id)))
+      val remainingBindings = deepDroppedBindings.collect({ case (identifier, Some(exp)) => (identifier, exp) })
+      val lostBindings = deepDroppedBindings.collect({ case (identifier, None) => identifier })
+
+      val remainingBody = body.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
-
-      Some(SchemeLetStar(remainingBindings, remainingBody, idn))
+      if remainingBody.isEmpty then
+        None
+      else if lostBindings.isEmpty then
+        Some(SchemeLetStar(remainingBindings, remainingBody, idn))
+      else lostBindings.foldRight(Some(SchemeLetStar(remainingBindings, remainingBody, idn)): Option[SchemeExp])((lostBinding, maybeLet) => maybeLet match
+        case Some(let) => let.deepDropIdentifier(lostBinding)
+        case _ => None
+      )
 
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLetStar.apply)
-
-    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
-      super.deepDropIdentifier(id, SchemeLetStar.apply)
 
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
       deleteChildren(fnc, SchemeLetStar.apply)
@@ -576,20 +566,25 @@ case class SchemeLetrec(
     override def sexpCopy(): SchemeExp =
       SchemeLetrec(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val remainingBindings = bindings.map(b => (b._1, b._2.deepDropIdentifierAux(id))).collect({
-        case (id, Some(exp)) => (id, exp)
-      })
-      val remainingBody = body.map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val deepDroppedBindings = bindings.filterNot(b => b._1.name equals id.name).map(b => (b._1, b._2.deepDropIdentifier(id)))
+      val remainingBindings = deepDroppedBindings.collect({ case (identifier, Some(exp)) => (identifier, exp) })
+      val lostBindings = deepDroppedBindings.collect({ case (identifier, None) => identifier })
+
+      val remainingBody = body.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
-      Some(SchemeLetrec(remainingBindings, remainingBody, idn))
+      if remainingBody.isEmpty then
+        None
+      else if lostBindings.isEmpty then
+        Some(SchemeLetrec(remainingBindings, remainingBody, idn))
+      else lostBindings.foldRight(Some(SchemeLetrec(remainingBindings, remainingBody, idn)): Option[SchemeExp])((lostBinding, maybeLet) => maybeLet match
+        case Some(let) => let.deepDropIdentifier(lostBinding)
+        case _ => None
+      )
 
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLetrec.apply)
-
-    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
-      super.deepDropIdentifier(id, SchemeLetrec.apply)
 
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
       deleteChildren(fnc, SchemeLetrec.apply)
@@ -641,8 +636,8 @@ case class SchemeSet(
     override def sexpCopy(): SchemeExp =
       SchemeSet(variable, value.sexpCopy(), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      value.deepDropIdentifierAux(id) match
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      value.deepDropIdentifier(id) match
         case Some(exp) =>
           if variable eql id then
             Some(exp)
@@ -670,8 +665,8 @@ case class SchemeSetLex(
     override def sexpCopy(): SchemeExp =
       SchemeSetLex(variable, lexAddr, value.sexpCopy(), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      value.deepDropIdentifierAux(id) match
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      value.deepDropIdentifier(id) match
         case Some(exp) =>
           if variable eql id then
             Some(exp)
@@ -704,8 +699,8 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
     override def sexpCopy(): SchemeExp =
       SchemeBegin(exps.map(_.sexpCopy()), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      val deletedExps = exps.map(_.deepDropIdentifierAux(id)).collect({
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val deletedExps = exps.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
       Some(copy(exps = deletedExps))
@@ -848,11 +843,11 @@ case class SchemeDefineVariable(
     override def sexpCopy(): SchemeExp =
       SchemeDefineVariable(name, value.sexpCopy(), idn)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
       if name eql id then
         None
       else
-        value.deepDropIdentifierAux(id) match
+        value.deepDropIdentifier(id) match
           case Some(exp) => Some(copy(value = exp))
           case None => None
 
@@ -956,7 +951,7 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
     override def sexpCopy(): SchemeExp =
       SchemeVar(id)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
       if this.id eql id then
         None
       else Some(copy())
@@ -976,7 +971,7 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
     override def sexpCopy(): SchemeExp =
       SchemeVarLex(id, lexAddr)
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
       if this.id eql id then
         None
       else Some(copy())
@@ -1006,7 +1001,7 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     def subexpressions: List[Expression] = List()
     override def sexpCopy(): SchemeExp =
       SchemeValue(value, idn)
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
       Some(copy())
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
       Some(SchemeValue(value, idn))
@@ -1022,8 +1017,8 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
     def fv: Set[String] = exp.fv
     val label: Label = ASS
 
-    override def deepDropIdentifierAux(id: Identifier): Option[SchemeExp] =
-      exp.deepDropIdentifierAux(id) match
+    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+      exp.deepDropIdentifier(id) match
         case Some(exp) => Some(copy(exp = exp))
         case None => None
 
