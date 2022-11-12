@@ -131,7 +131,7 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     def subexpressions: List[Expression] = args ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
     override def eql(other: Expression): Boolean = super.eql(other) && args.length == other.asInstanceOf[SchemeLambdaExp].args.length
-
+    def shallowDropIdentifier(id: Identifier): Option[SchemeExp]
 
 case class SchemeLambda(
     name: Option[String],
@@ -171,6 +171,19 @@ case class SchemeLambda(
       SchemeLambda(name, args, body.map(sexp => sexp.map(f)), annotation, idn)
     override def prettyString(indent: Int): String =
         s"(lambda (${args.mkString(" ")})\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
+  
+    override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val paramDropped = SchemeLambda(name, args.filterNot(a => a.name equals id.name), body, annotation, idn)
+      
+      paramDropped.deleteChildren(lambdaChild => {
+        lambdaChild.allSubexpressions.exists(exp => {
+          exp match
+            case subId: Identifier =>
+              subId.name equals id.name
+            case _ => false
+        })
+      })
+
 
 case class SchemeVarArgLambda(
     name: Option[String],
@@ -216,6 +229,21 @@ case class SchemeVarArgLambda(
             if args.isEmpty then vararg.toString
             else s"(${args.mkString(" ")} . $vararg)"
         s"(lambda $a\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
+
+    override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
+      val paramDropped = 
+        if id.name equals vararg.name then
+          SchemeLambda(name, args, body, annotation, idn) //vararg is dropped
+        else SchemeVarArgLambda(name, args.filterNot(a => a.name equals id.name), vararg, body, annotation, idn)
+    
+      paramDropped.deleteChildren(lambdaChild => {
+        lambdaChild.allSubexpressions.exists(exp => {
+          exp match
+            case subId: Identifier =>
+              subId.name equals id.name
+            case _ => false
+        })
+      })
 
 /** A function call: (f args...) */
 case class SchemeFuncall(
