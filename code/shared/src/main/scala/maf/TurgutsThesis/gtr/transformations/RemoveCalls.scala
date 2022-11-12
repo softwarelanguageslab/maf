@@ -1,9 +1,23 @@
 package maf.TurgutsThesis.gtr.transformations
 import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.core.Identifier
 
 object RemoveCalls extends Transformation:
   override val name: String = "RemoveCalls"
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
+
+    def removeIdCalls(id: Identifier): Unit =
+      val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
+        case SchemeFuncall(f: SchemeVarExp, _, _) =>
+          f.id.name equals id.name
+        case _ => false
+      })
+
+      applsRemoved match
+        case Some(tree) =>
+          addTree(tree)
+        case _ =>
+
     node match
       case exp: SchemeLettishExp =>
         val lambdaBindings = exp.bindings.collect({
@@ -11,29 +25,12 @@ object RemoveCalls extends Transformation:
         })
 
         for(lambdaBinding <- lambdaBindings)
-          val lambdaId = lambdaBinding._1
+          removeIdCalls(lambdaBinding._1)
 
-          val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-            case SchemeFuncall(f: SchemeVarExp, _, _) =>
-              f.id.name == lambdaId.name
-            case _ => false
-          })
-          
-          applsRemoved match
-            case Some(tree) =>
-              addTree(tree)
-            case _ =>
 
       case SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
-        val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
-          case SchemeFuncall(f: SchemeVarExp, _, _) =>
-            f.id.name == name.name
-          case _ => false
-        })
-
-        applsRemoved match
-          case Some(tree) => addTree(tree)
-          case _ =>
+        removeIdCalls(name)
 
       case _ =>
   }
+
