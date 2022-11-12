@@ -1,4 +1,4 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.traits
 
 import maf.core.Identifier
 import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeVarExp}
