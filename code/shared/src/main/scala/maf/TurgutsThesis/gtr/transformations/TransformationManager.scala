@@ -5,8 +5,9 @@ object TransformationManager:
   val allTransformations: List[Transformation] =
     List(
       DeleteChildSimple,
-      DropLetIdentifier,
       IfToBegin,
+      LetIdentifierDeepDrop,
+      LetIdentifierShallowDrop,
       RemoveCalls,
       RemoveCallsAndReplaceByBody,
       RemoveLambdaParamByReplacement,

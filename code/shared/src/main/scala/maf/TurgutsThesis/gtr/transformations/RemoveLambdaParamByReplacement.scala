@@ -1,6 +1,5 @@
 package maf.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.ReplaceIdentifier.replaceWithAllValues
 import maf.TurgutsThesis.gtr.transformations.traits.{CallReducing, Replacing}
 import maf.core.Identifier
 import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeLettishExp}

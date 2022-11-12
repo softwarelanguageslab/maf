@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
-import maf.TurgutsThesis.gtr.transformations.{DeleteChildSimple, DropLetIdentifier, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParamWithDeepDrop, ReplaceByChild, ReplaceIdentifier, ReplaceIdentifierCalls, TransformationManager}
+import maf.TurgutsThesis.gtr.transformations.{DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParamWithDeepDrop, ReplaceByChild, ReplaceIdentifier, ReplaceIdentifierCalls, TransformationManager}
 import maf.core.{Identity, NoCodeIdentity}
 import maf.language.CScheme.*
 import maf.language.scheme.*
