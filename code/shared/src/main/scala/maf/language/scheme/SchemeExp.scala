@@ -703,12 +703,18 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
       val deletedExps = exps.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
-      Some(copy(exps = deletedExps))
+      if deletedExps.isEmpty then
+        None
+      else Some(copy(exps = deletedExps))
 
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
-      Some(SchemeBegin(exps.filterNot(fnc).map(_.deleteChildren(fnc)).collect({
+      val newBody = exps.filterNot(fnc).map(_.deleteChildren(fnc)).collect({
         case Some(e) => e
-      }), idn))
+      })
+
+      if newBody.isEmpty then
+        None
+      else Some(SchemeBegin(newBody, idn))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeBegin(exps.map(e => e.replaceThis(node, replacement)), idn)

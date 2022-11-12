@@ -12,8 +12,9 @@ object DeleteChildSimple extends Transformation:
           for (i <- body.indices)
             addReplacement(SchemeLambda(name, args, body.take(i) ++ body.drop(i + 1), annotation, idn))
       case SchemeBegin(exps, idn) =>
-        for (i <- exps.indices)
-          addReplacement(SchemeBegin(exps.take(i) ++ exps.drop(i + 1), idn))
+        if exps.length > 1 then
+          for (i <- exps.indices)
+            addReplacement(SchemeBegin(exps.take(i) ++ exps.drop(i + 1), idn))
       case s: SchemeLet =>
         deleteChildLettishExp(s, SchemeLet.apply)
       case s: SchemeLetStar =>

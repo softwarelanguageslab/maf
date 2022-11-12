@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.soundness
 
 import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
-import maf.TurgutsThesis.gtr.transformations.{DropLetIdentifier, DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParamWithDeepDrop, ReplaceIdentifier, ReplaceIdentifierCalls, ReplaceByChild}
+import maf.TurgutsThesis.gtr.transformations.{DeleteChildSimple, DropLetIdentifier, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParamWithDeepDrop, ReplaceByChild, ReplaceIdentifier, ReplaceIdentifierCalls, TransformationManager}
 import maf.core.{Identity, NoCodeIdentity}
 import maf.language.CScheme.*
 import maf.language.scheme.*
@@ -82,19 +82,10 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
               (p.findUndefinedVariables() equals List()) &&
               runAndCompare(p).nonEmpty //non-empty failure msg
             },
-            List(
-              ReplaceByChild,
-              DeleteChildSimple,
-              DropLetIdentifier,
-              ReplaceIdentifier,
-              RemoveCalls,
-              RemoveCallsAndReplaceByBody,
-              RemoveLambdaParamWithDeepDrop,
-              IfToBegin,
-              ReplaceIdentifierCalls
-            )
+            TransformationManager.allTransformations
           )
 
+          println(reduced)
           val parsedAgain = SchemeParser.parseProgram(reduced.prettyString()) //parse again, to generate file-related information (e.g. bug is at offset 20-25)
           failureMsg = runAndCompare(parsedAgain)
 

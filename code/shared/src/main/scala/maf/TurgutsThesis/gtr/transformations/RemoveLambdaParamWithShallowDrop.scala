@@ -1,11 +1,10 @@
 package maf.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.RemoveLambdaParamWithDeepDrop.{addTree, reduceCallsToId}
 import maf.TurgutsThesis.gtr.transformations.traits.CallReducing
 import maf.core.Identifier
 import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeLettishExp}
 
-class RemoveLambdaParamWithShallowdrop extends Transformation with CallReducing:
+object RemoveLambdaParamWithShallowDrop extends Transformation with CallReducing:
   override val name: String = "RemoveLambdaParamWithShallowdrop"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
