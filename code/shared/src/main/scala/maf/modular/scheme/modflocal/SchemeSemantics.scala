@@ -142,7 +142,7 @@ trait SchemeSemantics:
     private def cond(cnd: Val, csq: A[Val], alt: A[Val]): A[Val] =
         val tru = guard(lattice.isTrue(cnd)).flatMap(_ => csq)
         val fls = guard(lattice.isFalse(cnd)).flatMap(_ => alt)
-        mjoin(tru, fls)
+        mjoin(tru, tru)
 
     private def evalCall(app: App): A[Val] =
         for

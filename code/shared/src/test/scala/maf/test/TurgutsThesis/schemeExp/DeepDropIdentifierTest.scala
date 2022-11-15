@@ -1,7 +1,7 @@
-package maf.test.TurgutsThesis.gtr
+package maf.test.TurgutsThesis.schemeExp
 
 import maf.core.NoCodeIdentity
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambda, SchemeLambdaExp, SchemeLet, SchemeLettishExp, SchemeParser, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.language.scheme.*
 import maf.language.sexp.Value.Real
 import org.scalatest.flatspec.AnyFlatSpec
 
