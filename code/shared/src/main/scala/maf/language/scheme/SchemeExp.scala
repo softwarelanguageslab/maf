@@ -79,27 +79,8 @@ sealed trait SchemeExp extends Expression:
       definedSet
     /** findUndefinedVariables */
     def findUndefinedVariables(): List[Identifier] = {
-      var usedSet: List[Identifier] = List()
-      var definedSet: List[Identifier] = List()
-
-      def add(l: List[Identifier], i: Identifier): List[Identifier] =
-        if !l.exists(id => id.name equals i.name) then
-          l.::(i)
-        else l
-
-      this.forEach(e => {
-        e match
-          case exp: SchemeLambdaExp =>
-            exp.args.foreach(identifier => definedSet = add(definedSet, identifier))
-          case exp: SchemeLettishExp =>
-            exp.bindings.map(_._1).foreach(identifier => definedSet = add(definedSet, identifier))
-          case SchemeDefineVariable(name, value, idn) =>
-            definedSet = add(definedSet, name)
-          case exp: SchemeVarExp =>
-            if !(PrimitiveOpNames.allNames contains exp.id.name) then
-              usedSet = add(usedSet, exp.id)
-          case any => any
-      })
+      var usedSet: List[Identifier] = this.usedSet()
+      var definedSet: List[Identifier] = this.definedSet()
 
       usedSet.filterNot(usedId => definedSet.exists(definedId => definedId.name equals usedId.name))
     }
