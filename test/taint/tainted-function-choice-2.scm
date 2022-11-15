@@ -1,4 +1,4 @@
-; Tainted flow from a2 to b2.
+; Tainted flow from a2 to res.
 (define a #t)
 (define a2 (source a))
 (define (b x) x)

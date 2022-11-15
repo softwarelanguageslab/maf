@@ -109,13 +109,20 @@ trait SchemeModFBigStepTaintSemantics
                 evalVariable(name).map(v => lattice.addAddress(v, SrcAddr(name, context(component))))
             case SchemeSanitizer(name, _) => // TODO why can't we just remove the flow information?
                 val a = SanAddr(name, context(component))
-                evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) }) // lattice.removeAddresses(v) })
-            //evalVariable(name).map(v => lattice.addAddress(v, SanAddr(name)))
+                for
+                    v <- evalVariable(name)
+                    _ <- write(a, v)
+                    rv <- read(a)
+                yield rv
             case SchemeSink(name, _) =>
                 // Thread sinks through the store so they can be found again afterwards.
                 // Tracing afterwards is needed since components may not be reanalysed when the arguments remain the same (but the explicit taints change).
                 val a = SnkAddr(name, context(component))
-                evalVariable(name).map(v => { writeAddr(a, v); readAddr(a) })
+                for
+                    v <- evalVariable(name)
+                    _ <- write(a, v) // Takes implicit flows into account!
+                    rv <- read(a)
+                yield rv
             case _ => super.eval(exp)
 
         // Add the implicit taint to the value written.

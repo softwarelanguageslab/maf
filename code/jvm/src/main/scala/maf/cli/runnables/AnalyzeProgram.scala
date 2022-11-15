@@ -43,7 +43,7 @@ object AnalyzeProgram extends App:
         }
         a
 
-    val bench: List[String] = List("test/DEBUG2.scm") //SchemeBenchmarkPrograms.fromFolder("test/taint")().toList
+    val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/taint")().toList
 
     // Used by webviz.
     def newStandardAnalysis(text: String) =
