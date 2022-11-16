@@ -2,7 +2,7 @@ package maf.TurgutsThesis.gtr.transformations
 
 import maf.TurgutsThesis.gtr.transformations.traits.{CallReducing, Replacing}
 import maf.core.Identifier
-import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeLettishExp}
+import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeLettishExp, SchemeLambda, SchemeVarArgLambda}
 
 object RemoveLambdaParamByReplacement extends Transformation with CallReducing with Replacing:
   override val name: String = "RemoveLambdaParamByReplacement"
@@ -11,7 +11,11 @@ object RemoveLambdaParamByReplacement extends Transformation with CallReducing w
     def removeLambdaParam(lambda: SchemeLambdaExp, lambdaId: Identifier): Unit = {
       for ((arg, argIdx) <- lambda.args.zipWithIndex)
 
-        val argReplacedLambdas = replaceIdWithAllValues(lambda, arg) //replace arg (e.g. x) with all kinds of values (e.g. 1, "s", 's, ...)
+        val paramDropped: SchemeLambdaExp = lambda match
+          case varargLambda: SchemeVarArgLambda => varargLambda.copy(args = varargLambda.args.filterNot(a => a.name equals arg.name))
+          case lambda: SchemeLambda => lambda.copy(args = lambda.args.filterNot(a => a.name equals arg.name))
+
+        val argReplacedLambdas = replaceIdWithAllValues(paramDropped, arg) //replace arg (e.g. x) with all kinds of values (e.g. 1, "s", 's, ...)
 
         for (argReplaced <- argReplacedLambdas)
           val lambdaReplaced = tree.replace(lambda, argReplaced)
