@@ -17,20 +17,20 @@ class LevelNodesTest extends AnyFlatSpec {
 
     //level 0:
     assert(letExp.levelNodes(0).length == 1)
-    assert(letExp.levelNodes(0).head == letExp)
+    assert(letExp.levelNodes(0).head eq letExp)
 
     //level 1:
     assert(letExp.levelNodes(1).length == 4)
-    assert(letExp.levelNodes(1).contains(letExp.bindings.head._2))
-    assert(letExp.levelNodes(1).contains(letExp.bindings(1)._2))
-    assert(letExp.levelNodes(1).contains(letExp.body.head))
-    assert(letExp.levelNodes(1).contains(letExp.body(1)))
+    assert(letExp.levelNodes(1).exists(subExp => subExp eq letExp.bindings.head._2))
+    assert(letExp.levelNodes(1).exists(subExp => subExp eq letExp.bindings(1)._2))
+    assert(letExp.levelNodes(1).exists(subExp => subExp eq letExp.body.head))
+    assert(letExp.levelNodes(1).exists(subExp => subExp eq letExp.body(1)))
 
     //level 2:
     assert(letExp.levelNodes(2).length == 4)
-    assert(letExp.levelNodes(2).contains(letExp.body.head.asInstanceOf[SchemeIf].cond))
-    assert(letExp.levelNodes(2).contains(letExp.body.head.asInstanceOf[SchemeIf].cons))
-    assert(letExp.levelNodes(2).contains(letExp.body.head.asInstanceOf[SchemeIf].alt))
-    assert(letExp.levelNodes(2).contains(letExp.body(1).asInstanceOf[SchemeBegin].exps.head))
+    assert(letExp.levelNodes(2).exists(subExp => subExp eq letExp.body.head.asInstanceOf[SchemeIf].cond))
+    assert(letExp.levelNodes(2).exists(subExp => subExp eq letExp.body.head.asInstanceOf[SchemeIf].cons))
+    assert(letExp.levelNodes(2).exists(subExp => subExp eq letExp.body.head.asInstanceOf[SchemeIf].alt))
+    assert(letExp.levelNodes(2).exists(subExp => subExp eq letExp.body(1).asInstanceOf[SchemeBegin].exps.head))
   }
 }

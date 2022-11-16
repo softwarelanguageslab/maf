@@ -7,11 +7,13 @@ import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
 import maf.TurgutsThesis.primitiveOpNames.PrimitiveOpNames
+import maf.language.scheme
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
+    type T <: SchemeExp
     def levelNodes(level: Int): List[SchemeExp] =
       if level == 0 then
         List(this)
@@ -19,13 +21,13 @@ sealed trait SchemeExp extends Expression:
         this.subexpressions.collect { case s: SchemeExp => s }.flatMap(s => s. levelNodes (level - 1))
     def deepDropIdentifier(id: Identifier): Option[SchemeExp] = ???
     /** deleteChildren */
-    def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] = ???
+    def deleteChildren(fnc: SchemeExp => Boolean): Option[T] = ???
     /** Replace */
     def replace(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       require(this.contains(node)) //a safety check, ensuring replacement can occur
       replaceThis(node, replacement)
     def replaceThis(node: SchemeExp, replacement: SchemeExp): SchemeExp =
-      if this == node then
+      if this eq node then
         replacement
       else replaceLower(node, replacement)
     def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp = ???
@@ -39,7 +41,7 @@ sealed trait SchemeExp extends Expression:
       })
     /** contains */
     def contains(exp: SchemeExp): Boolean =
-      this == exp || this.allSubexpressions.contains(exp)
+      (this eq exp) || this.allSubexpressions.exists(subExp => subExp eq exp)
     /** usedSet */
     def usedSet(): List[Identifier] =
       var usedSet: List[Identifier] = List()
@@ -79,13 +81,13 @@ sealed trait SchemeExp extends Expression:
       definedSet
     /** findUndefinedVariables */
     def findUndefinedVariables(): List[Identifier] = {
-      var usedSet: List[Identifier] = this.usedSet()
-      var definedSet: List[Identifier] = this.definedSet()
+      val usedSet: List[Identifier] = this.usedSet()
+      val definedSet: List[Identifier] = this.definedSet()
 
       usedSet.filterNot(usedId => definedSet.exists(definedId => definedId.name equals usedId.name))
     }
 
-    def sexpCopy(): SchemeExp = ???
+    def sexpCopy(): T = ???
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
     def parent(someDescendant: SchemeExp): Option[SchemeExp] =
@@ -94,7 +96,7 @@ sealed trait SchemeExp extends Expression:
       })
       if subSchemeExps.isEmpty then
         None
-      else if subSchemeExps.contains(someDescendant) then
+      else if subSchemeExps.exists(subExp => subExp eq someDescendant) then
         Some(this)
       else subSchemeExps.find(subExp => {
         subExp.parent(someDescendant).nonEmpty
@@ -159,16 +161,18 @@ case class SchemeLambda(
     annotation: Option[(String, String)],
     idn: Identity)
     extends SchemeLambdaExp:
+    override type T = SchemeLambda
+
     override def toString: String =
         val a = args.mkString(" ")
         val b = body.mkString(" ")
         s"(lambda ($a) $b)"
     def varArgId: Option[Identifier] = None
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeLambda(name, args, body.map(_.sexpCopy()), annotation, idn)
 
-    override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
+    override def deepDropIdentifier(id: Identifier): Option[T] =
       val remainingBody = body.map(_.deepDropIdentifier(id)).collect({
         case Some(exp) => exp
       })
@@ -176,7 +180,7 @@ case class SchemeLambda(
         Some(SchemeLambda(name, args.filterNot(_.name equals id.name), remainingBody, annotation, idn))
       else None
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       val newBody: List[SchemeExp] = body.filterNot(fnc).map(_.deleteChildren(fnc)).collect({
         case Some(e) => e
       })
@@ -194,7 +198,7 @@ case class SchemeLambda(
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       val paramDropped = SchemeLambda(name, args.filterNot(a => a.name equals id.name), body, annotation, idn)
 
-      val dropped = paramDropped.deleteChildren(lambdaChild => {
+      val dropped: Option[SchemeExp] = paramDropped.deleteChildren(lambdaChild => {
         lambdaChild.allSubexpressions.exists(exp => {
           exp match
             case subId: Identifier =>
@@ -224,6 +228,8 @@ case class SchemeVarArgLambda(
     annotation: Option[(String, String)],
     idn: Identity)
     extends SchemeLambdaExp:
+    override type T = SchemeVarArgLambda
+
     override def toString: String =
         val a =
             if args.isEmpty then vararg.toString
@@ -232,7 +238,7 @@ case class SchemeVarArgLambda(
         s"(lambda $a $b)"
     def varArgId: Option[Identifier] = Some(vararg)
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeVarArgLambda(name, args, vararg, body.map(_.sexpCopy()), annotation, idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -243,7 +249,7 @@ case class SchemeVarArgLambda(
         Some(SchemeVarArgLambda(name, args, vararg, remainingBody, annotation, idn))
       else None
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       val newBody: List[SchemeExp] = body.filterNot(fnc).map(_.deleteChildren(fnc)).collect({
         case Some(e) => e
       })
@@ -269,6 +275,7 @@ case class SchemeFuncall(
     args: List[SchemeExp],
     idn: Identity)
     extends SchemeExp:
+    override type T = SchemeFuncall
     override def toString: String =
         if args.isEmpty then s"($f)"
         else
@@ -278,7 +285,7 @@ case class SchemeFuncall(
     override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
     val label: Label = FNC
     def subexpressions: List[Expression] = f :: args
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       val newSubExps: List[SchemeExp] = (List(f) ++ args).filterNot(fnc).map(_.deleteChildren(fnc)).collect({
         case Some(e) => e
       })
@@ -286,7 +293,7 @@ case class SchemeFuncall(
         None
       else Some(SchemeFuncall(newSubExps.head, newSubExps.tail, idn))
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeFuncall(f.sexpCopy(), args.map(_.sexpCopy()), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -318,13 +325,14 @@ case class SchemeIf(
     alt: SchemeExp,
     idn: Identity)
     extends SchemeExp:
+    override type T = SchemeIf
     override def toString: String = s"(if $cond $cons $alt)"
     def fv: Set[String] = cond.fv ++ cons.fv ++ alt.fv
     override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
     val label: Label = IFF
     def subexpressions: List[Expression] = List(cond, cons, alt)
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeIf(cond.sexpCopy(), cons.sexpCopy(), alt.sexpCopy(), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -339,7 +347,7 @@ case class SchemeIf(
           NoCodeIdentity
         ))
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       val newSubExps = List(cond, cons, alt).filterNot(fnc).map(_.deleteChildren(fnc)).collect({
         case Some(e) => e
       })
@@ -366,6 +374,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
     val bindings: List[(Identifier, SchemeExp)]
     val body: List[SchemeExp]
     val idn: Identity
+    override type T <: SchemeLettishExp
     override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
     def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
@@ -381,7 +390,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
         s"($id (${first}${rest})\n$bo)"
 
     def deleteChildren(fnc: SchemeExp => Boolean,
-                       factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): Option[SchemeExp] =
+                       factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => T): Option[T] =
       val newBindings: List[(Identifier, SchemeExp)] =
         bindings.filterNot(binding => fnc(binding._2))
           .map(binding => (binding._1, binding._2.deleteChildren(fnc))).collect({
@@ -410,7 +419,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
               subId.name equals id.name
             case _ => false
         })
-      }).asInstanceOf[Option[SchemeLettishExp]]
+      })
 
       shallowDropped match
         case Some(letExp) =>
@@ -431,6 +440,7 @@ case class SchemeLet(
     body: List[SchemeExp],
     idn: Identity)
     extends SchemeLettishExp:
+    override type T = SchemeLet
     override def toString: String =
         val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
         val bo = body.mkString(" ")
@@ -438,7 +448,7 @@ case class SchemeLet(
     def fv: Set[String] =
         bindings.map(_._2).flatMap(_.fv).toSet ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeLet(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -458,7 +468,7 @@ case class SchemeLet(
         case _ => None
       )
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       deleteChildren(fnc, SchemeLet.apply)
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
@@ -479,6 +489,8 @@ case class SchemeLetStar(
     body: List[SchemeExp],
     idn: Identity)
     extends SchemeLettishExp:
+    override type T = SchemeLetStar
+
     override def toString: String =
         val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
         val bo = body.mkString(" ")
@@ -492,7 +504,7 @@ case class SchemeLetStar(
             )
             ._2 ++ (SchemeBody.fv(body) -- bindings.map(_._1.name).toSet)
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeLetStar(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -515,7 +527,7 @@ case class SchemeLetStar(
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLetStar.apply)
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       deleteChildren(fnc, SchemeLetStar.apply)
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
@@ -533,6 +545,7 @@ case class SchemeLetrec(
     body: List[SchemeExp],
     idn: Identity)
     extends SchemeLettishExp:
+    override type T = SchemeLetrec
     override def toString: String =
         val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
         val bo = body.mkString(" ")
@@ -544,7 +557,7 @@ case class SchemeLetrec(
     val label: Label = LTR
     def letName: String = "letrec"
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeLetrec(bindings.map(b => (b._1, b._2.sexpCopy())), body.map(_.sexpCopy()), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -567,7 +580,7 @@ case class SchemeLetrec(
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLetrec.apply)
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       deleteChildren(fnc, SchemeLetrec.apply)
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
@@ -612,9 +625,10 @@ case class SchemeSet(
     value: SchemeExp,
     idn: Identity)
     extends SchemeSetExp:
+    override type T = SchemeSet
     override def toString: String = s"(set! $variable $value)"
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeSet(variable, value.sexpCopy(), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -625,7 +639,7 @@ case class SchemeSet(
           else Some(copy(value = exp))
         case None => None
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       value.deleteChildren(fnc) match
         case Some(e) => Some(SchemeSet(variable, e, idn))
         case None => None
@@ -642,8 +656,8 @@ case class SchemeSetLex(
     value: SchemeExp,
     idn: Identity)
     extends SchemeSetExp:
-
-    override def sexpCopy(): SchemeExp =
+    override type T = SchemeSetLex
+    override def sexpCopy(): T =
       SchemeSetLex(variable, lexAddr, value.sexpCopy(), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -654,7 +668,7 @@ case class SchemeSetLex(
           else Some(copy(value = exp))
         case None => None
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       value.deleteChildren(fnc) match
         case Some(e) => Some(SchemeSetLex(variable, lexAddr, e, idn))
         case None => None
@@ -669,6 +683,7 @@ case class SchemeSetLex(
 
 /** A begin clause: (begin body...) */
 case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
+    override type T = SchemeBegin
     override def toString: String =
         val body = exps.mkString(" ")
         s"(begin $body)"
@@ -677,7 +692,7 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
     val label: Label = BEG
     def subexpressions: List[Expression] = exps
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeBegin(exps.map(_.sexpCopy()), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -688,7 +703,7 @@ case class SchemeBegin(exps: List[SchemeExp], idn: Identity) extends SchemeExp:
         None
       else Some(copy(exps = deletedExps))
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       val newBody = exps.filterNot(fnc).map(_.deleteChildren(fnc)).collect({
         case Some(e) => e
       })
@@ -821,13 +836,14 @@ case class SchemeDefineVariable(
     value: SchemeExp,
     idn: Identity)
     extends SchemeExp:
+    override type T = SchemeDefineVariable
     override def toString: String = s"(define $name $value)"
     def fv: Set[String] = value.fv - name.name
     override val height: Int = 1 + value.height
     val label: Label = DFV
     def subexpressions: List[Expression] = List(name, value)
 
-    override def sexpCopy(): SchemeExp =
+    override def sexpCopy(): T =
       SchemeDefineVariable(name, value.sexpCopy(), idn)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -838,7 +854,7 @@ case class SchemeDefineVariable(
           case Some(exp) => Some(copy(value = exp))
           case None => None
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       value.deleteChildren(fnc) match
         case Some(e) => Some(SchemeDefineVariable(name, e, idn))
         case None => None
@@ -935,7 +951,8 @@ sealed trait SchemeVarExp extends SchemeExp:
     def subexpressions: List[Expression] = List(id)
 
 case class SchemeVar(id: Identifier) extends SchemeVarExp:
-    override def sexpCopy(): SchemeExp =
+    override type T = SchemeVar
+    override def sexpCopy(): T =
       SchemeVar(id)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -943,7 +960,7 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
         None
       else Some(copy())
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       Some(SchemeVar(id))
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
@@ -955,7 +972,8 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
     override def toString: String = id.name
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
-    override def sexpCopy(): SchemeExp =
+    override type T = SchemeVarLex
+    override def sexpCopy(): T =
       SchemeVarLex(id, lexAddr)
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
@@ -963,7 +981,7 @@ case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarEx
         None
       else Some(copy())
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       Some(SchemeVarLex(id, lexAddr))
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVarLex(id, lexAddr)
@@ -986,11 +1004,12 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
     override val height: Int = 1
     val label: Label = VAL
     def subexpressions: List[Expression] = List()
-    override def sexpCopy(): SchemeExp =
+    override type T = SchemeValue
+    override def sexpCopy(): T =
       SchemeValue(value, idn)
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
       Some(copy())
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       Some(SchemeValue(value, idn))
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeValue(value, idn)
@@ -1000,6 +1019,7 @@ case class SchemeValue(value: Value, idn: Identity) extends SchemeExp:
 
 /** An assertion (assert <exp>) */
 case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
+    override type T = SchemeAssert
     override def toString: String = s"(assert $exp)"
     def fv: Set[String] = exp.fv
     val label: Label = ASS
@@ -1015,7 +1035,7 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeAssert(exp.replaceThis(node, replacement), idn)
 
-    override def deleteChildren(fnc: SchemeExp => Boolean): Option[SchemeExp] =
+    override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       exp.deleteChildren(fnc) match
         case Some(e) => Some(SchemeAssert(e, idn))
         case None => None

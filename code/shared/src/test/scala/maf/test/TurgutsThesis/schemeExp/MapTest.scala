@@ -15,11 +15,11 @@ class MapTest extends AnyFlatSpec {
 
     val firstIf = mapped.args.head
 
-    assert(firstIf.toString == "(if 3 3 3)")
+    assert(firstIf.toString equals "(if 3 3 3)")
 
     val beginExp = mapped.args(1)
 
-    assert(beginExp.toString == "(begin 5 10)")
+    assert(beginExp.toString equals "(begin 5 10)")
   }
 
 
