@@ -1,0 +1,60 @@
+package maf.test.TurgutsThesis.gtr.transformations
+
+import maf.TurgutsThesis.gtr.transformations.RemoveCallsAndReplaceByBody
+import maf.language.scheme.{SchemeBegin, SchemeParser}
+import org.scalatest.flatspec.AnyFlatSpec
+
+class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpec {
+  "RemoveCallsAndReplaceByBody" should "remove the calls to define-bound lambda, and replace lambda by body" in {
+    val programText: String =
+      """(begin
+        |  (define (f x) (* x x))
+        |  (f 1)
+        |  (+ 2 2)
+        |  (f 111))
+        |  """.stripMargin
+
+    val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val defineExp = t.exps.head
+
+    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp) //should remove calls to f
+
+    assert(suggestedTrees.length == 1)
+    assert(suggestedTrees.head.toString equals "(begin (define f (begin (* x x))) (+ 2 2))")
+  }
+
+  "RemoveCallsAndReplaceByBody" should "remove the calls to let-bound lambda, and replace the lambda by body" in {
+    val programText: String =
+      """(begin
+        |  (let ((f (lambda (x) (* x x))))
+        |    (f 10)
+        |    (f 100)
+        |    1000)
+        |  (+ 2 2))
+        |  """.stripMargin
+
+    val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val letExp = t.exps.head
+
+    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp) //should remove calls to f
+    println(suggestedTrees)
+    assert(suggestedTrees.length == 1)
+    assert(suggestedTrees.head.toString equals "(begin (let ((f (begin (* x x)))) 1000) (+ 2 2))")
+  }
+
+  "RemoveCallsAndReplaceByBody" should "return an empty list given a non-lambda-binding exp" in {
+    val programText: String =
+      """(begin
+        |  (let ((f 100))
+        |    (+ f f)
+        |    1000)
+        |  (+ 2 2))
+        |  """.stripMargin
+
+    val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val letExp = t.exps.head
+
+    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp)
+    assert(suggestedTrees equals List())
+  }
+}
