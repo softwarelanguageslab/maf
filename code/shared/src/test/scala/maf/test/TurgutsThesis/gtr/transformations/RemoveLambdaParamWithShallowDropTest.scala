@@ -17,7 +17,7 @@ class RemoveLambdaParamWithShallowDropTest extends AnyFlatSpec {
     val defineExp = t.exps.head
 
     val suggestedTrees = RemoveLambdaParamWithShallowDrop.transform(t, defineExp)
-    println(suggestedTrees)
+    
     assert(suggestedTrees.length == 2)
     assert(suggestedTrees.exists(tree => {
       tree.toString equals "(begin (define f (lambda (x) (* x x))) (f 1) (f 111))"
