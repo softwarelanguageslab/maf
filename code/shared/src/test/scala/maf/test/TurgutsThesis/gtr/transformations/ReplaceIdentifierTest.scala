@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import maf.TurgutsThesis.gtr.transformations.ReplaceIdentifier
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 
-class ReplaceIdentifierTest extends AnyFlatSpec {
+class ReplaceIdentifierTest extends AnyFlatSpecTransformations {
   "ReplaceIdentifier" should "replace an identifier with all values" in {
     val programText =
       """(begin
@@ -16,50 +16,30 @@ class ReplaceIdentifierTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.last
 
-    val suggestedTrees = ReplaceIdentifier.transform(t, letExp)
+    suggestedTrees = ReplaceIdentifier.transform(t, letExp)
     assert(suggestedTrees.length == 10)
 
     //replace b
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ a 'S) (* a 'S)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a 'S) (* a 'S)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ a \"S\") (* a \"S\")))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a \"S\") (* a \"S\")))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ a #t) (* a #t)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a #t) (* a #t)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ a #f) (* a #f)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a #f) (* a #f)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ a 1) (* a 1)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a 1) (* a 1)))")
 
     //replace a
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ 'S b) (* 'S b)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ 'S b) (* 'S b)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ \"S\" b) (* \"S\" b)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ \"S\" b) (* \"S\" b)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ #t b) (* #t b)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ #t b) (* #t b)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ #f b) (* #f b)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ #f b) (* #f b)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (let ((a 1) (b 2)) (+ 1 b) (* 1 b)))"
-    }))
+    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* 1 b)))")
   }
 
   "ReplaceIdentifier" should "return empty list if there are no identifiers to replace" in {
@@ -71,7 +51,7 @@ class ReplaceIdentifierTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val appl = t.exps.last
 
-    val suggestedTrees = ReplaceIdentifier.transform(t, appl)
+    suggestedTrees = ReplaceIdentifier.transform(t, appl)
 
     assert(suggestedTrees equals List())
   }

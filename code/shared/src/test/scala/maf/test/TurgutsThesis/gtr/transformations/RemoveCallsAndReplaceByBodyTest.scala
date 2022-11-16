@@ -4,7 +4,7 @@ import maf.TurgutsThesis.gtr.transformations.RemoveCallsAndReplaceByBody
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpec {
+class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
   "RemoveCallsAndReplaceByBody" should "remove the calls to define-bound lambda, and replace lambda by body" in {
     val programText: String =
       """(begin
@@ -17,7 +17,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp) //should remove calls to f
+    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp) //should remove calls to f
 
     assert(suggestedTrees.length == 1)
     assert(suggestedTrees.head.toString equals "(begin (define f (begin (* x x))) (+ 2 2))")

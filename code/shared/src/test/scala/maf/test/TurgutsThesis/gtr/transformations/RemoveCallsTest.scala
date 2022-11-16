@@ -4,7 +4,7 @@ import maf.language.scheme.{SchemeBegin, SchemeParser}
 import maf.TurgutsThesis.gtr.transformations.RemoveCalls
 import org.scalatest.flatspec.AnyFlatSpec
 
-class RemoveCallsTest extends AnyFlatSpec {
+class RemoveCallsTest extends AnyFlatSpecTransformations {
   "RemoveCalls" should "remove the calls to define-bound lambda" in {
     val programText: String =
       """(begin
@@ -17,10 +17,10 @@ class RemoveCallsTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    val suggestedTrees = RemoveCalls.transform(t, defineExp) //should remove calls to f
+    suggestedTrees = RemoveCalls.transform(t, defineExp) //should remove calls to f
 
     assert(suggestedTrees.length == 1)
-    assert(suggestedTrees.head.toString equals "(begin (define f (lambda (x) (* x x))) (+ 2 2))")
+    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x))) (+ 2 2))")
   }
 
   "RemoveCalls" should "remove the calls to let-bound lambda" in {
@@ -36,9 +36,9 @@ class RemoveCallsTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = RemoveCalls.transform(t, letExp) //should remove calls to f
+    suggestedTrees = RemoveCalls.transform(t, letExp) //should remove calls to f
     assert(suggestedTrees.length == 1)
-    assert(suggestedTrees.head.toString equals "(begin (let ((f (lambda (x) (* x x)))) 1000) (+ 2 2))")
+    checkSuggestedTreeString("(begin (let ((f (lambda (x) (* x x)))) 1000) (+ 2 2))")
   }
 
   "RemoveCalls" should "return an empty list given a non-lambda-binding exp" in {
@@ -53,7 +53,7 @@ class RemoveCallsTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = RemoveCalls.transform(t, letExp)
+    suggestedTrees = RemoveCalls.transform(t, letExp)
     assert(suggestedTrees equals List())
   }
 }

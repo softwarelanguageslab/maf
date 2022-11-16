@@ -4,7 +4,7 @@ import maf.TurgutsThesis.gtr.transformations.IfToBegin
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class IfToBeginTest extends AnyFlatSpec {
+class IfToBeginTest extends AnyFlatSpecTransformations {
   "IfToBegin" should "suggest begins for an if" in {
     val programText: String =
       """(begin
@@ -14,15 +14,11 @@ class IfToBeginTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val ifExp = t.exps.head
 
-    val suggestedTrees = IfToBegin.transform(t, ifExp)
+    suggestedTrees = IfToBegin.transform(t, ifExp)
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (begin (> 1 2) 'then-case) 10)"
-    }))
+    checkSuggestedTreeString("(begin (begin (> 1 2) 'then-case) 10)")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (begin (> 1 2) 'else-case) 10)"
-    }))
+    checkSuggestedTreeString("(begin (begin (> 1 2) 'else-case) 10)")
   }
 
   "IfToBegin" should "return empty list for a non-if expression" in {
@@ -32,9 +28,9 @@ class IfToBeginTest extends AnyFlatSpec {
         |  10)""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
-    val numberExp = t.exps(1)
+    val numberExp = t.exps(1) //corresponds to 10
 
-    val suggestedTrees = IfToBegin.transform(t, numberExp) //corresponds to the 10
+    suggestedTrees = IfToBegin.transform(t, numberExp)
 
     assert(suggestedTrees equals List())
   }

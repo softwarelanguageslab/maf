@@ -4,7 +4,7 @@ import maf.TurgutsThesis.gtr.transformations.LetIdentifierShallowDrop
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class LetIdentifierShallowDropTest extends AnyFlatSpec {
+class LetIdentifierShallowDropTest extends AnyFlatSpecTransformations {
   "LetIdentifierShallowDrop" should "deep drop a lets identifier" in {
     val programText =
       """(begin
@@ -18,16 +18,11 @@ class LetIdentifierShallowDropTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps(1)
 
-    val suggestedTrees = LetIdentifierShallowDrop.transform(t, letExp)
+    suggestedTrees = LetIdentifierShallowDrop.transform(t, letExp)
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (+ 2 2) (let ((a 10)) (if #t a 99)))"
-    }))
+    checkSuggestedTreeString("(begin (+ 2 2) (let ((a 10)) (if #t a 99)))")
 
-    assert(suggestedTrees.exists(tree => {
-      tree.toString equals "(begin (+ 2 2) (let ((b 100)) b))"
-    }))
-
+    checkSuggestedTreeString("(begin (+ 2 2) (let ((b 100)) b))")
   }
 
   "LetIdentifierShallowDrop" should "return empty list for non-let exps" in {
@@ -41,7 +36,7 @@ class LetIdentifierShallowDropTest extends AnyFlatSpec {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val lambdaExp = t.exps(1)
 
-    val suggestedTrees = LetIdentifierShallowDrop.transform(t, lambdaExp)
+    suggestedTrees = LetIdentifierShallowDrop.transform(t, lambdaExp)
 
     assert(suggestedTrees equals List())
   }
