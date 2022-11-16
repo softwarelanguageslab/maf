@@ -18,9 +18,9 @@ class RemoveLambdaParamWithDeepDropTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = RemoveLambdaParamWithDeepDrop.transform(t, defineExp)
     assert(suggestedTrees.length == 2)
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x) (*))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (*))) (f 1) (f 111))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (y) (*) (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (*) (* y y))) (f 2) (f 222))")
   }
 
   "RemoveLambdaParamWithDeepDrop" should "return empty list given a non-lambda-binding exp" in {

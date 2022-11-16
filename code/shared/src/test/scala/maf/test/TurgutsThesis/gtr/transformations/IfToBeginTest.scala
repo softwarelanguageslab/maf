@@ -16,9 +16,9 @@ class IfToBeginTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = IfToBegin.transform(t, ifExp)
 
-    checkSuggestedTreeString("(begin (begin (> 1 2) 'then-case) 10)")
+    assertTreeString("(begin (begin (> 1 2) 'then-case) 10)")
 
-    checkSuggestedTreeString("(begin (begin (> 1 2) 'else-case) 10)")
+    assertTreeString("(begin (begin (> 1 2) 'else-case) 10)")
   }
 
   "IfToBegin" should "return empty list for a non-if expression" in {

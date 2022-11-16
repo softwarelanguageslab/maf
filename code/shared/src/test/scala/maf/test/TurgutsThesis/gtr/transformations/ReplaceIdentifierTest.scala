@@ -20,26 +20,26 @@ class ReplaceIdentifierTest extends AnyFlatSpecTransformations {
     assert(suggestedTrees.length == 10)
 
     //replace b
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a 'S) (* a 'S)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ a 'S) (* a 'S)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a \"S\") (* a \"S\")))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ a \"S\") (* a \"S\")))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a #t) (* a #t)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ a #t) (* a #t)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a #f) (* a #f)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ a #f) (* a #f)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ a 1) (* a 1)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ a 1) (* a 1)))")
 
     //replace a
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ 'S b) (* 'S b)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ 'S b) (* 'S b)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ \"S\" b) (* \"S\" b)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ \"S\" b) (* \"S\" b)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ #t b) (* #t b)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ #t b) (* #t b)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ #f b) (* #f b)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ #f b) (* #f b)))")
 
-    checkSuggestedTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* 1 b)))")
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* 1 b)))")
   }
 
   "ReplaceIdentifier" should "return empty list if there are no identifiers to replace" in {

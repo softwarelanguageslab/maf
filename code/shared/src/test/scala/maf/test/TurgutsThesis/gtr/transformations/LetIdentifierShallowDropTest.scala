@@ -20,9 +20,9 @@ class LetIdentifierShallowDropTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = LetIdentifierShallowDrop.transform(t, letExp)
 
-    checkSuggestedTreeString("(begin (+ 2 2) (let ((a 10)) (if #t a 99)))")
+    assertTreeString("(begin (+ 2 2) (let ((a 10)) (if #t a 99)))")
 
-    checkSuggestedTreeString("(begin (+ 2 2) (let ((b 100)) b))")
+    assertTreeString("(begin (+ 2 2) (let ((b 100)) b))")
   }
 
   "LetIdentifierShallowDrop" should "return empty list for non-let exps" in {

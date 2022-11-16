@@ -20,9 +20,9 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     assert(!(suggestedTrees.head eq t)) //should return a new tree
     assert(!(suggestedTrees(1) eq t))
 
-    checkSuggestedTreeString("(begin (+ 10 10) (lambda (x) (+ x x)))")
+    assertTreeString("(begin (+ 10 10) (lambda (x) (+ x x)))")
 
-    checkSuggestedTreeString("(begin (+ 10 10) (lambda (x) (* x x)))")
+    assertTreeString("(begin (+ 10 10) (lambda (x) (* x x)))")
   }
 
   "DeleteChildSimple" should "correctly reduce lettishExps" in {
@@ -38,11 +38,11 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = DeleteChildSimple.transform(t, letExp)
     
-    checkSuggestedTreeString("(begin (+ 10 10) (let () (+ a a) (* a a)))") //binding reduced
+    assertTreeString("(begin (+ 10 10) (let () (+ a a) (* a a)))") //binding reduced
 
-    checkSuggestedTreeString("(begin (+ 10 10) (let ((a 10)) (+ a a)))") //multiplication removed
+    assertTreeString("(begin (+ 10 10) (let ((a 10)) (+ a a)))") //multiplication removed
 
-    checkSuggestedTreeString("(begin (+ 10 10) (let ((a 10)) (* a a)))") //addition removed
+    assertTreeString("(begin (+ 10 10) (let ((a 10)) (* a a)))") //addition removed
   }
 
   "DeleteChildSimple" should "return an empty list given a SchemeExp without a child" in {

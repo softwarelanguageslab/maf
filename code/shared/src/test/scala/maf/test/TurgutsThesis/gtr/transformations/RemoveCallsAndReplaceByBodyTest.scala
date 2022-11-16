@@ -20,7 +20,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp) //should remove calls to f
 
     assert(suggestedTrees.length == 1)
-    assert(suggestedTrees.head.toString equals "(begin (define f (begin (* x x))) (+ 2 2))")
+    assertTreeString("(begin (define f (begin (* x x))) (+ 2 2))")
   }
 
   "RemoveCallsAndReplaceByBody" should "remove the calls to let-bound lambda, and replace the lambda by body" in {
@@ -36,10 +36,9 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp) //should remove calls to f
-    println(suggestedTrees)
+    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp) //should remove calls to f
     assert(suggestedTrees.length == 1)
-    assert(suggestedTrees.head.toString equals "(begin (let ((f (begin (* x x)))) 1000) (+ 2 2))")
+    assertTreeString("(begin (let ((f (begin (* x x)))) 1000) (+ 2 2))")
   }
 
   "RemoveCallsAndReplaceByBody" should "return an empty list given a non-lambda-binding exp" in {
@@ -54,7 +53,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp)
+    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp)
     assert(suggestedTrees equals List())
   }
 }

@@ -19,9 +19,9 @@ class LetIdentifierDeepDropTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = LetIdentifierDeepDrop.transform(t, letExp)
 
-    checkSuggestedTreeString("(begin (+ 2 2) (let ((a 10)) (+ a) (if #t a 99)))")
+    assertTreeString("(begin (+ 2 2) (let ((a 10)) (+ a) (if #t a 99)))")
 
-    checkSuggestedTreeString( "(begin (+ 2 2) (let ((b 100)) b (+ b) (begin #t 99)))")
+    assertTreeString( "(begin (+ 2 2) (let ((b 100)) b (+ b) (begin #t 99)))")
   }
 
   "LetIdentifierDeepDrop" should "return empty list for non-let exps" in {

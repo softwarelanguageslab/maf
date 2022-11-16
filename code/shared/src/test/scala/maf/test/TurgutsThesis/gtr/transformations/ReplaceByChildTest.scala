@@ -16,9 +16,9 @@ class ReplaceByChildTest extends AnyFlatSpecTransformations {
     suggestedTrees = ReplaceByChild.transform(t, beginExp)
 
     assert(suggestedTrees.length == 2)
-    checkSuggestedTreeString("(+ (+ 100 100) 9999)") //begin replaced by (+ 100 100)
+    assertTreeString("(+ (+ 100 100) 9999)") //begin replaced by (+ 100 100)
 
-    checkSuggestedTreeString("(+ (* 1 1) 9999)") //begin replaced by (* 1 1)
+    assertTreeString("(+ (* 1 1) 9999)") //begin replaced by (* 1 1)
   }
 
   "ReplaceByChild" should "be able to replace an application by its children" in {
@@ -31,11 +31,11 @@ class ReplaceByChildTest extends AnyFlatSpecTransformations {
 
     assert(suggestedTrees.length == 3)
 
-    checkSuggestedTreeString("999")
+    assertTreeString("999")
 
-    checkSuggestedTreeString("1")
+    assertTreeString("1")
 
-    checkSuggestedTreeString("+")
+    assertTreeString("+")
   }
 
   "ReplaceByChild" should "return an empty list if there is no child to replace with" in {

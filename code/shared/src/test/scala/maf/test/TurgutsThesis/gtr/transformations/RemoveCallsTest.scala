@@ -20,7 +20,7 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
     suggestedTrees = RemoveCalls.transform(t, defineExp) //should remove calls to f
 
     assert(suggestedTrees.length == 1)
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x))) (+ 2 2))")
+    assertTreeString("(begin (define f (lambda (x) (* x x))) (+ 2 2))")
   }
 
   "RemoveCalls" should "remove the calls to let-bound lambda" in {
@@ -38,7 +38,7 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = RemoveCalls.transform(t, letExp) //should remove calls to f
     assert(suggestedTrees.length == 1)
-    checkSuggestedTreeString("(begin (let ((f (lambda (x) (* x x)))) 1000) (+ 2 2))")
+    assertTreeString("(begin (let ((f (lambda (x) (* x x)))) 1000) (+ 2 2))")
   }
 
   "RemoveCalls" should "return an empty list given a non-lambda-binding exp" in {

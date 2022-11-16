@@ -18,27 +18,27 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
     assert(suggestedTrees.length == 10)
 
     //remove param y
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x) (* 'S 'S))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* 'S 'S))) (f 1) (f 111))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x) (* \"S\" \"S\"))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* \"S\" \"S\"))) (f 1) (f 111))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x) (* #f #f))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* #f #f))) (f 1) (f 111))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x) (* #t #t))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* #t #t))) (f 1) (f 111))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (x) (* x x) (* 1 1))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* 1 1))) (f 1) (f 111))")
 
     //remove param x
-    checkSuggestedTreeString("(begin (define f (lambda (y) (* 'S 'S) (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (* 'S 'S) (* y y))) (f 2) (f 222))")
 
 
-    checkSuggestedTreeString("(begin (define f (lambda (y) (* \"S\" \"S\") (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (* \"S\" \"S\") (* y y))) (f 2) (f 222))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (y) (* #f #f) (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (* #f #f) (* y y))) (f 2) (f 222))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (y) (* #t #t) (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (* #t #t) (* y y))) (f 2) (f 222))")
 
-    checkSuggestedTreeString("(begin (define f (lambda (y) (* 1 1) (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (* 1 1) (* y y))) (f 2) (f 222))")
   }
 
   "RemoveLambdaParamByReplacement" should "return an empty list given non-lambda-binding exp" in {

@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 class AnyFlatSpecTransformations extends AnyFlatSpec {
   var suggestedTrees: List[SchemeExp] = List()
 
-  def checkSuggestedTreeString(treeString: String): Unit =
+  def assertTreeString(treeString: String): Unit =
     assert(suggestedTrees.exists(tree => {
       tree.toString equals treeString
     }))
