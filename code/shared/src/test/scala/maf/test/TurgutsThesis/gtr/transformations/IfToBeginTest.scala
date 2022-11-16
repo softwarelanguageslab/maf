@@ -12,8 +12,9 @@ class IfToBeginTest extends AnyFlatSpec {
         |  10)""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val ifExp = t.exps.head
 
-    val suggestedTrees = IfToBegin.transform(t, t.exps.head)
+    val suggestedTrees = IfToBegin.transform(t, ifExp)
 
     assert(suggestedTrees.exists(tree => {
       tree.toString equals "(begin (begin (> 1 2) 'then-case) 10)"
@@ -31,8 +32,9 @@ class IfToBeginTest extends AnyFlatSpec {
         |  10)""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val numberExp = t.exps(1)
 
-    val suggestedTrees = IfToBegin.transform(t, t.exps(1)) //corresponds to the 10
+    val suggestedTrees = IfToBegin.transform(t, numberExp) //corresponds to the 10
 
     assert(suggestedTrees equals List())
   }

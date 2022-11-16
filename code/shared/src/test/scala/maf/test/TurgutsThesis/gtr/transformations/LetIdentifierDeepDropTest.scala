@@ -16,10 +16,10 @@ class LetIdentifierDeepDropTest extends AnyFlatSpec {
       |    (if #t a 99)))""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val letExp = t.exps(1)
 
-    val suggestedTrees = LetIdentifierDeepDrop.transform(t, t.exps(1))
+    val suggestedTrees = LetIdentifierDeepDrop.transform(t, letExp)
 
-    println(suggestedTrees)
     assert(suggestedTrees.exists(tree => {
       tree.toString equals "(begin (+ 2 2) (let ((a 10)) (+ a) (if #t a 99)))"
     }))
@@ -38,8 +38,9 @@ class LetIdentifierDeepDropTest extends AnyFlatSpec {
         |    (if #t a 99)))""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val lambdaExp = t.exps(1)
 
-    val suggestedTrees = LetIdentifierDeepDrop.transform(t, t.exps(1))
+    val suggestedTrees = LetIdentifierDeepDrop.transform(t, lambdaExp)
 
     assert(suggestedTrees equals List())
   }

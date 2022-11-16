@@ -12,8 +12,9 @@ class DeleteChildSimpleTest extends AnyFlatSpec {
         |  (lambda (x) (+ x x) (* x x)))""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val lambdaExp = t.exps(1)
 
-    val suggestedTrees = DeleteChildSimple.transform(t, t.exps(1))
+    val suggestedTrees = DeleteChildSimple.transform(t, lambdaExp)
 
     assert(suggestedTrees.length == 2)
     assert(!(suggestedTrees.head eq t)) //should return a new tree
@@ -37,8 +38,9 @@ class DeleteChildSimpleTest extends AnyFlatSpec {
         |    (* a a)))""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
+    val letExp = t.exps(1)
 
-    val suggestedTrees = DeleteChildSimple.transform(t, t.exps(1))
+    val suggestedTrees = DeleteChildSimple.transform(t, letExp)
 
     println(suggestedTrees)
 
@@ -60,8 +62,9 @@ class DeleteChildSimpleTest extends AnyFlatSpec {
       """(+ 10 10)""".stripMargin
 
     val t: SchemeFuncall = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeFuncall]
+    val numberExp = t.args.head
 
-    val suggestedTrees = DeleteChildSimple.transform(t, t.args.head)
+    val suggestedTrees = DeleteChildSimple.transform(t, numberExp)
 
     assert(suggestedTrees equals List())
   }
@@ -71,8 +74,9 @@ class DeleteChildSimpleTest extends AnyFlatSpec {
       """(+ (begin 10) 10)""".stripMargin
 
     val t: SchemeFuncall = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeFuncall]
+    val begin = t.args.head
 
-    val suggestedTrees = DeleteChildSimple.transform(t, t.args.head)
+    val suggestedTrees = DeleteChildSimple.transform(t, begin)
 
     assert(suggestedTrees equals List())
   }

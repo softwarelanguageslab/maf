@@ -11,8 +11,9 @@ class ReplaceByChildTest extends AnyFlatSpec {
         |  9999)""".stripMargin
 
     val t: SchemeFuncall = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeFuncall]
+    val beginExp = t.args.head
 
-    val suggestedTrees = ReplaceByChild.transform(t, t.args.head)
+    val suggestedTrees = ReplaceByChild.transform(t, beginExp)
 
     assert(suggestedTrees.length == 2)
     assert(suggestedTrees.exists(tree => {
@@ -53,8 +54,9 @@ class ReplaceByChildTest extends AnyFlatSpec {
       """(+ 1 999)""".stripMargin
 
     val t: SchemeFuncall = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeFuncall]
+    val numberExp = t.args.head
 
-    val suggestedTrees = ReplaceByChild.transform(t, t.args.head)
+    val suggestedTrees = ReplaceByChild.transform(t, numberExp)
 
     assert(suggestedTrees equals List())
   }
