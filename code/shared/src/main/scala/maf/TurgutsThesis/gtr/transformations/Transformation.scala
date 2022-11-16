@@ -30,7 +30,7 @@ abstract class Transformation:
       .filterNot(newTree => tree eql newTree) //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
 
   /** transformAndAdd is a subclass responsibility */
-  def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit
+  protected def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit
 
   val name: String
   private var hits: Int = 0

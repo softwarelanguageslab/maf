@@ -5,7 +5,7 @@ import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, Cont
 
 object DeleteChildSimple extends Transformation:
   override val name: String = "DeleteChildSimple"
-  def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
+  protected def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case SchemeLambda(name, args, body, annotation, idn) =>
         if body.length > 1 then
