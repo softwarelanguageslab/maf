@@ -11,8 +11,12 @@ import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
+import maf.util.benchmarks.Timeout
+import scala.concurrent.duration.{Duration, SECONDS}
 
 trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
+  override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(5, SECONDS))
+  override def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, SECONDS)) //remember: concrete run may not halt
 
   protected def compareResults(
                       analysis: Analysis,
