@@ -10,7 +10,7 @@ import maf.test.TurgutsThesis.soundness.{SchemeModFLocalSoundnessTests, SchemeSo
 import maf.test.VariousSequentialBenchmarks
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:
-  override def benchmarks = Set("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/regex.scm")
+  override def benchmarks = Set("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/rsa.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
