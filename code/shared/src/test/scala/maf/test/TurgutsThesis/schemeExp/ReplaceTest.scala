@@ -11,9 +11,11 @@ class ReplaceTest extends AnyFlatSpec {
     val operator: SchemeExp = t.f
     val replacement1: SchemeIf = SchemeIf(operator, operator, operator, NoCodeIdentity)
     val newTree1: SchemeFuncall = t.replace(operator, replacement1).asInstanceOf[SchemeFuncall] //replace
+    assert(!(t eq newTree1)) //replace returns a new tree object
     assert(newTree1.f eq replacement1)
 
     val newTree2: SchemeFuncall = newTree1.replace(replacement1, operator).asInstanceOf[SchemeFuncall] //replace it back
+    assert(!(newTree1 eq newTree2))
     assert(newTree2.f eq operator)
   }
 
@@ -30,6 +32,6 @@ class ReplaceTest extends AnyFlatSpec {
     val replacement = SchemeValue(Integer(999), NoCodeIdentity)
     val newTree: SchemeFuncall = t.replace(deepArg, replacement).asInstanceOf[SchemeFuncall]
     assert(newTree.args.head.asInstanceOf[SchemeFuncall].args.head eq replacement)
-    assert(!(newTree.args.head.asInstanceOf[SchemeFuncall].args(1) eq replacement))
+    assert(!(newTree.args.head.asInstanceOf[SchemeFuncall].args(1) eq replacement)) //the second 5 should not be replaced
   }
 }

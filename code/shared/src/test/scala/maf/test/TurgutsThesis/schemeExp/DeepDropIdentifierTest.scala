@@ -17,6 +17,7 @@ class DeepDropIdentifierTest extends AnyFlatSpec {
           //println(letExp)
           assert(letExp.toString == expected)
         case _ =>
+          assert(expected == "None")
 
     def testLambda(programText: String, expected: String): Unit =
       val schemeLambdaExp: SchemeLambda = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLambda]
@@ -27,7 +28,7 @@ class DeepDropIdentifierTest extends AnyFlatSpec {
           //println(exp)
           assert(exp.toString == expected)
         case None =>
-          //assert(expected == "None")
+          assert(expected == "None")
 
 
     //code 1: identifier in appl

@@ -5,7 +5,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 
 class DeleteChildrenTest extends AnyFlatSpec {
   "A SchemeExp" should "be able to delete its children" in {
-
     val programText: String =
       """(let ((x 5)
         |      (y (+ 10 x)))
@@ -25,6 +24,7 @@ class DeleteChildrenTest extends AnyFlatSpec {
     })
 
     assert(deleted.get.toString equals "(let ((x 5) (y (+ 10))) (* y) (begin 10 (+ y 10)))")
+    assert(!(deleted eq letExp)) //deleteChildren returns a new node
   }
 
   "A SchemeExp" should "return None if it must be deleted" in {

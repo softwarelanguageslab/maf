@@ -19,9 +19,9 @@ class ParentTest extends AnyFlatSpec {
     val childOfChild: SchemeExp = child.exps(1)
 
     val parentOfChild = t.parent(child).get
-    assert(parentOfChild == t)
+    assert(parentOfChild eq t)
 
     val parentOfChildOfChild = t.parent(childOfChild).get
-    assert(parentOfChildOfChild == child)
+    assert(parentOfChildOfChild eq child)
   }
 }

@@ -16,6 +16,7 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
           //println(exp)
           assert(exp.toString == expected)
         case _ =>
+          assert(expected == "None")
 
     def testLambda(programText: String, expected: String): Unit =
       val schemeLambdaExp: SchemeLambda = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeLambda]
@@ -125,7 +126,7 @@ class ShallowDropIdentifierTest extends AnyFlatSpec {
         |    'done)
         |  )""".stripMargin
 
-    testLet(programText9)
+    testLet(programText9, "None")
 
     //code 10: a lambda
     val programText10: String =

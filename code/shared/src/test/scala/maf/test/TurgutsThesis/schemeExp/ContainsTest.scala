@@ -17,7 +17,9 @@ class ContainsTest extends AnyFlatSpec {
     val copy = letExp.sexpCopy()
 
     //NOTE: contains checks for reference equality (e.g. same addr in the heap)
-    assert(!letExp.contains(copy)) 
+    assert(!letExp.contains(copy))
+    assert(!letExp.contains(copy.body.head))
+
     assert(letExp.contains(letExp))
     assert(letExp.contains(letExp.bindings.head._2))
     assert(letExp.contains(letExp.body.head))

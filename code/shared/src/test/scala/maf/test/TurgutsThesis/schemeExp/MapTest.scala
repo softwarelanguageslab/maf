@@ -12,6 +12,7 @@ class MapTest extends AnyFlatSpec {
         case SchemeIf(cond, cons, alt, idn) => SchemeIf(alt, alt, alt, idn)
         case any => any
     }).asInstanceOf[SchemeFuncall]
+    assert(!(mapped eq t)) //mapped should be new tree
 
     val firstIf = mapped.args.head
 
@@ -34,6 +35,7 @@ class MapTest extends AnyFlatSpec {
           case anyVal => sexp
         case e => e
     }).asInstanceOf[SchemeFuncall]
+    assert(!(mapped eq t)) //mapped should be new tree
 
     val firstIf: SchemeIf = mapped.args.head.asInstanceOf[SchemeIf]
     val firstIfThen: SchemeValue = firstIf.cons.asInstanceOf[SchemeValue]

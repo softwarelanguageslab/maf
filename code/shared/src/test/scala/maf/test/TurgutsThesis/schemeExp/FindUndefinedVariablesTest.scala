@@ -17,7 +17,6 @@ class FindUndefinedVariablesTest extends AnyFlatSpec {
 
     assert(letExp.findUndefinedVariables() equals List())
 
-
     val programText2: String =
       """(let ((a 10))
         |  (+ a b (* a 10))
