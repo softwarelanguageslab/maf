@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.soundness
 
-import maf.TurgutsThesis.gtr.{GTR, QuickGTR}
+import maf.TurgutsThesis.gtr.{CountingGTR, FirstInternalGTR, GTR, JumpyGTR, SimpleGTR}
 import maf.TurgutsThesis.gtr.transformations.{DeleteChildSimple, IfToBegin, RemoveCalls, RemoveCallsAndReplaceByBody, RemoveLambdaParamWithDeepDrop, ReplaceByChild, ReplaceIdentifier, ReplaceIdentifierCalls, TransformationManager}
 import maf.core.{Identity, NoCodeIdentity}
 import maf.language.CScheme.*
@@ -12,6 +12,7 @@ import maf.language.scheme.primitives.SchemePrelude
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
+
 import scala.concurrent.duration.{Duration, SECONDS}
 
 trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
@@ -76,20 +77,22 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
         }
 
         var failureMsg = runAndCompare(program)
+        var count = 0
         if failureMsg.nonEmpty then
-          val reduced = QuickGTR.reduce(
+          val reduced = FirstInternalGTR.reduce(
             program,
             p => {
               /** without the line below, one might have undefined variables that are never needed dynamically (e.g. dead-code)
                *  And that brings shallow/deep dropping into an infinite loop, since they try to drop all undefined variables
                */
+              count += 1
               (p.findUndefinedVariables() equals List()) &&
               runAndCompare(p).nonEmpty //non-empty failure msg
             },
             TransformationManager.allTransformations
           )
 
-          println(reduced)
+          println("oracle invocations: " + count)
           val parsedAgain = SchemeParser.parseProgram(reduced.prettyString()) //parse again, to generate file-related information (e.g. bug is at offset 20-25)
           failureMsg = runAndCompare(parsedAgain)
 

@@ -6,7 +6,7 @@ import maf.core.Expression
 
 import scala.annotation.tailrec
 
-object QuickGTR:
+object JumpyGTR:
   def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
     var reducedTree: SchemeExp = tree
     for(lvl <- 0 to reducedTree.height)
@@ -14,7 +14,7 @@ object QuickGTR:
         reducedTree = reduceLevelNodes(reducedTree, reducedTree.levelNodes(lvl), oracle, transformation)
         if !(reducedTree == tree) then
           return reduce(reducedTree, oracle, transformations)
-    println("QuickGTR total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
+    //println("QuickGTR total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
     tree
 
   private def reduceLevelNodes(tree: SchemeExp, lvlNodes: List[SchemeExp], oracle: SchemeExp => Boolean, transformation: Transformation): SchemeExp =

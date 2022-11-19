@@ -6,21 +6,19 @@ import maf.core.Expression
 
 import scala.annotation.tailrec
 
-object GTR:
+object FirstInternalGTR:
   @tailrec
   def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
-    val reducedTree: SchemeExp = BFT(tree, oracle, transformations)
-    if tree.size == reducedTree.size then
-      //println("GTR total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
-      reducedTree
-    else reduce(reducedTree, oracle, transformations)
-    
-  private def BFT(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
-    var reducedTree = tree
-    for (lvl <- 0 to reducedTree.height)
-      for (transformation <- transformations)
-        reducedTree = reduceLevelNodes(reducedTree, lvl, oracle, transformation)
-    reducedTree
+    var reducedTree: SchemeExp = tree
+    if reducedTree.height < 3 then
+      GTR.reduce(reducedTree, oracle, transformations)
+    else
+      for(lvl <- 0 to (reducedTree.height - 3))
+        for(transformation <- transformations)
+          reducedTree = reduceLevelNodes(reducedTree, lvl, oracle, transformation)
+      if tree.size == reducedTree.size then
+        GTR.reduce(reducedTree, oracle, transformations)
+      else reduce(reducedTree, oracle, transformations)
 
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, transformation: Transformation): SchemeExp =
     for(node <- tree.levelNodes(lvl))

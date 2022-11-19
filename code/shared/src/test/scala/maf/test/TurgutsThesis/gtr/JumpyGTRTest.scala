@@ -1,11 +1,11 @@
 package maf.test.TurgutsThesis.gtr
 
-import maf.TurgutsThesis.gtr.QuickGTR
+import maf.TurgutsThesis.gtr.JumpyGTR
 import maf.TurgutsThesis.gtr.transformations.*
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class QuickGTRTest extends AnyFlatSpec {
+class JumpyGTRTest extends AnyFlatSpec {
   "QuickGTR" should "be able to reduce a program" in {
     val programText: String =
       "(begin " +
@@ -14,7 +14,7 @@ class QuickGTRTest extends AnyFlatSpec {
 
     val t = SchemeParser.parseProgramText(programText).last
 
-    val reduced = QuickGTR.reduce(t,
+    val reduced = JumpyGTR.reduce(t,
       t => t.isInstanceOf[SchemeBegin] && t.asInstanceOf[SchemeBegin].exps.length == 1,
       List(ReplaceByChild, DeleteChildSimple))
 
