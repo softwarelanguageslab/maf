@@ -1,10 +1,9 @@
 package maf.test.TurgutsThesis.schemeExp
 
-import maf.language.scheme.{SchemeLet, SchemeParser}
+import maf.language.scheme.{SchemeLet, SchemeParser, SchemeVarArgLambda}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class DefinedSetTest extends AnyFlatSpec {
-
   "A SchemeExp" should "be able to find its defined set" in {
     val programText1: String =
       """(let ((a 10)
@@ -22,5 +21,14 @@ class DefinedSetTest extends AnyFlatSpec {
     assert(letExp.definedSet().exists(identifier => identifier.name equals "b"))
     assert(letExp.definedSet().exists(identifier => identifier.name equals "c"))
     assert(letExp.definedSet().exists(identifier => identifier.name equals "d"))
+  }
+
+  "A SchemeVarArg" should "be able to find its defined vars" in {
+    val programText1: String =
+      """(lambda args
+        |  args)""".stripMargin
+
+    val lambdaExp: SchemeVarArgLambda = SchemeParser.parseProgramText(programText1).last.asInstanceOf[SchemeVarArgLambda]
+    assert(lambdaExp.definedSet().exists(identifier => identifier.name equals "args"))
   }
 }

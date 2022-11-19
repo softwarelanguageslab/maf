@@ -69,6 +69,9 @@ sealed trait SchemeExp extends Expression:
 
       this.forEach(e => {
         e match
+          case exp: SchemeVarArgLambda =>
+            exp.args.foreach(identifier => add(identifier))
+            add(exp.vararg)
           case exp: SchemeLambdaExp =>
             exp.args.foreach(identifier => add(identifier))
           case exp: SchemeLettishExp =>
@@ -259,7 +262,7 @@ case class SchemeVarArgLambda(
 
     override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(_.replaceThis(node, replacement)), annotation, idn)
-    override def map(f: SchemeExp => SchemeExp): SchemeExp =
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
       SchemeVarArgLambda(name, args, vararg, body.map(sexp => sexp.map(f)), annotation, idn)
     override def prettyString(indent: Int): String =
         val a =
