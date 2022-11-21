@@ -93,7 +93,6 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
             TransformationManager.allTransformations
           )
 
-          println("oracle invocations: " + count)
           val parsedAgain = SchemeParser.parseProgram(reduced.prettyString()) //parse again, to generate file-related information (e.g. bug is at offset 20-25)
           failureMsg = runAndCompare(parsedAgain)
 

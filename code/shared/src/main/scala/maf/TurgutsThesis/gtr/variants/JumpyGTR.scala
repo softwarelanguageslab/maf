@@ -20,7 +20,7 @@ object JumpyGTR:
   private def reduceLevelNodes(tree: SchemeExp, lvlNodes: List[SchemeExp], oracle: SchemeExp => Boolean, transformation: Transformation): SchemeExp =
     for(node <- lvlNodes)
       for((candidateTree, candidateIdx) <- transformation.transform(tree, node).zipWithIndex)
-        if candidateTree.size < tree.size then
+        if candidateTree.size <= tree.size then
           if oracle(candidateTree) then
             transformation.hit(candidateTree, candidateIdx)
             return candidateTree

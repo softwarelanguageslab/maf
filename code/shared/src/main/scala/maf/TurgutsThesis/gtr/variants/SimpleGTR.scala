@@ -25,7 +25,7 @@ object SimpleGTR:
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, transformation: Transformation, dropIdx: Int): SchemeExp =
     for((node, nodeIdx) <- tree.levelNodes(lvl).drop(dropIdx).zipWithIndex)
       for((candidateTree, candidateIdx) <- transformation.transform(tree, node).zipWithIndex)
-        if candidateTree.size < tree.size then
+        if candidateTree.size <= tree.size then
           if oracle(candidateTree) then
             transformation.hit(candidateTree, candidateIdx)
             return reduceLevelNodes(candidateTree, lvl, oracle, transformation, nodeIdx)

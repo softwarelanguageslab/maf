@@ -30,7 +30,7 @@ object CountingGTR:
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, transformation: Transformation): SchemeExp =
     for(node <- tree.levelNodes(lvl))
       for((candidateTree, candidateIdx) <- transformation.transform(tree, node).zipWithIndex)
-        if candidateTree.size < tree.size then
+        if candidateTree.size <= tree.size then
           if oracle(candidateTree) then
             OracleHits += 1
             transformation.hit(candidateTree, candidateIdx)
