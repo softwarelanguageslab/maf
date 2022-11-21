@@ -1,13 +1,18 @@
 package maf.cli.runnables
 
+import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.SchemeAnalyses
 import maf.core.{Identifier, Monad}
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.*
+import maf.language.taint.TaintSchemeParser
 import maf.modular.*
 import maf.modular.incremental.ProgramVersionExtracter.*
+import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain
 import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
+import maf.modular.taint.GlobalStoreTaint
+import maf.modular.taint.scheme.SchemeModFBigStepTaintSemantics
 import maf.modular.worklist.*
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
@@ -18,8 +23,8 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeProgram extends App:
-    def runAnalysis(bench: String, analysis: SchemeExp => ModAnalysis[SchemeExp], timeout: () => Timeout.T): Unit =
-        val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: SchemeExp => A, timeout: () => Timeout.T): A =
+        val text = TaintSchemeParser.parseProgram(Reader.loadFile(bench))
         val a = analysis(text)
         print(s"Analysis of $bench ")
         try {
@@ -36,10 +41,9 @@ object AnalyzeProgram extends App:
                 t.printStackTrace()
                 System.err.flush()
         }
+        a
 
-    val bench: List[String] = List(
-      "test/DEBUG1.scm"
-    )
+    val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/taint")().toList
 
     // Used by webviz.
     def newStandardAnalysis(text: String) =
@@ -74,9 +78,30 @@ object AnalyzeProgram extends App:
             }
         }
 
+    def taintAnalysis(program: SchemeExp) =
+        new ModAnalysis[SchemeExp](program)
+            with StandardSchemeModFComponents
+            with SchemeModFNoSensitivity
+            with SchemeModFSemanticsM
+            with LIFOWorklistAlgorithm[SchemeExp]
+            with SchemeModFBigStepTaintSemantics
+            with IncrementalSchemeTypeDomain
+            with GlobalStoreTaint[SchemeExp] {
+            override def intraAnalysis(
+                cmp: SchemeModFComponent
+              ): SchemeModFBigStepTaintIntra = new IntraAnalysis(cmp) with SchemeModFBigStepTaintIntra with GlobalStoreTaintIntra
+        }
+
     bench.foreach({ b =>
         // for(i <- 1 to 10) {
         //runAnalysis(b, program => SchemeAnalyses.kCFAAnalysis(program, 0), () => Timeout.start(Duration(2, MINUTES)))
-        runAnalysis(b, program => newNonIncAnalysis(program), () => Timeout.start(Duration(10, MINUTES)))
-        //  }
+        val a = runAnalysis(b, program => taintAnalysis(program), () => Timeout.start(Duration(1, MINUTES)))
+        println(b)
+        println(a.taintResult())
+        println()
+        //println(a.program.prettyString())
+       // a.dataFlowR.foreach(println)
+        //println()
+        //println()
+        //a.implicitFlowsCut.foreach({ case (c, as) => as.foreach(a => println(s"$c $a")) })
     })

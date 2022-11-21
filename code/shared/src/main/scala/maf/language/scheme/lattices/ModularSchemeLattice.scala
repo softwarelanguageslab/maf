@@ -908,7 +908,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     }
     implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
 
-    // TODO: field SchemeLattice only exists for backwards compability reasons, but for the sake of simplification should also be removed, and the methods be included within the class itself
+    // TODO: field SchemeLattice only exists for backwards compatibility reasons, but for the sake of simplification should also be removed, and the methods be included within the class itself
     val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] { lat =>
         def show(x: L): String = x.toString /* TODO[easy]: implement better */
         def isTrue(x: L): Boolean = x.elements[Value].foldMap(Value.isTrue(_))(boolOrMonoid)

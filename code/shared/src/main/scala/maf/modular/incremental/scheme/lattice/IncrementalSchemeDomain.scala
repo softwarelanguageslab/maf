@@ -5,6 +5,7 @@ import maf.language.scheme.SchemeExp
 import maf.language.scheme.primitives._
 import maf.lattice._
 import maf.modular.scheme._
+import maf.modular.incremental.scheme.primitives.*
 
 trait IncrementalSchemeDomain extends IncrementalAbstractDomain[SchemeExp] with SchemeDomain:
     implicit override lazy val lattice: IncrementalSchemeLattice[Value, Address]
@@ -25,7 +26,7 @@ trait IncrementalModularSchemeLatticeWrapper:
     // Contains the incremental modular Scheme lattice.
     val modularLattice: IncrementalModularSchemeLattice[Address, S, B, I, R, C, Sym]
     // Primitive functions of Scheme.
-    val primitives: SchemePrimitives[modularLattice.AL, Address]
+    val primitives: IncrementalSchemeLatticePrimitives[modularLattice.AL, Address]
 
 object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrapper:
     type S = Type.S
@@ -35,7 +36,7 @@ object IncrementalSchemeTypeDomain extends IncrementalModularSchemeLatticeWrappe
     type C = Type.C
     type Sym = Type.Sym
     final val modularLattice = new IncrementalModularSchemeLattice
-    final val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
+    final val primitives = new IncrementalSchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 
 trait IncrementalSchemeTypeDomain extends IncrementalModularSchemeDomain:
     final val modularLatticeWrapper = IncrementalSchemeTypeDomain
@@ -49,7 +50,7 @@ object IncrementalSchemeConstantPropagationDomain extends IncrementalModularSche
     type C = ConstantPropagation.C
     type Sym = ConstantPropagation.Sym
     final val modularLattice = new IncrementalModularSchemeLattice
-    final val primitives = new SchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
+    final val primitives = new IncrementalSchemeLatticePrimitives()(modularLattice.incrementalSchemeLattice)
 
 trait IncrementalSchemeConstantPropagationDomain extends IncrementalModularSchemeDomain:
     final val modularLatticeWrapper = IncrementalSchemeConstantPropagationDomain

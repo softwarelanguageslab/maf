@@ -204,7 +204,7 @@ class IncrementalModFCPSlowCIWI extends IncrementalModFCP with STwithCIWI
 class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks with noCY:
     def name = "Incremental ModConc Type"
 
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, ci_di_wi) // allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisTypeLattice(b, ci_di_wi)
 
     override def testTags(b: Benchmark): Seq[Tag] = super.testTags(b) :+ SchemeModConcTest :+ SmallStepTest
     override def isSlow(b: Benchmark): Boolean =
@@ -223,7 +223,7 @@ class IncrementalSmallStepModConcTypeSlowCIWI extends IncrementalSmallStepModCon
 /** Implements soundness tests for an incremental ModConc analysis. */
 trait IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with noCY:
     override def name = "Incremental ModConc CP"
-    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi) // allOptimisations)
+    override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi)
     override def isSlow(b: Benchmark): Boolean = true
 
 class IncrementalSmallStepModConcCPSlowWI extends IncrementalSmallStepModConcCP with STwithoutCIwithWI

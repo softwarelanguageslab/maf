@@ -13,9 +13,17 @@ import maf.modular._
 import maf.modular.scheme._
 import maf.test._
 import maf.util._
-import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.{Timeout, Timer}
 
 import scala.concurrent.duration._
+
+object SchemeSoundnessTests:
+    /** Open a timestamped writer */
+    private val writer: Writer.Writer = Writer.openTimeStamped("out/soundness-tests-timing.csv")
+
+    /** Log the time ellapsed for running the analysis */
+    def logEllapsed(test: SchemeSoundnessTests, benchmark: String, ellapsed: Long, concrete: Boolean): Unit =
+        Writer.write(writer, test.getClass.toString + ";" + benchmark + ";" + ellapsed.toString + ";" + (if concrete then "yes" else "no"))
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     // analysis must support basic Scheme semantics
@@ -66,7 +74,9 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
             for _ <- 1 to times do
                 val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
-                try runInterpreter(interpreter, program, timeout)
+                try
+                    val (ellapsed, _) = Timer.time(runInterpreter(interpreter, program, timeout))
+                    SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)
                 catch handleInterpreterError(addResult)
         catch
             case _: TimeoutException =>
@@ -83,7 +93,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         try
             // analyze the program using a ModF analysis
             val anl = analysis(program)
-            val timeout = analysisTimeout(benchmark)
+            val (ellapsed, timeout) = Timer.time(analysisTimeout(benchmark))
+            SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = false)
             anl.analyzeWithTimeout(timeout)
             assume(anl.finished, "Analysis timed out")
             anl

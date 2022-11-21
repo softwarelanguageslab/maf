@@ -105,6 +105,12 @@ jobs:
         env:
           LOG_ENV: ci
           LOG_LOCATION: log-${{ github.sha }}
+      - name: Upload soundness tests timing results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: Soundness tests timing results
+          path: out/*.csv
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
