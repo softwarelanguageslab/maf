@@ -80,7 +80,7 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
         var failureMsg = runAndCompare(program)
         var count = 0
         if failureMsg.nonEmpty then
-          val reduced = FirstInternalGTR.reduce(
+          val reduced = GTR.reduce(
             program,
             p => {
               /** without the line below, one might have undefined variables that are never needed dynamically (e.g. dead-code)
