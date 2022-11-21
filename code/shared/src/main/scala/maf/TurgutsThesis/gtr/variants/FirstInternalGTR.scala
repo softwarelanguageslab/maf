@@ -1,8 +1,9 @@
-package maf.TurgutsThesis.gtr
+package maf.TurgutsThesis.gtr.variants
 
+import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.Transformation
-import maf.language.scheme.SchemeExp
 import maf.core.Expression
+import maf.language.scheme.SchemeExp
 
 import scala.annotation.tailrec
 

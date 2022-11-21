@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.gtr
 
-import maf.TurgutsThesis.gtr.JumpyGTR
 import maf.TurgutsThesis.gtr.transformations.*
+import maf.TurgutsThesis.gtr.variants.JumpyGTR
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
