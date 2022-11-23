@@ -13,6 +13,19 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     def emptyWorkList: WorkList[Component]
     // adding elements to the worklist
     var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
+    protected var reAnalysisMap: Map[Component, Int] = Map()
+    def getReAnalysisMap(): Map[Identity, Int] =
+        val array: Array[(String, Array[(Component, Int)])] =
+            reAnalysisMap.toArray.groupBy(tpl => tpl._1.toString.split(" ").asInstanceOf[Array[String]].head).toArray
+        var stringsAndNumbers: Map[String, Int] = array.map(tpl => (tpl._1, tpl._2.map(_._2).sum)).toMap
+        stringsAndNumbers = stringsAndNumbers.filterNot(tpl => tpl._1 equals "main")
+        stringsAndNumbers.map(tpl => {
+            val string = tpl._1
+            val parsed: Array[String] = string.split(Array(':', ','))
+            val row = parsed(1)
+            val column = parsed(2)
+            (SimpleIdentity(Position(row.toInt, column.toInt)), tpl._2)
+        })
     def addToWorkList(cmp: Component) = workList = workList.add(cmp)
     def finished: Boolean = workList.isEmpty
     // a single step in the worklist algorithm iteration
@@ -20,6 +33,8 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     def step(timeout: Timeout.T): Unit =
         // take the next component
         val current = workList.head
+        val currentCount: Int = reAnalysisMap.getOrElse(current, 0)
+        reAnalysisMap = reAnalysisMap + (current -> (currentCount + 1))
         workList = workList.tail
         // do the intra-analysis
         // intraCount = intraCount + 1
@@ -34,6 +49,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
 
     // step until worklist is empty or timeout is reached
     def run(timeout: Timeout.T): Unit =
+        reAnalysisMap = Map()
         while !finished && !timeout.reached do step(timeout)
 
 /** Provides a work list with a depth-first exploration order to a modular analysis. */
