@@ -104,6 +104,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
     private def interceptCreate(beh: Value, ags: List[Value], idn: Identity): A[Value] = intercept { mirror =>
         // TODO: actually put the arguments in a scheme list. Figure out a precise allocation scheme for this.
+        // TODO: add a mirror parameter here, so that the actor is created with the appropriate mirror
         selfActor.flatMap(self => mirrorAsk(mirror.tid, "create", beh :: ags, self, idn))
     } /* otherwise */ {
         // base behavior
@@ -141,7 +142,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 message <- mkMessage(tag, evaluatedAgs)
                 envelope = lattice.envelope(Envelope(self, reifyMessage(message)))
                 result <- intercept { mirror =>
-                    mirrorAsk(mirror.tid, "send", List(envelope), self, idn)
+                    mirrorAsk(mirror.tid, "send", List(envelope /* , TODO: add the source location of the send here */ ), self, idn)
                 } /* otherwise */ {
                     sendMessage(evaluatedActor, tag, evaluatedAgs).map(_ => lattice.nil)
                 }
@@ -172,6 +173,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     for
                         self <- selfActor
                         env <- getEnv
+                        // TODO: mirror protocol changed: should reify the behavior not the handler
+                        // a primitive called "lookup-handler" should be able to get the appropriate handler
+                        // for the given message.
                         lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, reifyHandler(pars, bdy, env)), self, idn)
                         result <- applyThunk(lam, idn, args)
                     yield result
@@ -183,6 +187,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
         // (create-with-mirror mirrorRef behavior)
         case SchemeFuncall(SchemeVar(Identifier("create-with-mirror", _)), mirrorRef :: behavior :: ags, idn) =>
+            // TODO: in the concrete actor implementation we have that the create-with-mirror call
+            // is also intercepted. We should do that here as well.
             for
                 evaluatedMirrorRef <- eval(mirrorRef)
                 evaluatedBehavior <- eval(behavior)
