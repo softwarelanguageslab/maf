@@ -54,7 +54,8 @@ object ASchemeValues:
      */
     case class ActorWaitCompleteFuture(tid: AID) extends Future
 
-    case class Message[Value](tag: String, vlus: List[Value]) extends ASchemeValue:
+    /** A representation for messages */
+    case class Message[Value](tag: String, vlus: List[Value], exs: List[SchemeExp] = List()) extends ASchemeValue:
         def mapValues[Y](f: Value => Y): Message[Y] =
             this.copy(vlus = vlus.map(f))
 

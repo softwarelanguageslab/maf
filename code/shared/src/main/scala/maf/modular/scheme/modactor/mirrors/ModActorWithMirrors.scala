@@ -108,5 +108,5 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
 
 class SimpleModActorWithMirrors(prog: SchemeExp) extends SchemeModActorSemantics(prog), ModActorWithMirrors:
     implicit override val analysisM: GlobalMetaSemanticsM = new GlobalMetaSemanticsM()
-    def reifyMessage(m: Msg): ASchemeValues.Message[Value] = m
+    def reifyMessage(m: Msg, exs: List[SchemeExp]): ASchemeValues.Message[Value] = m.copy(exs = exs)
     def abstractMessage(m: Msg): ASchemeValues.Message[Value] = m

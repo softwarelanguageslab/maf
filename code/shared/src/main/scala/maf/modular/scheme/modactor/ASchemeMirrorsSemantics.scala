@@ -102,20 +102,53 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         case ActorAnalysisComponent(enclosingActor, _, _) => mirrorFlagSet(Actor(None, enclosingActor))
         case maf.modular.scheme.modactor.Actor(beh, _, _) => beh.isMirror
 
-    private def interceptCreate(beh: Value, ags: List[Value], idn: Identity): A[Value] = intercept { mirror =>
-        // TODO: actually put the arguments in a scheme list. Figure out a precise allocation scheme for this.
-        // TODO: add a mirror parameter here, so that the actor is created with the appropriate mirror
-        selfActor.flatMap(self => mirrorAsk(mirror.tid, "create", beh :: ags, self, idn))
+    /**
+     * Intercept the `create` primitive of the actor.
+     *
+     * @param beh
+     *   the behavior that is being created
+     * @param ags
+     *   a list of abstract values to be used as constructor arguments for the behavior
+     * @param mirror
+     *   an abstract representation of a mirror or an abstract representation of #f indicating that there is no mirror
+     * @param exs
+     *   a list of expressions corresponding to the constructor arguments for the behavior
+     * @param idn
+     *   the identity of the create expression.
+     */
+    private def interceptCreate(beh: Value, ags: List[Value], m: Value, exs: List[SchemeExp], idn: Identity): A[Value] = intercept { mirror =>
+        for
+            arguments <- allocLst(exs.zip(ags))
+            self <- selfActor
+            result <- mirrorAsk(mirror.tid, "create", List(m, beh, arguments), self, idn)
+        yield result
     } /* otherwise */ {
         // base behavior
-        create(beh, ags, idn)
-            .map(actor =>
-                if mirrorFlagSet(actor) then lattice.mirrors(Mirror(actor.name, actor))
-                else lattice.actor(actor)
-            )
+        baseCreate(beh, m, ags, idn)
     }
 
-    def reifyMessage(m: Msg): Message[Value]
+    private def baseCreate(beh: Value, evaluatedMirrorRef: Value, ags: List[Value], idn: Identity): A[Value] =
+        for
+            actor <- create(beh, ags, idn)
+            actorAbs =
+                if mirrorFlagSet(actor) then lattice.mirrors(Mirror(actor.name, actor))
+                else lattice.actor(actor)
+            // install the mirror if necessary
+            // TODO: if the mirror is a function, then apply it first before installing the mirror
+            _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actorAbs, mirror, strong = true)))
+        yield actorAbs
+
+    /**
+     * Reify the given message to a value that can be used by the meta-layer.
+     *
+     * @param m
+     *   the message to reify as a value
+     * @param exps
+     *   the expressions corresponding to the payload of the message
+     */
+    def reifyMessage(m: Msg, exps: List[SchemeExp]): Message[Value]
+
+    /** Injects a concrete message into the abstract domain */
     def abstractMessage(m: Message[Value]): Msg
 
     private def applyThunk(lam: Value, idn: Identity, ags: List[Value]): A[Value] =
@@ -126,13 +159,58 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     private def reifyHandler(prs: List[Identifier], bdy: List[SchemeExp], lexEnv: Environment[Address]): Value =
         lattice.closure((SchemeLambda(None, prs, bdy, None, bdy.head.idn), lexEnv))
 
+    /** Convert a Scheme list to a Scala list */
+    protected def asScalaList(vlu: Val): A[List[Val]] = ???
+
+    object MetaPrimitives:
+
+        trait MetaPrimitive(val name: String):
+            def call(args: List[Value], idn: Identity): A[Value]
+            def checkArity(args: List[Value], expected: Int): A[Unit] =
+                if args.size < expected then mbottom else unit(())
+
+        abstract class Struct[T]:
+            def get(v: Value): A[T]
+            def fields: Map[String, T => Value]
+            def primitives: List[MetaPrimitive] =
+                fields.map { case (name, f) =>
+                    new MetaPrimitive(name) {
+                        def call(args: List[Value], idn: Identity): A[Value] = checkArity(args, 1) >>> get(args(0)) >>= f andThen unit
+                    }
+                }.toList
+
+        case object `base/create` extends MetaPrimitive("create/c"):
+            def call(args: List[Value], idn: Identity): A[Value] =
+                for
+                    _ <- checkArity(args, 3)
+                    arguments <- asScalaList(args(2))
+                    result <- baseCreate(args(0), args(1), arguments, idn)
+                yield result
+
+        case object `lookup-handler` extends MetaPrimitive("lookup-handler"):
+            def call(args: List[Value], idn: Identity): A[Value] = ???
+
+        case object envelope extends Struct[Envelope[Actor, Value]]:
+            def get(v: Value) = nondets(lattice.getEnvelopes(v).map(unit))
+            val fields = Map(
+              "receiver" -> (ev => lattice.actor(ev.receiver)),
+              "message" -> (ev => lattice.message(ev.message))
+            )
+
+        case object message extends Struct[Message[Value]]:
+            def get(v: Value) = nondets(lattice.getMessages(v).map(unit))
+            def fields = Map(
+              "tag" -> (m => lattice.symbol(m.tag)),
+              "arguments" -> ???
+            )
+
     override def eval(exp: SchemeExp): A[Value] = exp match
         case ASchemeCreate(beh, ags, idn) =>
             // we intercept actor creation and forward it to the meta layer if necessary
             for
                 evaluatedBeh <- eval(beh)
                 evaluatedAgs <- Monad.sequence(ags.map(eval))
-                result <- interceptCreate(evaluatedBeh, evaluatedAgs, idn)
+                result <- interceptCreate(evaluatedBeh, evaluatedAgs, lattice.bool(false), ags, idn)
             yield result
         case ASchemeSend(actorRef, Identifier(tag, _), ags, idn) =>
             for
@@ -140,7 +218,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 evaluatedAgs <- Monad.sequence(ags.map(eval))
                 self <- selfActor
                 message <- mkMessage(tag, evaluatedAgs)
-                envelope = lattice.envelope(Envelope(self, reifyMessage(message)))
+                envelope = lattice.envelope(Envelope(self, reifyMessage(message, ags)))
                 result <- intercept { mirror =>
                     mirrorAsk(mirror.tid, "send", List(envelope /* , TODO: add the source location of the send here */ ), self, idn)
                 } /* otherwise */ {
