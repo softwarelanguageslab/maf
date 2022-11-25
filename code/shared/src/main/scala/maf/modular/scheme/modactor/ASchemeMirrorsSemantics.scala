@@ -163,6 +163,16 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     protected def asScalaList(vlu: Val): A[List[Val]] = ???
 
     object MetaPrimitives:
+        lazy val primitives = {
+            List(
+              `base/create`,
+              `lookup-handler`
+            ) ++ envelope.primitives ++ message.primitives
+        }.map(p => p.name -> p).toMap
+
+        lazy val primitiveNames = primitives.keys.toSet
+
+        def isPrimitive(id: String): Boolean = primitiveNames.contains(id)
 
         trait MetaPrimitive(val name: String):
             def call(args: List[Value], idn: Identity): A[Value]
@@ -170,12 +180,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 if args.size < expected then mbottom else unit(())
 
         abstract class Struct[T]:
+            def lift(f: T => Value): T => A[Value] =
+                f andThen unit
             def get(v: Value): A[T]
-            def fields: Map[String, T => Value]
+            def fields: Map[String, T => A[Value]]
             def primitives: List[MetaPrimitive] =
                 fields.map { case (name, f) =>
                     new MetaPrimitive(name) {
-                        def call(args: List[Value], idn: Identity): A[Value] = checkArity(args, 1) >>> get(args(0)) >>= f andThen unit
+                        def call(args: List[Value], idn: Identity): A[Value] = checkArity(args, 1) >>> get(args(0)) >>= f
                     }
                 }.toList
 
@@ -188,20 +200,27 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 yield result
 
         case object `lookup-handler` extends MetaPrimitive("lookup-handler"):
-            def call(args: List[Value], idn: Identity): A[Value] = ???
+            def call(args: List[Value], idn: Identity): A[Value] =
+                // TODO: lookup handler using ASchemeSelect in the body of the behavior
+                for
+                    _ <- checkArity(args, 1)
+                    v <- nondets(lattice.getBehs(args(0)).map(unit))
+                yield ???
 
         case object envelope extends Struct[Envelope[Actor, Value]]:
             def get(v: Value) = nondets(lattice.getEnvelopes(v).map(unit))
             val fields = Map(
-              "receiver" -> (ev => lattice.actor(ev.receiver)),
-              "message" -> (ev => lattice.message(ev.message))
+              "receiver" -> lift(ev => lattice.actor(ev.receiver)),
+              "message" -> lift(ev => lattice.message(ev.message))
             )
 
         case object message extends Struct[Message[Value]]:
             def get(v: Value) = nondets(lattice.getMessages(v).map(unit))
             def fields = Map(
-              "tag" -> (m => lattice.symbol(m.tag)),
-              "arguments" -> ???
+              "tag" -> lift(m => lattice.symbol(m.tag)),
+              "arguments" -> { message =>
+                  allocLst(message.exs.zip(message.vlus))
+              }
             )
 
     override def eval(exp: SchemeExp): A[Value] = exp match
@@ -276,7 +295,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 _ = log(s"+++ intra mirror installed on $actor")
             yield actor
 
-        case SchemeFuncall(SchemeVar(Identifier("base/send-envelope", _)), List(envelopeExpression), _) =>
+        case SchemeFuncall(SchemeVar(Identifier("base/send-envelope" | "send-envelope", _)), List(envelopeExpression), _) =>
             for
                 evaluatedEnvelope <- eval(envelopeExpression)
                 _ = log(s"+++ base/send-envelope $evaluatedEnvelope")
