@@ -250,11 +250,27 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      *
      * If the returned value is a lambda it is applied with the given actor value, otherwise it is returned directly
      */
-    protected def evalMirrorRef(mirrorRef: SchemeExp, actor: Value): A[Value] =
+    protected def evalMirrorRef(mirrorRef: SchemeExp, actor: Value, actorExp: SchemeExp): A[Value] =
         eval(mirrorRef).flatMap { vlu =>
-            // TODO: call the lambda with the actor
-            nondets(lattice.getClosures(vlu).map[Value](clo => ???).map(unit) ++ lattice.getActors(vlu).map(lattice.actor andThen unit))
+            // synthesize a function call to use
+            val app = SchemeFuncall(mirrorRef, List(actorExp), mirrorRef.idn)
+            // Either apply the ufnction or return the mirror directly
+            mjoin(
+              applyClosures(app, vlu, List(actor)),
+              nondets(lattice.getActors(vlu).map(lattice.actor andThen unit))
+            )
         }
+
+    /**
+     * Catches an error returned from the mirror and records it according to MonadError
+     *
+     * @param idn
+     *   the source location of where the error occured
+     * @param vlu
+     *   the value possibly containing the error
+     */
+    protected def catchErr(idn: Identity)(vlu: Value): A[Value] =
+        if lattice.isError(vlu) then fail(MirrorError(vlu, idn)).map(_ => lattice.void) else unit(lattice.void)
 
     override def eval(exp: SchemeExp): A[Value] = exp match
         case ASchemeCreate(beh, ags, idn) =>
@@ -272,9 +288,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 message <- mkMessage(tag, evaluatedAgs)
                 envelope = lattice.envelope(Envelope(self, reifyMessage(message, ags)))
                 result <- intercept { mirror =>
-                    mirrorAsk(mirror.tid, "send", List(envelope /* , TODO: add the source location of the send here */ ), self, idn).flatMap(vlu =>
-                        if lattice.isError(vlu) then fail(MirrorError(vlu, idn)).map(_ => lattice.void) else unit(lattice.void)
-                    )
+                    /* , TODO: add the source location of the send here */
+                    mirrorAsk(mirror.tid, "send", List(envelope), self, idn) >>= catchErr(idn)
                 } /* otherwise */ {
                     sendMessage(evaluatedActor, tag, evaluatedAgs).map(_ => lattice.nil)
                 }
@@ -325,7 +340,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 evaluatedBehavior <- eval(behavior)
                 evaluatedAgs <- ags.mapM(eval)
                 actor <- create(evaluatedBehavior, evaluatedAgs, idn).map(lattice.actor)
-                evaluatedMirrorRef <- evalMirrorRef(mirrorRef, actor)
+                evaluatedMirrorRef <- evalMirrorRef(mirrorRef, actor, behavior)
                 _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror, strong = true)))
                 _ = log(s"+++ intra mirror installed on $actor")
             yield actor
