@@ -31,7 +31,7 @@
                (same-behavior))
             (bad-message (r)
                (reply r self)
-               (same-behavior))))
+              (same-behavior))))
 
 
 ;; mirror for security
