@@ -50,6 +50,7 @@ trait SchemeSemantics:
         implicit final private val self: AnalysisM[M] = this
 
     object AnalysisM:
+        *
         def apply[M[_]: AnalysisM]: AnalysisM[M] = implicitly
 
     type A[_]

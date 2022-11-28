@@ -13,6 +13,9 @@ import maf.util.Logger
 import maf.modular.scheme.modactor.MirrorValues.Mirror
 import maf.modular.scheme.modactor.MirrorValues.Envelope
 
+/** An error produced by using base/fail */
+case class MirrorError[V](message: V, idn: Identity) extends maf.core.Error
+
 object MirrorValues:
     /**
      * A runtime representation of the mirror. A mirror is described by a name and an actor reference running the mirror.
@@ -70,6 +73,12 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
          *   the actor reference to use as a key for querying its mirror
          */
         def lookupMirror(actor: ActorRef): M[Option[MirrorValues.Mirror[ActorRef]]]
+
+        /** Fail in the base interpreter */
+        def baseFail(error: Value): M[Unit]
+
+        /** Predicate that returns true if the resposne from the mirror was an error */
+        def isFail(vlu: Value): M[Boolean]
 
     implicit override val analysisM: MetaAnalyisM[A]
     import analysisM.*
@@ -201,11 +210,24 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
         case object `lookup-handler` extends MetaPrimitive("lookup-handler"):
             def call(args: List[Value], idn: Identity): A[Value] =
-                // TODO: lookup handler using ASchemeSelect in the body of the behavior
                 for
-                    _ <- checkArity(args, 1)
-                    v <- nondets(lattice.getBehs(args(0)).map(unit))
-                yield ???
+                    _ <- checkArity(args, 2)
+                    beh <- nondets(lattice.getBehs(args(0)).map(unit))
+                    tag = args(1)
+                    // NOTE: might be a source of imprecision since the argument
+                    // of lookup might be overapproximated.
+                    handler <- nondets(beh.lookupHandler(tag).map(unit))
+                    closure <- withEnv(_ => beh.lexEnv) { eval(handler) }
+                yield closure
+
+        case object `base/fail` extends MetaPrimitive("base/fail"):
+            def call(args: List[Value], idn: Identity): A[Value] =
+                for
+                    _ <- checkArity(args, 2)
+                    interpreter = args(0)
+                    message = args(1)
+                    _ <- baseFail(message)
+                yield lattice.void
 
         case object envelope extends Struct[Envelope[Actor, Value]]:
             def get(v: Value) = nondets(lattice.getEnvelopes(v).map(unit))
@@ -223,6 +245,17 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
               }
             )
 
+    /**
+     * Evaluates the given expression to a valid mirror ref.
+     *
+     * If the returned value is a lambda it is applied with the given actor value, otherwise it is returned directly
+     */
+    protected def evalMirrorRef(mirrorRef: SchemeExp, actor: Value): A[Value] =
+        eval(mirrorRef).flatMap { vlu =>
+            // TODO: call the lambda with the actor
+            nondets(lattice.getClosures(vlu).map[Value](clo => ???).map(unit) ++ lattice.getActors(vlu).map(lattice.actor andThen unit))
+        }
+
     override def eval(exp: SchemeExp): A[Value] = exp match
         case ASchemeCreate(beh, ags, idn) =>
             // we intercept actor creation and forward it to the meta layer if necessary
@@ -239,7 +272,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 message <- mkMessage(tag, evaluatedAgs)
                 envelope = lattice.envelope(Envelope(self, reifyMessage(message, ags)))
                 result <- intercept { mirror =>
-                    mirrorAsk(mirror.tid, "send", List(envelope /* , TODO: add the source location of the send here */ ), self, idn)
+                    mirrorAsk(mirror.tid, "send", List(envelope /* , TODO: add the source location of the send here */ ), self, idn).flatMap(vlu =>
+                        if lattice.isError(vlu) then fail(MirrorError(vlu, idn)).map(_ => lattice.void) else unit(lattice.void)
+                    )
                 } /* otherwise */ {
                     sendMessage(evaluatedActor, tag, evaluatedAgs).map(_ => lattice.nil)
                 }
@@ -287,10 +322,10 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             // TODO: in the concrete actor implementation we have that the create-with-mirror call
             // is also intercepted. We should do that here as well.
             for
-                evaluatedMirrorRef <- eval(mirrorRef)
                 evaluatedBehavior <- eval(behavior)
                 evaluatedAgs <- ags.mapM(eval)
                 actor <- create(evaluatedBehavior, evaluatedAgs, idn).map(lattice.actor)
+                evaluatedMirrorRef <- evalMirrorRef(mirrorRef, actor)
                 _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror, strong = true)))
                 _ = log(s"+++ intra mirror installed on $actor")
             yield actor

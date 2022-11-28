@@ -7,6 +7,8 @@ import maf.modular.scheme.modactor.MirrorValues.Mirror
 import maf.modular.scheme.modactor.MirrorValues.Envelope
 
 trait ASchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
+    case class Error(vlu: L)
+
     type ReifiedMessage = Message[L]
 
     /** Injection of an actor */
@@ -44,3 +46,12 @@ trait ASchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
 
     /** Injects an envelope in the abstract domain */
     def envelope(e: Envelope[Actor, L]): L
+
+    /** Injects an error message in the abstract domain */
+    def error(e: L): L
+
+    /** Returns the errors in the abstract value */
+    def getErrors(e: L): Set[Error]
+
+    /** Returns true if the value might be an error */
+    def isError(e: L): Boolean = getErrors(e).nonEmpty

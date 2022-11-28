@@ -1,5 +1,6 @@
 package maf.language.AScheme
 
+import maf.lattice.interfaces.*
 import maf.util.SmartHash
 import maf.lattice.interfaces.BoolLattice
 import maf.language.scheme.ASchemeActor
@@ -9,6 +10,7 @@ import maf.util.Show
 import maf.core.Lattice
 import maf.core.LatticeTopUndefined
 import maf.util.datastructures.MapOps.*
+import maf.language.scheme.lattices.SchemeLattice
 
 object ASchemeValues:
     sealed trait ASchemeValue
@@ -40,6 +42,35 @@ object ASchemeValues:
         extends ASchemeValue:
         def removeEnv: Behavior = this.copy(lexEnv = Environment.empty)
         override def toString: String = s"<behavior: $name>"
+
+        /** Returns the handler associated with the given tag */
+        def lookupHandler(tag: String): Option[SchemeExp] =
+            bdy match
+                case ASchemeSelect(handlers, idn) =>
+                    handlers.get(tag).map { case (ags, bdy) =>
+                        SchemeLambda(Some(tag), ags, bdy, None, idn)
+                    }
+
+                case _ => throw new Exception("Invalid body of the behavior")
+
+        /**
+         * Returns the handler associated with the given symbol
+         *
+         * @note
+         *   the performance of this is O(n) where n is the number of handlers.
+         */
+        def lookupHandler[L](tag: L)(using lat: SchemeLattice[L, maf.core.Address]): Set[SchemeExp] =
+            bdy match
+                case ASchemeSelect(handlers, idn) =>
+                    handlers
+                        .filter { case (key, value) =>
+                            val keySymbol = lat.symbol(key)
+                            lat.mayEql(keySymbol, tag)
+                        }
+                        .map { case (tag, (ags, bdy)) => SchemeLambda(Some(tag), ags, bdy, None, idn) }
+                        .toSet
+
+                case _ => throw new Exception("Invalid body of the behavior")
 
     def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty, false)
 

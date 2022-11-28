@@ -160,6 +160,14 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                     res <- mbottom[Value]
                 yield res
 
+            // Stay in the same behavior
+            case SchemeFuncall(SchemeVar(Identifier("same-behavior", _)), List(), _) =>
+                // since no new behavior is produced we can simply return bottom
+                mbottom[Value]
+
+            case SchemeFuncall(SchemeVar(Identifier("same-behavior", _)), _, idn) =>
+                throw new Exception(s"Invalid syntax: same-behavior at $idn")
+
             // Receive a message from the mailbox
             case ASchemeSelect(handlers, idn) =>
                 for

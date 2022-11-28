@@ -5,9 +5,14 @@ import maf.lattice.interfaces._
 import maf.language.CScheme.TID
 import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme._
+import maf.lattice.ConstantPropagation
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address]:
+    /** Returns true if both arguments **may** be equal */
+    def mayEql(x: L, y: L): Boolean =
+        import ConstantPropagation.L.*
+        BoolLattice[ConstantPropagation.B].isTrue(eql[ConstantPropagation.B](x, y))
 
     // TODO: make this a type parameter for type safety!
     type K = Any
