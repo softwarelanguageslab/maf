@@ -191,7 +191,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
 
         given componentGiven: ClassTag[Component]
 
-        override def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): A[ActorRef] = for
+        override def spawnActor(beh: Behavior, ags: List[Value], idn: Identity, defer: Boolean = false): A[ActorRef] = for
             adrs <- beh.prs.mapM(allocVar(_))
             // Allocate the component in the correct environment
             cmp <-
@@ -200,11 +200,15 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 }
             // allocate actor arguments
             _ <- beh.prs.mapM(allocVar(_)).flatMap(adrs => extendSto(adrs.zip(ags)))
-            // spawn the actor
-            _ <- spawn(cmp)
+            // spawn the actor (or do nothing if spawning is defered)
+            _ <- if defer then unit(()) else spawn(cmp)
             // put the newly spawned actor in the list of actors
             _ <- get.map(lens.modify(lens.actors)(_ + cmp)) >>= put
         yield (maf.language.AScheme.ASchemeValues.Actor(beh.name, cmp))
+
+        override def deferedSpawnActor(actor: ActorRef): A[Unit] =
+            // TODO: make this more type safe? asInstanceOf could potentially crash the application at run-time
+            spawn(actor.tid.asInstanceOf[Component])
 
         override def become(beh: Behavior, ags: List[Value], idn: Identity): A[Unit] =
             for

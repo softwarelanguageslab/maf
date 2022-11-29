@@ -137,6 +137,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     }
 
     private def baseCreate(beh: Value, evaluatedMirrorRef: Value, ags: List[Value], idn: Identity): A[Value] =
+        log(s"+++ base/create actor is being created with $beh and $evaluatedMirrorRef as mirror")
         for
             actor <- create(beh, ags, idn)
             actorAbs =
@@ -144,7 +145,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 else lattice.actor(actor)
             // install the mirror if necessary
             // TODO: if the mirror is a function, then apply it first before installing the mirror
-            _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actorAbs, mirror, strong = true)))
+            _ <-
+                if lattice.isFalse(evaluatedMirrorRef) then unit(())
+                else nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actorAbs, mirror, strong = true)))
         yield actorAbs
 
     /**
@@ -168,9 +171,6 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     private def reifyHandler(prs: List[Identifier], bdy: List[SchemeExp], lexEnv: Environment[Address]): Value =
         lattice.closure((SchemeLambda(None, prs, bdy, None, bdy.head.idn), lexEnv))
 
-    /** Convert a Scheme list to a Scala list */
-    protected def asScalaList(vlu: Val): A[List[Val]] = ???
-
     object MetaPrimitives:
         lazy val primitives = {
             List(
@@ -185,8 +185,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
         trait MetaPrimitive(val name: String):
             def call(args: List[Value], idn: Identity): A[Value]
-            def checkArity(args: List[Value], expected: Int): A[Unit] =
-                if args.size < expected then mbottom else unit(())
+            def checkArity(args: List[Value], expected: Int, strict: Boolean = true): A[Unit] =
+                if args.size < expected || (strict && args.size != expected) then mbottom else unit(())
 
         abstract class Struct[T]:
             def lift(f: T => Value): T => A[Value] =
@@ -203,8 +203,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         case object `base/create` extends MetaPrimitive("create/c"):
             def call(args: List[Value], idn: Identity): A[Value] =
                 for
-                    _ <- checkArity(args, 3)
-                    arguments <- asScalaList(args(2))
+                    _ <- checkArity(args, 3, strict = false)
+                    arguments = args.drop(2)
                     result <- baseCreate(args(0), args(1), arguments, idn)
                 yield result
 
@@ -252,6 +252,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      */
     protected def evalMirrorRef(mirrorRef: SchemeExp, actor: Value, actorExp: SchemeExp): A[Value] =
         eval(mirrorRef).flatMap { vlu =>
+            log(s"+++ create-with-mirror mirror ref is $vlu")
             // synthesize a function call to use
             val app = SchemeFuncall(mirrorRef, List(actorExp), mirrorRef.idn)
             // Either apply the ufnction or return the mirror directly
@@ -338,11 +339,19 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             // is also intercepted. We should do that here as well.
             for
                 evaluatedBehavior <- eval(behavior)
+                _ = log(s"+++ create-with-mirror (1) $behavior")
                 evaluatedAgs <- ags.mapM(eval)
-                actor <- create(evaluatedBehavior, evaluatedAgs, idn).map(lattice.actor)
+                _ = log(s"+++ create-with-mirror (2) $evaluatedAgs")
+                // defer spawning the actor since the mirror will be installed later
+                actorRef <- create(evaluatedBehavior, evaluatedAgs, idn, defer = true)
+                actor = lattice.actor(actorRef)
+                _ = log(s"+++ create-with-mirror (3) $actor")
                 evaluatedMirrorRef <- evalMirrorRef(mirrorRef, actor, behavior)
+                _ = log(s"+++ create-with-mirror (4) $evaluatedMirrorRef")
                 _ <- nondets(lattice.getMirrors(evaluatedMirrorRef).map(mirror => installMirror(actor, mirror, strong = true)))
                 _ = log(s"+++ intra mirror installed on $actor")
+                // now spawn the actor once the mirror has been installed
+                _ <- deferedSpawnActor(actorRef)
             yield actor
 
         case SchemeFuncall(SchemeVar(Identifier("base/send-envelope" | "send-envelope", _)), List(envelopeExpression), _) =>

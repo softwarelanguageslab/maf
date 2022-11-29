@@ -79,8 +79,8 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
         def nondets[X](xs: Iterable[M[X]]): M[X]
 
         /** Create an actor */
-        def create(beh: Value, ags: List[Value], idn: Identity): M[ActorRef] =
-            nondets(lattice.getBehs(beh).map(b => spawnActor(b, ags, idn)))
+        def create(beh: Value, ags: List[Value], idn: Identity, defer: Boolean = false): M[ActorRef] =
+            nondets(lattice.getBehs(beh).map(b => spawnActor(b, ags, idn, defer)))
 
         /** Become a new behavior */
         def become(beh: Behavior, ags: List[Value], idn: Identity): M[Unit]
@@ -99,10 +99,15 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
         /**
          * Spawn a new actor
          *
+         * @param defer
+         *   true if queuing the actor for analysis should be defered to a later point in time
          * @return
          *   a value representing the actor reference of the just created actor
          */
-        def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): M[ActorRef]
+        def spawnActor(beh: Behavior, ags: List[Value], idn: Identity, defer: Boolean = false): M[ActorRef]
+
+        /** Queue an actor for analysis that has been defered by spawnActor */
+        def deferedSpawnActor(actor: ActorRef): M[Unit]
 
     implicit override val analysisM: ActorAnalysisM[A]
     import analysisM.*

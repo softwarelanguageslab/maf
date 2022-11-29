@@ -33,8 +33,10 @@ trait SchemeSemantics:
                 newEnv <- f(oldEnv)
                 res <- withEnv(_ => newEnv) { blk }
             yield res
-        def lookupEnv(nam: String): M[Adr] =
-            for env <- getEnv yield env.lookup(nam).getOrElse(throw new Exception(s"undefined variable $nam"))
+        def lookupEnv(nam: String, idn: Option[Identity]): M[Adr] =
+            val at = idn.map(i => s" at $i").getOrElse("")
+            for env <- getEnv yield env.lookup(nam).getOrElse(throw new Exception(s"undefined variable $nam$at"))
+        def lookupEnv(nam: String): M[Adr] = lookupEnv(nam, None)
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
             withEnv(_.extend(nam, adr))(blk)
         def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
@@ -165,10 +167,13 @@ trait SchemeSemantics:
     protected def applyClosures(app: App, fun: Val, ags: List[Val]): A[Val] =
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
+            println(s"apply is $lam check ${lam.check(agc)}")
             for
                 _ <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
+                _ = println(s"apply free variables $fvs")
                 res <- applyClosure(app, lam, ags, fvs)
+                _ = println(s"applied closure $res")
             yield res
         }
 

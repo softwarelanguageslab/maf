@@ -58,7 +58,7 @@ case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[U
 
     override def toString: String =
         enclosingActor match
-            case MainActor                               => "<aid: MainActor>"
+            case MainActor                               => s"<aid: MainActor $showInner>"
             case Actor(beh, _, _)                        => s"<aid: ${beh.name}:${beh.bdy.idn}, ${showInner}>"
             case ActorAnalysisComponent(enclosing, _, _) => enclosing.toString
 

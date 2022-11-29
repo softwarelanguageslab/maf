@@ -69,6 +69,8 @@
     (create b (create-with-mirror security-mirror target ))))
 
 (define b (B A))
-(await (ask b good-message))
-(await (ask b bad-message))
+;(await (ask b good-message))
+;(await (ask b bad-message))
+(send b good-message)
+(send b bad-message)
 (print-statistics)
