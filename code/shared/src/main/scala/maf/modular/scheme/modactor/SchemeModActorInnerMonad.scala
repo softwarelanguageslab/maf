@@ -6,11 +6,11 @@ import maf.modular.scheme.modf.*
 import maf.core.SetMonad.*
 import maf.language.scheme.SchemeExp
 
-trait SchemeModActorInnerMonad[Msg] extends ModAnalysis[SchemeExp] with BaseSchemeModFSemanticsM with BigStepModFSemanticsT:
+trait SchemeModActorInnerMonad[MessageContext, Msg] extends ModAnalysis[SchemeExp] with BaseSchemeModFSemanticsM with BigStepModFSemanticsT:
     outer =>
     import maf.core.Monad.MonadSyntaxOps
 
-    protected type Mailbox = AbstractMailbox[Msg]
+    protected type Mailbox = AbstractMailbox[Msg, MessageContext]
 
     case class State(env: Environment[Address], mailbox: Mailbox):
         def enqueue(m: Msg): State = this.copy(mailbox = this.mailbox.enqueue(m))

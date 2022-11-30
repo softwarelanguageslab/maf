@@ -52,7 +52,7 @@ import monocle.macros.GenIso
 import monocle.Iso
 import maf.util.graph.GraphElement
 
-class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Value](using lattice: SchemeLattice[Value, Address]):
+class GlobalStoreState[K, Component, M, Mailbox <: AbstractMailbox[M, K]: Default, Value](using lattice: SchemeLattice[Value, Address]):
     case class IntraState(
         /** Keep track of the component that is currently being analysed */
         self: Component,
@@ -141,7 +141,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     given defaultMailbox: Default[Mailbox] with
         def default: Mailbox = emptyMailbox
 
-    protected val globalStore = GlobalStoreState[Component, Msg, Mailbox, Value](using defaultMailbox, lattice)
+    protected val globalStore = GlobalStoreState[MessageContext, Component, Msg, Mailbox, Value](using defaultMailbox, lattice)
 
     protected type IntraState = globalStore.IntraState
     protected type InterState = globalStore.InterState
@@ -472,6 +472,7 @@ class SimpleGlobalStoreModActor(prog: SchemeExp) extends SchemeModActorSemantics
     type State = IntraState
     type Inter = InterState
 
+    val a: MessageContext = ()
     implicit val analysisM: GlobalStoreAnalysisM = new GlobalStoreAnalysisM {}
     val intraLens = Iso[IntraState, IntraState](identity)(identity)
     val interLens = Iso[InterState, InterState](identity)(identity)

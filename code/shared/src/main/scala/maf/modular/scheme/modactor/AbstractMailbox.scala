@@ -11,8 +11,10 @@ import maf.core.Lattice
  *
  * @tparam M
  *   the type of the messages in the mailbox
+ * @tparam K
+ *   the type of context of the messages in the mailbox
  */
-trait AbstractMailbox[M]:
+trait AbstractMailbox[M, K]:
     /**
      * Enqueue a message in the mailbox.
      *
@@ -24,7 +26,7 @@ trait AbstractMailbox[M]:
      *   implementations of this method may assume that the a sequence of <code>enqueue</code> commands entails a sending order of the messages in the
      *   mailbox.
      */
-    def enqueue(msg: M): AbstractMailbox[M]
+    def enqueue(msg: M): AbstractMailbox[M, K]
 
     /**
      * Enqueues a list of messages
@@ -34,28 +36,28 @@ trait AbstractMailbox[M]:
      * @return
      *   an updated mailbox.
      */
-    def enqueue(msgs: List[M]): AbstractMailbox[M] =
+    def enqueue(msgs: List[M]): AbstractMailbox[M, K] =
         msgs.foldLeft(this)((mailbox, msg) => mailbox.enqueue(msg))
 
     /**
      * Pop a message from the mailbox. Depending on the level of abstraction used, it can return a set of messages that might be received during that
      * turn.
      */
-    def dequeue: Set[(M, AbstractMailbox[M])] // TODO: rename to dequeue
+    def dequeue: Set[(M, AbstractMailbox[M, K])] // TODO: rename to dequeue
 
     /** Returns all messages in the mailbox */
     def messages: Set[M]
 
     /** Merge the given mailbox with the current one */
-    def merge(other: AbstractMailbox[M]): AbstractMailbox[M]
+    def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K]
 
 trait AbstractMessage[K]:
     def context: K
     def tag: String
 
 /** A map lattice based mailbox, which maps tags and contexts to payloads */
-case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K), M]) extends AbstractMailbox[M]:
-    def enqueue(msg: M): AbstractMailbox[M] =
+case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K), M]) extends AbstractMailbox[M, K]:
+    def enqueue(msg: M): AbstractMailbox[M, K] =
         val ctx = msg.context
         val tag = msg.tag
         val old = msgs.get((tag, ctx)).getOrElse(msg)
@@ -63,12 +65,12 @@ case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K)
 
     def messages: Set[M] = msgs.values.toSet
 
-    def dequeue: Set[(M, AbstractMailbox[M])] =
+    def dequeue: Set[(M, AbstractMailbox[M, K])] =
         // for dequeue: no multiplicity and order so any message can be dequeued at any time
         // and the mailbox can still contain the same message.
         messages.map((_, this))
 
-    def merge(other: AbstractMailbox[M]): AbstractMailbox[M] = this.copy(msgs = (other match
+    def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K] = this.copy(msgs = (other match
         case MapMailbox(msgs) =>
             (this.msgs.keys ++ msgs.keys).map { key =>
                 key -> ((this.msgs.get(key), msgs.get(key)) match
@@ -86,22 +88,22 @@ case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K)
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
  * concurrency. In Static Analysis - 20th International Symposium, SAS 2013
  */
-case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
-    def enqueue(msg: M): PowersetMailbox[M] =
+case class PowersetMailbox[M, K](msgs: Set[M]) extends AbstractMailbox[M, K]:
+    def enqueue(msg: M): PowersetMailbox[M, K] =
         this.copy(msgs = msgs + msg)
 
-    def dequeue: Set[(M, AbstractMailbox[M])] =
+    def dequeue: Set[(M, AbstractMailbox[M, K])] =
         // We return a copy of the same mailbox for each message since message multiplicity is unknown
         msgs.map(m => (m, PowersetMailbox(msgs)))
 
     val messages: Set[M] = msgs
 
-    def merge(other: AbstractMailbox[M]): AbstractMailbox[M] = other match
+    def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K] = other match
         case PowersetMailbox(msgs) => this.copy(msgs = SmartUnion.sunion(this.msgs, msgs))
 
 object PowersetMailbox:
-    given [M]: Default[PowersetMailbox[M]] with
-        def default: PowersetMailbox[M] = PowersetMailbox(Set())
+    given [M, K]: Default[PowersetMailbox[M, K]] with
+        def default: PowersetMailbox[M, K] = PowersetMailbox(Set())
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:

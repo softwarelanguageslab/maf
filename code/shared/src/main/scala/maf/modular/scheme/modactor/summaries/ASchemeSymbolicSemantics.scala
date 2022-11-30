@@ -132,7 +132,8 @@ trait MonadStack[M[_]: Monad] extends ASchemeSemantics:
     type R
 
     /** The type of the mailbox */
-    type Mailbox <: AbstractMailbox[Msg]
+    type MessageContext
+    type Mailbox <: AbstractMailbox[Msg, MessageContext]
 
     /** Represents a set of lenses for manipulating the state */
     case class State(

@@ -108,7 +108,8 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
     //
     // Mailboxes
     //
-    type Mailbox = AbstractMailbox[Msg]
+    type MessageContext = Unit // TODO: parametrize
+    type Mailbox = AbstractMailbox[Msg, MessageContext]
 
     def emptyMailbox: Mailbox
 
