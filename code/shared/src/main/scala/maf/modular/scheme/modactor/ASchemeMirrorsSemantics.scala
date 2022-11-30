@@ -280,14 +280,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         case ASchemeCreate(beh, ags, idn) =>
             // we intercept actor creation and forward it to the meta layer if necessary
             for
-                evaluatedBeh <- eval(beh)
-                evaluatedAgs <- Monad.sequence(ags.map(eval))
+                evaluatedBeh <- nontail(eval(beh))
+                evaluatedAgs <- evalAll(ags)
                 result <- interceptCreate(evaluatedBeh, evaluatedAgs, lattice.bool(false), ags, idn)
             yield result
         case ASchemeSend(actorRef, Identifier(tag, _), ags, idn) =>
             for
-                evaluatedActor <- eval(actorRef)
-                evaluatedAgs <- Monad.sequence(ags.map(eval))
+                evaluatedActor <- nontail(eval(actorRef))
+                evaluatedAgs <- evalAll(ags)
                 self <- selfActor
                 message <- mkMessage(tag, evaluatedAgs)
                 envelope = lattice.envelope(Envelope(self, reifyMessage(message, ags)))
@@ -330,7 +330,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     yield result
                 } /* otherwise */ {
                     log(s"base receive $handler $tag $args")
-                    withEnvM(bindArgs(pars, args)) { Monad.sequence(bdy.map(eval)).map(_.last) }
+                    withEnvM(bindArgs(pars, args)) { evalSequence(bdy) }
                 }
             yield result
 
@@ -339,9 +339,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             // TODO: in the concrete actor implementation we have that the create-with-mirror call
             // is also intercepted. We should do that here as well.
             for
-                evaluatedBehavior <- eval(behavior)
+                evaluatedBehavior <- nontail(eval(behavior))
                 _ = log(s"+++ create-with-mirror (1) $behavior")
-                evaluatedAgs <- ags.mapM(eval)
+                evaluatedAgs <- nontail(evalAll(ags))
                 _ = log(s"+++ create-with-mirror (2) $evaluatedAgs")
                 // defer spawning the actor since the mirror will be installed later
                 actorRef <- create(evaluatedBehavior, evaluatedAgs, idn, defer = true)
@@ -357,7 +357,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
         case SchemeFuncall(SchemeVar(Identifier("base/send-envelope" | "send-envelope", _)), List(envelopeExpression), _) =>
             for
-                evaluatedEnvelope <- eval(envelopeExpression)
+                evaluatedEnvelope <- nontail(eval(envelopeExpression))
                 _ = log(s"+++ base/send-envelope $evaluatedEnvelope")
                 // get the envelopes from the abstract domain
                 envelope <- nondets(lattice.getEnvelopes(evaluatedEnvelope).map(unit))

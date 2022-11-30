@@ -123,9 +123,9 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             allocVar(par).flatMap(addr => extendSto(addr, vlu) >>> unit(env.extend(par.name, addr)))
         }
 
-    override protected def evalVariable(nam: String): A[Val] = nam match
+    override protected def evalVariable(id: Identifier): A[Val] = id.name match
         case "self" | "a/self" => selfActor.map(lattice.actor)
-        case _                 => super.evalVariable(nam)
+        case _                 => super.evalVariable(id)
 
     override def eval(exp: SchemeExp): A[Val] =
         exp match
@@ -137,17 +137,17 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             // Evaluating a create expression spawns a new actor and returns a reference to it
             case ASchemeCreate(beh, ags, idn) =>
                 for
-                    evaluatedBeh <- eval(beh)
                     env <- getEnv
-                    evaluatedAgs <- ags.mapM(eval)
+                    evaluatedBeh <- nontail(eval(beh))
+                    evaluatedAgs <- evalAll(ags)
                     actorRef <- create(evaluatedBeh, evaluatedAgs, idn)
                 yield lattice.actor(actorRef)
 
             // Sending a message is atomic (asynchronous) and results in nil
             case ASchemeSend(actorRef, messageTpy, ags, idn) =>
                 for
-                    evaluatedActorRef <- eval(actorRef)
-                    evaluatedAgs <- ags.mapM(eval)
+                    evaluatedActorRef <- nontail(eval(actorRef))
+                    evaluatedAgs <- evalAll(ags)
                     _ = { log(s"++ intra - actor/send $evaluatedActorRef $messageTpy $evaluatedAgs") }
                     _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs)
                 yield lattice.nil
@@ -155,8 +155,8 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             // Change the behavior of the current actor, and return nil
             case ASchemeBecome(beh, ags, idn) =>
                 for
-                    evaluatedBeh <- eval(beh)
-                    evaluatedAgs <- ags.mapM(eval)
+                    evaluatedBeh <- nontail(eval(beh))
+                    evaluatedAgs <- evalAll(ags)
                     _ <- become(evaluatedBeh, evaluatedAgs, idn)
                     // we stop the analysis here because the actor is in a suspended state,
                     // waiting for new messages defined by the behavior.
@@ -188,7 +188,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                         else
                             val (pars, bdy) = handler.get
                             withEnvM(bindArgs(pars, args)) {
-                                Monad.sequence(bdy.map(eval))
+                                evalSequence(bdy)
                             } >>= trace(s"actor/recv $msg result")
                 yield lattice.nil
 
