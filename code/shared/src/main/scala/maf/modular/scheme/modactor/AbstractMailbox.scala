@@ -4,6 +4,7 @@ import maf.language.AScheme.ASchemeValues.Message
 import maf.language.AScheme.ASchemeValues
 import maf.util.datastructures.SmartUnion
 import maf.util.Default
+import maf.core.Lattice
 
 /**
  * An abstract representation of a mailbox.
@@ -47,6 +48,39 @@ trait AbstractMailbox[M]:
 
     /** Merge the given mailbox with the current one */
     def merge(other: AbstractMailbox[M]): AbstractMailbox[M]
+
+trait AbstractMessage[K]:
+    def context: K
+    def tag: String
+
+/** A map lattice based mailbox, which maps tags and contexts to payloads */
+case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K), M]) extends AbstractMailbox[M]:
+    def enqueue(msg: M): AbstractMailbox[M] =
+        val ctx = msg.context
+        val tag = msg.tag
+        val old = msgs.get((tag, ctx)).getOrElse(msg)
+        this.copy(msgs = msgs + ((tag, ctx) -> Lattice[M].join(old, msg)))
+
+    def messages: Set[M] = msgs.values.toSet
+
+    def dequeue: Set[(M, AbstractMailbox[M])] =
+        // for dequeue: no multiplicity and order so any message can be dequeued at any time
+        // and the mailbox can still contain the same message.
+        messages.map((_, this))
+
+    def merge(other: AbstractMailbox[M]): AbstractMailbox[M] = this.copy(msgs = (other match
+        case MapMailbox(msgs) =>
+            (this.msgs.keys ++ msgs.keys).map { key =>
+                key -> ((this.msgs.get(key), msgs.get(key)) match
+                        case (Some(v), Some(w)) => Lattice[M].join(v, w)
+                        case (None, Some(w))    => w
+                        case (Some(v), None)    => v
+                        case (None, None) =>
+                            ???
+                    // is impossible as we are iterating over the keys of both maps
+                )
+            }
+    ).toMap)
 
 /**
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
