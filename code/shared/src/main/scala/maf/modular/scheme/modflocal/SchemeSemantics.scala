@@ -96,7 +96,7 @@ trait SchemeSemantics:
             vlu <- lookupSto(adr)
         yield vlu
 
-    private def evalSequence(eps: Iterable[Exp]): A[Val] = eps match
+    protected def evalSequence(eps: Iterable[Exp]): A[Val] = eps match
         case Nil => unit(lattice.void)
         case last :: Nil => eval(last)
         case next :: rest => nontail { eval(next) } >>> evalSequence(rest)
