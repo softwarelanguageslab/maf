@@ -59,7 +59,7 @@ object ASchemeCompiler extends BaseSchemeCompiler:
             for
                 cplActorRef <- tailcall(_compile(actorRef))
                 cplArgs <- tailcall(compileBody(args))
-            yield ASchemeSend(cplActorRef, Identifier(mTpy, idn), cplArgs, sendIdn)
+            yield ASchemeSend(cplActorRef, Identifier(mTpy, idn), cplArgs, exp.idn)
 
         case IdentWithIdentity("create", createIdn) :::: beh :::: args =>
             for

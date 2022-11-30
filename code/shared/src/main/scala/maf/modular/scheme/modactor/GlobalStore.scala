@@ -71,7 +71,9 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
         /** Keep track of the sends. Represented by a mapping from sender to (receiver, tag) */
         sends: Set[(Component, (Component, String))] = Set(),
         /** Keep track of the global store */
-        sto: Map[Address, Value] = Map())
+        sto: Map[Address, Value] = Map(),
+        /** Keeps track of the errors */
+        errors: Set[maf.core.Error] = Set())
 
     case class InterState(
         /** Set of mailboxes */
@@ -83,7 +85,9 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
         /** Keep track of the message sends */
         sends: Set[(Component, (Component, String))] = Set(),
         /** Global store */
-        sto: Map[Address, Value])
+        sto: Map[Address, Value],
+        /** Keep track of the errors */
+        errors: Set[maf.core.Error] = Set())
 
     /** Sync the intra state with the current inter state */
     def sync(intra: IntraState, inter: InterState): InterState =
@@ -109,7 +113,8 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
           mailboxes = newMailboxes,
           behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
           actors = inter.actors ++ intra.actors,
-          sends = newSends
+          sends = newSends,
+          errors = intra.errors ++ inter.errors
         )
 
 trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox, PowersetMailboxAnalysis, ASchemeConstantPropagationDomain:
@@ -222,6 +227,8 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         println(StoreUtil.storeString(interLens.get(_result.nn).sto))
         println(s"Number of spawned actors ${interLens.get(_result.nn).actors.size}")
         println(s"Number of message sends ${interLens.get(_result.nn).mailboxes.values.map(_.messages.size).sum}")
+        println(s"Errors: ")
+        interLens.get(_result.nn).errors.foreach(println)
 
     /** Render the message sends between components as a dot graph */
     override def toDot(filename: String): Unit =
@@ -433,7 +440,8 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
                 )
             )
 
-        def fail[X](err: maf.core.Error): A[X] = { println(s"failing with $err"); mbottom }
+        def fail[X](err: maf.core.Error): A[X] =
+            (get >>= (intraLens.modify(st => st.copy(errors = st.errors + err)) andThen put)) >>> mbottom[X]
 
         /**
          * Runs the analysis represented by `m` for the given `cmp`.

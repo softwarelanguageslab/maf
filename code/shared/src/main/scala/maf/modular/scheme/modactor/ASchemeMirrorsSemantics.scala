@@ -178,7 +178,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         lazy val primitives = {
             List(
               `base/create`,
-              `lookup-handler`
+              `lookup-handler`,
+              `base/fail`
             ) ++ envelope.primitives ++ message.primitives
         }.map(p => p.name -> p).toMap
 
@@ -228,9 +229,10 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             def call(args: List[Value], idn: Identity): A[Value] =
                 for
                     _ <- checkArity(args, 2)
-                    interpreter = args(0)
+                    interpreter <- nondets(lattice.getActors(args(0)).map(unit))
                     message = args(1)
-                    _ <- baseFail(message)
+                    mm <- mkMessage("answer", List(lattice.error(message)))
+                    _ <- send(interpreter, mm)
                 yield lattice.void
 
         case object envelope extends Struct[Envelope[Actor, Value]]:
