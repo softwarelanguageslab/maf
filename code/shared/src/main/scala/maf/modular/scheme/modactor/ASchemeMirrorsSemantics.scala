@@ -88,7 +88,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
     protected type MirrorContext
 
-    private def intercept(f: MirrorValues.Mirror[ActorRef] => A[Value])(otherwise: A[Value]): A[Value] =
+    private def intercept(f: MirrorValues.Mirror[ActorRef] => A[Value])(otherwise: => A[Value]): A[Value] =
         selfActor.flatMap(self =>
             lookupMirror(self).flatMap {
                 case Some(mirror) => f(mirror)
@@ -192,13 +192,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 if args.size < expected || (strict && args.size != expected) then mbottom else unit(())
 
         abstract class Struct[T]:
+            val structName: String
             def lift(f: T => Value): T => A[Value] =
                 f andThen unit
             def get(v: Value): A[T]
             def fields: Map[String, T => A[Value]]
             def primitives: List[MetaPrimitive] =
                 fields.map { case (name, f) =>
-                    new MetaPrimitive(name) {
+                    new MetaPrimitive(s"$structName-$name") {
                         def call(args: List[Value], idn: Identity): A[Value] = checkArity(args, 1) >>> get(args(0)) >>= f
                     }
                 }.toList
@@ -233,6 +234,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 yield lattice.void
 
         case object envelope extends Struct[Envelope[Actor, Value]]:
+            val structName: String = "envelope"
             def get(v: Value) = nondets(lattice.getEnvelopes(v).map(unit))
             val fields = Map(
               "receiver" -> lift(ev => lattice.actor(ev.receiver)),
@@ -240,10 +242,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             )
 
         case object message extends Struct[Message[Value]]:
+            val structName: String = "message"
             def get(v: Value) = nondets(lattice.getMessages(v).map(unit))
             def fields = Map(
               "tag" -> lift(m => lattice.symbol(m.tag)),
               "arguments" -> { message =>
+                  allocLst(message.exs.zip(message.vlus))
+              },
+              "payload" -> { message =>
                   allocLst(message.exs.zip(message.vlus))
               }
             )
@@ -323,10 +329,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 result <- intercept { mirror =>
                     for
                         self <- selfActor
+                        _ = log(s"++ meta/receive intercepting receive of $self")
                         env <- getEnv
                         beh <- currentBehavior
+                        _ = log(s"++ meta/receive Got current behavior $beh")
                         lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, lattice.beh(beh)), self, idn)
+                        _ = log(s"++ meta/receive got handler from mirror $lam")
                         result <- applyThunk(lam, idn, args)
+                        _ = log(s"++ meta/receive result of running the mirror is $result")
                     yield result
                 } /* otherwise */ {
                     log(s"base receive $handler $tag $args")
@@ -367,6 +377,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 // send the message to the specified receiver
                 result <- send(receiver, abstractMessage(message)).map(_ => lattice.nil)
             yield result
+
+        // Primitives (TODO: should actually be syntax)
+        case SchemeFuncall(SchemeVar(Identifier(name, _)), ags, idn) if MetaPrimitives.isPrimitive(name) =>
+            for
+                vls <- evalAll(ags)
+                pri = MetaPrimitives.primitives(name)
+                res <- pri.call(vls, idn)
+            yield res
 
         // For testing purposes
         case SchemeFuncall(SchemeVar(Identifier("error", _)), List(message), _) =>

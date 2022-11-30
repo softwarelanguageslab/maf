@@ -64,8 +64,11 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     class GlobalMetaSemanticsM extends GlobalStoreAnalysisM, MetaAnalyisM[A] {
         override def currentBehavior: A[Behavior] =
             selfActorCmp flatMap {
+                case a @ ActorAnalysisComponent(Actor(beh, _, _), None, _)                => unit(beh)
                 case a @ ActorAnalysisComponent(_, Some(BehaviorComponent(beh, _, _)), _) => unit(beh)
-                case _                                                                    => mbottom
+                case c =>
+                    println(s"+++ meta/receive component is $c which does not satisfy the currentBehavior constraints")
+                    mbottom
             }
         override def baseFail(error: Value): A[Unit] = ??? // TODO: implement
         override def isFail(vlu: Value): A[Boolean] = ??? // TODO: implement

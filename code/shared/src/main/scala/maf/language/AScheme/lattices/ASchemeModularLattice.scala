@@ -98,3 +98,16 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
     def message(m: ReifiedMessage): L = HMap.injected(MessageT, m)
     def envelope(e: Envelope[Actor, L]): L = HMap.injected(EnvelopeT, e)
     def error(e: L): L = HMap.injected(ErrorT, Error(e))
+
+    import maf.util.Monoid.*
+    override def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L = join(
+      x.elements
+          .flatMap((x: Value) => y.elements.map((y: Value) => (x, y)))
+          .map {
+              case (Actors(s1), Actors(s2)) =>
+                  if s1.intersect(s2).isEmpty then bool(false) else boolTop
+              case _ => bool(false)
+          }
+          .mconcat,
+      super.eq(x, y)(comparePtr)
+    )

@@ -1001,7 +1001,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             HMap.injected(StructConstructorT, constructor)
         def nil: L = HMap.wrapInserted(NilT, Nil)
         def void: L = HMap.wrapInserted(VoidT, Void)
-        def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
+        def eql[B2: BoolLattice](x: L, y: L): B2 =
+            BoolLattice[B2].top // TODO[medium] implement
         def refs(x: L): Set[Address] = x.elements[Value].foldMap(x => Value.refs(x))(setMonoid) // TODO: put in HMap lattice
         def eq(xs: L, ys: L)(comparePtr: MaybeEq[A]): L = // TODO: put in HMap lattice
             xs.elements[Value].foldMap { x =>
@@ -1010,6 +1011,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 }
             }
     }
+
+    override def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L = schemeLattice.eq(x, y)(comparePtr)
 
     private def emptyEnv[A <: Address] = Environment[A](Iterable.empty)
 
@@ -1039,7 +1042,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case v            => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
     // Make this an instance of SchemeLattice
-    export L.lattice.*
+    export L.lattice.{eq => _, *}
 
     object L:
         implicit val lattice: SchemeLattice[L, A] = schemeLattice
