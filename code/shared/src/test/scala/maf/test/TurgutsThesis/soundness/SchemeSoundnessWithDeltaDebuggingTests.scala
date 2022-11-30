@@ -41,25 +41,6 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
     }
     ""
 
-  override def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] =
-    var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
-    val timeout = concreteTimeout(benchmark)
-    val times = concreteRuns(benchmark)
-    try
-      val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
-      for _ <- 1 to times do
-        val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
-        runInterpreter(interpreter, program, timeout)
-    idnResults
-
-  override def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
-    // analyze the program using a ModF analysis
-    val anl = analysis(program)
-    val timeout = analysisTimeout(benchmark)
-    anl.analyzeWithTimeout(timeout)
-    assume(anl.finished, "Analysis timed out")
-    anl
-
   def runAndCompare(program: SchemeExp, benchmark: Benchmark): (String, Array[(String, Int)]) = {
     try { // run the program using a concrete interpreter
       val concreteResults = evalConcrete(program, benchmark)
@@ -70,18 +51,18 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
         anl.asInstanceOf[SequentialWorklistAlgorithm[SchemeExp]].getReAnalysisMap().toArray.sortWith((tpl1, tpl2) => tpl1._2 > tpl2._2))
     }
     catch {
-      error =>
+      case _: Throwable =>
         ("", Array())
     }
   }
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-      property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
-        // load the benchmark program
-        val content = Reader.loadFile(benchmark)
-        val program = parseProgram(content, benchmark)
+    property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+      // load the benchmark program
+      val content = Reader.loadFile(benchmark)
+      val program = parseProgram(content, benchmark)
 
-        val (failureMsg, analysisResults) = runAndCompare(program, benchmark)
-        if failureMsg.nonEmpty then
-          DDWithProfiling.reduce(program, this, benchmark, analysisResults)
-      }
+      val (failureMsg, analysisResults) = runAndCompare(program, benchmark)
+      if failureMsg.nonEmpty then
+        DDWithAllTransformations.reduce(program, this, benchmark, analysisResults)
+    }
