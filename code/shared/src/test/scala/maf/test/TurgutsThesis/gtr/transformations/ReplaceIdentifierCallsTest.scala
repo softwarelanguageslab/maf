@@ -18,7 +18,7 @@ class ReplaceIdentifierCallsTest extends AnyFlatSpecTransformations {
     val letExp = t.exps.last
 
     suggestedTrees = ReplaceIdentifierCalls.transform(t, letExp)
-    assert(suggestedTrees.length == 10)
+    assert(suggestedTrees.length > 10)
 
     //replace calls to b
     assertTreeString("(begin (let ((a 1) (b 2)) (+ a b) (a) 'S))")

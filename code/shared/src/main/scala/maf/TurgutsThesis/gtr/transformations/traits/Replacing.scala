@@ -5,6 +5,12 @@ import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeValue, SchemeVarExp,
 import maf.language.sexp.Value
 
 trait Replacing:
+  
+  private var count = -1
+  def uniqueIdentifier(): String =
+    count += 1
+    "unique_args_" + count.toString
+  
   def replaceWithAllValues(exp: SchemeExp, toReplace: SchemeExp => Boolean): List[SchemeExp] =
     List(
       replaceWithValue(exp, toReplace, SchemeValue(Value.Integer(1), NoCodeIdentity)),
@@ -15,17 +21,17 @@ trait Replacing:
       replaceWithValue(exp, toReplace, SchemeValue(Value.Nil, NoCodeIdentity)),
       //lambdas:
       replaceWithValue(exp, toReplace,
-        SchemeVarArgLambda(None, List(), Identifier("args", NoCodeIdentity), List(SchemeValue(Value.Integer(1), NoCodeIdentity)), None, NoCodeIdentity)),
+        SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.Integer(1), NoCodeIdentity)), None, NoCodeIdentity)),
       replaceWithValue(exp, toReplace,
-        SchemeVarArgLambda(None, List(), Identifier("args", NoCodeIdentity), List(SchemeValue(Value.String("S"), NoCodeIdentity)), None, NoCodeIdentity)),
+        SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.String("S"), NoCodeIdentity)), None, NoCodeIdentity)),
       replaceWithValue(exp, toReplace,
-        SchemeVarArgLambda(None, List(), Identifier("args", NoCodeIdentity), List(SchemeValue(Value.Symbol("S"), NoCodeIdentity)), None, NoCodeIdentity)),
+        SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.Symbol("S"), NoCodeIdentity)), None, NoCodeIdentity)),
       replaceWithValue(exp, toReplace,
-        SchemeVarArgLambda(None, List(), Identifier("args", NoCodeIdentity), List(SchemeValue(Value.Boolean(true), NoCodeIdentity)), None, NoCodeIdentity)),
+        SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.Boolean(true), NoCodeIdentity)), None, NoCodeIdentity)),
       replaceWithValue(exp, toReplace,
-        SchemeVarArgLambda(None, List(), Identifier("args", NoCodeIdentity), List(SchemeValue(Value.Boolean(false), NoCodeIdentity)), None, NoCodeIdentity)),
+        SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.Boolean(false), NoCodeIdentity)), None, NoCodeIdentity)),
       replaceWithValue(exp, toReplace,
-        SchemeVarArgLambda(None, List(), Identifier("args", NoCodeIdentity), List(SchemeValue(Value.Nil, NoCodeIdentity)), None, NoCodeIdentity)),
+        SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.Nil, NoCodeIdentity)), None, NoCodeIdentity)),
     )
 
   def replaceIdWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =

@@ -15,7 +15,8 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
     suggestedTrees = RemoveLambdaParamByReplacement.transform(t, defineExp)
-    assert(suggestedTrees.length == 10)
+    assert(suggestedTrees.length > 10)
+    suggestedTrees.foreach(t => println(t.prettyString()))
 
     //remove param y
     assertTreeString("(begin (define f (lambda (x) (* x x) (* 'S 'S))) (f 1) (f 111))")
@@ -27,6 +28,8 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
     assertTreeString("(begin (define f (lambda (x) (* x x) (* #t #t))) (f 1) (f 111))")
 
     assertTreeString("(begin (define f (lambda (x) (* x x) (* 1 1))) (f 1) (f 111))")
+
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* (lambda unique_args_6 1) (lambda unique_args_6 1)))) (f 1) (f 111))")
 
     //remove param x
     assertTreeString("(begin (define f (lambda (y) (* 'S 'S) (* y y))) (f 2) (f 222))")
