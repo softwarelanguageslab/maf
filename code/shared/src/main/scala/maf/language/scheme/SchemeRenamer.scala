@@ -28,6 +28,11 @@ object SchemeRenamer:
                 case (args1, names1, count1) =>
                     renameList(body, names1, count1) match
                         case (body1, count2) => (SchemeLambda(name.map(n => names.getOrElse(n, n)), args1, body1, ann, pos), count2)
+        case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
+            countl(args ++ List(vararg), names, count) match
+                case (args1, names1, count1) =>
+                     renameList(body, names1, count1) match
+                         case (body1, count2) => (SchemeVarArgLambda(name.map(n => names.getOrElse(n ,n)), args1.init, args1.last, body1, ann, pos), count2)
         case SchemeFuncall(f, args, pos) =>
             rename(f, names, count) match
                 case (f1, count1) =>
