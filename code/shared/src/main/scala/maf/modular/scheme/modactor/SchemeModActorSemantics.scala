@@ -108,7 +108,9 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
     //
     // Mailboxes
     //
-    type MessageContext = Unit // TODO: parametrize
+    type MessageContext
+    def emptyContext: MessageContext
+
     type Mailbox = AbstractMailbox[Msg, MessageContext]
 
     def emptyMailbox: Mailbox
@@ -267,7 +269,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 _ <- get.map(
                   lens.modify(lens.mailboxes)(mbs =>
                       mbs + (receiver ->
-                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
+                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m, emptyContext))
                   )
                 ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) }
                 self <- selfCmp
@@ -287,7 +289,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 _ <- register(MailboxDep(empheralChild))
                 mb <- get.map(lens.getMailboxes).map(_.get(empheralChild).getOrElse(emptyMailbox))
                 ms <- nondets(mb.dequeue.map(unit))
-                (msg, mb1) = ms
+                ((msg, _), mb1) = ms
                 _ <- get.map(lens.modify(lens.mailboxes)(_ + (empheralChild -> mb1))) >>= put
                 tag = getMessageTag(msg)
                 vlus = getMessageArguments(msg)
@@ -310,7 +312,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 // save the resulting mailbox
                 _ <- get.map(lens.modify(lens.mailboxes)(_ + (cmp -> mb1))) >>= put
             // return the dequeued message
-            yield msg
+            yield msg._1
 
     type Inter
     type Intra = State

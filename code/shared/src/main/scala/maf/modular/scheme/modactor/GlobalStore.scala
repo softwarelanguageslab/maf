@@ -469,10 +469,12 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
 end GlobalStoreModActor
 
 class SimpleGlobalStoreModActor(prog: SchemeExp) extends SchemeModActorSemantics(prog), GlobalStoreModActor:
+    type MessageContext = Unit
+    def emptyContext: MessageContext = ()
+
     type State = IntraState
     type Inter = InterState
 
-    val a: MessageContext = ()
     implicit val analysisM: GlobalStoreAnalysisM = new GlobalStoreAnalysisM {}
     val intraLens = Iso[IntraState, IntraState](identity)(identity)
     val interLens = Iso[InterState, InterState](identity)(identity)

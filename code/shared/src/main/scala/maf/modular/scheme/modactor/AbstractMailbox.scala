@@ -26,24 +26,13 @@ trait AbstractMailbox[M, K]:
      *   implementations of this method may assume that the a sequence of <code>enqueue</code> commands entails a sending order of the messages in the
      *   mailbox.
      */
-    def enqueue(msg: M): AbstractMailbox[M, K]
-
-    /**
-     * Enqueues a list of messages
-     *
-     * @param msgs
-     *   the list of messages to enqueue in the mailbox
-     * @return
-     *   an updated mailbox.
-     */
-    def enqueue(msgs: List[M]): AbstractMailbox[M, K] =
-        msgs.foldLeft(this)((mailbox, msg) => mailbox.enqueue(msg))
+    def enqueue(msg: M, ctx: K): AbstractMailbox[M, K]
 
     /**
      * Pop a message from the mailbox. Depending on the level of abstraction used, it can return a set of messages that might be received during that
      * turn.
      */
-    def dequeue: Set[(M, AbstractMailbox[M, K])] // TODO: rename to dequeue
+    def dequeue: Set[((M, K), AbstractMailbox[M, K])] // TODO: rename to dequeue
 
     /** Returns all messages in the mailbox */
     def messages: Set[M]
@@ -52,23 +41,21 @@ trait AbstractMailbox[M, K]:
     def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K]
 
 trait AbstractMessage[K]:
-    def context: K
     def tag: String
 
 /** A map lattice based mailbox, which maps tags and contexts to payloads */
 case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K), M]) extends AbstractMailbox[M, K]:
-    def enqueue(msg: M): AbstractMailbox[M, K] =
-        val ctx = msg.context
+    def enqueue(msg: M, ctx: K): AbstractMailbox[M, K] =
         val tag = msg.tag
         val old = msgs.get((tag, ctx)).getOrElse(msg)
         this.copy(msgs = msgs + ((tag, ctx) -> Lattice[M].join(old, msg)))
 
     def messages: Set[M] = msgs.values.toSet
 
-    def dequeue: Set[(M, AbstractMailbox[M, K])] =
+    def dequeue: Set[((M, K), AbstractMailbox[M, K])] =
         // for dequeue: no multiplicity and order so any message can be dequeued at any time
         // and the mailbox can still contain the same message.
-        messages.map((_, this))
+        msgs.map { case ((_, ctx), m) => ((m, ctx), this) }.toSet
 
     def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K] = this.copy(msgs = (other match
         case MapMailbox(msgs) =>
@@ -88,15 +75,15 @@ case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K)
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
  * concurrency. In Static Analysis - 20th International Symposium, SAS 2013
  */
-case class PowersetMailbox[M, K](msgs: Set[M]) extends AbstractMailbox[M, K]:
-    def enqueue(msg: M): PowersetMailbox[M, K] =
-        this.copy(msgs = msgs + msg)
+case class PowersetMailbox[M, K](msgs: Set[(M, K)]) extends AbstractMailbox[M, K]:
+    def enqueue(msg: M, ctx: K): PowersetMailbox[M, K] =
+        this.copy(msgs = msgs + ((msg, ctx)))
 
-    def dequeue: Set[(M, AbstractMailbox[M, K])] =
+    def dequeue: Set[((M, K), AbstractMailbox[M, K])] =
         // We return a copy of the same mailbox for each message since message multiplicity is unknown
         msgs.map(m => (m, PowersetMailbox(msgs)))
 
-    val messages: Set[M] = msgs
+    val messages: Set[M] = msgs.map(_._1)
 
     def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K] = other match
         case PowersetMailbox(msgs) => this.copy(msgs = SmartUnion.sunion(this.msgs, msgs))
