@@ -80,6 +80,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         /** Predicate that returns true if the resposne from the mirror was an error */
         def isFail(vlu: Value): M[Boolean]
 
+        /** Returns the current behavior (if any) */
+        def currentBehavior: M[Behavior]
+
     implicit override val analysisM: MetaAnalyisM[A]
     import analysisM.*
 
@@ -321,10 +324,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     for
                         self <- selfActor
                         env <- getEnv
-                        // TODO: mirror protocol changed: should reify the behavior not the handler
-                        // a primitive called "lookup-handler" should be able to get the appropriate handler
-                        // for the given message.
-                        lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, reifyHandler(pars, bdy, env)), self, idn)
+                        beh <- currentBehavior
+                        lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, lattice.beh(beh)), self, idn)
                         result <- applyThunk(lam, idn, args)
                     yield result
                 } /* otherwise */ {

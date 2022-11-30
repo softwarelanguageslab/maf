@@ -62,6 +62,11 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     implicit override val analysisM: GlobalMetaSemanticsM
 
     class GlobalMetaSemanticsM extends GlobalStoreAnalysisM, MetaAnalyisM[A] {
+        override def currentBehavior: A[Behavior] =
+            selfActorCmp flatMap {
+                case a @ ActorAnalysisComponent(_, Some(BehaviorComponent(beh, _, _)), _) => unit(beh)
+                case _                                                                    => mbottom
+            }
         override def baseFail(error: Value): A[Unit] = ??? // TODO: implement
         override def isFail(vlu: Value): A[Boolean] = ??? // TODO: implement
         override def lookupMirror(actor: ActorRef): A[Option[Mirror[ActorRef]]] =
