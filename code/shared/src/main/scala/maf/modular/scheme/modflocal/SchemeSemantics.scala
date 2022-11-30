@@ -33,10 +33,8 @@ trait SchemeSemantics:
                 newEnv <- f(oldEnv)
                 res <- withEnv(_ => newEnv) { blk }
             yield res
-        def lookupEnv(nam: String, idn: Option[Identity]): M[Adr] =
-            val at = idn.map(i => s" at $i").getOrElse("")
-            for env <- getEnv yield env.lookup(nam).getOrElse(throw new Exception(s"undefined variable $nam$at"))
-        def lookupEnv(nam: String): M[Adr] = lookupEnv(nam, None)
+        def lookupEnv(id: Identifier): M[Adr] =
+            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable $id"))
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
             withEnv(_.extend(nam, adr))(blk)
         def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
@@ -48,6 +46,7 @@ trait SchemeSemantics:
         def allocPtr(exp: SchemeExp): M[Adr] =
             for ctx <- getCtx yield PtrAddr(exp, ctx)
         def call(lam: Lam): M[Val]
+        def nontail[A](blk: => M[A]): M[A] = blk
         // Scala is too stupid to figure this out...
         implicit final private val self: AnalysisM[M] = this
 
@@ -61,7 +60,7 @@ trait SchemeSemantics:
     def eval(exp: SchemeExp): A[Val] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)
         case lam: SchemeLambdaExp       => evalLambda(lam)
-        case SchemeVar(id)              => evalVariable(id.name)
+        case SchemeVar(id)              => evalVariable(id)
         case SchemeBegin(eps, _)        => evalSequence(eps)
         case SchemeIf(prd, thn, alt, _) => evalIf(prd, thn, alt)
         case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
@@ -70,7 +69,15 @@ trait SchemeSemantics:
         case app: SchemeFuncall         => evalCall(app)
         case SchemeAssert(exp, _)       => evalAssert(exp)
         case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
-
+    
+    def evalAll(lst: List[SchemeExp]): A[List[Val]] = lst match
+        case Nil => unit(Nil)
+        case last :: Nil => eval(last).map(_ :: Nil)
+        case next :: rest =>
+            for v  <- nontail { eval(next) }
+                vs <- evalAll(rest)
+            yield v :: vs
+    
     private def evalLambda(lam: Lam): A[Val] =
         for env <- getEnv yield lattice.closure((lam, env.restrictTo(lam.fv)))
 
@@ -83,25 +90,27 @@ trait SchemeSemantics:
         case sexp.Value.Symbol(s)    => unit(lattice.symbol(s))
         case sexp.Value.Nil          => unit(lattice.nil)
 
-    protected def evalVariable(nam: String): A[Val] =
+    protected def evalVariable(vrb: Identifier): A[Val] =
         for
-            adr <- lookupEnv(nam)
+            adr <- lookupEnv(vrb)
             vlu <- lookupSto(adr)
         yield vlu
 
-    private def evalSequence(eps: Iterable[Exp]): A[Val] =
-        eps.foldLeftM(lattice.void)((_, exp) => eval(exp))
-
+    private def evalSequence(eps: Iterable[Exp]): A[Val] = eps match
+        case Nil => unit(lattice.void)
+        case last :: Nil => eval(last)
+        case next :: rest => nontail { eval(next) } >>> evalSequence(rest)
+    
     private def evalIf(prd: Exp, csq: Exp, alt: Exp): A[Val] =
         for
-            cnd <- eval(prd)
+            cnd <- nontail { eval(prd) }
             res <- cond(cnd, eval(csq), eval(alt))
         yield res
 
     private def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
-            vls <- rhs.mapM(arg => eval(arg))
+            vls <- nontail { evalAll(rhs) } 
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
                 for
@@ -115,7 +124,7 @@ trait SchemeSemantics:
         case Nil => evalSequence(bdy)
         case (vrb, rhs) :: rst =>
             for
-                vlu <- eval(rhs)
+                vlu <- nontail { eval(rhs) } 
                 adr <- allocVar(vrb)
                 res <- withExtendedEnv(vrb.name, adr) {
                     extendSto(adr, vlu).flatMap { _ =>
@@ -131,7 +140,7 @@ trait SchemeSemantics:
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
                 for
                     _ <- ads.zip(rhs).mapM_ { case (adr, rhs) =>
-                        eval(rhs).flatMap(vlu => extendSto(adr, vlu))
+                        nontail(eval(rhs)).flatMap(vlu => extendSto(adr, vlu))
                     }
                     vlu <- evalSequence(bdy)
                 yield vlu
@@ -139,7 +148,7 @@ trait SchemeSemantics:
         yield res
 
     // by default, asserts are ignored
-    protected def evalAssert(exp: Exp): A[Val] = AnalysisM[A].unit(lattice.void)
+    protected def evalAssert(exp: Exp): A[Val] = unit(lattice.void)
 
     private def cond(cnd: Val, csq: A[Val], alt: A[Val]): A[Val] =
         val tru = guard(lattice.isTrue(cnd)).flatMap(_ => csq)
@@ -148,8 +157,8 @@ trait SchemeSemantics:
 
     private def evalCall(app: App): A[Val] =
         for
-            fun <- eval(app.f)
-            ags <- app.args.mapM(arg => eval(arg))
+            fun <- nontail { eval(app.f) } 
+            ags <- evalAll(app.args)
             res <- applyFun(app, fun, ags)
         yield res
 

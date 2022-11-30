@@ -123,9 +123,9 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             allocVar(par).flatMap(addr => extendSto(addr, vlu) >>> unit(env.extend(par.name, addr)))
         }
 
-    override protected def evalVariable(nam: String): A[Val] = nam match
+    override protected def evalVariable(id: Identifier): A[Val] = id.name match
         case "self" | "a/self" => selfActor.map(lattice.actor)
-        case _                 => super.evalVariable(nam)
+        case _                 => super.evalVariable(id)
 
     override def eval(exp: SchemeExp): A[Val] =
         exp match
