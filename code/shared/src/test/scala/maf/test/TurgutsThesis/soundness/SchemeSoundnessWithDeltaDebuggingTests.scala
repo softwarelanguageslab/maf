@@ -64,5 +64,5 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
 
       val (failureMsg, analysisResults) = runAndCompare(program, benchmark)
       if failureMsg.nonEmpty then
-        DDWithAllTransformations.reduce(program, this, benchmark, analysisResults)
+        DDWithoutProfiling.reduce(program, this, benchmark, analysisResults)
     }

@@ -1,7 +1,8 @@
 package maf.TurgutsThesis.gtr.transformations
 
+import maf.TurgutsThesis.gtr.transformations.ReplaceIdentifierCalls.replaceCallWithAllValues
 import maf.TurgutsThesis.gtr.transformations.traits.Replacing
-import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeLambdaExp, SchemeVarExp}
+import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeLambdaExp, SchemeLettishExp, SchemeVarExp}
 
 object ReplaceLambdaCalls extends Transformation with Replacing:
   override val name: String = "ReplaceLambdaCalls"
@@ -9,25 +10,17 @@ object ReplaceLambdaCalls extends Transformation with Replacing:
 
   override protected def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
-      case exp: SchemeLambdaExp =>
-        exp.name match
-          case Some(lambdaName) =>
-            if arr.exists(tpl => tpl._1 equals lambdaName) then
-              val lambdaDeleted: Option[SchemeExp] = tree.deleteChildren(subExp => {
-                subExp eq exp
-              })
+      case lettishExp: SchemeLettishExp =>
+        val lambdaBindings = lettishExp.bindings.collect({
+          case (identifier, lambda: SchemeLambdaExp) => (identifier, lambda)
+        })
 
-              lambdaDeleted match
-                case Some(tree) =>
-                  val suggestions = replaceWithAllValues(tree, subExp => {
-                    subExp match
-                      case SchemeFuncall(f: SchemeVarExp, _, _) =>
-                        f.id.name equals lambdaName
-                      case varExp: SchemeVarExp => varExp.id.name equals lambdaName
-                      case _ => false
-                  })
+        for (lambdaBinding <- lambdaBindings)
+          if arr.exists(tpl => tpl._1 equals lambdaBinding._1.name) then
+            addReplacements(replaceCallWithAllValues(lettishExp, lambdaBinding._1))
 
-                  addTrees(suggestions)
-                case _ =>
-          case _ =>
+      case SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
+        if arr.exists(tpl => tpl._1 equals name) then
+          addTrees(replaceCallWithAllValues(tree, name))
+
       case _ =>

@@ -27,7 +27,6 @@ object RemoveCalls extends Transformation:
         for(lambdaBinding <- lambdaBindings)
           removeIdCalls(lambdaBinding._1)
 
-
       case SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
         removeIdCalls(name)
 
