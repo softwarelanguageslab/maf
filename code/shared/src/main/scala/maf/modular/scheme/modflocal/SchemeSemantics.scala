@@ -34,7 +34,7 @@ trait SchemeSemantics:
                 res <- withEnv(_ => newEnv) { blk }
             yield res
         def lookupEnv(id: Identifier): M[Adr] =
-            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable $id"))
+            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable ${id.name}@${id.idn}"))
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
             withEnv(_.extend(nam, adr))(blk)
         def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
@@ -69,15 +69,16 @@ trait SchemeSemantics:
         case app: SchemeFuncall         => evalCall(app)
         case SchemeAssert(exp, _)       => evalAssert(exp)
         case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
-    
+
     def evalAll(lst: List[SchemeExp]): A[List[Val]] = lst match
-        case Nil => unit(Nil)
+        case Nil         => unit(Nil)
         case last :: Nil => eval(last).map(_ :: Nil)
         case next :: rest =>
-            for v  <- nontail { eval(next) }
+            for
+                v <- nontail { eval(next) }
                 vs <- evalAll(rest)
             yield v :: vs
-    
+
     private def evalLambda(lam: Lam): A[Val] =
         for env <- getEnv yield lattice.closure((lam, env.restrictTo(lam.fv)))
 
@@ -97,10 +98,10 @@ trait SchemeSemantics:
         yield vlu
 
     protected def evalSequence(eps: Iterable[Exp]): A[Val] = eps match
-        case Nil => unit(lattice.void)
-        case last :: Nil => eval(last)
+        case Nil          => unit(lattice.void)
+        case last :: Nil  => eval(last)
         case next :: rest => nontail { eval(next) } >>> evalSequence(rest)
-    
+
     private def evalIf(prd: Exp, csq: Exp, alt: Exp): A[Val] =
         for
             cnd <- nontail { eval(prd) }
@@ -110,7 +111,7 @@ trait SchemeSemantics:
     private def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
-            vls <- nontail { evalAll(rhs) } 
+            vls <- nontail { evalAll(rhs) }
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
                 for
@@ -124,7 +125,7 @@ trait SchemeSemantics:
         case Nil => evalSequence(bdy)
         case (vrb, rhs) :: rst =>
             for
-                vlu <- nontail { eval(rhs) } 
+                vlu <- nontail { eval(rhs) }
                 adr <- allocVar(vrb)
                 res <- withExtendedEnv(vrb.name, adr) {
                     extendSto(adr, vlu).flatMap { _ =>
@@ -157,7 +158,7 @@ trait SchemeSemantics:
 
     private def evalCall(app: App): A[Val] =
         for
-            fun <- nontail { eval(app.f) } 
+            fun <- nontail { eval(app.f) }
             ags <- evalAll(app.args)
             res <- applyFun(app, fun, ags)
         yield res
@@ -176,13 +177,10 @@ trait SchemeSemantics:
     protected def applyClosures(app: App, fun: Val, ags: List[Val]): A[Val] =
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
-            println(s"apply is $lam check ${lam.check(agc)}")
             for
                 _ <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
-                _ = println(s"apply free variables $fvs")
                 res <- applyClosure(app, lam, ags, fvs)
-                _ = println(s"applied closure $res")
             yield res
         }
 

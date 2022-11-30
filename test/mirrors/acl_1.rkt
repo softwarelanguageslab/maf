@@ -71,6 +71,6 @@
 (define b (B A))
 ;(await (ask b good-message))
 ;(await (ask b bad-message))
-(send b self good-message)
-(send b self bad-message)
+(send b good-message self)
+(send b bad-message self)
 (print-statistics)
