@@ -33,7 +33,7 @@ object DDWithoutProfiling extends DeltaDebugger:
       },
       List(ReplaceLambdaCalls)
     )
-
+    /*
     val bw = BufferedWriter(
       FileWriter(
         File("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/DDWithoutProfiling"),
@@ -43,6 +43,7 @@ object DDWithoutProfiling extends DeltaDebugger:
 
     bw.write(reductionAnalysisCalls.toString + "\n")
     bw.close()
+    */
 
     val parsedAgain = SchemeParser.parse(reduced.prettyString()).head //parse again, to generate file-related information (e.g. bug is at offset 20-25)
     val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark)._1
