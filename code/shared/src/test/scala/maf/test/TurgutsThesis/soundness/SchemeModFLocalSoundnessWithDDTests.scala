@@ -7,15 +7,15 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.TurgutsThesis.soundness.{SchemeModFLocalSoundnessTests, SchemeSoundnessWithDeltaDebuggingTests}
-import maf.test.VariousSequentialBenchmarks
+import maf.test.{AllBenchmarks, VariousSequentialBenchmarks, AllSequentialBenchmarks}
 
-trait SchemeModFLocalSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:
-  override def benchmarks = Set("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/SICP-compiler.scm")
+trait SchemeModFLocalSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests with VariousSequentialBenchmarks:
+  //override def benchmarks = Set("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/SICP-compiler.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
     val transf = SchemeMutableVarBoxer.transform(prelud)
-    SchemeParser.undefine(transf)
+    SchemeParser.rename(SchemeParser.undefine(transf))
 
 class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
   def n = 100
