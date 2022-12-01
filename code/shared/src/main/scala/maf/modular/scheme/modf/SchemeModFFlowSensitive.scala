@@ -23,6 +23,7 @@ import maf.core.Monad
 import maf.core.MonadJoin
 import maf.core
 import maf.modular.Dependency
+import maf.lattice.interfaces.LatticeWithAddrs
 
 trait TEvalMFlowSensitive[M[_], V: Lattice] extends TEvalM[M]:
     def getStore: M[LocalStore[Address, V]]
@@ -199,7 +200,7 @@ class SimpleFlowSensitiveAnalysis(exp: SchemeExp)
 
     override def baseEnv: Env = initialEnv
     override lazy val baseStore: LocalStore[Address, Value] =
-        given lat: Lattice[Value] = this.lattice
+        given lat: LatticeWithAddrs[Value, Address] = this.lattice
         given shouldCount: (Addr => Boolean) = ((_) => false)
         LocalStore.from[Address, Value](store)
 

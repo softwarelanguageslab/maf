@@ -90,16 +90,16 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
         (anl, env, sto, ctx) =>
-            val gcs = anl.StoreGC.collect(sto, rs)
+            val gcs = sto.collect(rs)
             blk(anl, env, gcs, ctx).map { (v, d) =>
-                val gcd = anl.DeltaGC(gcs).collect(d, lattice.refs(v) ++ d.updates)
+                val gcd = d.collect(lattice.refs(v) ++ d.updates)
                 (v, sto.replay(gcs, gcd))
             }
 
     def withRestrictedResult(blk: A[Val]): A[Val] =
         (anl, env, sto, ctx) =>
             blk(anl, env, sto, ctx).map { (v, d) =>
-                (v, anl.DeltaGC(sto).collect(d, lattice.refs(v) ++ d.updates))
+                (v, d.collect(lattice.refs(v) ++ d.updates))
             }
 
     import analysisM._
@@ -131,7 +131,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-            (_, _, _, _) => Set((x, Delta.empty))
+            (_, _, sto, _) => Set((x, Delta.empty(sto)))
         def map[X, Y](m: A[X])(f: X => Y) =
             (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d) => (f(x), d))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
@@ -150,21 +150,21 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _) => Set((eqA(sto, anl), Delta.empty))
+            (anl, _, sto, _) => Set((eqA(sto, anl), Delta.empty(sto)))
         def extendSto(adr: Adr, vlu: Val) =
             (anl, _, sto, _) => Set(((), extendV(sto, adr, vlu)))
         def updateSto(adr: Adr, vlu: Val) =
             (anl, _, sto, _) => Set(((), updateV(sto, adr, vlu)))
         def lookupSto(adr: Adr) =
-            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), Delta.empty)))(inject)
+            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), Delta.empty(sto))))(inject)
         // CTX STUFF
         def getCtx =
-            (_, _, _, ctx) => Set((ctx, Delta.empty))
+            (_, _, sto, ctx) => Set((ctx, Delta.empty(sto)))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
             (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
         // ENV STUFF
         def getEnv =
-            (_, env, _, _) => Set((env, Delta.empty))
+            (_, env, sto, _) => Set((env, Delta.empty(sto)))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
@@ -189,7 +189,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
             val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
-            val rgc = res.map((v,d) => (v, DeltaGC(cmp.sto).collect(d, lattice.refs(v) ++ d.updates)))
+            val rgc = res.map((v,d) => (v, d.collect(lattice.refs(v) ++ d.updates)))
             val old = results.getOrElse(cmp, Set.empty)
             if rgc != old then
                 intra.results += cmp -> rgc
@@ -205,22 +205,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 else false
             case _ => super.doWrite(dep)
 
-        case object StoreGC extends AbstractGarbageCollector[Sto, Adr]:
-            def fresh(cur: Sto) = LocalStore.empty
-            def move(addr: Adr, from: Sto, to: Sto): (Sto, Set[Adr]) =
-                from.content.get(addr) match
-                    case None             => (to, Set.empty)
-                    case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lattice.refs(v))
-
-        case class DeltaGC(sto: Sto) extends AbstractGarbageCollector[Dlt, Adr]:
-            def fresh(cur: Dlt) = cur.copy(delta = SmartMap.empty) //TODO: this always carries over the set of updated addrs
-            def move(addr: Adr, from: Dlt, to: Dlt): (Dlt, Set[Adr]) =
-                from.delta.get(addr) match
-                    case None =>
-                        sto.content.get(addr) match
-                            case None         => (to, Set.empty)
-                            case Some((v, _)) => (to, lattice.refs(v))
-                    case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lattice.refs(v))
 
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
@@ -240,5 +224,3 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)
-
-// TODO: GC at every step?
