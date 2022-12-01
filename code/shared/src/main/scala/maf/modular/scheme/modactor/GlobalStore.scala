@@ -294,7 +294,6 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             _ <- get.map(lens.modify(lens.mailboxes)(_ => interLens.get(inter).mailboxes)) >>= put
             // then evalute the expression
             v <- eval(body(cmp))
-            _ = println(s"result of $cmp is $v")
             // write the value to the global store at its return address
             _ <- updateSto(ReturnAddr(cmp, Identity.none), v)
         yield v

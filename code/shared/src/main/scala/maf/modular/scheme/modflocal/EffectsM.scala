@@ -97,7 +97,7 @@ object EffectsM:
     def fixWL[C, IS: EffectLensC[C], OS, V](initial: C, conf: Configuration[C, V, IS, OS]): AnalysisResult[OS] =
         import maf.util.Logger
         import maf.util.LogOps.*
-        given Logger.Logger = Logger.ConsoleLog()
+        given Logger.Logger = Logger.DisabledLog()
 
         def fix(loop: EffectDrivenLoop[C, V, OS, IS]): AnalysisResult[OS] = loop match
             case LoopFinished(result) => result
@@ -122,7 +122,7 @@ object EffectsM:
         def apply(): EffectDrivenLoop[C, V, Inter, Intra] =
             import maf.util.Logger
             import maf.util.LogOps.*
-            given Logger.Logger = Logger.ConsoleLog()
+            given Logger.Logger = Logger.DisabledLog()
             this match
                 case Loop(seen, wl, dep, interState, conf) =>
                     if wl.isEmpty then LoopFinished(AnalysisResult.Finished(interState))
