@@ -123,3 +123,4 @@ class SimpleModActorWithMirrors(prog: SchemeExp) extends SchemeModActorSemantics
     implicit override val analysisM: GlobalMetaSemanticsM = new GlobalMetaSemanticsM()
     def reifyMessage(m: Msg, exs: List[SchemeExp]): ASchemeValues.Message[Value] = m.copy(exs = exs)
     def abstractMessage(m: Msg): ASchemeValues.Message[Value] = m
+    def errors: Set[maf.core.Error] = _result.nn.inner.errors
