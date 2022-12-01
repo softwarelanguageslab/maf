@@ -6,6 +6,7 @@ import maf.language.scheme._
 import maf.language.CScheme._
 import maf.language.scheme.lattices.SchemeLattice
 import maf.lattice.interfaces.BoolLattice
+import maf.core.Monad.MonadSyntaxOps
 
 import Monad._
 
@@ -29,11 +30,13 @@ trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with
         flatMap(allocPtr(exp))(adr => map(extendSto(adr, vlu))(_ => adr))
     def deref[X: Lattice](x: Set[A])(f: (A, V) => M[X]): M[X] =
         mfoldMap(x)(a => flatMap(lookupSto(a))(v => f(a, v)))
+    //def lookupSto(a: A): M[V] = // stop when the lookup of the store is bottom
+    //    flatMap(lookupSto(a))(inject)
     // exotic -- not so important if not implemented yet
     def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
     def currentThread: M[TID] = throw new Exception("Not supported")
 
-trait SchemePrimitive[V, A <: Address] extends Primitive:
+trait SchemePrimitive[V: Lattice, A <: Address] extends Primitive:
     // Every primitive in Scheme has a unique name
     def name: String
     // They can be called given the calling expression and arguments using any compatible SchemePrimM monad

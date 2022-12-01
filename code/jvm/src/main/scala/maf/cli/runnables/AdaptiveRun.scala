@@ -50,39 +50,13 @@ object AdaptiveRun:
         val prg = CSchemeParser.undefine(transf)
         println(prg.prettyString(2))
 
-    def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
-        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity(0) with FIFOWorklistAlgorithm[SchemeExp]:
-            override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
-            //override def debug(msg: => String): Unit = println(s"[DEBUG $i] $msg")
-            var i = 0
-            override def step(t: Timeout.T): Unit =
-                i += 1
-                val cmp = workList.head
-                println(s"[$i] Analysing $cmp")
-                super.step(t)
-            def printStore(sto: Sto) =
-                sto.content.view.toMap
-                    .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-            def printDelta(dlt: Dlt) =
-                dlt.delta.view.toMap
-                    .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-            def printCmp(cmp: Cmp) =
-                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
-                println()
-                println(s"COMPONENT $cmp WHERE")
-                printStore(cmp.sto)
-                println(s"==> RESULTS: $res")
-                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-                printDelta(dlt)
-                println()
-
     def testModFLocal(): Unit =
         val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         val prg = CSchemeParser.undefine(transf)
-        val anl = adaptiveAnalysisA(prg, 100)
+        val anl = SchemeAnalyses.modflocalAnalysis(prg, 100)
         anl.analyze()
 
     def testModConc(): Unit =

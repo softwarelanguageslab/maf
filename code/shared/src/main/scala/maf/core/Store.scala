@@ -58,8 +58,11 @@ object Delta:
     def empty[A, V]: Delta[A, V] = Delta(SmartMap.empty, Set.empty)
 
 case class LocalStore[A, V](content: SmartMap[A, (V, AbstractCount)])(using lat: Lattice[V], shouldCount: A => Boolean):
-    inline def apply(a: A): V = content(a)._1
-    inline def lookup(a: A): Option[V] = content.get(a).map(_._1)
+    inline def get(a: A): Option[(V, AbstractCount)] = content.get(a)
+    inline def getValue(a: A): Option[V] = get(a).map(_._1)
+    inline def getCount(a: A): Option[AbstractCount] = get(a).map(_._2)
+    inline def lookupValue(a: A): V = getValue(a).getOrElse(lat.bottom)
+    inline def lookupCount(a: A): AbstractCount = getCount(a).getOrElse(CountZero)
     def update(adr: A, vlu: V): Delta[A, V] = content.get(adr) match
         case None                   => throw new Exception("Trying to update a non-existing address")
         case Some((_, CountOne))    => Delta(SmartMap((adr -> (vlu, CountOne))), Set(adr)) // strong update

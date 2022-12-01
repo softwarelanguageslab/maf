@@ -20,6 +20,7 @@ import maf.modular.scheme.SchemeSetup
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.core.MonadStateT
 import maf.core.Monad
+import maf.core.MonadJoin
 import maf.core
 import maf.modular.Dependency
 
@@ -61,7 +62,7 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
     // override the "result" method such that the resulting local stores are used
     override def result: Option[Value] =
         val init = initialComponent
-        componentStores.get(init).flatMap(_.lookup(returnAddr(init)))
+        componentStores.get(init).flatMap(_.getValue(returnAddr(init)))
 
     override def intraAnalysis(component: Component): FlowSensitiveIntra
 
@@ -109,9 +110,9 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
             evalM.read(adr)
 
         override protected def write(adr: Addr, v: Value): EvalM[Unit] =
-            given b: (Address => Boolean) = (_) => false
+            given b: (Address => Boolean) = _ => false
             // Check whether the final component store has a value that subsumes the to-write value
-            val prior = componentStores.get(component).getOrElse(LocalStore.empty).lookup(adr).getOrElse(lattice.bottom)
+            val prior = componentStores.get(component).getOrElse(LocalStore.empty).lookupValue(adr)
             (if !lattice.subsumes(prior, v) then evalM.impure(trigger(maf.modular.AddrDependency(adr)))
              else evalM.unit(())) >>> evalM.write(adr, v)
 
@@ -161,7 +162,7 @@ trait SimpleFlowSensitiveAnalysisMonad extends SchemeModFFlowSensitive:
 
         def read(addr: Address): EvalM[Value] =
             getStore.flatMap(store =>
-                store.lookup(addr) match
+                store.getValue(addr) match
                     case Some(vlu) => unit(vlu)
                     case _         => mzero
             )
