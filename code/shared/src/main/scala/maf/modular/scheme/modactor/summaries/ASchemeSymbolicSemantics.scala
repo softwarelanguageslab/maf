@@ -69,7 +69,8 @@ trait ASchemeSymbolicSemantics extends ASchemeSemantics:
                         _ <- assert(φ(s))
                     yield v
                 })
-                _ <- mkMessage(t.name, vs) >>= send_(`α′`)
+                // TODO: add an actual context here based on the prior context
+                _ <- mkMessage(t.name, vs) >>= send_(emptyContext)(`α′`)
             yield lattice.nil
 
         case ASchemeBecome(β, as, idn) =>

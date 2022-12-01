@@ -25,6 +25,10 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
 
     type ActorRef = Actor
     type Behavior = ASchemeValues.Behavior
+
+    type MessageContext
+    def emptyContext: MessageContext
+
     type Msg
 
     implicit override lazy val lattice: ASchemeLattice[Val, Adr]
@@ -57,24 +61,24 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @param msg
          *   the message to send
          */
-        def sendMessage(to: Val, tag: String, ags: List[Val]): M[Unit] =
+        def sendMessage(to: Val, tag: String, ags: List[Val], context: MessageContext): M[Unit] =
             given Monad[M] = this
             mkMessage(tag, ags).flatMap { msg =>
                 mjoin(
                   lattice
                       .getActors(to)
                       .map { actor =>
-                          send(actor, msg)
+                          send(actor, msg, context)
                       }
                       .toList
                 )
             }
 
-        def send(to: ActorRef, m: Msg): M[Unit]
-        def send_(to: ActorRef)(m: Msg): M[Unit] = send(to, m)
+        def send(to: ActorRef, m: Msg, context: MessageContext): M[Unit]
+        def send_(context: MessageContext)(to: ActorRef)(m: Msg): M[Unit] = send(to, m, context)
 
         /** Same as sends but "blocks" until an answer has been received */
-        def ask(to: ActorRef, m: Msg): M[Value]
+        def ask(to: ActorRef, m: Msg, context: MessageContext): M[Value]
 
         def nondets[X](xs: Iterable[M[X]]): M[X]
 
@@ -94,7 +98,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   the message wrapped in the analysis monad
          */
-        def receive: M[Msg]
+        def receive: M[(Msg, MessageContext)]
 
         /**
          * Spawn a new actor
@@ -149,7 +153,10 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                     evaluatedActorRef <- nontail(eval(actorRef))
                     evaluatedAgs <- evalAll(ags)
                     _ = { log(s"++ intra - actor/send $evaluatedActorRef $messageTpy $evaluatedAgs") }
-                    _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs)
+                    // TODO: the context should be inherited from the current context.
+                    // perhaps add a new function to the monad to create a new context based on the
+                    // previous one.
+                    _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs, emptyContext)
                 yield lattice.nil
 
             // Change the behavior of the current actor, and return nil
@@ -177,7 +184,8 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             case ASchemeSelect(handlers, idn) =>
                 for
                     // select a message from the mailbox
-                    msg <- receive
+                    msgWithContext <- receive
+                    (msg, context) = msgWithContext
                     _ = { log(s"actor/recv $msg") }
                     // see if there is an applicable handler
                     tag = getMessageTag(msg)

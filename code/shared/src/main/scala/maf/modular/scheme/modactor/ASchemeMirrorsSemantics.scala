@@ -44,6 +44,17 @@ object MirrorValues:
 trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     import maf.util.LogOps.*
 
+    abstract class MirrorMessageContext
+    case class SendSiteContext(senderSite: Identity) extends MirrorMessageContext
+    case object NoContext extends MirrorMessageContext
+
+    def emptyContext: MessageContext = NoContext
+
+    type MessageContext = MirrorMessageContext
+
+    /** Inject the message context as part of the analysis context */
+    def messageCtx(mCtx: MessageContext)(ctx: Ctx): Ctx
+
     /**
      * Monad for supporting mirror-based reflection
      *
@@ -107,7 +118,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      *   the location of the send, can be used for deciding on the mirror context
      */
     private def mirrorAsk(actorRef: ActorRef, tag: String, ags: List[Value], sender: ActorRef, idn: Identity): A[Value] =
-        mkMessage(tag, ags) >>= { m => ask(actorRef, m) }
+        // TODO: change emptyContext to something that keeps track of thez send site
+        mkMessage(tag, ags) >>= { m => ask(actorRef, m, SendSiteContext(idn)) }
 
     /** Checks whether the given actor represents a mirror */
     private def mirrorFlagSet(actor: Actor): Boolean = actor.tid match
@@ -232,7 +244,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     interpreter <- nondets(lattice.getActors(args(0)).map(unit))
                     message = args(1)
                     mm <- mkMessage("answer", List(lattice.error(message)))
-                    _ <- send(interpreter, mm)
+                    // TODO: change emptyContext to actual context
+                    _ <- send(interpreter, mm, emptyContext)
                 yield lattice.void
 
         case object envelope extends Struct[Envelope[Actor, Value]]:
@@ -303,7 +316,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     /* , TODO: add the source location of the send here */
                     mirrorAsk(mirror.tid, "send", List(envelope), self, idn) >>= catchErr(idn)
                 } /* otherwise */ {
-                    sendMessage(evaluatedActor, tag, evaluatedAgs).map(_ => lattice.nil)
+                    // TODO: chagne emptyContext to actual context
+                    sendMessage(evaluatedActor, tag, evaluatedAgs, emptyContext).map(_ => lattice.nil)
                 }
             yield result
 
@@ -314,7 +328,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             // This lambda is applied in the same context as the sending actor, therefore not in the mirror.
             for
                 // select the correct handler first
-                msg <- receive
+                msgWithContext <- receive
+                (msg, context) = msgWithContext
                 // see if there is an appropriate handler
                 tag = getMessageTag(msg)
                 args = getMessageArguments(msg)
@@ -342,7 +357,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     yield result
                 } /* otherwise */ {
                     log(s"base receive $handler $tag $args")
-                    withEnvM(bindArgs(pars, args)) { evalSequence(bdy) }
+                    withCtx(messageCtx(context)) { withEnvM(bindArgs(pars, args)) { evalSequence(bdy) } }
                 }
             yield result
 
@@ -377,7 +392,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 receiver = envelope.receiver
                 message = envelope.message
                 // send the message to the specified receiver
-                result <- send(receiver, abstractMessage(message)).map(_ => lattice.nil)
+                // TODO: change emptyContext to actual context
+                result <- send(receiver, abstractMessage(message), emptyContext).map(_ => lattice.nil)
             yield result
 
         // Primitives (TODO: should actually be syntax)
