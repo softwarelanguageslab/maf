@@ -102,13 +102,20 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 (v, anl.DeltaGC(sto).collect(d, lattice.refs(v) ++ d.updates))
             }
 
-    //override def eval(exp: Exp): A[Val] =
-    //  withRestrictedResult(super.eval(exp))
+    import analysisM._
+    override def eval(exp: Exp): A[Val] =
+        withEnv(_.restrictTo(exp.fv)) {
+            getEnv >>= { env => 
+                withRestrictedStore(env.addrs) {
+                    super.eval(exp)
+                }
+            }
+        }
 
-    //override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
-    //  withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
-    //    super.applyPrimitive(app, prm, ags)
-    //  }
+    override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
+        withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
+            super.applyPrimitive(app, prm, ags)
+        }
 
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
         withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
