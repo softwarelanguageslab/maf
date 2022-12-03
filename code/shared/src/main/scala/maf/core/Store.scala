@@ -66,12 +66,12 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     // extend & update return a Delta
     def extend(adr: A, vlu: V): Delta = content.get(adr) match
         case None if lat.isBottom(vlu) => emptyDelta
-        case None                      => Delta(SmartMap(adr -> (vlu, countFor(adr))), Set.empty)
-        case Some(old @ (oldV, oldC))  => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)), Set.empty)
+        case None                      => Delta(SmartMap(adr -> (vlu, countFor(adr))))
+        case Some(old @ (oldV, oldC))  => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)))
     def update(adr: A, vlu: V): Delta = content.get(adr) match
         case None | Some((_, CountZero)) => throw new Exception("Trying to update a non-existing address")
-        case Some((_, CountOne))         => Delta(SmartMap((adr -> (vlu, CountOne))), Set(adr)) // strong update
-        case Some((oldV, CountInf))      => Delta(SmartMap(adr -> (lat.join(oldV, vlu), CountInf)), Set(adr)) // weak update
+        case Some((_, CountOne))         => Delta(SmartMap(adr -> (vlu, CountOne)))                 // strong update
+        case Some((oldV, CountInf))      => Delta(SmartMap(adr -> (lat.join(oldV, vlu), CountInf))) // weak update
     // join a (value, count) at a given address
     def joinAt(adr: A, vlu: V, cnt: AbstractCount): Option[LocalStore[A, V]] =
         get(adr) match
@@ -79,6 +79,9 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             case Some(old @ (oldV, oldC)) =>
                 val upd = (lat.join(oldV, vlu), oldC.join(cnt))
                 if upd == old then None else Some(LocalStore(content + (adr -> upd)))
+    // contains check
+    def contains(adr: A): Boolean =
+        content.contains(adr)
     // removing addresses from the store
     def -(adr: A): LocalStore[A, V] = LocalStore(content - adr)
     def --(ads: Iterable[A]): LocalStore[A, V] = LocalStore(content -- ads)
@@ -91,7 +94,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     // composing two deltas
     // assumes that (d1 :: nxt.Delta), where nxt = this.integrate(d0)
     def compose(d1: LocalStore[A, V]#Delta, d0: Delta): Delta =
-        Delta(d0.delta ++ d1.delta, d0.updates ++ d1.updates.filter(content.contains(_)))
+        Delta(d0.delta ++ d1.delta)
     // joining two deltas
     def join(d1: Delta, d2: Delta): Delta =
         val ads = d1.delta.keys ++ d2.delta.keys
@@ -101,9 +104,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
               val (vlu1, cnt1) = d1.delta.get(adr).getOrElse(prv)
               val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
               acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
-          ),
-          d1.updates ++ d2.updates
-        )
+        ))
     // replaying a delta that was computed w.r.t. a GC'd store dgc
     // assumes that (dgc :: sgc.Delta), where sgc = this.collect(r) for some r
     def replay(dgc: LocalStore[A, V]#Delta): Delta =
@@ -113,9 +114,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
                   case None                        => (adr, s)
                   case Some(_) if dgc.inStore(adr) => (adr, s)
                   case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
-          },
-          dgc.updates
-        )
+          })
     // abstract GC support
     type This = LocalStore[A, V]
     def fresh = LocalStore.empty
@@ -124,20 +123,19 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             case None             => (to, Set.empty)
             case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lat.refs(v))
     // Deltas!
-    def emptyDelta: Delta = Delta(SmartMap.empty, Set.empty)
-    case class Delta(delta: SmartMap[A, (V, AbstractCount)], updates: Set[A]) extends AbstractGC[A]:
-        def --(ads: Set[A]): Delta = Delta(delta -- ads, updates -- ads)
-        def inStore(a: A): Boolean = sto.content.contains(a)
+    def emptyDelta: Delta = Delta(SmartMap.empty)
+    case class Delta(delta: SmartMap[A, (V, AbstractCount)]) extends AbstractGC[A]:
+        def inStore(a: A): Boolean = sto.contains(a)
         // abstract GC support
         type This = Delta
-        def fresh = this.copy(delta = SmartMap.empty)
+        def fresh = sto.emptyDelta
         def move(addr: A, to: Delta): (Delta, Set[A]) =
             delta.get(addr) match
                 case None =>
                     sto.get(addr) match
                         case None         => (to, Set.empty)
                         case Some((v, _)) => (to, lat.refs(v))
-                case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lat.refs(v))
+                case Some(s @ (v, _)) => (Delta(to.delta + (addr -> s)), lat.refs(v))
 
 object LocalStore:
     def empty[A <: Address, V](using LatticeWithAddrs[V, A], A => Boolean): LocalStore[A, V] =
