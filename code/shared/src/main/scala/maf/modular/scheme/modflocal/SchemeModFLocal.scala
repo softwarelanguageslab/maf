@@ -70,7 +70,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     // in reality, 'Any' here is `Set[(Val, cmp.sto.Delta)]` for a given key `cmp `
-    var results: Map[Component, Any] = Map.empty 
+    var results: Map[Component, Any] = Map.empty
 
     case class ResultDependency(cmp: Component) extends Dependency
 
@@ -83,9 +83,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
-            if a1 == a2 then 
-                if sto.lookupCount(a1) == CountOne
-                then BoolLattice[B].inject(true)
+            if a1 == a2 then
+                if sto.lookupCount(a1) == CountOne then BoolLattice[B].inject(true)
                 else BoolLattice[B].top
             else BoolLattice[B].inject(false)
 
@@ -106,7 +105,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     import analysisM._
     override def eval(exp: Exp): A[Val] =
         withEnv(_.restrictTo(exp.fv)) {
-            getEnv >>= { env => 
+            getEnv >>= { env =>
                 withRestrictedStore(env.addrs) {
                     super.eval(exp)
                 }
@@ -191,7 +190,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
             val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
-            val rgc = res.map((v,d) => (v, d.collect(lattice.refs(v) ++ d.updates)))
+            val rgc = res.map((v, d) => (v, d.collect(lattice.refs(v) ++ d.updates)))
             val old = results.getOrElse(cmp, Set.empty)
             if rgc != old then
                 intra.results += cmp -> rgc
@@ -206,7 +205,6 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                     true
                 else false
             case _ => super.doWrite(dep)
-
 
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>

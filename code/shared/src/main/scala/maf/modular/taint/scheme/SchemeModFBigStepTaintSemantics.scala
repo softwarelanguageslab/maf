@@ -83,7 +83,7 @@ trait SchemeModFBigStepTaintSemantics
                 val prev: Set[Addr] = dataFlowR(first)
                 val src = prev.filter(_.isInstanceOf[SrcAddr[_]])
                 if src.nonEmpty then
-                // A harmful flow was found.
+                    // A harmful flow was found.
                     src.foreach(s => badFlows = badFlows + ((s, addr.head))) // Initially, only contains the address of the variable read by sink.
                 prev.foreach { p =>
                     if !p.isInstanceOf[SanAddr[_]] then work += p
@@ -176,8 +176,7 @@ trait SchemeModFBigStepTaintSemantics
                                 val old = implicitFlowsCut.getOrElse(targetCmp, Set())
                                 implicitFlowsCut =
                                     implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
-                                if old != implicitFlowsCut.getOrElse(targetCmp, Set())
-                                then addToWorkList(targetCmp)
+                                if old != implicitFlowsCut.getOrElse(targetCmp, Set()) then addToWorkList(targetCmp)
                                 updatedResult
                         else baseEvalM.fail(ArityError(cll, prs.length, arity))
                     case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
@@ -200,8 +199,7 @@ trait SchemeModFBigStepTaintSemantics
                                 val old = implicitFlowsCut.getOrElse(targetCmp, Set())
                                 implicitFlowsCut =
                                     implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
-                                if old != implicitFlowsCut.getOrElse(targetCmp, Set())
-                                then addToWorkList(targetCmp)
+                                if old != implicitFlowsCut.getOrElse(targetCmp, Set()) then addToWorkList(targetCmp)
                                 updatedResult
                         else baseEvalM.fail(VarArityError(cll, prs.length, arity))
                     case _ => Monad[M].unit(lattice.bottom)

@@ -15,7 +15,7 @@ trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-        /*
+/*
 class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (context-insensitive)"
     def analysis(prg: SchemeExp) =
@@ -44,4 +44,4 @@ class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSo
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: String): Boolean = true // don't run this for fast tests
 
-    */
+ */

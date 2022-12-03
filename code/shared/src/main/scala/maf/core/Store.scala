@@ -52,8 +52,9 @@ case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
 
-case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean) extends AbstractGC[A]:
-    sto => 
+case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean)
+    extends AbstractGC[A]:
+    sto =>
     // "get"-functions return an Option
     inline def get(a: A): Option[(V, AbstractCount)] = content.get(a)
     inline def getValue(a: A): Option[V] = get(a).map(_._1)
@@ -68,9 +69,9 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
         case None                      => Delta(SmartMap(adr -> (vlu, countFor(adr))), Set.empty)
         case Some(old @ (oldV, oldC))  => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)), Set.empty)
     def update(adr: A, vlu: V): Delta = content.get(adr) match
-        case None | Some((_, CountZero))    => throw new Exception("Trying to update a non-existing address")
-        case Some((_, CountOne))            => Delta(SmartMap((adr -> (vlu, CountOne))), Set(adr))                // strong update
-        case Some((oldV, CountInf))         => Delta(SmartMap(adr -> (lat.join(oldV, vlu), CountInf)), Set(adr))  // weak update
+        case None | Some((_, CountZero)) => throw new Exception("Trying to update a non-existing address")
+        case Some((_, CountOne))         => Delta(SmartMap((adr -> (vlu, CountOne))), Set(adr)) // strong update
+        case Some((oldV, CountInf))      => Delta(SmartMap(adr -> (lat.join(oldV, vlu), CountInf)), Set(adr)) // weak update
     // join a (value, count) at a given address
     def joinAt(adr: A, vlu: V, cnt: AbstractCount): Option[LocalStore[A, V]] =
         get(adr) match
@@ -78,7 +79,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             case Some(old @ (oldV, oldC)) =>
                 val upd = (lat.join(oldV, vlu), oldC.join(cnt))
                 if upd == old then None else Some(LocalStore(content + (adr -> upd)))
-    // removing addresses from the store 
+    // removing addresses from the store
     def -(adr: A): LocalStore[A, V] = LocalStore(content - adr)
     def --(ads: Iterable[A]): LocalStore[A, V] = LocalStore(content -- ads)
     // where to enable abstract counting
@@ -89,7 +90,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
         LocalStore(content ++ d.delta)
     // composing two deltas
     // assumes that (d1 :: nxt.Delta), where nxt = this.integrate(d0)
-    def compose(d1: LocalStore[A,V]#Delta, d0: Delta): Delta =
+    def compose(d1: LocalStore[A, V]#Delta, d0: Delta): Delta =
         Delta(d0.delta ++ d1.delta, d0.updates ++ d1.updates.filter(content.contains(_)))
     // joining two deltas
     def join(d1: Delta, d2: Delta): Delta =
@@ -105,22 +106,24 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
         )
     // replaying a delta that was computed w.r.t. a GC'd store dgc
     // assumes that (dgc :: sgc.Delta), where sgc = this.collect(r) for some r
-    def replay(dgc: LocalStore[A,V]#Delta): Delta =
-        Delta(dgc.delta.map 
-                { case (adr, s@(v,c)) =>
-                    get(adr) match
-                        case None => (adr, s)
-                        case Some(_) if dgc.inStore(adr) => (adr, s)
-                        case Some((v2, c2)) => (adr, (lat.join(v2, v), c2 + c)) }, 
-              dgc.updates)
-    // abstract GC support 
-    type This = LocalStore[A,V]
+    def replay(dgc: LocalStore[A, V]#Delta): Delta =
+        Delta(
+          dgc.delta.map { case (adr, s @ (v, c)) =>
+              get(adr) match
+                  case None                        => (adr, s)
+                  case Some(_) if dgc.inStore(adr) => (adr, s)
+                  case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
+          },
+          dgc.updates
+        )
+    // abstract GC support
+    type This = LocalStore[A, V]
     def fresh = LocalStore.empty
     def move(addr: A, to: This): (This, Set[A]) =
         content.get(addr) match
             case None             => (to, Set.empty)
             case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lat.refs(v))
-    // Deltas! 
+    // Deltas!
     def emptyDelta: Delta = Delta(SmartMap.empty, Set.empty)
     case class Delta(delta: SmartMap[A, (V, AbstractCount)], updates: Set[A]) extends AbstractGC[A]:
         def --(ads: Set[A]): Delta = Delta(delta -- ads, updates -- ads)
@@ -137,11 +140,11 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
                 case Some(s @ (v, _)) => (to.copy(delta = to.delta + (addr -> s)), lat.refs(v))
 
 object LocalStore:
-    def empty[A <: Address, V](using LatticeWithAddrs[V, A], A => Boolean): LocalStore[A,V] =
+    def empty[A <: Address, V](using LatticeWithAddrs[V, A], A => Boolean): LocalStore[A, V] =
         LocalStore(SmartMap.empty)
-    def from[A <: Address, V](bds: Iterable[(A, V)])(using LatticeWithAddrs[V, A], A => Boolean): LocalStore[A,V] =
-        bds.foldLeft(empty: LocalStore[A,V]) { case (acc, (adr, vlu)) => 
-            acc.integrate(acc.extend(adr, vlu)) 
+    def from[A <: Address, V](bds: Iterable[(A, V)])(using LatticeWithAddrs[V, A], A => Boolean): LocalStore[A, V] =
+        bds.foldLeft(empty: LocalStore[A, V]) { case (acc, (adr, vlu)) =>
+            acc.integrate(acc.extend(adr, vlu))
         }
 
 //
@@ -151,15 +154,14 @@ object LocalStore:
 trait AbstractGC[A]:
     // needs to be implemented, depending on what is being GC'd
     type This
-    def fresh: This 
+    def fresh: This
     def move(addr: A, to: This): (This, Set[A])
     // implements stop-and-copy GC
     def collect(roots: Set[A]): This =
         scan(roots, roots, fresh)
     @tailrec
     private def scan(toMove: Set[A], visited: Set[A], cur: This): This =
-        if toMove.isEmpty 
-        then cur
+        if toMove.isEmpty then cur
         else
             val addr = toMove.head
             val rest = toMove.tail

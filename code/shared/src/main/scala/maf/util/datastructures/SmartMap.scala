@@ -28,9 +28,9 @@ case class SmartMap[K, V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]
     def map(f: ((K, V)) => (K, V)): SmartMap[K, V] = SmartMap.from(content.map(f)) //TODO: type can be generalized here
     // FOR TESTING PURPOSES
     private def computeHash: Int = content.map(_.hashCode).sum
-    // assert(computeHash == hashCode) <- enable to test
+// assert(computeHash == hashCode) <- enable to test
 
 object SmartMap:
     def empty[K, V]: SmartMap[K, V] = SmartMap(Map.empty, 0)
     def apply[K, V](bnd: (K, V)): SmartMap[K, V] = SmartMap(Map(bnd), bnd.hashCode)
-    def from[K, V](content: Map[K, V]): SmartMap[K,V] = content.foldLeft(empty)((acc, bnd) => acc + bnd)
+    def from[K, V](content: Map[K, V]): SmartMap[K, V] = content.foldLeft(empty)((acc, bnd) => acc + bnd)

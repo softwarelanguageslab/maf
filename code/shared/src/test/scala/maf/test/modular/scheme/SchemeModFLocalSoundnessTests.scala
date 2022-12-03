@@ -28,7 +28,7 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
         Set(
           // these time out in the analysis
           "test/R5RS/various/SICP-compiler.scm",
-          "test/R5RS/various/mceval.scm", 
+          "test/R5RS/various/mceval.scm",
           "test/R5RS/various/church-6.scm",
           "test/R5RS/various/church-2-num.scm",
           "test/R5RS/various/four-in-a-row.scm",
