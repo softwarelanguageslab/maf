@@ -22,7 +22,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     type Cll = CallComponent
     type Dep = Dependency
     type Sto = LocalStore[Adr, Val]
-    type Dlt = Delta[Adr, Val]
+    type Dlt = LocalStore[Adr, Val]#Delta
     type Cnt = AbstractCount
     type Anl = SchemeLocalIntraAnalysis
 
@@ -48,10 +48,10 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     //
 
     sealed trait Component extends Serializable:
-        def exp: Exp
-        def env: Env
-        def ctx: Ctx
-        def sto: Sto
+        val exp: Exp
+        val env: Env
+        val sto: Sto
+        val ctx: Ctx
     case object MainComponent extends Component:
         val exp = initialExp
         val env = initialEnv
@@ -59,7 +59,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val sto = initialSto
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, sto: Sto, ctx: Ctx) extends Component:
-        def exp = SchemeBody(lam.body)
+        val exp = SchemeBody(lam.body)
         override def toString = s"${lam.lambdaName}@${lam.idn} [$ctx] [${sto.content.hc}]"
 
     def initialComponent: Cmp = MainComponent
@@ -69,7 +69,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // RESULTS
     //
 
-    var results: Map[Component, Set[(Val, Dlt)]] = Map.empty 
+    // in reality, 'Any' here is `Set[(Val, cmp.sto.Delta)]` for a given key `cmp `
+    var results: Map[Component, Any] = Map.empty 
 
     case class ResultDependency(cmp: Component) extends Dependency
 
@@ -77,8 +78,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // STORE STUFF
     //
 
-    def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
-    def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
+    def extendV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.extend(adr, vlu)
+    def updateV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.update(adr, vlu)
 
     def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
@@ -93,7 +94,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             val gcs = sto.collect(rs)
             blk(anl, env, gcs, ctx).map { (v, d) =>
                 val gcd = d.collect(lattice.refs(v) ++ d.updates)
-                (v, sto.replay(gcs, gcd))
+                (v, sto.replay(gcd))
             }
 
     def withRestrictedResult(blk: A[Val]): A[Val] =
@@ -126,12 +127,12 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // ANALYSISM MONAD
     //
 
-    type A[X] = (Anl, Env, Sto, Ctx) => Set[(X, Dlt)]
+    type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx) => Set[(X, sto.Delta)]
 
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-            (_, _, sto, _) => Set((x, Delta.empty(sto)))
+            (_, _, sto, _) => Set((x, sto.emptyDelta))
         def map[X, Y](m: A[X])(f: X => Y) =
             (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d) => (f(x), d))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
@@ -150,26 +151,26 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _) => Set((eqA(sto, anl), Delta.empty(sto)))
+            (anl, _, sto, _) => Set((eqA(sto, anl), sto.emptyDelta))
         def extendSto(adr: Adr, vlu: Val) =
             (anl, _, sto, _) => Set(((), extendV(sto, adr, vlu)))
         def updateSto(adr: Adr, vlu: Val) =
             (anl, _, sto, _) => Set(((), updateV(sto, adr, vlu)))
         def lookupSto(adr: Adr) =
-            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), Delta.empty(sto))))(inject)
+            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), sto.emptyDelta)))(inject)
         // CTX STUFF
         def getCtx =
-            (_, _, sto, ctx) => Set((ctx, Delta.empty(sto)))
+            (_, _, sto, ctx) => Set((ctx, sto.emptyDelta))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
             (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
         // ENV STUFF
         def getEnv =
-            (_, env, sto, _) => Set((env, Delta.empty(sto)))
+            (_, env, sto, _) => Set((env, sto.emptyDelta))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, sto, ctx) => anl.call(CallComponent(lam, env, sto, ctx))
+            (anl, env, sto, ctx) => anl.call(lam, env, sto, ctx)
 
     //
     // THE INTRA-ANALYSIS
@@ -182,10 +183,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         // local state
         var results = inter.results
 
-        def call(cmp: Cmp): Set[(Val, Dlt)] =
+        def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx): Set[(Val, sto.Delta)] =
+            val cmp = CallComponent(lam, env, sto, ctx)
             spawn(cmp)
             register(ResultDependency(cmp))
-            results.getOrElse(cmp, Set.empty)
+            results.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.Delta)]]
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
             val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)

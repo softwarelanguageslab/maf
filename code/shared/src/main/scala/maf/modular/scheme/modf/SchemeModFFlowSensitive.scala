@@ -10,7 +10,6 @@ import maf.core.Lattice
 import maf.core.LocalStore
 import maf.language.scheme.SchemeLambdaExp
 import maf.core.Environment
-import maf.core.Delta
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 import maf.modular.ModAnalysis
 import maf.core.Position.Position

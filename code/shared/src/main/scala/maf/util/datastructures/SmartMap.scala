@@ -10,13 +10,13 @@ case class SmartMap[K, V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]
     def get(adr: K): Option[V] = content.get(adr)
     def getOrElse(adr: K, els: => V): V = content.getOrElse(adr, els)
     def +(bnd: (K, V)) =
-        content.get(bnd._1) match
+        get(bnd._1) match
             case None      => SmartMap(content + bnd, hc + bnd.hashCode)
             case Some(old) => SmartMap(content + bnd, hc - (bnd._1, old).hashCode + bnd.hashCode)
     def ++(bds: Iterable[(K, V)]) =
         bds.foldLeft(this)((acc, bnd) => acc + bnd)
     def -(key: K) =
-        content.get(key) match
+        get(key) match
             case None      => this
             case Some(vlu) => SmartMap(content - key, hc - (key, vlu).hashCode)
     def --(kys: Iterable[K]) =
@@ -25,10 +25,12 @@ case class SmartMap[K, V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]
     def contains(key: K) = content.contains(key)
     def keys: Iterable[K] = content.keys
     def keySet: Set[K] = content.keySet
+    def map(f: ((K, V)) => (K, V)): SmartMap[K, V] = SmartMap.from(content.map(f)) //TODO: type can be generalized here
     // FOR TESTING PURPOSES
     private def computeHash: Int = content.map(_.hashCode).sum
-// assert(computeHash == hashCode) <- enable to test
+    // assert(computeHash == hashCode) <- enable to test
 
 object SmartMap:
     def empty[K, V]: SmartMap[K, V] = SmartMap(Map.empty, 0)
     def apply[K, V](bnd: (K, V)): SmartMap[K, V] = SmartMap(Map(bnd), bnd.hashCode)
+    def from[K, V](content: Map[K, V]): SmartMap[K,V] = content.foldLeft(empty)((acc, bnd) => acc + bnd)
