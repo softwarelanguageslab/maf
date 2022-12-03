@@ -261,7 +261,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
             register(AddrDependency(a)) >>>
                 get.map(lens.getSto).flatMap(_.get(a).map(unit).getOrElse(mbottom))
 
-        def send(to: ActorRef, m: Msg): A[Unit] =
+        def send(to: ActorRef, m: Msg, context: MessageContext): A[Unit] =
             val receiver = actorIdComponent(to.tid)
             // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
             //
@@ -269,7 +269,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 _ <- get.map(
                   lens.modify(lens.mailboxes)(mbs =>
                       mbs + (receiver ->
-                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m, emptyContext))
+                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m, context))
                   )
                 ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) }
                 self <- selfCmp
@@ -277,14 +277,14 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 _ <- get.map(st => lens.trackSend(st, self, receiver, getMessageTag(m))) >>= put
             yield ()
 
-        def ask(to: ActorRef, m: Msg): A[Value] =
+        def ask(to: ActorRef, m: Msg, context: MessageContext): A[Value] =
             for
                 // create the empheral child
                 self <- selfActorCmp
                 empheralChild <- allocateEmpheralChild(self, m)
                 // send the message to "to"
                 nm <- mkMessage(getMessageTag(m), lattice.actor(ASchemeValues.Actor(None, empheralChild)) :: getMessageArguments(m))
-                _ <- send(to, nm)
+                _ <- send(to, nm, context)
                 // read the result from the mailbox
                 _ <- register(MailboxDep(empheralChild))
                 mb <- get.map(lens.getMailboxes).map(_.get(empheralChild).getOrElse(emptyMailbox))
@@ -300,7 +300,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
         def mailbox: A[Mailbox] =
             get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(enclosing).map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
 
-        def receive: A[Msg] =
+        def receive: A[(Msg, MessageContext)] =
             for
                 // register receive
                 cmp <- selfCmp map enclosing
@@ -312,7 +312,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 // save the resulting mailbox
                 _ <- get.map(lens.modify(lens.mailboxes)(_ + (cmp -> mb1))) >>= put
             // return the dequeued message
-            yield msg._1
+            yield msg
 
     type Inter
     type Intra = State

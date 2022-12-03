@@ -123,14 +123,19 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     val outerClassTag: ClassTag[Component] = summon[ClassTag[Component]]
 
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
-        case ActorAnalysisComponent(enclosingActor, _, _)              => enclosingActor
-        case e: EmpheralChildComponent[Ctx @unchecked, Msg @unchecked] => e
-        case _                                                         => throw new Exception(s"unknown actor id $a")
+        case ActorAnalysisComponent(enclosingActor: SchemeModActorComponent[Ctx], _, _) => enclosingActor
+        case e: EmpheralChildComponent[Ctx @unchecked, Msg @unchecked]                  => e
+        case _                                                                          => throw new Exception(s"unknown actor id $a")
 
     protected def enclosing(cmp: Component): Component = cmp match
         case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
 
-    type Context = Unit
+    abstract class Context
+    case object EmptyContext extends Context
+    case class MsgCtxContext(mCtx: MessageContext) extends Context
+    // TODO: remove since implicit conversions should not be necessary
+    implicit def toContextComponent(cmp: SchemeModActorComponent[Unit]): SchemeModActorComponent[Context] = cmp.replaceContext(EmptyContext)
+    //type Context = Unit
     override type Component = SchemeModActorComponent[Ctx]
 
     import maf.core.SetMonad.*
@@ -156,7 +161,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     //////////////////////////////////////////////////
 
     def initialComponent: Component =
-        ActorAnalysisComponent(MainActor, None, Some(()))
+        ActorAnalysisComponent(MainActor, None, Some(EmptyContext))
 
     //
     // Body
@@ -195,9 +200,9 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         case ActorAnalysisComponent(_, _, ctx) =>
             ctx.get
 
-    override def initialCtx: Ctx = ()
+    override def initialCtx: Ctx = EmptyContext
 
-    override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ()
+    override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = EmptyContext
 
     //
     // Env
@@ -289,7 +294,6 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             _ <- get.map(lens.modify(lens.mailboxes)(_ => interLens.get(inter).mailboxes)) >>= put
             // then evalute the expression
             v <- eval(body(cmp))
-            _ = println(s"result of $cmp is $v")
             // write the value to the global store at its return address
             _ <- updateSto(ReturnAddr(cmp, Identity.none), v)
         yield v
@@ -409,7 +413,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             for
                 ctx <- getCtx
                 env <- getEnv
-            yield ActorAnalysisComponent(Actor(initialBehavior, env, ()), None, Some(ctx))
+            yield ActorAnalysisComponent(Actor(initialBehavior, env, EmptyContext), None, Some(ctx))
 
         def allocateEmpheralChild(component: Component, m: Msg): A[Component] =
             unit(EmpheralChildComponent[Ctx, Msg](component, m))

@@ -117,8 +117,10 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
         IntraMirrorState(intra)
 
 class SimpleModActorWithMirrors(prog: SchemeExp) extends SchemeModActorSemantics(prog), ModActorWithMirrors:
-    type MessageContext = Unit
-    def emptyContext: MessageContext = ()
+    def messageCtx(mCtx: MessageContext)(ctx: Ctx): Ctx = MsgCtxContext(mCtx)
+
+    override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ctx
     implicit override val analysisM: GlobalMetaSemanticsM = new GlobalMetaSemanticsM()
     def reifyMessage(m: Msg, exs: List[SchemeExp]): ASchemeValues.Message[Value] = m.copy(exs = exs)
     def abstractMessage(m: Msg): ASchemeValues.Message[Value] = m
+    def errors: Set[maf.core.Error] = _result.nn.inner.errors
