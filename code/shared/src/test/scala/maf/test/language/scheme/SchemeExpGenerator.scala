@@ -176,7 +176,7 @@ object SchemeExpGenerator:
         case e => throw new Exception(s"unsupported expression: $e")
     }
 
-
+/*
 abstract class SchemeExpGenSpecification extends AnyPropSpec with Checkers:
     // by default, check each property for at least 100 instances
     implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
@@ -207,3 +207,4 @@ class Testje extends SchemeExpGenSpecification:
             p
         }
     checkAll(laws)
+*/
