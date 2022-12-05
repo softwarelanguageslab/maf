@@ -35,24 +35,25 @@ object SchemeExpGenerator:
                                                   .filterNot(ctx.scope.contains)
 
     def exp(typ: Typ = Typ.Num, ctx: Context = emptyCtx): Gen[Exp] = Gen.sized { depth =>
+        println(s"Calling exp with depth $depth")
         def toggle(b: Boolean): Int = if b then 1 else 0
         val app = depth > 0
         val let = depth > 0
         val ltr = depth > 0
         val iff = depth > 0
         val lam = typ.isInstanceOf[Typ.Fun]
-        val num = typ == Typ.Num 
+        val num = typ == Typ.Num
         val bln = typ == Typ.Bool
         val vrb = ctx.scope.find((_, t) => t == typ).isDefined 
         Gen.frequency(
-            toggle(app) -> appExp(typ, ctx), 
-            toggle(let) -> letExp(typ, ctx), 
-            toggle(ltr) -> letrecExp(typ, ctx),
-            toggle(iff) -> iffExp(typ, ctx),
+            2 * toggle(app) -> Gen.lzy(appExp(typ, ctx)), 
+            2 * toggle(let) -> Gen.lzy(letExp(typ, ctx)), 
+            2 * toggle(ltr) -> Gen.lzy(letrecExp(typ, ctx)),
+            2 * toggle(iff) -> Gen.lzy(iffExp(typ, ctx)),
             toggle(lam) -> Gen.lzy(lambdaExp(typ.asInstanceOf[Typ.Fun], ctx)),
-            toggle(num) -> numExp, 
-            toggle(bln) -> blnExp,
-            toggle(vrb) -> varExp(typ, ctx)
+            toggle(num) -> Gen.lzy(numExp), 
+            toggle(bln) -> Gen.lzy(blnExp),
+            toggle(vrb) -> Gen.lzy(varExp(typ, ctx))
         )
     }
 
@@ -68,10 +69,9 @@ object SchemeExpGenerator:
         Gen.oneOf(true, false).map(b => SchemeValue(sexp.Value.Boolean(b), noId))
 
     def varExp(typ: Typ, ctx: Context): Gen[SchemeVar] = 
-        val vrs = ctx.scope.filter((_, t) => t == typ)
-        if vrs.isEmpty
-        then Gen.fail
-        else Gen.oneOf(ctx.scope).map((nam, _) => SchemeVar(Identifier(nam, noId)))
+        Gen.oneOf(ctx.scope)
+           .filter((_, t) => t == typ)
+           .map((nam, _) => SchemeVar(Identifier(nam, noId)))
 
     def lambdaExp(funT: Typ.Fun, ctx: Context): Gen[SchemeLambda] =
         val Typ.Fun(argT, retT) = funT
