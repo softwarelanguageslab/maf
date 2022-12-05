@@ -184,10 +184,18 @@ class IncrementalModFType extends IncrementalModXSoundnessTests with SequentialI
           "test/changes/scheme/peval.scm"
         )(b) || IncrementalSchemeBenchmarkPrograms.sequentialGenerated(b)
 
-class IncrementalModFTypeSlowWI extends IncrementalModFType with STwithoutCIwithWI
-class IncrementalModFTypeSlowCI extends IncrementalModFType with STwithoutWIWithCI
-class IncrementalModFTypeSlowNoCIWI extends IncrementalModFType with STwithoutCIWI
-class IncrementalModFTypeSlowCIWI extends IncrementalModFType with STwithCIWI
+class IncrementalModFTypeSlowWI_1 extends IncrementalModFType with STwithoutCIwithWI with BenchmarkPartition(1, 3)
+class IncrementalModFTypeSlowWI_2 extends IncrementalModFType with STwithoutCIwithWI with BenchmarkPartition(2, 3)
+class IncrementalModFTypeSlowWI_3 extends IncrementalModFType with STwithoutCIwithWI with BenchmarkPartition(3, 3)
+class IncrementalModFTypeSlowCI_1 extends IncrementalModFType with STwithoutWIWithCI with BenchmarkPartition(1, 3)
+class IncrementalModFTypeSlowCI_2 extends IncrementalModFType with STwithoutWIWithCI with BenchmarkPartition(2, 3)
+class IncrementalModFTypeSlowCI_3 extends IncrementalModFType with STwithoutWIWithCI with BenchmarkPartition(3, 3)
+class IncrementalModFTypeSlowNoCIWI_1 extends IncrementalModFType with STwithoutCIWI with BenchmarkPartition(1, 3)
+class IncrementalModFTypeSlowNoCIWI_2 extends IncrementalModFType with STwithoutCIWI with BenchmarkPartition(2, 3)
+class IncrementalModFTypeSlowNoCIWI_3 extends IncrementalModFType with STwithoutCIWI with BenchmarkPartition(3, 3)
+class IncrementalModFTypeSlowCIWI_1 extends IncrementalModFType with STwithCIWI with BenchmarkPartition(1, 3)
+class IncrementalModFTypeSlowCIWI_2 extends IncrementalModFType with STwithCIWI with BenchmarkPartition(2, 3)
+class IncrementalModFTypeSlowCIWI_3 extends IncrementalModFType with STwithCIWI with BenchmarkPartition(3, 3)
 
 /** Implements soundness tests for an incremental ModF CP analysis. */
 trait IncrementalModFCP extends IncrementalModFType:
@@ -195,10 +203,18 @@ trait IncrementalModFCP extends IncrementalModFType:
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalSchemeModFAnalysisCPLattice(b, ci_di_wi)
     override def isSlow(b: Benchmark): Boolean = true
 
-class IncrementalModFCPSlowWI extends IncrementalModFCP with STwithoutCIwithWI
-class IncrementalModFCPSlowCI extends IncrementalModFCP with STwithoutWIWithCI
-class IncrementalModFCPSlowNoCIWI extends IncrementalModFCP with STwithoutCIWI
-class IncrementalModFCPSlowCIWI extends IncrementalModFCP with STwithCIWI
+class IncrementalModFCPSlowWI_1 extends IncrementalModFCP with STwithoutCIwithWI with BenchmarkPartition(1, 3)
+class IncrementalModFCPSlowWI_2 extends IncrementalModFCP with STwithoutCIwithWI with BenchmarkPartition(2, 3)
+class IncrementalModFCPSlowWI_3 extends IncrementalModFCP with STwithoutCIwithWI with BenchmarkPartition(3, 3)
+class IncrementalModFCPSlowCI_1 extends IncrementalModFCP with STwithoutWIWithCI with BenchmarkPartition(1, 3)
+class IncrementalModFCPSlowCI_2 extends IncrementalModFCP with STwithoutWIWithCI with BenchmarkPartition(2, 3)
+class IncrementalModFCPSlowCI_3 extends IncrementalModFCP with STwithoutWIWithCI with BenchmarkPartition(3, 3)
+class IncrementalModFCPSlowNoCIWI_1 extends IncrementalModFCP with STwithoutCIWI with BenchmarkPartition(1, 3)
+class IncrementalModFCPSlowNoCIWI_2 extends IncrementalModFCP with STwithoutCIWI with BenchmarkPartition(2, 3)
+class IncrementalModFCPSlowNoCIWI_3 extends IncrementalModFCP with STwithoutCIWI with BenchmarkPartition(3, 3)
+class IncrementalModFCPSlowCIWI_1 extends IncrementalModFCP with STwithCIWI with BenchmarkPartition(1, 3)
+class IncrementalModFCPSlowCIWI_2 extends IncrementalModFCP with STwithCIWI with BenchmarkPartition(2, 3)
+class IncrementalModFCPSlowCIWI_3 extends IncrementalModFCP with STwithCIWI with BenchmarkPartition(3, 3)
 
 /** Implements soundness tests for an incremental ModConc analysis. */
 class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with ConcurrentIncrementalBenchmarks with noCY:
@@ -215,10 +231,18 @@ class IncrementalSmallStepModConcType extends IncrementalModXSoundnessTests with
           "test/changes/cscheme/threads/stm.scm"
         )(b)
 
-class IncrementalSmallStepModConcTypeSlowWI extends IncrementalSmallStepModConcType with STwithoutCIwithWI
-class IncrementalSmallStepModConcTypeSlowCI extends IncrementalSmallStepModConcType with STwithoutWIWithCI
-class IncrementalSmallStepModConcTypeSlowNoCIWI extends IncrementalSmallStepModConcType with STwithoutCIWI
-class IncrementalSmallStepModConcTypeSlowCIWI extends IncrementalSmallStepModConcType with STwithCIWI
+class IncrementalSmallStepModConcTypeSlowWI_1 extends IncrementalSmallStepModConcType with STwithoutCIwithWI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcTypeSlowWI_2 extends IncrementalSmallStepModConcType with STwithoutCIwithWI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcTypeSlowWI_3 extends IncrementalSmallStepModConcType with STwithoutCIwithWI with BenchmarkPartition(3, 3)
+class IncrementalSmallStepModConcTypeSlowCI_1 extends IncrementalSmallStepModConcType with STwithoutWIWithCI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcTypeSlowCI_2 extends IncrementalSmallStepModConcType with STwithoutWIWithCI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcTypeSlowCI_3 extends IncrementalSmallStepModConcType with STwithoutWIWithCI with BenchmarkPartition(3, 3)
+class IncrementalSmallStepModConcTypeSlowNoCIWI_1 extends IncrementalSmallStepModConcType with STwithoutCIWI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcTypeSlowNoCIWI_2 extends IncrementalSmallStepModConcType with STwithoutCIWI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcTypeSlowNoCIWI_3 extends IncrementalSmallStepModConcType with STwithoutCIWI with BenchmarkPartition(3, 3)
+class IncrementalSmallStepModConcTypeSlowCIWI_1 extends IncrementalSmallStepModConcType with STwithCIWI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcTypeSlowCIWI_2 extends IncrementalSmallStepModConcType with STwithCIWI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcTypeSlowCIWI_3 extends IncrementalSmallStepModConcType with STwithCIWI with BenchmarkPartition(3, 3)
 
 /** Implements soundness tests for an incremental ModConc analysis. */
 trait IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with noCY:
@@ -226,7 +250,15 @@ trait IncrementalSmallStepModConcCP extends IncrementalSmallStepModConcType with
     override def analysis(b: SchemeExp): IncrementalAnalysis = new IncrementalModConcAnalysisCPLattice(b, ci_di_wi)
     override def isSlow(b: Benchmark): Boolean = true
 
-class IncrementalSmallStepModConcCPSlowWI extends IncrementalSmallStepModConcCP with STwithoutCIwithWI
-class IncrementalSmallStepModConcCPSlowCI extends IncrementalSmallStepModConcCP with STwithoutWIWithCI
-class IncrementalSmallStepModConcCPSlowNoCIWI extends IncrementalSmallStepModConcCP with STwithoutCIWI
-class IncrementalSmallStepModConcCPSlowCIWI extends IncrementalSmallStepModConcCP with STwithCIWI
+class IncrementalSmallStepModConcCPSlowWI_1 extends IncrementalSmallStepModConcCP with STwithoutCIwithWI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcCPSlowWI_2 extends IncrementalSmallStepModConcCP with STwithoutCIwithWI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcCPSlowWI_3 extends IncrementalSmallStepModConcCP with STwithoutCIwithWI with BenchmarkPartition(3, 3)
+class IncrementalSmallStepModConcCPSlowCI_1 extends IncrementalSmallStepModConcCP with STwithoutWIWithCI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcCPSlowCI_2 extends IncrementalSmallStepModConcCP with STwithoutWIWithCI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcCPSlowCI_3 extends IncrementalSmallStepModConcCP with STwithoutWIWithCI with BenchmarkPartition(3, 3)
+class IncrementalSmallStepModConcCPSlowNoCIWI_1 extends IncrementalSmallStepModConcCP with STwithoutCIWI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcCPSlowNoCIWI_2 extends IncrementalSmallStepModConcCP with STwithoutCIWI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcCPSlowNoCIWI_3 extends IncrementalSmallStepModConcCP with STwithoutCIWI with BenchmarkPartition(3, 3)
+class IncrementalSmallStepModConcCPSlowCIWI_1 extends IncrementalSmallStepModConcCP with STwithCIWI with BenchmarkPartition(1, 3)
+class IncrementalSmallStepModConcCPSlowCIWI_2 extends IncrementalSmallStepModConcCP with STwithCIWI with BenchmarkPartition(2, 3)
+class IncrementalSmallStepModConcCPSlowCIWI_3 extends IncrementalSmallStepModConcCP with STwithCIWI with BenchmarkPartition(3, 3)

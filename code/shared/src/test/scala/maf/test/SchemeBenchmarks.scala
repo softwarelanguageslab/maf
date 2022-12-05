@@ -33,6 +33,14 @@ trait ConcurrentIncrementalBenchmarks extends SchemeBenchmarkTests:
 trait SequentialIncrementalBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, IncrementalSchemeBenchmarkPrograms.sequential)
 
+trait BenchmarkPartition(part: Int, parts: Int) extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] =
+        val all = super.benchmarks
+        val partSize: Int = Math.ceil(all.size / parts).toInt
+        val lower = (part - 1) * partSize
+        val upper = part * partSize
+        benchmarks.toList.sorted.slice(lower, upper).toSet
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 trait ContractBenchmarks extends maf.test.SchemeBenchmarkTests:
