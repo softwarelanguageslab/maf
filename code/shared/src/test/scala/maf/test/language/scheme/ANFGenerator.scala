@@ -4,6 +4,7 @@ import org.scalacheck.*
 import org.scalacheck.Prop.{forAll, propBoolean}
 import org.scalatest.propspec._
 import org.scalatestplus.scalacheck.Checkers
+import org.scalacheck.Shrink.*
 
 import maf.core.Identifier
 import maf.language.scheme.*
@@ -21,6 +22,8 @@ object ANFGenerator:
     lazy val emptyCtx: Context = Context(Set.empty)
 
     final private lazy val noId = Identity.none
+
+    /** GENERATION **/ 
 
     private def fresh(ctx: Context): Gen[Id] = Gen.choose('a','z')
                                                   .map(_.toString)
@@ -54,6 +57,42 @@ object ANFGenerator:
             arg <- aexp(ctx)
         yield SchemeFuncall(fun, List(arg), noId)
 
+    /** SHRINKING **/
+
+    implicit def shrinkExp: Shrink[CExp] = Shrink[CExp] {
+        case SchemeLet(List((nam, rhs: CExp @unchecked)), 
+                       List(bdy: CExp @unchecked), 
+                       idn) 
+            => 
+                // shrink the rhs ...
+                (for rhsS <- shrink(rhs) yield SchemeLet(List((nam, rhsS)), List(bdy), idn))
+                ++
+                // ... or shrink the body ...
+                (for bdyS <- shrink(bdy) yield SchemeLet(List((nam, rhs)), List(bdyS), idn))
+                ++
+                // ... or replace the let with either the rhs or the body
+                Stream(rhs, bdy)
+        case SchemeFuncall(fun: AExp @unchecked, 
+                           List(arg: AExp @unchecked), 
+                           idn) 
+            => 
+                // shrink the operator ...
+                (for funS <- shrink(fun) yield SchemeFuncall(funS, List(arg), idn))
+                ++
+                // ... or shrink the operand ...
+                (for argS <- shrink(arg) yield SchemeFuncall(fun, List(argS), idn))
+                ++
+                // ... or replace the call with either the operator or the operand
+                Stream(fun, arg)
+        case aexp: AExp => shrinkAExp.shrink(aexp)
+    }
+
+    implicit def shrinkAExp: Shrink[AExp] = Shrink[AExp] {
+        case SchemeLambda(nam, prs, List(bdy: CExp @unchecked), ann, idn) => 
+            for bdyS <- shrink(bdy) yield SchemeLambda(nam, prs, List(bdyS), ann, idn)
+        case SchemeVar(_) => Stream.empty
+    }
+
 /** TODO[medium] tests for scheme lattice */
 
 abstract class ANFGenSpecification extends AnyPropSpec with Checkers:
@@ -70,12 +109,11 @@ abstract class ANFGenSpecification extends AnyPropSpec with Checkers:
 class Testje extends ANFGenSpecification:
 
     import ANFGenerator.*
-
-    implicit lazy val anyExp: Arbitrary[SchemeExp] = Arbitrary(exp())
+    given Arbitrary[CExp] = Arbitrary(exp())
 
     val laws: Properties =
         newProperties("ANFLaws") { p =>
-            p.property("foo") = { println(exp().retryUntil(_ => true).sample) ; true }
+            p.property("foo") = forAll { (p: CExp) => false }
             p
         }
     checkAll(laws)
