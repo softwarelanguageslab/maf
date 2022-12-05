@@ -15,11 +15,12 @@ import maf.language.sexp
 object SchemeExpGenerator:
 
     type Id = String
-    type Exp = SchemeLet | SchemeLetrec | SchemeFuncall | SchemeLambda | SchemeVar | SchemeValue
+    type Exp = SchemeFuncall | SchemeLambda | SchemeVar | SchemeLet | SchemeLetrec | SchemeIf | SchemeValue 
 
     enum Typ:
-        case Fun(a: Typ, r: Typ)
         case Num
+        case Bool
+        case Fun(a: Typ, r: Typ)
 
     case class Context(scope: Map[Id, Typ]):
         def extendScope(nam: Id, typ: Typ) = Context(scope + (nam -> typ))
@@ -38,15 +39,19 @@ object SchemeExpGenerator:
         val app = depth > 0
         val let = depth > 0
         val ltr = depth > 0
+        val iff = depth > 0
         val lam = typ.isInstanceOf[Typ.Fun]
         val num = typ == Typ.Num 
+        val bln = typ == Typ.Bool
         val vrb = ctx.scope.find((_, t) => t == typ).isDefined 
         Gen.frequency(
             toggle(app) -> appExp(typ, ctx), 
             toggle(let) -> letExp(typ, ctx), 
             toggle(ltr) -> letrecExp(typ, ctx),
+            toggle(iff) -> iffExp(typ, ctx),
             toggle(lam) -> Gen.lzy(lambdaExp(typ.asInstanceOf[Typ.Fun], ctx)),
-            toggle(num) -> numExp(ctx), 
+            toggle(num) -> numExp, 
+            toggle(bln) -> blnExp,
             toggle(vrb) -> varExp(typ, ctx)
         )
     }
@@ -56,8 +61,11 @@ object SchemeExpGenerator:
 
     private def subExp(typ: Typ, ctx: Context) = sub(exp(typ, ctx))
 
-    def numExp(ctx: Context): Gen[SchemeValue] = 
+    def numExp: Gen[SchemeValue] = 
         Gen.chooseNum(0, 100).map(n => SchemeValue(sexp.Value.Integer(n), noId))
+    
+    def blnExp: Gen[SchemeValue] = 
+        Gen.oneOf(true, false).map(b => SchemeValue(sexp.Value.Boolean(b), noId))
 
     def varExp(typ: Typ, ctx: Context): Gen[SchemeVar] = 
         val vrs = ctx.scope.filter((_, t) => t == typ)
@@ -89,6 +97,13 @@ object SchemeExpGenerator:
             rhs <- subExp(typ, ctx)
             bdy <- subExp(ret, ctx.extendScope(nam, typ))
         yield SchemeLet(List((Identifier(nam, noId), rhs)), List(bdy), noId)
+
+    def iffExp(ret: Typ, ctx: Context): Gen[SchemeIf] =
+        for
+            prd <- subExp(Typ.Bool, ctx)
+            thn <- subExp(ret, ctx)
+            els <- subExp(ret, ctx)
+        yield SchemeIf(prd, thn, els, noId)
 
     def letrecExp(ret: Typ, ctx: Context): Gen[SchemeLetrec] = 
         for 
@@ -148,6 +163,16 @@ object SchemeExpGenerator:
         case SchemeVar(_) => 
             // try replacing the variable with a number
             Stream(SchemeValue(sexp.Value.Integer(42), noId))
+        case SchemeValue(_, _) =>
+            Stream.empty
+        case SchemeIf(prd, thn: Exp, els: Exp, idn) =>
+            (for prdS <- shrink(prd) yield SchemeIf(prdS, thn, els, idn))
+            ++
+            (for thnS <- shrink(thn) yield SchemeIf(prd, thnS, els, idn))
+            ++
+            (for elsS <- shrink(els) yield SchemeIf(prd, thn, elsS, idn))
+            ++
+            Stream(thn, els)
         case e => throw new Exception(s"unsupported expression: $e")
     }
 
