@@ -55,6 +55,10 @@ object Monad:
         def >>=[Y](f: X => M[Y]): M[Y] = flatMap(f)
         def >>>[Y](m: => M[Y]): M[Y] = flatMap(_ => m)
 
+    extension [M[_]: Monad, X, Y, Z](v: (M[X], M[Y]))
+        def mapN(f: (X, Y) => Z): M[Z] =
+            v._1.flatMap(x => v._2.flatMap(y => Monad[M].unit(f(x, y))))
+
     // Utility function for logging in monadic contexts
     def trace[M[_], X: Show](tag: String)(x: X)(using Monad[M])(using logger: Logger.Logger): M[X] =
         LogOps.log(s"$tag ${Show[X].show(x)}")

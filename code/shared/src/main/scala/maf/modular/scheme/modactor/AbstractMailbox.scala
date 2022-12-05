@@ -96,8 +96,8 @@ object PowersetMailbox:
 trait SimpleMessageMailbox extends SchemeModActorSemantics:
     type Msg = ASchemeValues.Message[Value]
     def mkMessage(tpy: String, arguments: List[Value]): Msg = Message(tpy, arguments)
-    def getTag(msg: Msg): String = msg.tag
-    def getArgs(msg: Msg): List[Value] = msg.vlus
+    def getTag(msg: Msg): String = msg._tag
+    def getArgs(msg: Msg): List[Value] = msg._vlus
 
 /** An analysis with a powerset mailbox */
 trait PowersetMailboxAnalysis extends SchemeModActorSemantics:

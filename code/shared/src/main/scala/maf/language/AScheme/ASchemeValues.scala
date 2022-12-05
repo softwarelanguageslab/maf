@@ -2,6 +2,8 @@ package maf.language.AScheme
 
 import maf.lattice.interfaces.*
 import maf.util.SmartHash
+import maf.core.Monad.*
+import maf.core.Monad
 import maf.lattice.interfaces.BoolLattice
 import maf.language.scheme.ASchemeActor
 import maf.language.scheme.*
@@ -11,6 +13,9 @@ import maf.core.Lattice
 import maf.core.LatticeTopUndefined
 import maf.util.datastructures.MapOps.*
 import maf.language.scheme.lattices.SchemeLattice
+import maf.language.scheme.primitives.SchemeLatticePrimitives
+import maf.language.scheme.primitives.SchemePrimM
+import maf.core.Identity
 
 object ASchemeValues:
     sealed trait ASchemeValue
@@ -85,41 +90,53 @@ object ASchemeValues:
      */
     case class ActorWaitCompleteFuture(tid: AID) extends Future
 
+    sealed trait AbstractMessage[L]:
+        def tag[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[L]
+        def vlus[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[L]
+        def toMetaMessage[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[MetaMessage[L]] =
+            (tag, vlus) mapN MetaMessage.apply
+
     /** A representation for messages */
-    case class Message[Value](tag: String, vlus: List[Value], exs: List[SchemeExp] = List()) extends ASchemeValue:
+    case class Message[Value](_tag: String, _vlus: List[Value], _exs: List[SchemeExp] = List()) extends ASchemeValue, AbstractMessage[Value]:
         def mapValues[Y](f: Value => Y): Message[Y] =
-            this.copy(vlus = vlus.map(f))
+            this.copy(_vlus = _vlus.map(f))
+
+        def tag[M[_]](using lat: SchemeLattice[Value, Address], primM: SchemePrimM[M, Address, Value]): M[Value] =
+            primM.unit(lat.symbol(_tag))
+
+        def vlus[M[_]](using lat: SchemeLattice[Value, Address], primM: SchemePrimM[M, Address, Value]): M[Value] =
+            primM.allocList(_exs, _vlus)
+
+    /**
+     * A message produced by the meta-layer. It contains abstract values which will be used at the base level to deliver the message in the correct
+     * mailbox.
+     *
+     * @param tag
+     *   the tag of the message as an abstract value
+     * @param vlus
+     *   the possible values in the payload of the message, should be a Scheme list.
+     */
+    case class MetaMessage[L](_tag: L, _vlus: L) extends ASchemeValue, AbstractMessage[L]:
+        def car[M[_]](primitives: SchemeLatticePrimitives[L, Address])(v: L)(using SchemePrimM[M, Address, L]): M[L] =
+            primitives.PrimitiveDefs.`car`.call(SchemeVar(Identifier("car", Identity.none)), List(v))
+
+        def cdr[M[_]](primitives: SchemeLatticePrimitives[L, Address])(v: L)(using SchemePrimM[M, Address, L]): M[L] =
+            primitives.PrimitiveDefs.`car`.call(SchemeVar(Identifier("cdr", Identity.none)), List(v))
+
+        /** Take n elements from the payload */
+        def take[M[_]](primitives: SchemeLatticePrimitives[L, Address])(n: Int)(v: L)(using m: SchemePrimM[M, Address, L]): M[List[L]] =
+            if n == 0 then m.unit(List())
+            else
+                for
+                    head <- car(primitives)(v)
+                    tail <- cdr(primitives)(v)
+                    result <- take(primitives)(n - 1)(tail).map(head :: _)
+                yield result
+
+        def tag[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[L] = Monad[M].unit(_tag)
+        def vlus[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[L] = Monad[M].unit(_vlus)
+        override def toMetaMessage[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[MetaMessage[L]] = Monad[M].unit(this)
 
     object Message:
         given showMessage[Value]: Show[Message[Value]] with
             def show(m: Message[Value]) = m.toString
-
-        /**
-         * A lattice implementation for a set of messages (i.e. a bounded powerset based mailbox).
-         *
-         * The join of these mailboxes proceeds as follows:
-         *   - each message with the same tag gets joined together
-         *   - a message is joined by joining the values of the arguments together
-         *
-         * Therefore, in the powerset mailbox abstraction, order and multiplicity of messages is not preserved.
-         */
-        given messageSetLattice[Value: Lattice]: Lattice[Set[Message[Value]]] with
-            type L = Set[Message[Value]]
-            def bottom: L = Set()
-            def top: L = throw LatticeTopUndefined
-            def join(x: L, y: => L): L =
-                (x ++ y)
-                    // collect all messages with the same tag and arity in `x`
-                    .groupBy(msg => (msg.tag, msg.vlus.size))
-                    // join all the matching arguments together
-                    .map { case ((tag, arity), msgs) =>
-                        val ags = msgs.map(_.vlus).reduce((lastVlus, vlus) => lastVlus.zip(vlus).map { case (a, b) => Lattice[Value].join(a, b) })
-                        Message(tag, ags)
-
-                    }
-                    .toSet
-
-            def subsumes(x: L, y: => L): Boolean =
-                y.subsetOf(x)
-            def eql[B: BoolLattice](x: L, y: L): B = ??? // TODO: implement
-            def show(x: L): String = x.toString

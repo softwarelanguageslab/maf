@@ -25,10 +25,16 @@ trait SchemeAllocM[M[_], A] extends Monad[M]:
 
 trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with MonadError[M, Error] with SchemeAllocM[M, A] with StoreM[M, A, V]:
     // for convenience
+    implicit private def self: Monad[M] = this
     def allocVal(exp: SchemeExp, vlu: V): M[A] =
         flatMap(allocPtr(exp))(adr => map(extendSto(adr, vlu))(_ => adr))
     def deref[X: Lattice](x: Set[A])(f: (A, V) => M[X]): M[X] =
         mfoldMap(x)(a => flatMap(lookupSto(a))(v => f(a, v)))
+    def allocList(exs: List[SchemeExp], vlus: List[V])(using lat: SchemeLattice[V, A]): M[V] =
+        exs.zip(vlus).foldRightM(lat.nil) { case ((ex, vlu), rest) =>
+            allocVal(ex, lat.cons(vlu, rest)).map(lat.pointer)
+        }
+
     // exotic -- not so important if not implemented yet
     def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
     def currentThread: M[TID] = throw new Exception("Not supported")

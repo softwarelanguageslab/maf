@@ -260,13 +260,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
             val structName: String = "message"
             def get(v: Value) = nondets(lattice.getMessages(v).map(unit))
             def fields = Map(
-              "tag" -> lift(m => lattice.symbol(m.tag)),
-              "arguments" -> { message =>
-                  allocLst(message.exs.zip(message.vlus))
-              },
-              "payload" -> { message =>
-                  allocLst(message.exs.zip(message.vlus))
-              }
+              "tag" -> { m => m.tag },
+              "arguments" -> { (message: Message[Value]) => message.toMetaMessage.flatMap(_.vlus) },
+              "payload" -> { message => message.toMetaMessage.flatMap(_.vlus) }
             )
 
     /**
