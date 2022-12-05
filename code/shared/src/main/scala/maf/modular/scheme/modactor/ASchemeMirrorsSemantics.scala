@@ -28,7 +28,7 @@ object MirrorValues:
     case class Mirror[Ref](name: Option[String], tid: Ref)
 
     /** An envelope represents a message send as a value by combining the receiver and the message itself */
-    case class Envelope[Ref, Value](receiver: Ref, message: Message[Value]):
+    case class Envelope[Ref, Value](receiver: Ref, message: AbstractMessage[Value]):
         override def toString: String = s"($receiver, $message)"
 
 /**
@@ -54,6 +54,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
 
     /** Inject the message context as part of the analysis context */
     def messageCtx(mCtx: MessageContext)(ctx: Ctx): Ctx
+
+    type Msg = AbstractMessage[Value]
 
     /**
      * Monad for supporting mirror-based reflection
@@ -119,7 +121,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      */
     private def mirrorAsk(actorRef: ActorRef, tag: String, ags: List[Value], sender: ActorRef, idn: Identity): A[Value] =
         // TODO: change emptyContext to something that keeps track of thez send site
-        mkMessage(tag, ags) >>= { m => ask(actorRef, m, SendSiteContext(idn)) }
+        unit(Message(tag, ags)) >>= { m => ask(actorRef, m, SendSiteContext(idn)) }
 
     /** Checks whether the given actor represents a mirror */
     private def mirrorFlagSet(actor: Actor): Boolean = actor.tid match
@@ -173,14 +175,23 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      * @param exps
      *   the expressions corresponding to the payload of the message
      */
-    def reifyMessage(m: Msg, exps: List[SchemeExp]): Message[Value]
-
-    /** Injects a concrete message into the abstract domain */
-    def abstractMessage(m: Message[Value]): Msg
+    def reifyMessage(m: Msg, exps: List[SchemeExp]): AbstractMessage[Value]
 
     private def applyThunk(lam: Value, idn: Identity, ags: List[Value]): A[Value] =
         mjoin(
           lattice.getClosures(lam).map(clo => withEnvM(_ => bindArgs(clo._1.args, ags)(clo._2)) { Monad.sequence(clo._1.body.map(eval)).map(_.last) })
+        )
+
+    private def applyThunk(lam: Value, idn: Identity, ags: Value): A[Value] =
+        mjoin(
+          lattice
+              .getClosures(lam)
+              .map(clo =>
+                  if clo._1.varArgId.isDefined then throw new Exception("Variable number of arguments is not supported")
+                  val siz = clo._1.args.size
+                  ags.take(primitives)(siz)
+                      .flatMap(ags => withEnvM(_ => bindArgs(clo._1.args, ags)(clo._2)) { Monad.sequence(clo._1.body.map(eval)).map(_.last) })
+              )
         )
 
     private def reifyHandler(prs: List[Identifier], bdy: List[SchemeExp], lexEnv: Environment[Address]): Value =
@@ -243,7 +254,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     _ <- checkArity(args, 2)
                     interpreter <- nondets(lattice.getActors(args(0)).map(unit))
                     message = args(1)
-                    mm <- mkMessage("answer", List(lattice.error(message)))
+                    mm = Message("answer", List(lattice.error(message)))
                     // TODO: change emptyContext to actual context
                     _ <- send(interpreter, mm, emptyContext)
                 yield lattice.void
@@ -256,12 +267,12 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
               "message" -> lift(ev => lattice.message(ev.message))
             )
 
-        case object message extends Struct[Message[Value]]:
+        case object message extends Struct[Msg]:
             val structName: String = "message"
             def get(v: Value) = nondets(lattice.getMessages(v).map(unit))
             def fields = Map(
               "tag" -> { m => m.tag },
-              "arguments" -> { (message: Message[Value]) => message.toMetaMessage.flatMap(_.vlus) },
+              "arguments" -> { (message: Msg) => message.toMetaMessage.flatMap(_.vlus) },
               "payload" -> { message => message.toMetaMessage.flatMap(_.vlus) }
             )
 
@@ -306,18 +317,20 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 evaluatedActor <- nontail(eval(actorRef))
                 evaluatedAgs <- evalAll(ags)
                 self <- selfActor
-                message <- mkMessage(tag, evaluatedAgs)
+                message = Message(tag, evaluatedAgs, ags)
                 envelope = lattice.envelope(Envelope(self, reifyMessage(message, ags)))
                 result <- intercept { mirror =>
                     /* , TODO: add the source location of the send here */
                     mirrorAsk(mirror.tid, "send", List(envelope), self, idn) >>= catchErr(idn)
                 } /* otherwise */ {
                     // TODO: chagne emptyContext to actual context
-                    sendMessage(evaluatedActor, tag, evaluatedAgs, emptyContext).map(_ => lattice.nil)
+                    allocLst(ags.zip(evaluatedAgs)).flatMap { ags =>
+                        sendMessage(evaluatedActor, lattice.symbol(tag), ags, emptyContext).map(_ => lattice.nil)
+                    }
                 }
             yield result
 
-        case ASchemeSelect(handlers, idn) =>
+        case select @ ASchemeSelect(handlers, idn) =>
             // A message receive in the meta protocol works as follows:
             // If a mirror is installed, a message "receive" is sent using a reification of a message.
             // the receive should respond with a lambda that is supposed to execute the selected behavior when applied.
@@ -327,17 +340,10 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 msgWithContext <- receive
                 (msg, context) = msgWithContext
                 // see if there is an appropriate handler
-                tag = getMessageTag(msg)
-                args = getMessageArguments(msg)
-                handler = handlers.get(tag)
-                _ <-
-                    if handler.isEmpty then
-                        // TODO: actually register an eror
-                        mbottom
-                    else unit(())
-                (pars, bdy) = handler.get
+                tag <- msg.tag
+                args <- msg.vlus
                 // reify the message in an abstract value
-                reifiedMessage = lattice.message(Message(getMessageTag(msg), getMessageArguments(msg)))
+                reifiedMessage = lattice.message(MetaMessage(tag, args))
                 // send the intercepted message to the mirror if necessary
                 result <- intercept { mirror =>
                     for
@@ -352,8 +358,11 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                         _ = log(s"++ meta/receive result of running the mirror is $result")
                     yield result
                 } /* otherwise */ {
-                    log(s"base receive $handler $tag $args")
-                    withCtx(messageCtx(context)) { withEnvM(bindArgs(pars, args)) { evalSequence(bdy) } }
+                    nondets(select.lookupHandler(tag).map(unit)).flatMap { case (pars, bdy) =>
+                        args.take(primitives)(pars.size).flatMap { args =>
+                            withCtx(messageCtx(context)) { withEnvM(bindArgs(pars, args)) { eval(bdy) } }
+                        }
+                    }
                 }
             yield result
 
@@ -389,7 +398,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 message = envelope.message
                 // send the message to the specified receiver
                 // TODO: change emptyContext to actual context
-                result <- send(receiver, abstractMessage(message), emptyContext).map(_ => lattice.nil)
+                result <- send(receiver, message, emptyContext).map(_ => lattice.nil)
             yield result
 
         // Primitives (TODO: should actually be syntax)

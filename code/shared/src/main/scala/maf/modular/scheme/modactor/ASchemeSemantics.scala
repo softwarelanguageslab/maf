@@ -29,7 +29,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
     type MessageContext
     def emptyContext: MessageContext
 
-    type Msg
+    type Msg <: AbstractMessage[Value]
 
     implicit override lazy val lattice: ASchemeLattice[Val, Adr]
 
@@ -44,13 +44,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   the new message wrapped in the analysis monad
          */
-        def mkMessage(tpy: String, arguments: List[Value]): M[Msg]
-
-        /** Get the tag of a message */
-        def getMessageTag(m: Msg): String
-
-        /** Get the arguments of a message */
-        def getMessageArguments(m: Msg): List[Val]
+        def mkMessage(tpy: Value, arguments: Value): M[Msg]
 
     trait ActorAnalysisM[M[_]] extends AnalysisM[M], MessageM[M]:
         /**
@@ -61,7 +55,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @param msg
          *   the message to send
          */
-        def sendMessage(to: Val, tag: String, ags: List[Val], context: MessageContext): M[Unit] =
+        def sendMessage(to: Val, tag: Val, ags: Val, context: MessageContext): M[Unit] =
             given Monad[M] = this
             mkMessage(tag, ags).flatMap { msg =>
                 mjoin(
@@ -156,7 +150,8 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                     // TODO: the context should be inherited from the current context.
                     // perhaps add a new function to the monad to create a new context based on the
                     // previous one.
-                    _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs, emptyContext)
+                    msgAgs <- allocLst(ags.zip(evaluatedAgs))
+                    _ <- sendMessage(evaluatedActorRef, lattice.symbol(messageTpy.name), msgAgs, emptyContext)
                 yield lattice.nil
 
             // Change the behavior of the current actor, and return nil
@@ -181,23 +176,19 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                 throw new Exception(s"Invalid syntax: same-behavior at $idn")
 
             // Receive a message from the mailbox
-            case ASchemeSelect(handlers, idn) =>
+            case select @ ASchemeSelect(handlers, idn) =>
                 for
                     // select a message from the mailbox
                     msgWithContext <- receive
                     (msg, context) = msgWithContext
                     _ = { log(s"actor/recv $msg") }
                     // see if there is an applicable handler
-                    tag = getMessageTag(msg)
-                    args = getMessageArguments(msg)
-                    handler = handlers.get(tag)
-                    result <-
-                        if handler.isEmpty then mbottom
-                        else
-                            val (pars, bdy) = handler.get
-                            withEnvM(bindArgs(pars, args)) {
-                                evalSequence(bdy)
-                            } >>= trace(s"actor/recv $msg result")
+                    tag <- msg.tag
+                    args <- msg.vlus
+                    handler <- nondets(select.lookupHandler(tag).map(unit))
+                    (pars, bdy) = handler
+                    fixedArgs <- args.take(primitives)(pars.size)
+                    result <- withEnvM(bindArgs(pars, fixedArgs)) { eval(bdy) } >>= trace(s"actor/recv $msg result")
                 yield lattice.nil
 
             case SchemeFuncall(SchemeVar(Identifier("terminate", _)), _, _) =>

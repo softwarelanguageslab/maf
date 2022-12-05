@@ -5,6 +5,8 @@ import maf.language.AScheme.ASchemeValues
 import maf.util.datastructures.SmartUnion
 import maf.util.Default
 import maf.core.Lattice
+import maf.language.AScheme.ASchemeValues.AbstractMessage
+import maf.language.AScheme.ASchemeValues.MetaMessage
 
 /**
  * An abstract representation of a mailbox.
@@ -40,37 +42,6 @@ trait AbstractMailbox[M, K]:
     /** Merge the given mailbox with the current one */
     def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K]
 
-trait AbstractMessage[K]:
-    def tag: String
-
-/** A map lattice based mailbox, which maps tags and contexts to payloads */
-case class MapMailbox[K, M <: AbstractMessage[K]: Lattice](msgs: Map[(String, K), M]) extends AbstractMailbox[M, K]:
-    def enqueue(msg: M, ctx: K): AbstractMailbox[M, K] =
-        val tag = msg.tag
-        val old = msgs.get((tag, ctx)).getOrElse(msg)
-        this.copy(msgs = msgs + ((tag, ctx) -> Lattice[M].join(old, msg)))
-
-    def messages: Set[M] = msgs.values.toSet
-
-    def dequeue: Set[((M, K), AbstractMailbox[M, K])] =
-        // for dequeue: no multiplicity and order so any message can be dequeued at any time
-        // and the mailbox can still contain the same message.
-        msgs.map { case ((_, ctx), m) => ((m, ctx), this) }.toSet
-
-    def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K] = this.copy(msgs = (other match
-        case MapMailbox(msgs) =>
-            (this.msgs.keys ++ msgs.keys).map { key =>
-                key -> ((this.msgs.get(key), msgs.get(key)) match
-                        case (Some(v), Some(w)) => Lattice[M].join(v, w)
-                        case (None, Some(w))    => w
-                        case (Some(v), None)    => v
-                        case (None, None) =>
-                            ???
-                    // is impossible as we are iterating over the keys of both maps
-                )
-            }
-    ).toMap)
-
 /**
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
  * concurrency. In Static Analysis - 20th International Symposium, SAS 2013
@@ -94,10 +65,8 @@ object PowersetMailbox:
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:
-    type Msg = ASchemeValues.Message[Value]
-    def mkMessage(tpy: String, arguments: List[Value]): Msg = Message(tpy, arguments)
-    def getTag(msg: Msg): String = msg._tag
-    def getArgs(msg: Msg): List[Value] = msg._vlus
+    type Msg = AbstractMessage[Value]
+    override def mkMessage(tpy: Value, arguments: Value): Msg = MetaMessage(tpy, arguments)
 
 /** An analysis with a powerset mailbox */
 trait PowersetMailboxAnalysis extends SchemeModActorSemantics:

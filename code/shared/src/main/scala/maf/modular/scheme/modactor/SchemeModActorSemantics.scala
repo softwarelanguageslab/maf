@@ -45,6 +45,8 @@ import maf.lattice.interfaces.BoolLattice
 import maf.core.worklist.WorkList
 import maf.modular.AnalysisEntry
 import maf.util.benchmarks.Timeout.T
+import maf.language.AScheme.ASchemeValues.*
+import maf.language.scheme.primitives.SchemePrimitives
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -101,9 +103,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
     //
 
     // TODO: remove these methods, in favor of the one in the monad
-    def mkMessage(tpy: String, arguments: List[Value]): Msg
-    def getTag(msg: Msg): String
-    def getArgs(msg: Msg): List[Value]
+    def mkMessage(tpy: Value, arguments: Value): Msg
 
     //
     // Mailboxes
@@ -167,7 +167,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
         def behaviors = (putBehaviors, getBehaviors)
 
         /* Tracking message sends */
-        def trackSend(st: S, from: Component, to: Component, tag: String): S
+        def trackSend(st: S, from: Component, to: Component, tag: Value): S
 
     implicit override val analysisM: ModularAnalysisM
 
@@ -231,14 +231,8 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 BoolLattice[B].inject(a1 == a2)
         })
 
-        override def getMessageTag(m: Msg): String =
-            inter.getTag(m)
-
-        override def mkMessage(tpy: String, arguments: List[Value]): A[Msg] =
+        override def mkMessage(tpy: Value, arguments: Value): A[Msg] =
             unit(inter.mkMessage(tpy, arguments))
-
-        override def getMessageArguments(m: Msg): List[Val] =
-            inter.getArgs(m)
 
         override def call(lam: Lam): A[Val] =
             for
@@ -273,17 +267,21 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                   )
                 ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) }
                 self <- selfCmp
+                tag <- m.tag
                 // Track the message send
-                _ <- get.map(st => lens.trackSend(st, self, receiver, getMessageTag(m))) >>= put
+                _ <- get.map(st => lens.trackSend(st, self, receiver, tag)) >>= put
             yield ()
 
         def ask(to: ActorRef, m: Msg, context: MessageContext): A[Value] =
+            given SchemePrimitives[Value, Address] = primitives
             for
                 // create the empheral child
                 self <- selfActorCmp
                 empheralChild <- allocateEmpheralChild(self, m)
                 // send the message to "to"
-                nm <- mkMessage(getMessageTag(m), lattice.actor(ASchemeValues.Actor(None, empheralChild)) :: getMessageArguments(m))
+                tag <- m.tag
+                ags <- m.vlus >>= (lattice.actor(ASchemeValues.Actor(None, empheralChild)) ::: _)
+                nm <- mkMessage(tag, ags)
                 _ <- send(to, nm, context)
                 // read the result from the mailbox
                 _ <- register(MailboxDep(empheralChild))
@@ -291,11 +289,12 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 ms <- nondets(mb.dequeue.map(unit))
                 ((msg, _), mb1) = ms
                 _ <- get.map(lens.modify(lens.mailboxes)(_ + (empheralChild -> mb1))) >>= put
-                tag = getMessageTag(msg)
-                vlus = getMessageArguments(msg)
+                tag <- msg.tag
+                vlus <- msg.vlus
                 // make sure that the tag is a receive
-                _ <- guard(tag == "answer" && vlus.size == 1)
-            yield vlus.head
+                _ <- guard(lattice.mayEql(tag, lattice.symbol("answer")))
+                result <- vlus.take(primitives)(1)
+            yield result.head
 
         def mailbox: A[Mailbox] =
             get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(enclosing).map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))

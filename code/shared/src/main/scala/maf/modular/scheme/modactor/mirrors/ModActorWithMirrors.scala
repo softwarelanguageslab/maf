@@ -12,6 +12,8 @@ import maf.core.LatticeTopUndefined
 import monocle.macros.GenLens
 import maf.language.AScheme.ASchemeValues
 import maf.language.AScheme.ASchemeValues.ASchemeValue
+import maf.language.AScheme.ASchemeValues.Message
+import maf.language.AScheme.ASchemeValues.AbstractMessage
 
 trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     /** Encodes whether an actor has a mirror or not */
@@ -121,6 +123,7 @@ class SimpleModActorWithMirrors(prog: SchemeExp) extends SchemeModActorSemantics
 
     override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ctx
     implicit override val analysisM: GlobalMetaSemanticsM = new GlobalMetaSemanticsM()
-    def reifyMessage(m: Msg, exs: List[SchemeExp]): ASchemeValues.Message[Value] = m.copy(_exs = exs)
-    def abstractMessage(m: Msg): ASchemeValues.Message[Value] = m
+    def reifyMessage(m: Msg, exs: List[SchemeExp]): AbstractMessage[Value] = m match
+        case m: Message[_] => m.copy(_exs = exs)
+        case _             => m
     def errors: Set[maf.core.Error] = _result.nn.inner.errors

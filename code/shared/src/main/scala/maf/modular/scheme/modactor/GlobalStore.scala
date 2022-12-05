@@ -69,7 +69,7 @@ class GlobalStoreState[K, Component, M, Mailbox <: AbstractMailbox[M, K]: Defaul
         /** Keep track of the set of behaviors that a specific actor can have */
         behaviors: Map[Component, Set[Behavior]] = Map(),
         /** Keep track of the sends. Represented by a mapping from sender to (receiver, tag) */
-        sends: Set[(Component, (Component, String))] = Set(),
+        sends: Set[(Component, (Component, Any))] = Set(),
         /** Keep track of the global store */
         sto: Map[Address, Value] = Map(),
         /** Keeps track of the errors */
@@ -83,7 +83,7 @@ class GlobalStoreState[K, Component, M, Mailbox <: AbstractMailbox[M, K]: Defaul
         /* Mapping from components to the set of behaviors */
         behaviors: Map[Component, Set[Behavior]] = Map(),
         /** Keep track of the message sends */
-        sends: Set[(Component, (Component, String))] = Set(),
+        sends: Set[(Component, (Component, Any))] = Set(),
         /** Global store */
         sto: Map[Address, Value],
         /** Keep track of the errors */
@@ -252,7 +252,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             case (g, (from, (to, tag))) => {
                 val fromN = ComponentGraphElement(from.toString)
                 val toN = ComponentGraphElement(to.toString)
-                val edge = MessageSendEdge(tag)
+                val edge = MessageSendEdge(tag.toString)
 
                 G.addEdge(g, fromN, edge, toN)
             }
@@ -362,7 +362,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             intraLens.get(s).self
 
         /* Tracking message sends */
-        def trackSend(st: Intra, from: Component, to: Component, tag: String): Intra =
+        def trackSend(st: Intra, from: Component, to: Component, tag: Value): Intra =
             intraLens.modify(intra => intra.copy(sends = intra.sends + (from -> (to, tag))))(st)
 
     }

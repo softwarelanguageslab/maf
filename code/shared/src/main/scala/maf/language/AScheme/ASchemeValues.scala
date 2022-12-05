@@ -16,6 +16,7 @@ import maf.language.scheme.lattices.SchemeLattice
 import maf.language.scheme.primitives.SchemeLatticePrimitives
 import maf.language.scheme.primitives.SchemePrimM
 import maf.core.Identity
+import maf.language.scheme.primitives.SchemePrimitives
 
 object ASchemeValues:
     sealed trait ASchemeValue
@@ -66,18 +67,28 @@ object ASchemeValues:
          */
         def lookupHandler[L](tag: L)(using lat: SchemeLattice[L, maf.core.Address]): Set[SchemeExp] =
             bdy match
-                case ASchemeSelect(handlers, idn) =>
-                    handlers
-                        .filter { case (key, value) =>
-                            val keySymbol = lat.symbol(key)
-                            lat.mayEql(keySymbol, tag)
-                        }
-                        .map { case (tag, (ags, bdy)) => SchemeLambda(Some(tag), ags, bdy, None, idn) }
-                        .toSet
-
-                case _ => throw new Exception("Invalid body of the behavior")
+                case select: ASchemeSelect => select.lookupHandler(tag, wrap = true).map(_._2)
+                case _                     => throw new Exception("Invalid behavior body")
 
     def EmptyBehavior(bdy: SchemeExp): Behavior = Behavior(Some("<empty>"), List(), bdy, Environment.empty, false)
+
+    extension (select: ASchemeSelect)
+        /**
+         * Returns the handler associated with the given symbol
+         *
+         * @note
+         *   the performance of this is O(n) where n is the number of handlers.
+         */
+        def lookupHandler[L](tag: L, wrap: Boolean = false)(using lat: SchemeLattice[L, maf.core.Address]): Set[(List[Identifier], SchemeExp)] =
+            select.handlers
+                .filter { case (key, value) =>
+                    val keySymbol = lat.symbol(key)
+                    lat.mayEql(keySymbol, tag)
+                }
+                .map { case (tag, (ags, bdy)) =>
+                    (ags, if wrap then SchemeLambda(Some(tag), ags, bdy, None, select.idn) else SchemeBegin(bdy, select.idn))
+                }
+                .toSet
 
     /** The class of futures supported by AScheme */
     sealed trait Future extends ASchemeValue
@@ -117,25 +128,30 @@ object ASchemeValues:
      *   the possible values in the payload of the message, should be a Scheme list.
      */
     case class MetaMessage[L](_tag: L, _vlus: L) extends ASchemeValue, AbstractMessage[L]:
-        def car[M[_]](primitives: SchemeLatticePrimitives[L, Address])(v: L)(using SchemePrimM[M, Address, L]): M[L] =
-            primitives.PrimitiveDefs.`car`.call(SchemeVar(Identifier("car", Identity.none)), List(v))
-
-        def cdr[M[_]](primitives: SchemeLatticePrimitives[L, Address])(v: L)(using SchemePrimM[M, Address, L]): M[L] =
-            primitives.PrimitiveDefs.`car`.call(SchemeVar(Identifier("cdr", Identity.none)), List(v))
-
-        /** Take n elements from the payload */
-        def take[M[_]](primitives: SchemeLatticePrimitives[L, Address])(n: Int)(v: L)(using m: SchemePrimM[M, Address, L]): M[List[L]] =
-            if n == 0 then m.unit(List())
-            else
-                for
-                    head <- car(primitives)(v)
-                    tail <- cdr(primitives)(v)
-                    result <- take(primitives)(n - 1)(tail).map(head :: _)
-                yield result
 
         def tag[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[L] = Monad[M].unit(_tag)
         def vlus[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[L] = Monad[M].unit(_vlus)
         override def toMetaMessage[M[_]](using SchemeLattice[L, Address], SchemePrimM[M, Address, L]): M[MetaMessage[L]] = Monad[M].unit(this)
+
+    extension [L](v: L)(using SchemeLattice[L, Address])
+        def car[M[_]](primitives: SchemePrimitives[L, Address])(using SchemePrimM[M, Address, L]): M[L] =
+            primitives("cdr").call(SchemeVar(Identifier("car", Identity.none)), List(v))
+
+        def cdr[M[_]](primitives: SchemePrimitives[L, Address])(using SchemePrimM[M, Address, L]): M[L] =
+            primitives("cdr").call(SchemeVar(Identifier("cdr", Identity.none)), List(v))
+
+        def :::[M[_]](car: L)(using prims: SchemePrimM[M, Address, L], primitives: SchemePrimitives[L, Address]): M[L] =
+            primitives("cons").call(SchemeVar(Identifier("cdr", Identity.none)), List(car, v))
+
+        /** Take n elements from the payload */
+        def take[M[_]](primitives: SchemePrimitives[L, Address])(n: Int)(using m: SchemePrimM[M, Address, L]): M[List[L]] =
+            if n == 0 then m.unit(List())
+            else
+                for
+                    head <- v.car(primitives)
+                    tail <- v.cdr(primitives)
+                    result <- tail.take(primitives)(n - 1).map(head :: _)
+                yield result
 
     object Message:
         given showMessage[Value]: Show[Message[Value]] with
