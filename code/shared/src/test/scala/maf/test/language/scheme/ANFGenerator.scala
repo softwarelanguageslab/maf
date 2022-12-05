@@ -9,17 +9,21 @@ import org.scalacheck.Shrink.*
 import maf.core.Identifier
 import maf.language.scheme.*
 import maf.core.Identity
+import maf.language.sexp
 
 
-object ANFGenerator:
+object SchemeExpGenerator:
 
     type Id = String
-    type AExp = SchemeLambda | SchemeVar 
-    type CExp = SchemeLet | SchemeFuncall | AExp
+    type Exp = SchemeLet | SchemeLetrec | SchemeFuncall | SchemeLambda | SchemeVar | SchemeValue
 
-    case class Context(scope: Set[Id]):
-        def extendScope(nam: Id) = Context(scope + nam)
-    lazy val emptyCtx: Context = Context(Set.empty)
+    enum Typ:
+        case Fun(a: Typ, r: Typ)
+        case Num
+
+    case class Context(scope: Map[Id, Typ]):
+        def extendScope(nam: Id, typ: Typ) = Context(scope + (nam -> typ))
+    lazy val emptyCtx: Context = Context(Map.empty)
 
     final private lazy val noId = Identity.none
 
@@ -29,53 +33,104 @@ object ANFGenerator:
                                                   .map(_.toString)
                                                   .filterNot(ctx.scope.contains)
 
-    def exp(ctx: Context = emptyCtx): Gen[CExp] = Gen.oneOf(appExp(ctx), letExp(ctx), aexp(ctx))
+    def exp(typ: Typ = Typ.Num, ctx: Context = emptyCtx): Gen[Exp] = Gen.sized { depth =>
+        def toggle(b: Boolean): Int = if b then 1 else 0
+        val app = depth > 0
+        val let = depth > 0
+        val ltr = depth > 0
+        val lam = typ.isInstanceOf[Typ.Fun]
+        val num = typ == Typ.Num 
+        val vrb = ctx.scope.find((_, t) => t == typ).isDefined 
+        Gen.frequency(
+            toggle(app) -> appExp(typ, ctx), 
+            toggle(let) -> letExp(typ, ctx), 
+            toggle(ltr) -> letrecExp(typ, ctx),
+            toggle(lam) -> Gen.lzy(lambdaExp(typ.asInstanceOf[Typ.Fun], ctx)),
+            toggle(num) -> numExp(ctx), 
+            toggle(vrb) -> varExp(typ, ctx)
+        )
+    }
 
-    def aexp(ctx: Context): Gen[AExp] = Gen.oneOf(varExp(ctx), lambdaExp(ctx))
+    private def sub[T](g: => Gen[T]): Gen[T] = 
+        Gen.sized(depth => Gen.resize(depth - 1, g))
 
-    def varExp(ctx: Context): Gen[SchemeVar] = if ctx.scope.isEmpty
-                                               then Gen.fail
-                                               else Gen.oneOf(ctx.scope)
-                                                       .map(nam => SchemeVar(Identifier(nam, noId)))
+    private def subExp(typ: Typ, ctx: Context) = sub(exp(typ, ctx))
 
-    def lambdaExp(ctx: Context): Gen[SchemeLambda] =
+    def numExp(ctx: Context): Gen[SchemeValue] = 
+        Gen.chooseNum(0, 100).map(n => SchemeValue(sexp.Value.Integer(n), noId))
+
+    def varExp(typ: Typ, ctx: Context): Gen[SchemeVar] = 
+        val vrs = ctx.scope.filter((_, t) => t == typ)
+        if vrs.isEmpty
+        then Gen.fail
+        else Gen.oneOf(ctx.scope).map((nam, _) => SchemeVar(Identifier(nam, noId)))
+
+    def lambdaExp(funT: Typ.Fun, ctx: Context): Gen[SchemeLambda] =
+        val Typ.Fun(argT, retT) = funT
         for 
             par <- fresh(ctx)
-            bdy <- exp(ctx.extendScope(par))
+            bdy <- subExp(retT, ctx.extendScope(par, argT))
         yield SchemeLambda(None, List(Identifier(par, noId)), List(bdy), None, noId)
+
+    def anyTyp: Gen[Typ] = Gen.oneOf(Gen.const(Typ.Num), funTyp)
+    def funTyp: Gen[Typ.Fun] = 
+        // for now, let's only allow num -> num function types
+        Gen.const(Typ.Fun(Typ.Num, Typ.Num))
+        // otherwise, this can be enabled, but the recursion will need to be controlled somehow ...
+        //for 
+        //    a <- anyTyp
+        //    r <- anyTyp
+        //yield Typ.Fun(a, r)
     
-    def letExp(ctx: Context): Gen[SchemeLet] = 
+    def letExp(ret: Typ, ctx: Context): Gen[SchemeLet] = 
         for 
             nam <- fresh(ctx)
-            rhs <- exp(ctx)
-            bdy <- exp(ctx.extendScope(nam))
+            typ <- anyTyp
+            rhs <- subExp(typ, ctx)
+            bdy <- subExp(ret, ctx.extendScope(nam, typ))
         yield SchemeLet(List((Identifier(nam, noId), rhs)), List(bdy), noId)
 
-    def appExp(ctx: Context): Gen[SchemeFuncall] =
+    def letrecExp(ret: Typ, ctx: Context): Gen[SchemeLetrec] = 
         for 
-            fun <- aexp(ctx)
-            arg <- aexp(ctx)
+            nam <- fresh(ctx)
+            // for now, we only generate lambdas as the rhs for a letrec
+            atyp <- anyTyp
+            rtyp <- anyTyp
+            typ = Typ.Fun(atyp, rtyp)
+            ext = ctx.extendScope(nam, typ)
+            rhs <- sub(lambdaExp(typ.asInstanceOf[Typ.Fun], ext))
+            bdy <- subExp(ret, ext)
+        yield SchemeLetrec(List((Identifier(nam, noId), rhs)), List(bdy), noId)
+
+    def appExp(ret: Typ, ctx: Context): Gen[SchemeFuncall] =
+        for 
+            atyp <- anyTyp
+            fun <- subExp(Typ.Fun(atyp, ret), ctx)
+            arg <- subExp(atyp, ctx)
         yield SchemeFuncall(fun, List(arg), noId)
 
     /** SHRINKING **/
 
-    implicit def shrinkExp: Shrink[CExp] = Shrink[CExp] {
-        case SchemeLet(List((nam, rhs: CExp @unchecked)), 
-                       List(bdy: CExp @unchecked), 
-                       idn) 
-            => 
-                // shrink the rhs ...
-                (for rhsS <- shrink(rhs) yield SchemeLet(List((nam, rhsS)), List(bdy), idn))
-                ++
-                // ... or shrink the body ...
-                (for bdyS <- shrink(bdy) yield SchemeLet(List((nam, rhs)), List(bdyS), idn))
-                ++
-                // ... or replace the let with either the rhs or the body
-                Stream(rhs, bdy)
-        case SchemeFuncall(fun: AExp @unchecked, 
-                           List(arg: AExp @unchecked), 
-                           idn) 
-            => 
+    def shrinkExp: Shrink[Exp] = Shrink[Exp] {
+        case SchemeLet(List((nam, rhs: Exp @unchecked)), List(bdy: Exp @unchecked), idn) => 
+            // shrink the rhs ...
+            (for rhsS <- shrink(rhs) yield SchemeLet(List((nam, rhsS)), List(bdy), idn))
+            ++
+            // ... or shrink the body ...
+            (for bdyS <- shrink(bdy) yield SchemeLet(List((nam, rhs)), List(bdyS), idn))
+            ++
+            // ... or replace the let with either the rhs or the body
+            Stream(rhs, bdy)
+        case SchemeLetrec(List((nam, rhs: Exp @unchecked)), List(bdy: Exp @unchecked), idn) => 
+            // shrink the rhs ...
+            (for rhsS <- shrink(rhs) yield SchemeLet(List((nam, rhsS)), List(bdy), idn))
+            ++
+            // ... or shrink the body ...
+            (for bdyS <- shrink(bdy) yield SchemeLet(List((nam, rhs)), List(bdyS), idn))
+            ++
+            // ... or replace the letrec with either the rhs or the body
+            Stream(rhs, bdy)
+        case SchemeFuncall(fun: Exp @unchecked, List(arg: Exp @unchecked), idn) => 
                 // shrink the operator ...
                 (for funS <- shrink(fun) yield SchemeFuncall(funS, List(arg), idn))
                 ++
@@ -84,21 +139,23 @@ object ANFGenerator:
                 ++
                 // ... or replace the call with either the operator or the operand
                 Stream(fun, arg)
-        case aexp: AExp => shrinkAExp.shrink(aexp)
+        case SchemeLambda(nam, prs, List(bdy: Exp @unchecked), ann, idn) => 
+            // shrink the body of the lambda ...
+            (for bdyS <- shrink(bdy) yield SchemeLambda(nam, prs, List(bdyS), ann, idn))
+            ++
+            // ... or replace the lambda with its body
+            Stream(bdy)
+        case SchemeVar(_) => 
+            // try replacing the variable with a number
+            Stream(SchemeValue(sexp.Value.Integer(42), noId))
+        case e => throw new Exception(s"unsupported expression: $e")
     }
 
-    implicit def shrinkAExp: Shrink[AExp] = Shrink[AExp] {
-        case SchemeLambda(nam, prs, List(bdy: CExp @unchecked), ann, idn) => 
-            for bdyS <- shrink(bdy) yield SchemeLambda(nam, prs, List(bdyS), ann, idn)
-        case SchemeVar(_) => Stream.empty
-    }
 
-/** TODO[medium] tests for scheme lattice */
-
-abstract class ANFGenSpecification extends AnyPropSpec with Checkers:
+abstract class SchemeExpGenSpecification extends AnyPropSpec with Checkers:
     // by default, check each property for at least 100 instances
     implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
-        PropertyCheckConfiguration(minSuccessful = 10)
+        PropertyCheckConfiguration(minSuccessful = 100)
     def checkAll(props: Properties): Unit =
         for (name, prop) <- props.properties do property(name)(check(prop))
     def newProperties(name: String)(f: Properties => Properties): Properties =
@@ -106,14 +163,22 @@ abstract class ANFGenSpecification extends AnyPropSpec with Checkers:
         f(p)
     def conditional(p: Boolean, q: => Boolean): Boolean = !p || q
 
-class Testje extends ANFGenSpecification:
+class Testje extends SchemeExpGenSpecification:
 
-    import ANFGenerator.*
-    given Arbitrary[CExp] = Arbitrary(exp())
+    import SchemeExpGenerator.*
+    given Arbitrary[Exp] = Arbitrary(exp())
 
     val laws: Properties =
-        newProperties("ANFLaws") { p =>
-            p.property("foo") = forAll { (p: CExp) => false }
+        newProperties("SchemeExp Laws") { p =>
+            p.property("foo") = forAll { (p: Exp) =>
+                println(p)
+                p match 
+                    case SchemeLetrec(List((Identifier(nam,_), rhs)), List(bdy), _) => 
+                        bdy match
+                            case SchemeFuncall(SchemeVar(Identifier(f, _)), List(SchemeValue(sexp.Value.Integer(_),_)), _) if f == nam => false
+                            case _ => true
+                    case _ => true     
+            }
             p
         }
     checkAll(laws)
