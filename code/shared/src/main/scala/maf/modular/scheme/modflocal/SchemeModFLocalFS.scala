@@ -11,6 +11,8 @@ import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.datastructures.SmartMap
 
+/*
+
 abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
@@ -165,7 +167,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
         def updateSto(adr: Adr, vlu: Val) =
             (_, _, sto, _) => Some((), updateV(sto, adr, vlu))
         def lookupSto(adr: Adr) =
-            (_, _, sto, _) => sto.lookup(adr).map((_, Delta.empty))
+            (_, _, sto, _) => sto.getValue(adr).map((_, Delta.empty))
         // CTX STUFF
         def getCtx =
             (_, _, _, ctx) => Some((ctx, Delta.empty))
@@ -259,3 +261,4 @@ trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisRe
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)
+ */

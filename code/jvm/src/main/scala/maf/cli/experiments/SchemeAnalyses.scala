@@ -135,34 +135,6 @@ object SchemeAnalyses:
             with SchemeModFLocalCallSiteSensitivity(k)
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
-    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
-        new SchemeModFLocalFS(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalFSAnalysisResults
-    def modflocalAnalysisAdaptiveA(prg: SchemeExp, k: Int, n: Int) =
-        new SchemeModFLocal(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalAnalysisResults
-            with SchemeModFLocalAdaptiveWideningPolicyA(n)
-    def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) =
-        new SchemeModFLocal(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalAnalysisResults:
-            override def customPolicy(adr: Adr): AddrPolicy =
-                if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
-    def modFlocalAnalysisWidened(prg: SchemeExp, k: Int) =
-        new SchemeModFLocal(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalAnalysisResults:
-            override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
 
     // Flow sensitive analysis
     def modFFlowSensitive(prg: SchemeExp) =

@@ -10,7 +10,6 @@ import maf.core.Lattice
 import maf.core.LocalStore
 import maf.language.scheme.SchemeLambdaExp
 import maf.core.Environment
-import maf.core.Delta
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 import maf.modular.ModAnalysis
 import maf.core.Position.Position
@@ -20,8 +19,10 @@ import maf.modular.scheme.SchemeSetup
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.core.MonadStateT
 import maf.core.Monad
+import maf.core.MonadJoin
 import maf.core
 import maf.modular.Dependency
+import maf.lattice.interfaces.LatticeWithAddrs
 
 trait TEvalMFlowSensitive[M[_], V: Lattice] extends TEvalM[M]:
     def getStore: M[LocalStore[Address, V]]
@@ -61,7 +62,7 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
     // override the "result" method such that the resulting local stores are used
     override def result: Option[Value] =
         val init = initialComponent
-        componentStores.get(init).flatMap(_.lookup(returnAddr(init)))
+        componentStores.get(init).flatMap(_.getValue(returnAddr(init)))
 
     override def intraAnalysis(component: Component): FlowSensitiveIntra
 
@@ -109,9 +110,9 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
             evalM.read(adr)
 
         override protected def write(adr: Addr, v: Value): EvalM[Unit] =
-            given b: (Address => Boolean) = (_) => false
+            given b: (Address => Boolean) = _ => false
             // Check whether the final component store has a value that subsumes the to-write value
-            val prior = componentStores.get(component).getOrElse(LocalStore.empty).lookup(adr).getOrElse(lattice.bottom)
+            val prior = componentStores.get(component).getOrElse(LocalStore.empty).lookupValue(adr)
             (if !lattice.subsumes(prior, v) then evalM.impure(trigger(maf.modular.AddrDependency(adr)))
              else evalM.unit(())) >>> evalM.write(adr, v)
 
@@ -161,7 +162,7 @@ trait SimpleFlowSensitiveAnalysisMonad extends SchemeModFFlowSensitive:
 
         def read(addr: Address): EvalM[Value] =
             getStore.flatMap(store =>
-                store.lookup(addr) match
+                store.getValue(addr) match
                     case Some(vlu) => unit(vlu)
                     case _         => mzero
             )
@@ -198,7 +199,7 @@ class SimpleFlowSensitiveAnalysis(exp: SchemeExp)
 
     override def baseEnv: Env = initialEnv
     override lazy val baseStore: LocalStore[Address, Value] =
-        given lat: Lattice[Value] = this.lattice
+        given lat: LatticeWithAddrs[Value, Address] = this.lattice
         given shouldCount: (Addr => Boolean) = ((_) => false)
         LocalStore.from[Address, Value](store)
 
