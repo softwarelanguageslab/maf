@@ -208,12 +208,16 @@ class SchemeInterpreter(
             case v =>
                 signalException(ValueNotApplicable(v, idn))
 
+    private var evalSteps = 0
+    def getEvalSteps(): Int = evalSteps
+
     def eval(
         e: SchemeExp,
         env: Env,
         timeout: Timeout.T,
         version: Version
       ): TailRec[Value] =
+        evalSteps += 1
         if timeout.reached then throw new TimeoutException()
         e match
             case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))

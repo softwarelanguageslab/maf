@@ -6,11 +6,17 @@ import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.test.TurgutsThesis.soundness.evaluation.EvaluateSoundnessTests
 import maf.test.TurgutsThesis.soundness.{SchemeModFLocalSoundnessTests, SchemeSoundnessWithDeltaDebuggingTests}
-import maf.test.{AllBenchmarks, VariousSequentialBenchmarks, AllSequentialBenchmarks}
+import maf.test.{AllBenchmarks, AllSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 
-trait SchemeModFLocalSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests with VariousSequentialBenchmarks:
-  //override def benchmarks = Set("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/SICP-compiler.scm")
+trait SchemeModFLocalSoundnessTests extends EvaluateSoundnessTests with VariousSequentialBenchmarks:
+/*
+  override def benchmarks: Set[Benchmark] = Set(
+    "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/flatten.scm",
+    "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/sim-fast-multiply.scm"
+  )*/
+
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))

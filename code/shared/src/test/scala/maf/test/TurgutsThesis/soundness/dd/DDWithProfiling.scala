@@ -17,7 +17,6 @@ object DDWithProfiling extends DeltaDebugger:
              benchmark: String,
              analysisProfiling: Array[(String, Int)]): Unit =
       var reduced = program
-      var reductionAnalysisCalls: Int = 0
       var couldReduce = true
       while couldReduce do
         val oldReduced = reduced
@@ -25,11 +24,11 @@ object DDWithProfiling extends DeltaDebugger:
           reduced = GTR.reduce(
             reduced,
             p => {
-              val (failureMsg, analysisProfiling) = soundnessTester.runAndCompare(p, benchmark)
-              analysisProfiling.foreach(tpl => reductionAnalysisCalls += tpl._2)
-
-              p.findUndefinedVariables().isEmpty &&
-              failureMsg.nonEmpty
+              soundnessTester.runAndCompare(p, benchmark) match
+                case Some((failureMsg, _, _)) =>
+                  p.findUndefinedVariables().isEmpty &&
+                    failureMsg.nonEmpty
+                case None => false
             },
             List(ReplaceNthExpensiveFunction(analysisProfiling, i))
           )
@@ -37,22 +36,8 @@ object DDWithProfiling extends DeltaDebugger:
           couldReduce = false
         else couldReduce = true
 
-      println("analysis worklist puts during reduction: " + reductionAnalysisCalls)
-
-    /*
-      val bw = BufferedWriter(
-        FileWriter(
-          File("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/DDWithProfiling"),
-          true
-        )
-      )
-
-      bw.write(reductionAnalysisCalls.toString + "\n")
-      bw.close()
-      */
-
       val parsedAgain = SchemeParser.parse(reduced.prettyString()).head //parse again, to generate file-related information (e.g. bug is at offset 20-25)
-      val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark)._1
+      val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark).get._1
 
       fail(
         "FAILED:\n " +

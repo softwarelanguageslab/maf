@@ -21,14 +21,16 @@ object DDWithAllTransformations extends DeltaDebugger:
            * without the line below, one might have undefined variables that are never needed dynamically (e.g. dead-code)
            * And that brings shallow/deep dropping into an infinite loop, since they try to drop all undefined variables
            */
-          p.findUndefinedVariables().isEmpty &&
-            soundnessTester.runAndCompare(p, benchmark)._1.nonEmpty //non-empty failure msg
+          soundnessTester.runAndCompare(p, benchmark) match
+            case Some((failureMsg, _, _)) =>
+              p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
+            case None => false
         },
         TransformationManager.allTransformations
       )
 
       val parsedAgain = SchemeParser.parse(reduced.prettyString()).head //parse again, to generate file-related information (e.g. bug is at offset 20-25)
-      val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark)._1
+      val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark).get._1
 
       fail(
         "FAILED:\n " +

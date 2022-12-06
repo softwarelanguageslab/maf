@@ -11,10 +11,11 @@ import maf.language.scheme.interpreter.ConcreteValues.*
 import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.worklist.SequentialWorklistAlgorithm
+import maf.test.TurgutsThesis.soundness.dd.evaluation.DDWithProfilingEval
 import maf.test.TurgutsThesis.soundness.dd.{DDWithAllTransformations, DDWithProfiling, DDWithoutProfiling}
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
-import maf.util.benchmarks.Timeout
+import maf.util.benchmarks.{Timeout, Timer}
 
 import scala.concurrent.duration.{Duration, MINUTES, SECONDS}
 
@@ -41,20 +42,40 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
     }
     ""
 
-  def runAndCompare(program: SchemeExp, benchmark: Benchmark): (String, Array[(String, Int)]) = {
-    try { // run the program using a concrete interpreter
-      val concreteResults = evalConcrete(program, benchmark)
+  def evalConcreteWithSteps(program: SchemeExp, benchmark: Benchmark): (Int, Map[Identity, Set[Value]]) =
+    var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
+    val timeout = concreteTimeout(benchmark)
+    val times = concreteRuns(benchmark)
+    var evalSteps = 0
+    val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
+    val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
+    for _ <- 1 to times do
+      val (ellapsed, _) = Timer.time(runInterpreter(interpreter, program, timeout))
+      SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)
+    evalSteps += interpreter.getEvalSteps()
+    (evalSteps, idnResults)
+
+  override def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
+      // analyze the program using a ModF analysis
+      val anl = analysis(program)
+      val (ellapsed, timeout) = Timer.time(analysisTimeout(benchmark))
+      SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = false)
+      anl.analyzeWithTimeout(timeout)
+      assume(anl.finished, "Analysis timed out")
+      anl
+
+  def runAndCompare(program: SchemeExp, benchmark: Benchmark): Option[(String, Array[(String, Int)], Int)] = {
+    try
+      val (evalSteps, concreteResults) = evalConcreteWithSteps(program, benchmark)
       // analyze the program using a ModF analysis
       val anl = runAnalysis(program, benchmark)
       // check if the analysis results soundly (over-)approximate the concrete results
-      (compareResults(anl, concreteResults),
-        anl.asInstanceOf[SequentialWorklistAlgorithm[SchemeExp]].getReAnalysisMap().toArray.sortWith((tpl1, tpl2) => tpl1._2 > tpl2._2))
+      Some(compareResults(anl, concreteResults),
+            anl.asInstanceOf[SequentialWorklistAlgorithm[SchemeExp]].getReAnalysisMap().toArray.sortWith((tpl1, tpl2) => tpl1._2 > tpl2._2),
+            evalSteps)
+    catch case exc: Throwable =>
+        None
     }
-    catch {
-      case _: Throwable =>
-        ("", Array())
-    }
-  }
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
@@ -62,7 +83,9 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
 
-      val (failureMsg, analysisResults) = runAndCompare(program, benchmark)
-      if failureMsg.nonEmpty then
-        DDWithoutProfiling.reduce(program, this, benchmark, analysisResults)
+      runAndCompare(program, benchmark) match
+        case Some((failureMsg, analysisResults, evalSteps)) =>
+          if failureMsg.nonEmpty then
+            DDWithProfiling.reduce(program, this, benchmark, analysisResults)
+        case _ =>     
     }
