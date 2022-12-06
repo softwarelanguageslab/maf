@@ -121,7 +121,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
      */
     private def mirrorAsk(actorRef: ActorRef, tag: String, ags: List[Value], sender: ActorRef, idn: Identity): A[Value] =
         // TODO: change emptyContext to something that keeps track of thez send site
-        unit(Message(tag, ags)) >>= { m => ask(actorRef, m, SendSiteContext(idn)) }
+        Message.meta(tag, ags, idn) >>= { m => ask(actorRef, m, SendSiteContext(idn)) }
 
     /** Checks whether the given actor represents a mirror */
     private def mirrorFlagSet(actor: Actor): Boolean = actor.tid match
@@ -198,6 +198,8 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         lattice.closure((SchemeLambda(None, prs, bdy, None, bdy.head.idn), lexEnv))
 
     object MetaPrimitives:
+        // TODO: actually add these primitives to the initial environment,
+        // and make them implement the corect interface
         lazy val primitives = {
             List(
               `base/create`,
@@ -228,7 +230,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     }
                 }.toList
 
-        case object `base/create` extends MetaPrimitive("create/c"):
+        case object `base/create` extends MetaPrimitive("base/create"):
             def call(args: List[Value], idn: Identity): A[Value] =
                 for
                     _ <- checkArity(args, 3, strict = false)
@@ -254,7 +256,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                     _ <- checkArity(args, 2)
                     interpreter <- nondets(lattice.getActors(args(0)).map(unit))
                     message = args(1)
-                    mm = Message("answer", List(lattice.error(message)))
+                    mm <- Message.meta("answer", List(lattice.error(message)), idn)
                     // TODO: change emptyContext to actual context
                     _ <- send(interpreter, mm, emptyContext)
                 yield lattice.void
@@ -321,8 +323,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 envelope = lattice.envelope(Envelope(self, reifyMessage(message, ags)))
                 result <- intercept { mirror =>
                     /* , TODO: add the source location of the send here */
-                    mirrorAsk(mirror.tid, "send", List(envelope), self, idn) >>= catchErr(idn)
+                    mirrorAsk(mirror.tid, "send", List(envelope, lattice.nil), self, idn) >>= catchErr(idn)
                 } /* otherwise */ {
+                    log(s"base/send $actorRef $tag $ags")
                     // TODO: chagne emptyContext to actual context
                     allocLst(ags.zip(evaluatedAgs)).flatMap { ags =>
                         sendMessage(evaluatedActor, lattice.symbol(tag), ags, emptyContext).map(_ => lattice.nil)
@@ -348,19 +351,26 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 result <- intercept { mirror =>
                     for
                         self <- selfActor
-                        _ = log(s"++ meta/receive intercepting receive of $self")
+                        //_ = log(s"++ meta/receive intercepting receive of $self with args $args")
                         env <- getEnv
                         beh <- currentBehavior
-                        _ = log(s"++ meta/receive Got current behavior $beh")
-                        lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, lattice.beh(beh)), self, idn)
-                        _ = log(s"++ meta/receive got handler from mirror $lam")
+                        //_ = log(s"++ meta/receive Got current behavior $beh")
+                        // TODO: provide sender and sender location
+                        lam <- mirrorAsk(mirror.tid, "receive", List(reifiedMessage, lattice.beh(beh), lattice.nil, lattice.nil), self, idn)
+                        //_ = log(s"++ meta/receive got handler from mirror $lam")
                         result <- applyThunk(lam, idn, args)
-                        _ = log(s"++ meta/receive result of running the mirror is $result")
+                    //_ = log(s"++ meta/receive result of running the mirror is $result")
                     yield result
                 } /* otherwise */ {
+                    //log(s"+++ meta/receive base looking up handler for $tag with args $args")
                     nondets(select.lookupHandler(tag).map(unit)).flatMap { case (pars, bdy) =>
+                        //log(s"+++ meta/receive found handler with ${pars.size} and $bdy")
                         args.take(primitives)(pars.size).flatMap { args =>
-                            withCtx(messageCtx(context)) { withEnvM(bindArgs(pars, args)) { eval(bdy) } }
+                            //log(s"+++ meta/receive running handler with ${args.size} ${pars.size}")
+                            withCtx(messageCtx(context)) { withEnvM(bindArgs(pars, args)) { eval(bdy) } }.map(res =>
+                                //log(s"+++ meta/receive result $res")
+                                res
+                            )
                         }
                     }
                 }

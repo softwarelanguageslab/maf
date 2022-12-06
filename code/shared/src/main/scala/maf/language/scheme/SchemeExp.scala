@@ -548,6 +548,13 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp:
 
 trait ASchemeExp extends SchemeExp
 
+/** A synthetic Scheme expression that only has an identity and no subexpressions */
+case class ASchemeSynthetic(idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = Set()
+    def label: Label = SYN
+    def subexpressions: List[Expression] = List()
+    override def toString: String = s"<SYN at $idn>"
+
 case class ASchemeActor(
     parameters: List[Identifier],
     selection: SchemeExp,

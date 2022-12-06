@@ -280,8 +280,8 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 empheralChild <- allocateEmpheralChild(self, m)
                 // send the message to "to"
                 tag <- m.tag
-                ags <- m.vlus >>= (lattice.actor(ASchemeValues.Actor(None, empheralChild)) ::: _)
-                nm <- mkMessage(tag, ags)
+                nm <- m.prepend(lattice.actor(ASchemeValues.Actor(None, empheralChild))).map(_.asInstanceOf[Msg])
+                _ = log(s"+++ sending $nm")
                 _ <- send(to, nm, context)
                 // read the result from the mailbox
                 _ <- register(MailboxDep(empheralChild))

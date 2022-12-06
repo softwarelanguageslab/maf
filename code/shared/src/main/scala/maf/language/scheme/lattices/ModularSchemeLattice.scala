@@ -1002,7 +1002,14 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def nil: L = HMap.wrapInserted(NilT, Nil)
         def void: L = HMap.wrapInserted(VoidT, Void)
         def eql[B2: BoolLattice](x: L, y: L): B2 =
-            BoolLattice[B2].top // TODO[medium] implement
+            x.elements[Value].foldMap[B2] {
+                case Symbol(s1) =>
+                    y.elements.foldMap[B2] {
+                        case Symbol(s2) => SymbolLattice[Sym].eql[B2](s1, s2)
+                        case _          => BoolLattice[B2].top
+                    }
+                case _ => BoolLattice[B2].top
+            }
         def refs(x: L): Set[Address] = x.elements[Value].foldMap(x => Value.refs(x))(setMonoid) // TODO: put in HMap lattice
         def eq(xs: L, ys: L)(comparePtr: MaybeEq[A]): L = // TODO: put in HMap lattice
             xs.elements[Value].foldMap { x =>
