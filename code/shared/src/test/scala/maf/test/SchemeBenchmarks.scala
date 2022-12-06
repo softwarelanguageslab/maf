@@ -33,14 +33,6 @@ trait ConcurrentIncrementalBenchmarks extends SchemeBenchmarkTests:
 trait SequentialIncrementalBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, IncrementalSchemeBenchmarkPrograms.sequential)
 
-trait BenchmarkPartition(part: Int, parts: Int) extends SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] =
-        val all = super.benchmarks
-        val partSize: Int = Math.ceil(all.size / parts).toInt
-        val lower = (part - 1) * partSize
-        val upper = part * partSize
-        benchmarks.toList.sorted.slice(lower, upper).toSet
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 trait ContractBenchmarks extends maf.test.SchemeBenchmarkTests:
@@ -51,3 +43,38 @@ trait ContractSafetyTestsBenchmarks extends SchemeBenchmarkTests:
 
 trait ContractSoundnessTestsBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, ContractBenchmarkPrograms.manualUnsafe)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+trait BenchmarkPartition(part: Int, parts: Int) extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] =
+        val all = super.benchmarks
+        val partSize: Int = Math.ceil(all.size / parts).toInt
+        val lower = (part - 1) * partSize
+        val upper = part * partSize
+        all.toList.sorted.slice(lower, upper).toSet
+
+// The above parameters don't work (initialisation order issue), so workaround using duplication for now.
+trait Part_1_3 extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] =
+        val all = super.benchmarks
+        val partSize: Int = Math.ceil(all.size / 3).toInt
+        val lower = 0
+        val upper = partSize
+        all.toList.sorted.slice(lower, upper).toSet
+
+trait Part_2_3 extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] =
+        val all = super.benchmarks
+        val partSize: Int = Math.ceil(all.size / 3).toInt
+        val lower = partSize
+        val upper = 2 * partSize
+        all.toList.sorted.slice(lower, upper).toSet
+
+trait Part_3_3 extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] =
+        val all = super.benchmarks
+        val partSize: Int = Math.ceil(all.size / 3).toInt
+        val lower = 2 * partSize
+        val upper = all.size
+        all.toList.sorted.slice(lower, upper).toSet
