@@ -89,17 +89,11 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             else BoolLattice[B].inject(false)
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
-        (anl, env, sto, ctx) =>
+        (anl, env, sto, ctx, tai) =>
             val gcs = sto.collect(rs)
-            blk(anl, env, gcs, ctx).map { (v, d, u) =>
+            blk(anl, env, gcs, ctx, true).map { (v, d, u) =>
                 val gcd = d.collect(lattice.refs(v) ++ u)
-                (v, sto.replay(gcd), u)
-            }
-
-    def withRestrictedResult(blk: A[Val]): A[Val] =
-        (anl, env, sto, ctx) =>
-            blk(anl, env, sto, ctx).map { (v, d, u) =>
-                (v, d.collect(lattice.refs(v) ++ u), u)
+                (v, sto.replay(gcd, tai), u)
             }
 
     import analysisM._
@@ -126,50 +120,53 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // ANALYSISM MONAD
     //
 
-    type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx) => Set[(X, sto.Delta, Set[Adr])]
+    type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx, tai: Boolean) => Set[(X, sto.Delta, Set[Adr])]
 
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-            (_, _, sto, _) => Set((x, sto.emptyDelta, Set.empty))
+            (_, _, sto, _, _) => Set((x, sto.emptyDelta, Set.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
-            (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d, u) => (f(x), d, u))
+            (anl, env, sto, ctx, tai) => m(anl, env, sto, ctx, tai).map((x, d, u) => (f(x), d, u))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-            (anl, env, sto, ctx) =>
+            (anl, env, sto, ctx, tai) =>
                 for
-                    (x0, d0, u0) <- m(anl, env, sto, ctx)
-                    (x1, d1, u1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
+                    (x0, d0, u0) <- m(anl, env, sto, ctx, tai)
+                    (x1, d1, u1) <- f(x0)(anl, env, sto.integrate(d0), ctx, tai)
                 yield (x1, sto.compose(d1, d0), u0 ++ u1.filter(sto.contains))
         // MONADJOIN
         def mbottom[X] =
-            (_, _, _, _) => Set.empty
+            (_, _, _, _, _) => Set.empty
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
-            (anl, env, sto, ctx) => x(anl, env, sto, ctx) ++ y(anl, env, sto, ctx)
+            (anl, env, sto, ctx, tai) => x(anl, env, sto, ctx, tai) ++ y(anl, env, sto, ctx, tai)
         // MONADERROR
         def fail[X](err: Error) =
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _) => Set((eqA(sto, anl), sto.emptyDelta, Set.empty))
+            (anl, _, sto, _, _) => Set((eqA(sto, anl), sto.emptyDelta, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _) => Set(((), extendV(sto, adr, vlu), Set.empty))
+            (anl, _, sto, _, _) => Set(((), extendV(sto, adr, vlu), Set.empty))
         def updateSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _) => Set(((), updateV(sto, adr, vlu), Set(adr)))
+            (anl, _, sto, _, _) => Set(((), updateV(sto, adr, vlu), Set(adr)))
         def lookupSto(adr: Adr) =
-            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), sto.emptyDelta, Set.empty)))(inject)
+            flatMap((anl, _, sto, _, _) => Set((sto.lookupValue(adr), sto.emptyDelta, Set.empty)))(inject)
         // CTX STUFF
         def getCtx =
-            (_, _, sto, ctx) => Set((ctx, sto.emptyDelta, Set.empty))
+            (_, _, sto, ctx, _) => Set((ctx, sto.emptyDelta, Set.empty))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-            (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
+            (anl, env, sto, ctx, tai) => blk(anl, env, sto, f(ctx), tai)
         // ENV STUFF
         def getEnv =
-            (_, env, sto, _) => Set((env, sto.emptyDelta, Set.empty))
+            (_, env, sto, _, _) => Set((env, sto.emptyDelta, Set.empty))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-            (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
+            (anl, env, sto, ctx, tai) => blk(anl, f(env), sto, ctx, tai)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, sto, ctx) => anl.call(lam, env, sto, ctx)
+            (anl, env, sto, ctx, _) => anl.call(lam, env, sto, ctx)
+        // NONTAIL!
+        override def nontail[X](blk: => A[X]): A[X] = 
+            (anl, env, sto, ctx, _) => blk(anl, env, sto, ctx, false)
 
     //
     // THE INTRA-ANALYSIS
@@ -189,7 +186,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             results.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.Delta, Set[Adr])]]
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
+            val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx, true)
             val rgc = res.map((v, d, u) => (v, d.collect(lattice.refs(v) ++ u), u))
             val old = results.getOrElse(cmp, Set.empty)
             if rgc != old then

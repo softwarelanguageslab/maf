@@ -107,14 +107,16 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
         ))
     // replaying a delta that was computed w.r.t. a GC'd store dgc
     // assumes that (dgc :: sgc.Delta), where sgc = this.collect(r) for some r
-    def replay(dgc: LocalStore[A, V]#Delta): Delta =
-        Delta(
-          dgc.delta.map { case (adr, s @ (v, c)) =>
-              get(adr) match
-                  case None                        => (adr, s)
-                  case Some(_) if dgc.inStore(adr) => (adr, s)
-                  case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
-          })
+    def replay(dgc: LocalStore[A, V]#Delta, tai: Boolean): Delta =
+        if tai
+        then Delta(dgc.delta)
+        else Delta(
+                dgc.delta.map { case (adr, s @ (v, c)) =>
+                    get(adr) match
+                        case None                        => (adr, s)
+                        case Some(_) if dgc.inStore(adr) => (adr, s)
+                        case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
+                })
     // abstract GC support
     type This = LocalStore[A, V]
     def fresh = LocalStore.empty
