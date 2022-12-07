@@ -70,7 +70,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
         case Some(old @ (oldV, oldC))  => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)))
     def update(adr: A, vlu: V): Delta = content.get(adr) match
         case None | Some((_, CountZero)) => throw new Exception("Trying to update a non-existing address")
-        case Some((_, CountOne))         => Delta(SmartMap(adr -> (vlu, CountOne)))                 // strong update
+        case Some((_, CountOne))         => Delta(SmartMap(adr -> (vlu, CountOne))) // strong update
         case Some((oldV, CountInf))      => Delta(SmartMap(adr -> (lat.join(oldV, vlu), CountInf))) // weak update
     // join a (value, count) at a given address
     def joinAt(adr: A, vlu: V, cnt: AbstractCount): Option[LocalStore[A, V]] =
@@ -98,25 +98,23 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     // joining two deltas
     def join(d1: Delta, d2: Delta): Delta =
         val ads = d1.delta.keys ++ d2.delta.keys
-        Delta(
-          ads.foldLeft(SmartMap.empty)((acc, adr) =>
-              lazy val prv = get(adr).getOrElse((lat.bottom, CountZero))
-              val (vlu1, cnt1) = d1.delta.get(adr).getOrElse(prv)
-              val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
-              acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
+        Delta(ads.foldLeft(SmartMap.empty)((acc, adr) =>
+            lazy val prv = get(adr).getOrElse((lat.bottom, CountZero))
+            val (vlu1, cnt1) = d1.delta.get(adr).getOrElse(prv)
+            val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
+            acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
         ))
     // replaying a delta that was computed w.r.t. a GC'd store dgc
     // assumes that (dgc :: sgc.Delta), where sgc = this.collect(r) for some r
     def replay(dgc: LocalStore[A, V]#Delta, tai: Boolean): Delta =
-        if tai
-        then Delta(dgc.delta)
-        else Delta(
-                dgc.delta.map { case (adr, s @ (v, c)) =>
-                    get(adr) match
-                        case None                        => (adr, s)
-                        case Some(_) if dgc.inStore(adr) => (adr, s)
-                        case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
-                })
+        if tai then Delta(dgc.delta)
+        else
+            Delta(dgc.delta.map { case (adr, s @ (v, c)) =>
+                get(adr) match
+                    case None                        => (adr, s)
+                    case Some(_) if dgc.inStore(adr) => (adr, s)
+                    case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
+            })
     // abstract GC support
     type This = LocalStore[A, V]
     def fresh = LocalStore.empty

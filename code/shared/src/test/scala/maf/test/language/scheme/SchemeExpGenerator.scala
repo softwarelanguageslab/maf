@@ -11,11 +11,10 @@ import maf.language.scheme.*
 import maf.core.Identity
 import maf.language.sexp
 
-
 object SchemeExpGenerator:
 
     type Id = String
-    type Exp = SchemeFuncall | SchemeLambda | SchemeVar | SchemeLet | SchemeLetrec | SchemeIf | SchemeValue 
+    type Exp = SchemeFuncall | SchemeLambda | SchemeVar | SchemeLet | SchemeLetrec | SchemeIf | SchemeValue
 
     enum Typ:
         case Num
@@ -28,11 +27,12 @@ object SchemeExpGenerator:
 
     final private lazy val noId = Identity.none
 
-    /** GENERATION **/ 
+    /** GENERATION * */
 
-    private def fresh(ctx: Context): Gen[Id] = Gen.choose('a','z')
-                                                  .map(_.toString)
-                                                  .filterNot(ctx.scope.contains)
+    private def fresh(ctx: Context): Gen[Id] = Gen
+        .choose('a', 'z')
+        .map(_.toString)
+        .filterNot(ctx.scope.contains)
 
     def exp(typ: Typ = Typ.Num, ctx: Context = emptyCtx): Gen[Exp] = Gen.sized { depth =>
         println(s"Calling exp with depth $depth")
@@ -44,54 +44,54 @@ object SchemeExpGenerator:
         val lam = typ.isInstanceOf[Typ.Fun]
         val num = typ == Typ.Num
         val bln = typ == Typ.Bool
-        val vrb = ctx.scope.find((_, t) => t == typ).isDefined 
+        val vrb = ctx.scope.find((_, t) => t == typ).isDefined
         Gen.frequency(
-            2 * toggle(app) -> Gen.lzy(appExp(typ, ctx)), 
-            2 * toggle(let) -> Gen.lzy(letExp(typ, ctx)), 
-            2 * toggle(ltr) -> Gen.lzy(letrecExp(typ, ctx)),
-            2 * toggle(iff) -> Gen.lzy(iffExp(typ, ctx)),
-            toggle(lam) -> Gen.lzy(lambdaExp(typ.asInstanceOf[Typ.Fun], ctx)),
-            toggle(num) -> Gen.lzy(numExp), 
-            toggle(bln) -> Gen.lzy(blnExp),
-            toggle(vrb) -> Gen.lzy(varExp(typ, ctx))
+          2 * toggle(app) -> Gen.lzy(appExp(typ, ctx)),
+          2 * toggle(let) -> Gen.lzy(letExp(typ, ctx)),
+          2 * toggle(ltr) -> Gen.lzy(letrecExp(typ, ctx)),
+          2 * toggle(iff) -> Gen.lzy(iffExp(typ, ctx)),
+          toggle(lam) -> Gen.lzy(lambdaExp(typ.asInstanceOf[Typ.Fun], ctx)),
+          toggle(num) -> Gen.lzy(numExp),
+          toggle(bln) -> Gen.lzy(blnExp),
+          toggle(vrb) -> Gen.lzy(varExp(typ, ctx))
         )
     }
 
-    private def sub[T](g: => Gen[T]): Gen[T] = 
+    private def sub[T](g: => Gen[T]): Gen[T] =
         Gen.sized(depth => Gen.resize(depth - 1, g))
 
     private def subExp(typ: Typ, ctx: Context) = sub(exp(typ, ctx))
 
-    def numExp: Gen[SchemeValue] = 
+    def numExp: Gen[SchemeValue] =
         Gen.chooseNum(0, 100).map(n => SchemeValue(sexp.Value.Integer(n), noId))
-    
-    def blnExp: Gen[SchemeValue] = 
+
+    def blnExp: Gen[SchemeValue] =
         Gen.oneOf(true, false).map(b => SchemeValue(sexp.Value.Boolean(b), noId))
 
-    def varExp(typ: Typ, ctx: Context): Gen[SchemeVar] = 
+    def varExp(typ: Typ, ctx: Context): Gen[SchemeVar] =
         Gen.oneOf(ctx.scope)
-           .filter((_, t) => t == typ)
-           .map((nam, _) => SchemeVar(Identifier(nam, noId)))
+            .filter((_, t) => t == typ)
+            .map((nam, _) => SchemeVar(Identifier(nam, noId)))
 
     def lambdaExp(funT: Typ.Fun, ctx: Context): Gen[SchemeLambda] =
         val Typ.Fun(argT, retT) = funT
-        for 
+        for
             par <- fresh(ctx)
             bdy <- subExp(retT, ctx.extendScope(par, argT))
         yield SchemeLambda(None, List(Identifier(par, noId)), List(bdy), None, noId)
 
     def anyTyp: Gen[Typ] = Gen.oneOf(Gen.const(Typ.Num), funTyp)
-    def funTyp: Gen[Typ.Fun] = 
+    def funTyp: Gen[Typ.Fun] =
         // for now, let's only allow num -> num function types
         Gen.const(Typ.Fun(Typ.Num, Typ.Num))
-        // otherwise, this can be enabled, but the recursion will need to be controlled somehow ...
-        //for 
-        //    a <- anyTyp
-        //    r <- anyTyp
-        //yield Typ.Fun(a, r)
-    
-    def letExp(ret: Typ, ctx: Context): Gen[SchemeLet] = 
-        for 
+    // otherwise, this can be enabled, but the recursion will need to be controlled somehow ...
+    //for
+    //    a <- anyTyp
+    //    r <- anyTyp
+    //yield Typ.Fun(a, r)
+
+    def letExp(ret: Typ, ctx: Context): Gen[SchemeLet] =
+        for
             nam <- fresh(ctx)
             typ <- anyTyp
             rhs <- subExp(typ, ctx)
@@ -105,8 +105,8 @@ object SchemeExpGenerator:
             els <- subExp(ret, ctx)
         yield SchemeIf(prd, thn, els, noId)
 
-    def letrecExp(ret: Typ, ctx: Context): Gen[SchemeLetrec] = 
-        for 
+    def letrecExp(ret: Typ, ctx: Context): Gen[SchemeLetrec] =
+        for
             nam <- fresh(ctx)
             // for now, we only generate lambdas as the rhs for a letrec
             atyp <- anyTyp
@@ -118,16 +118,16 @@ object SchemeExpGenerator:
         yield SchemeLetrec(List((Identifier(nam, noId), rhs)), List(bdy), noId)
 
     def appExp(ret: Typ, ctx: Context): Gen[SchemeFuncall] =
-        for 
+        for
             atyp <- anyTyp
             fun <- subExp(Typ.Fun(atyp, ret), ctx)
             arg <- subExp(atyp, ctx)
         yield SchemeFuncall(fun, List(arg), noId)
 
-    /** SHRINKING **/
+    /** SHRINKING * */
 
     def shrinkExp: Shrink[Exp] = Shrink[Exp] {
-        case SchemeLet(List((nam, rhs: Exp @unchecked)), List(bdy: Exp @unchecked), idn) => 
+        case SchemeLet(List((nam, rhs: Exp @unchecked)), List(bdy: Exp @unchecked), idn) =>
             // shrink the rhs ...
             (for rhsS <- shrink(rhs) yield SchemeLet(List((nam, rhsS)), List(bdy), idn))
             ++
@@ -136,7 +136,7 @@ object SchemeExpGenerator:
             ++
             // ... or replace the let with either the rhs or the body
             Stream(rhs, bdy)
-        case SchemeLetrec(List((nam, rhs: Exp @unchecked)), List(bdy: Exp @unchecked), idn) => 
+        case SchemeLetrec(List((nam, rhs: Exp @unchecked)), List(bdy: Exp @unchecked), idn) =>
             // shrink the rhs ...
             (for rhsS <- shrink(rhs) yield SchemeLet(List((nam, rhsS)), List(bdy), idn))
             ++
@@ -145,22 +145,22 @@ object SchemeExpGenerator:
             ++
             // ... or replace the letrec with either the rhs or the body
             Stream(rhs, bdy)
-        case SchemeFuncall(fun: Exp @unchecked, List(arg: Exp @unchecked), idn) => 
-                // shrink the operator ...
-                (for funS <- shrink(fun) yield SchemeFuncall(funS, List(arg), idn))
-                ++
-                // ... or shrink the operand ...
-                (for argS <- shrink(arg) yield SchemeFuncall(fun, List(argS), idn))
-                ++
-                // ... or replace the call with either the operator or the operand
-                Stream(fun, arg)
-        case SchemeLambda(nam, prs, List(bdy: Exp @unchecked), ann, idn) => 
+        case SchemeFuncall(fun: Exp @unchecked, List(arg: Exp @unchecked), idn) =>
+            // shrink the operator ...
+            (for funS <- shrink(fun) yield SchemeFuncall(funS, List(arg), idn))
+            ++
+            // ... or shrink the operand ...
+            (for argS <- shrink(arg) yield SchemeFuncall(fun, List(argS), idn))
+            ++
+            // ... or replace the call with either the operator or the operand
+            Stream(fun, arg)
+        case SchemeLambda(nam, prs, List(bdy: Exp @unchecked), ann, idn) =>
             // shrink the body of the lambda ...
             (for bdyS <- shrink(bdy) yield SchemeLambda(nam, prs, List(bdyS), ann, idn))
             ++
             // ... or replace the lambda with its body
             Stream(bdy)
-        case SchemeVar(_) => 
+        case SchemeVar(_) =>
             // try replacing the variable with a number
             Stream(SchemeValue(sexp.Value.Integer(42), noId))
         case SchemeValue(_, _) =>
@@ -197,14 +197,14 @@ class Testje extends SchemeExpGenSpecification:
         newProperties("SchemeExp Laws") { p =>
             p.property("foo") = forAll { (p: Exp) =>
                 println(p)
-                p match 
-                    case SchemeLetrec(List((Identifier(nam,_), rhs)), List(bdy), _) => 
+                p match
+                    case SchemeLetrec(List((Identifier(nam,_), rhs)), List(bdy), _) =>
                         bdy match
                             case SchemeFuncall(SchemeVar(Identifier(f, _)), List(SchemeValue(sexp.Value.Integer(_),_)), _) if f == nam => false
                             case _ => true
-                    case _ => true     
+                    case _ => true
             }
             p
         }
     checkAll(laws)
-*/
+ */

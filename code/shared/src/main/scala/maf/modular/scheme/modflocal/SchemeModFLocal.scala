@@ -165,7 +165,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         def call(lam: Lam): A[Val] =
             (anl, env, sto, ctx, _) => anl.call(lam, env, sto, ctx)
         // NONTAIL!
-        override def nontail[X](blk: => A[X]): A[X] = 
+        override def nontail[X](blk: => A[X]): A[X] =
             (anl, env, sto, ctx, _) => blk(anl, env, sto, ctx, false)
 
     //
