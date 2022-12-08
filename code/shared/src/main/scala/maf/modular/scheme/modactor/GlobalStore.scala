@@ -272,12 +272,12 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         // TODO: to not use implicit conversion but provide explicit one
         initialInterState(globalStore.InterState(sto = initialSto))
 
-    override lazy val initialEnv: Env =
+    override def initialEnv: Env =
         Environment(primitives.allPrimitives.map { case (name, vlu) =>
             name -> PrmAddr(name)
         })
 
-    override lazy val initialSto: Map[Address, Value] =
+    override def initialSto: Map[Address, Value] =
         primitives.allPrimitives.map { case (name, vlu) =>
             PrmAddr(name) -> lattice.primitive(name)
         }.toMap

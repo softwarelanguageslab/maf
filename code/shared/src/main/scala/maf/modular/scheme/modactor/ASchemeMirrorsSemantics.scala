@@ -3,6 +3,7 @@ package maf.modular.scheme.modactor
 import maf.modular.scheme.modf.BigStepModFSemanticsT
 import maf.language.scheme.*
 import maf.core.Monad.*
+import maf.core.MonadJoin.*
 import maf.modular.scheme.modf.TEvalM
 import maf.core.*
 import maf.language.AScheme.ASchemeValues.*
@@ -278,6 +279,14 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
               "payload" -> { message => message.toMetaMessage.flatMap(_.vlus) }
             )
 
+    /** Override primitive application in order to include the meta primitives as well */
+    override protected def applyPrimitives(app: App, fun: Val, ags: List[Val]): A[Val] =
+        lattice.getPrimitives(fun).foldMapM { prm =>
+            if MetaPrimitives.isPrimitive(prm) then MetaPrimitives.primitives(prm).call(ags, app.idn)
+            else if primitives.allPrimitives.keySet.contains(prm) then super.applyPrimitive(app, primitives(prm), ags)
+            else mbottom
+        }
+
     /**
      * Evaluates the given expression to a valid mirror ref.
      *
@@ -410,14 +419,6 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 // TODO: change emptyContext to actual context
                 result <- send(receiver, message, emptyContext).map(_ => lattice.nil)
             yield result
-
-        // Primitives (TODO: should actually be syntax)
-        case SchemeFuncall(SchemeVar(Identifier(name, _)), ags, idn) if MetaPrimitives.isPrimitive(name) =>
-            for
-                vls <- evalAll(ags)
-                pri = MetaPrimitives.primitives(name)
-                res <- pri.call(vls, idn)
-            yield res
 
         // For testing purposes
         case SchemeFuncall(SchemeVar(Identifier("error", _)), List(message), _) =>

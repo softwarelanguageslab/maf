@@ -325,8 +325,8 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
     // Auxilary functions for initializing the correct environment
     //////////////////////////////////////////////////////////////
 
-    lazy val initialEnv: Env
-    lazy val initialSto: Map[Adr, Val]
+    def initialEnv: Env
+    def initialSto: Map[Adr, Val]
 
     ////////////////////////////////
     // AnalysisEntry

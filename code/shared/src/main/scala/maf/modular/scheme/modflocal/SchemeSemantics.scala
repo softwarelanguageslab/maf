@@ -166,7 +166,7 @@ trait SchemeSemantics:
     private def applyFun(app: App, fun: Val, ags: List[Val]): A[Val] =
         mjoin(applyPrimitives(app, fun, ags), applyClosures(app, fun, ags))
 
-    private def applyPrimitives(app: App, fun: Val, ags: List[Val]): A[Val] =
+    protected def applyPrimitives(app: App, fun: Val, ags: List[Val]): A[Val] =
         lattice.getPrimitives(fun).foldMapM { prm =>
             applyPrimitive(app, primitives(prm), ags)
         }
