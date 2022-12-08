@@ -1,37 +1,61 @@
 package maf.test.TurgutsThesis.soundness.dd.evaluation
 
-class DataCollector:
+import java.io.{ByteArrayOutputStream, ObjectOutputStream, FileOutputStream, ObjectInputStream, FileInputStream}
 
-  var oracleCounts: List[Int] = List()
+object DataCollector:
+  def readObject(suffix: String): DataCollector =
+    val ois = new ObjectInputStream(new FileInputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/objects/" + suffix))
+    val o = ois.readObject.asInstanceOf[DataCollector]
+    ois.close()
+    o
+
+class DataCollector extends Serializable:
+  private var id = 0
+  def newID(): Unit =
+    id += 1
+
+  var candidateFunctionCount: Map[Int, Int] = Map()
+  def addCandidateFunctionCount(count: Int) =
+    candidateFunctionCount = candidateFunctionCount + (id -> count)
+
+  var functionCount: Map[Int, Int] = Map()
+  def addFunctionCount(count: Int) =
+    functionCount = functionCount + (id -> count)
+
+  var oracleCounts: Map[Int, Int] = Map()
   def addOracleCount(count: Int) =
-    oracleCounts = oracleCounts.::(count)
-  
-  var programSizes: List[Int] = List()
+    oracleCounts = oracleCounts + (id -> count)
+
+  var programSizes: Map[Int, Int] = Map()
   def addProgramSize(size: Int) =
-    programSizes = programSizes.::(size)
-  
-  var reducedSizes: List[Int] = List()
+    programSizes = programSizes + (id -> size)
+
+  var reducedSizes: Map[Int, Int] = Map()
   def addReducedSize(size: Int) =
-    reducedSizes = reducedSizes.::(size)
+    reducedSizes = reducedSizes + (id -> size)
 
-  var reductionTimes: List[Long] = List()
+  var oracleHits: Map[Int, Int] = Map()
+  def addOracleHit(hit: Int) =
+    oracleHits = oracleHits + (id -> hit)
+
+  var reductionTimes: Map[Int, Long] = Map()
   def addReductionTime(time: Long) =
-    reductionTimes = reductionTimes.::(time)
-  
-  var oracleTimes: List[(Long, Int)] = List()
-  def addOracleTimes(time: (Long, Int)) =
-    oracleTimes = oracleTimes.::(time)
-    
-  var analysisSteps: List[(Int, Int)] = List()
-  def addAnalysisSteps(steps: (Int, Int)) =
-    analysisSteps = analysisSteps.::(steps)
-    
-  var interpreterSteps: List[(Int, Int)] = List()
-  def addInterpreterSteps(steps: (Int, Int)) =
-    interpreterSteps = interpreterSteps.::(steps)
+    reductionTimes = reductionTimes + (id -> time)
 
-  
-  
-    
-    
+  var oracleTimes: Map[Int, List[(Long, Int)]] = Map()
+  def addOracleTimes(times: List[(Long, Int)]) =
+    oracleTimes = oracleTimes + (id -> times)
 
+  var analysisSteps: Map[Int, List[(Int, Int)]] = Map()
+  def addAnalysisSteps(steps: List[(Int, Int)]) =
+    analysisSteps = analysisSteps + (id -> steps)
+
+  var interpreterSteps: Map[Int, List[(Int, Int)]] = Map()
+  def addInterpreterSteps(steps: List[(Int, Int)]) =
+    interpreterSteps = interpreterSteps + (id -> steps)
+
+  def writeTo(suffix: String): Unit =
+    // (2) write the instance out to a file
+    val oos = new ObjectOutputStream(new FileOutputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/objects/" + suffix))
+    oos.writeObject(this)
+    oos.close()

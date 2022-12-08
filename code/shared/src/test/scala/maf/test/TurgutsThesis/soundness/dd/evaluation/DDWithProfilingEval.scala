@@ -1,7 +1,6 @@
 package maf.test.TurgutsThesis.soundness.dd.evaluation
 
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
-
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
@@ -48,7 +47,7 @@ object DDWithProfilingEval extends DeltaDebugger:
                 interpreterSteps = interpreterSteps.::((evalSteps, oracleHits))
 
                 val bool = p.findUndefinedVariables().isEmpty &&
-                            failureMsg.nonEmpty
+                  failureMsg.nonEmpty
                 if bool then
                   oracleHits += 1
                 bool
@@ -62,12 +61,16 @@ object DDWithProfilingEval extends DeltaDebugger:
 
     val reductionEndTime = System.currentTimeMillis()
     val reductionTime = reductionEndTime - reductionStartTime
-    
+
+    dataCollector.newID()
+    dataCollector.addCandidateFunctionCount(analysisProfiling.length)
+    dataCollector.addFunctionCount(CountLambdaBindings.count(program))
+    dataCollector.addOracleHit(oracleHits)
     dataCollector.addOracleCount(oracleCount)
     dataCollector.addProgramSize(program.size)
     dataCollector.addReducedSize(reduced.size)
-    oracleTimes.foreach(t => dataCollector.addOracleTimes(t))
-    analysisSteps.foreach(s => dataCollector.addAnalysisSteps(s))
-    interpreterSteps.foreach(s => dataCollector.addInterpreterSteps(s))
+    dataCollector.addOracleTimes(oracleTimes)
+    dataCollector.addAnalysisSteps(analysisSteps)
+    dataCollector.addInterpreterSteps(interpreterSteps)
     dataCollector.addReductionTime(reductionTime)
     

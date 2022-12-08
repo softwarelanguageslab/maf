@@ -23,51 +23,12 @@ trait EvaluateSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:
         case None =>
 
       if onBenchmarkCount == benchmarks.size then
-        evaluateData()
-     }
+        writeDataToFile()
+    }
 
-  def evaluateData(): Unit =
-    def evaluateDataCollector(dataCollector: DataCollector): Unit =
-      val averageReductionTime = dataCollector.reductionTimes.sum / dataCollector.reductionTimes.length
-      val averageOracleCount = dataCollector.oracleCounts.sum / dataCollector.oracleCounts.length
-      val averageOriginalProgramSize = dataCollector.programSizes.sum / dataCollector.programSizes.length
-      val averageReducedProgramSize = dataCollector.reducedSizes.sum / dataCollector.reducedSizes.length
-
-      //analysis steps:
-      val averageAnalysisSteps = dataCollector.analysisSteps.map(_._1).sum / dataCollector.analysisSteps.length
-      val averageAnalysisStepsAfter1Reductions = dataCollector.analysisSteps.filter(_._2 == 1).map(_._1).sum / dataCollector.analysisSteps.length
-      val averageAnalysisStepsAfter2Reductions = dataCollector.analysisSteps.filter(_._2 == 2).map(_._1).sum / dataCollector.analysisSteps.length
-
-      //interpreter steps:
-      val averageInterpreterSteps = dataCollector.interpreterSteps.map(_._1).sum / dataCollector.interpreterSteps.length
-      val averageInterpreterStepsAfter1Reductions = dataCollector.interpreterSteps.filter(_._2 == 1).map(_._1).sum / dataCollector.interpreterSteps.length
-      val averageInterpreterStepsAfter2Reductions = dataCollector.interpreterSteps.filter(_._2 == 2).map(_._1).sum / dataCollector.interpreterSteps.length
-
-      println("number of programs: " + dataCollector.reducedSizes.length)
-      println("average reduction time: " + averageReductionTime)
-      println("average oracle count: " + averageOracleCount)
-      println("average original program size: " + averageOriginalProgramSize)
-      println("average reduced program size: " + averageReducedProgramSize)
-
-      println("#####")
-
-      println("average analysis steps: " + averageAnalysisSteps)
-      println("average analysis steps after 1 reductions: " + averageAnalysisStepsAfter1Reductions)
-      println("average analysis steps after 2 reductions: " + averageAnalysisStepsAfter2Reductions)
-
-      println("average interpreter steps: " + averageInterpreterSteps)
-      println("average interpreter steps after 1 reductions: " + averageInterpreterStepsAfter1Reductions)
-      println("average interpreter steps after 2 reductions: " + averageInterpreterStepsAfter2Reductions)
-
+  def writeDataToFile(): Unit =
     val withProfilingDataCollector = DDWithProfilingEval.dataCollector
     val withoutProfilingDataCollector = DDWithoutProfilingEval.dataCollector
 
-    println(">>>>> results WITHOUT profiling <<<<< ")
-    evaluateDataCollector(withoutProfilingDataCollector)
-    println("")
-    println("")
-    println("####################################")
-    println("")
-    println("")
-    println(">>>>> results WITH profiling <<<<< ")
-    evaluateDataCollector(withProfilingDataCollector)
+    withProfilingDataCollector.writeTo("withProfilingDataCollector")
+    withoutProfilingDataCollector.writeTo("withoutProfilingDataCollector")
