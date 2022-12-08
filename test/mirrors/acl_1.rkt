@@ -24,6 +24,8 @@
 
 (require acontracts/actors)
 
+(define C (actor "C" () (foo (sender) (send sender bar))))
+
 ;; target actor A
 (define A (actor "A" () 
             (good-message (r) 
@@ -39,7 +41,8 @@
   (create (mirror "security" ()
       ;; create is not limited
       (create (interpreter mirror beh arguments)
-         (reply interpreter (apply base/create mirror beh arguments))
+         ;(reply interpreter (base/create mirror beh arguments))
+         (reply interpreter (apply base/create (cons mirror (cons beh arguments))))
          (same-behavior))
       ;; receive is not limited
       (receive (interpreter msg behavior sender sender-location)

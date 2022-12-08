@@ -146,8 +146,11 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     private def interceptCreate(beh: Value, ags: List[Value], m: Value, exs: List[SchemeExp], idn: Identity): A[Value] = intercept { mirror =>
         for
             arguments <- allocLst(exs.zip(ags))
+            _ = log(s"+++ meta/create got arguments $arguments")
             self <- selfActor
+            _ = log(s"+++ meta/create got self $self")
             result <- mirrorAsk(mirror.tid, "create", List(m, beh, arguments), self, idn)
+            _ = log(s"+++ meta/create got result from mirror $result")
         yield result
     } /* otherwise */ {
         // base behavior
@@ -155,7 +158,6 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
     }
 
     private def baseCreate(beh: Value, evaluatedMirrorRef: Value, ags: List[Value], idn: Identity): A[Value] =
-        log(s"+++ base/create actor is being created with $beh and $evaluatedMirrorRef as mirror")
         for
             actor <- create(beh, ags, idn)
             actorAbs =
@@ -234,9 +236,9 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         case object `base/create` extends MetaPrimitive("base/create"):
             def call(args: List[Value], idn: Identity): A[Value] =
                 for
-                    _ <- checkArity(args, 3, strict = false)
+                    _ <- checkArity(args, 2, strict = false)
                     arguments = args.drop(2)
-                    result <- baseCreate(args(0), args(1), arguments, idn)
+                    result <- baseCreate(args(1), args(0), arguments, idn)
                 yield result
 
         case object `lookup-handler` extends MetaPrimitive("lookup-handler"):
@@ -373,11 +375,11 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
                 } /* otherwise */ {
                     //log(s"+++ meta/receive base looking up handler for $tag with args $args")
                     nondets(select.lookupHandler(tag).map(unit)).flatMap { case (pars, bdy) =>
-                        //log(s"+++ meta/receive found handler with ${pars.size} and $bdy")
+                        log(s"+++ meta/receive found handler with ${pars.size} and $bdy for $tag")
                         args.take(primitives)(pars.size).flatMap { args =>
-                            //log(s"+++ meta/receive running handler with ${args.size} ${pars.size}")
+                            log(s"+++ meta/receive running handler with ${args.size} ${pars.size} for $tag")
                             withCtx(messageCtx(context)) { withEnvM(bindArgs(pars, args)) { eval(bdy) } }.map(res =>
-                                //log(s"+++ meta/receive result $res")
+                                log(s"+++ meta/receive result $res for $tag")
                                 res
                             )
                         }
@@ -424,7 +426,7 @@ trait ASchemeMirrorsSemantics extends ASchemeSemantics:
         case SchemeFuncall(SchemeVar(Identifier("error", _)), List(message), _) =>
             for
                 m <- eval(message)
-                _ = log(s"+++ intra error $m")
+                _ = log(s"!! +++ intra error $m")
                 result <- mbottom[Value]
             yield result
 
