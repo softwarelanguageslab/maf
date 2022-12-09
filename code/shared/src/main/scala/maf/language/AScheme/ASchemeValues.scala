@@ -163,6 +163,17 @@ object ASchemeValues:
                 MetaMessage(lat.symbol(_tag), payload, base = Some(base), siz = Some(_vlus.size))
             }
 
+        def meta[M[_], L](
+            _tag: L,
+            _vlus: List[L],
+            base: Identity
+          )(using primM: SchemePrimM[M, Address, L],
+            lat: SchemeLattice[L, Address]
+          ): M[MetaMessage[L]] =
+            allocLstBase(_vlus, base, 1).map { payload =>
+                MetaMessage(_tag, payload, base = Some(base), siz = Some(_vlus.size))
+            }
+
         given showMessage[Value]: Show[Message[Value]] with
             def show(m: Message[Value]) = m.toString
 
