@@ -1,6 +1,5 @@
 package maf.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.ReplaceIdentifierCalls.{addReplacements, addTrees, replaceCallWithAllValues, replaceWithAllValues}
 import maf.TurgutsThesis.gtr.transformations.traits.Replacing
 import maf.TurgutsThesis.primitiveOpNames.PrimitiveOpNames
 import maf.core.Identity
@@ -18,11 +17,17 @@ class ReplaceNthExpensiveFunction(arr: Array[(String, Int)], n: Int) extends Tra
         })
 
         for (lambdaBinding <- lambdaBindings)
-          if lambdaBinding._1.name equals nthExpensive._1 then 
-            addReplacements(replaceCallWithAllValues(lettishExp, lambdaBinding._1))
+          if lambdaBinding._1.name equals nthExpensive._1 then
+            val newLet = lettishExp.dropBinding(lambdaBinding._1.name)
+            val newTree = tree.replace(lettishExp, newLet)
+            addTrees(replaceCallWithAllValues(newTree, lambdaBinding._1))
 
-      case SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
-        if name.name equals nthExpensive._1 then 
-          addTrees(replaceCallWithAllValues(tree, name))
+      case defExp@SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
+        if name.name equals nthExpensive._1 then
+          val newTree = tree.deleteChildren(child => child eq defExp) //removes the definition
+          newTree match
+            case Some(newTree) =>
+              addTrees(replaceCallWithAllValues(newTree, name))
+            case _ =>
 
       case _ =>

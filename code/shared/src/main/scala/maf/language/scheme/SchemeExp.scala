@@ -410,6 +410,9 @@ sealed trait SchemeLettishExp extends SchemeExp:
         ))
       else None
 
+    def dropBinding(bindingName: String): T
+    def dropBodyExp(i: Int): T
+
     def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = ???
 
     def shallowDropIdentifier(id: Identifier,
@@ -471,6 +474,12 @@ case class SchemeLet(
         case _ => None
       )
 
+    override def dropBinding(name: String): SchemeLet =
+      SchemeLet(bindings.filterNot(tpl => tpl._1.name equals name), body, idn)
+
+    override def dropBodyExp(i: Int): SchemeLet =
+      SchemeLet(bindings, body.take(i) ++ body.drop(i + 1), idn)
+
     override def deleteChildren(fnc: SchemeExp => Boolean): Option[T] =
       deleteChildren(fnc, SchemeLet.apply)
 
@@ -527,6 +536,12 @@ case class SchemeLetStar(
         case _ => None
       )
 
+    override def dropBinding(name: String): SchemeLetStar =
+      SchemeLetStar(bindings.filterNot(tpl => tpl._1.name equals name), body, idn)
+
+    override def dropBodyExp(i: Int): SchemeLetStar =
+      SchemeLetStar(bindings, body.take(i) ++ body.drop(i + 1), idn)
+
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLetStar.apply)
 
@@ -579,6 +594,12 @@ case class SchemeLetrec(
         case Some(let) => let.deepDropIdentifier(lostBinding)
         case _ => None
       )
+
+    override def dropBinding(name: String): SchemeLetrec =
+      SchemeLetrec(bindings.filterNot(tpl => tpl._1.name equals name), body, idn)
+
+    override def dropBodyExp(i: Int): SchemeLetrec =
+      SchemeLetrec(bindings, body.take(i) ++ body.drop(i + 1), idn)
 
     override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] =
       super.shallowDropIdentifier(id, SchemeLetrec.apply)

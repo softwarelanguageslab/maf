@@ -33,14 +33,6 @@ trait Replacing:
       replaceWithValue(exp, toReplace,
         SchemeVarArgLambda(None, List(), Identifier(uniqueIdentifier(), NoCodeIdentity), List(SchemeValue(Value.Nil, NoCodeIdentity)), None, NoCodeIdentity)),
     )
-
-  def replaceIdWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =
-    replaceWithAllValues(exp, subExp => {
-      subExp match
-        case varExp: SchemeVarExp =>
-          varExp.id.name equals id.name
-        case _ => false
-    })  
     
   private def replaceWithValue(exp: SchemeExp, toReplace: SchemeExp => Boolean, value: SchemeExp): SchemeExp =
     exp.map(subExp => {
@@ -48,3 +40,19 @@ trait Replacing:
         value
       else subExp
     })
+
+  def replaceIdWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =
+    replaceWithAllValues(exp, subExp => {
+      subExp match
+        case varExp: SchemeVarExp =>
+          varExp.id.name equals id.name
+        case _ => false
+    })
+
+  def replaceCallWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =
+    replaceWithAllValues(exp, subExp => {
+      subExp match
+        case SchemeFuncall(f: SchemeVarExp, _, _) =>
+          f.id.name equals id.name
+        case _ => false
+    })  

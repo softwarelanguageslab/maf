@@ -12,7 +12,7 @@ import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.test.TurgutsThesis.soundness.dd.evaluation.DDWithProfilingEval
-import maf.test.TurgutsThesis.soundness.dd.{DDWithAllTransformations, DDWithProfiling, DDWithoutProfiling}
+import maf.test.TurgutsThesis.soundness.dd.{DDWithAllTransformations, DDWithProfiling}
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}

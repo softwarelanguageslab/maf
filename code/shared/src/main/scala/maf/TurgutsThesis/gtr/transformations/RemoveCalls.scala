@@ -6,16 +6,16 @@ object RemoveCalls extends Transformation:
   override val name: String = "RemoveCalls"
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
 
-    def removeIdCalls(id: Identifier): Unit =
-      val applsRemoved: Option[SchemeExp] = tree.deleteChildren({
+    def removeIdCalls(id: Identifier, newTree: SchemeExp): Unit =
+      val applsRemoved: Option[SchemeExp] = newTree.deleteChildren({
         case SchemeFuncall(f: SchemeVarExp, _, _) =>
           f.id.name equals id.name
         case _ => false
       })
 
       applsRemoved match
-        case Some(tree) =>
-          addTree(tree)
+        case Some(applsRemovedTree) =>
+          addTree(applsRemovedTree)
         case _ =>
 
     node match
@@ -25,10 +25,15 @@ object RemoveCalls extends Transformation:
         })
 
         for(lambdaBinding <- lambdaBindings)
-          removeIdCalls(lambdaBinding._1)
+          val newTree = tree.replace(exp, exp.dropBinding(lambdaBinding._1.name))
+          removeIdCalls(lambdaBinding._1, newTree)
 
-      case SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
-        removeIdCalls(name)
+      case defExp@SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
+        val newTree = tree.deleteChildren(child => child eq defExp) //removes the definition
+        newTree match
+          case Some(newTree) =>
+            removeIdCalls(name, newTree)
+          case _ =>
 
       case _ =>
   }

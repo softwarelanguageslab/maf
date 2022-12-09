@@ -15,14 +15,19 @@ object DeleteChildSimple extends Transformation:
         if exps.length > 1 then
           for (i <- exps.indices)
             addReplacement(SchemeBegin(exps.take(i) ++ exps.drop(i + 1), idn))
-      case s: SchemeLet =>
-        deleteChildLettishExp(s, SchemeLet.apply)
-      case s: SchemeLetStar =>
-        deleteChildLettishExp(s, SchemeLetStar.apply)
-      case s: SchemeLetrec =>
-        deleteChildLettishExp(s, SchemeLetrec.apply)
+      case lettishExp: SchemeLettishExp =>
+        val bindings = lettishExp.bindings
+        val body = lettishExp.body
+
+        if body.length > 1 then
+          for (i <- body.indices)
+            addReplacement(lettishExp.dropBodyExp(i))
+
+        for ((identifier, exp) <- bindings)
+          addReplacement(lettishExp.dropBinding(identifier.name))
       case _ =>
 
+  /*
   def deleteChildLettishExp(lettishExp: SchemeLettishExp,
                             factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): Unit = {
     val bindings = lettishExp.bindings
@@ -36,4 +41,4 @@ object DeleteChildSimple extends Transformation:
     for (i <- bindings.indices)
       val bindingDropped = factoryMethod(bindings.take(i) ++ bindings.drop(i + 1), body, idn)
       addReplacement(bindingDropped)
-  }
+  }*/
