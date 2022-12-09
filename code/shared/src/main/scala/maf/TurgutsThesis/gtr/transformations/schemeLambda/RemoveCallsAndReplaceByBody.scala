@@ -20,7 +20,6 @@ object RemoveCallsAndReplaceByBody extends Transformation with Replacing:
 
       callsRemoved match
         case Some(tree) =>
-          val trees = replaceCallWithAllValues(tree, id) //this removes any non-call references to the lambda
           addTrees(trees)
         case _ =>
 
