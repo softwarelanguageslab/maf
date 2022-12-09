@@ -1,9 +1,10 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.schemeLambda
 
+import maf.TurgutsThesis.gtr.transformations.Transformation
 import maf.TurgutsThesis.gtr.transformations.traits.Replacing
 import maf.TurgutsThesis.primitiveOpNames.PrimitiveOpNames
 import maf.core.Identity
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambda, SchemeLambdaExp, SchemeLettishExp, SchemeSanitizer, SchemeSetExp, SchemeSink, SchemeSource, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.language.scheme.*
 
 class ReplaceNthExpensiveFunction(arr: Array[(String, Int)], n: Int) extends Transformation with Replacing:
   override val name: String = "ReplaceNthExpensiveFunction"

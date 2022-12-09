@@ -1,7 +1,8 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.generics
 
+import maf.TurgutsThesis.gtr.transformations.Transformation
 import maf.core.{Identifier, Identity}
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambda, SchemeLambdaExp, SchemeLet, SchemeLetStar, SchemeLetrec, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarArgLambda, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.language.scheme.*
 
 object DeleteChildSimple extends Transformation:
   override val name: String = "DeleteChildSimple"

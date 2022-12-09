@@ -1,58 +1,25 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
+import maf.TurgutsThesis.gtr.transformations.generics.ReplaceByValue
+import maf.TurgutsThesis.gtr.transformations.schemeIdentifier.ReplaceIdentifier
 import org.scalatest.flatspec.AnyFlatSpec
-import maf.TurgutsThesis.gtr.transformations.ReplaceIdentifier
-import maf.language.scheme.{SchemeBegin, SchemeParser}
+import maf.language.scheme.{SchemeBegin, SchemeFuncall, SchemeLet, SchemeParser}
 
 class ReplaceIdentifierTest extends AnyFlatSpecTransformations {
-  "ReplaceIdentifier" should "replace an identifier with all values" in {
+  "ReplaceByValue" should "replace an identifier with all values" in {
     val programText =
       """(begin
         |  (let ((a 1)
         |        (b 2))
         |    (+ a b)
-        |    (* a b)))""".stripMargin
+        |    (* a b))
+        |  10)""".stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
-    val letExp = t.exps.last
+    val letExp = t.exps.head.asInstanceOf[SchemeLet]
+    val varExp = letExp.body.head.asInstanceOf[SchemeFuncall].args.head
 
-    suggestedTrees = ReplaceIdentifier.transform(t, letExp)
-    assert(suggestedTrees.length > 10)
-
-    //replace b
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ a 'S) (* a 'S)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ a \"S\") (* a \"S\")))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ a #t) (* a #t)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ a #f) (* a #f)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ a 1) (* a 1)))")
-
-    //replace a
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ 'S b) (* 'S b)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ \"S\" b) (* \"S\" b)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ #t b) (* #t b)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ #f b) (* #f b)))")
-
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* 1 b)))")
-  }
-
-  "ReplaceIdentifier" should "return empty list if there are no identifiers to replace" in {
-    val programText =
-      """(begin
-        |  (+ 100 100)
-        |  (* 100 100))""".stripMargin
-
-    val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
-    val appl = t.exps.last
-
-    suggestedTrees = ReplaceIdentifier.transform(t, appl)
-
-    assert(suggestedTrees equals List())
+    suggestedTrees = ReplaceIdentifier.transform(t, varExp)
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* a b)) 10)")
   }
 }

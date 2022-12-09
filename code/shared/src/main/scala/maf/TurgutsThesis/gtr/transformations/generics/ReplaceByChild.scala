@@ -1,5 +1,6 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.generics
 
+import maf.TurgutsThesis.gtr.transformations.Transformation
 import maf.language.scheme.SchemeExp
 
 object ReplaceByChild extends Transformation:

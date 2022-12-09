@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.RemoveCallsAndReplaceByBody
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.RemoveCallsAndReplaceByBody
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

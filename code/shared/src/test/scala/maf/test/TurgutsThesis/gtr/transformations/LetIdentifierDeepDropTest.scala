@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.LetIdentifierDeepDrop
+import maf.TurgutsThesis.gtr.transformations.schemeLet.LetIdentifierDeepDrop
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 
 class LetIdentifierDeepDropTest extends AnyFlatSpecTransformations {

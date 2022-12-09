@@ -1,5 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
-import maf.TurgutsThesis.gtr.transformations.ReplaceByChild
+
+import maf.TurgutsThesis.gtr.transformations.generics.ReplaceByChild
 import maf.language.scheme.{SchemeBegin, SchemeFuncall, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.IfToBegin
+import maf.TurgutsThesis.gtr.transformations.schemeIf.IfToBegin
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

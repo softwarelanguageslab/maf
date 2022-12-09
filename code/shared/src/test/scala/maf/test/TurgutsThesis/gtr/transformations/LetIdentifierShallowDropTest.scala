@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.LetIdentifierShallowDrop
+import maf.TurgutsThesis.gtr.transformations.schemeLet.LetIdentifierShallowDrop
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

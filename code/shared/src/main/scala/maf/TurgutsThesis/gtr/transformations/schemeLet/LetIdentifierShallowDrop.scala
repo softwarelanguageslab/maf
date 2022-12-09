@@ -1,5 +1,6 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.schemeLet
 
+import maf.TurgutsThesis.gtr.transformations.Transformation
 import maf.language.scheme.{SchemeExp, SchemeLettishExp}
 
 object LetIdentifierShallowDrop extends Transformation:

@@ -1,8 +1,9 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.schemeLambda
 
+import maf.TurgutsThesis.gtr.transformations.Transformation
 import maf.TurgutsThesis.gtr.transformations.traits.{CallReducing, Replacing}
 import maf.core.Identifier
-import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeLettishExp, SchemeLambda, SchemeVarArgLambda}
+import maf.language.scheme.*
 
 object RemoveLambdaParamByReplacement extends Transformation with CallReducing with Replacing:
   override val name: String = "RemoveLambdaParamByReplacement"

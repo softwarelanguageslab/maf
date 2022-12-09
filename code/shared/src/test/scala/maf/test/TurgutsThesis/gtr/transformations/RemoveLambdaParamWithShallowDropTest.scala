@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.RemoveLambdaParamWithShallowDrop
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.RemoveLambdaParamWithShallowDrop
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

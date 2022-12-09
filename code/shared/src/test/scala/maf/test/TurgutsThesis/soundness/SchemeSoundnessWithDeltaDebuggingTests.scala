@@ -86,6 +86,6 @@ trait SchemeSoundnessWithDeltaDebuggingTests extends SchemeSoundnessTests:
       runAndCompare(program, benchmark) match
         case Some((failureMsg, analysisResults, evalSteps)) =>
           if failureMsg.nonEmpty then
-            DDWithProfiling.reduce(program, this, benchmark, analysisResults)
+            DDWithAllTransformations.reduce(program, this, benchmark, analysisResults)
         case _ =>     
     }

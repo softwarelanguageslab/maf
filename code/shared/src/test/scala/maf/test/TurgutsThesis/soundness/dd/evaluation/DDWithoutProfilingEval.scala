@@ -2,7 +2,7 @@ package maf.test.TurgutsThesis.soundness.dd.evaluation
 
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
 import maf.TurgutsThesis.gtr.GTR
-import maf.TurgutsThesis.gtr.transformations.*
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger

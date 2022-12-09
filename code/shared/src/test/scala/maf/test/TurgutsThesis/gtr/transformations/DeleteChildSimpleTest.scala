@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
-import maf.TurgutsThesis.gtr.transformations.DeleteChildSimple
+import maf.TurgutsThesis.gtr.transformations.generics.DeleteChildSimple
 import maf.language.scheme.{SchemeBegin, SchemeExp, SchemeFuncall, SchemeLambdaExp, SchemeLettishExp, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

@@ -32,7 +32,7 @@ sealed trait SchemeExp extends Expression:
       else replaceLower(node, replacement)
     def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp = ???
     /** map & forEach */
-    def map(f: SchemeExp => SchemeExp): SchemeExp = f(this.mapLower(f))
+    def map(f: SchemeExp => SchemeExp): SchemeExp = f(this).mapLower(f)
     def mapLower(f: SchemeExp => SchemeExp): SchemeExp = ???
     def forEach(f: SchemeExp => Unit): Unit =
       this.map(e => {

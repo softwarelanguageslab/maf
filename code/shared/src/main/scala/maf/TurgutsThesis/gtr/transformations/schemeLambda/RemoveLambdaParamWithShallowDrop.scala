@@ -1,20 +1,21 @@
-package maf.TurgutsThesis.gtr.transformations
-import maf.TurgutsThesis.gtr.transformations.traits.CallReducing
-import maf.TurgutsThesis.primitiveOpNames.PrimitiveOpNames
-import maf.core.{Identifier, Identity}
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambda, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarArgLambda, SchemeVarExp, SymbolicHole, SymbolicVar}
+package maf.TurgutsThesis.gtr.transformations.schemeLambda
 
-object RemoveLambdaParamWithDeepDrop extends Transformation with CallReducing:
-  override val name: String = "RemoveLambdaParamWithDeepDrop"
+import maf.TurgutsThesis.gtr.transformations.Transformation
+import maf.TurgutsThesis.gtr.transformations.traits.CallReducing
+import maf.core.Identifier
+import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeLettishExp}
+
+object RemoveLambdaParamWithShallowDrop extends Transformation with CallReducing:
+  override val name: String = "RemoveLambdaParamWithShallowdrop"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     def removeLambdaParam(lambda: SchemeLambdaExp, lambdaId: Identifier): Unit = {
       for ((arg, argIdx) <- lambda.args.zipWithIndex)
-        lambda.deepDropIdentifier(arg) match
+        lambda.shallowDropIdentifier(arg) match
           case Some(deepDroppedlambda) =>
             val lambdaReplacedTree = tree.replace(lambda, deepDroppedlambda)
             val callsReduced = reduceCallsToId(lambdaReplacedTree, lambdaId, argIdx)
-            
+
             addTree(callsReduced)
           case _ =>
     }
@@ -31,5 +32,4 @@ object RemoveLambdaParamWithDeepDrop extends Transformation with CallReducing:
       case SchemeDefineVariable(name, lambda: SchemeLambdaExp, _) =>
         removeLambdaParam(lambda, name)
       case _ =>
-
   }

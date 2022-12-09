@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeBegin, SchemeLet, SchemeParser}
-import maf.TurgutsThesis.gtr.transformations.ReplaceNthExpensiveFunction
 
 class ReplaceNthExpensiveFunctionTest extends AnyFlatSpecTransformations:
   "ReplaceNthExpensiveFunction" should "replace calls to the correct function and remove it" in {
@@ -20,8 +20,6 @@ class ReplaceNthExpensiveFunctionTest extends AnyFlatSpecTransformations:
     val transformation = new ReplaceNthExpensiveFunction(Array(("f", 100)), 0)
 
     suggestedTrees = transformation.transform(tree, let)
-
-    suggestedTrees.foreach(s => println(s.prettyString()))
 
     assertTreeString("(begin (let ((a 1)) (+ a 1) 1 a) 10)")
   }

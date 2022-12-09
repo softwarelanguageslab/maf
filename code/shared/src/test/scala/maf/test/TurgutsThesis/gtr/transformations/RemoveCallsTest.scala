@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.gtr.transformations
 
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.RemoveCalls
 import maf.language.scheme.{SchemeBegin, SchemeParser}
-import maf.TurgutsThesis.gtr.transformations.RemoveCalls
 import org.scalatest.flatspec.AnyFlatSpec
 
 class RemoveCallsTest extends AnyFlatSpecTransformations {

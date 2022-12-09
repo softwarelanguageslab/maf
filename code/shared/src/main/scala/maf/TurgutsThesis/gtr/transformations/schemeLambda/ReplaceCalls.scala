@@ -1,8 +1,9 @@
-package maf.TurgutsThesis.gtr.transformations
+package maf.TurgutsThesis.gtr.transformations.schemeLambda
 
+import maf.TurgutsThesis.gtr.transformations.Transformation
 import maf.TurgutsThesis.gtr.transformations.traits.Replacing
 import maf.core.Identifier
-import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeVarExp, SchemeLettishExp, SchemeDefineVariable, SchemeLambdaExp}
+import maf.language.scheme.*
 
 object ReplaceCalls extends Transformation with Replacing:
   override val name: String = "ReplaceCalls"

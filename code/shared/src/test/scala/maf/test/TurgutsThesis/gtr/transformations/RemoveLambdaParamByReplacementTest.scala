@@ -1,5 +1,6 @@
 package maf.test.TurgutsThesis.gtr.transformations
-import maf.TurgutsThesis.gtr.transformations.RemoveLambdaParamByReplacement
+
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.RemoveLambdaParamByReplacement
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
@@ -16,6 +17,7 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
     val defineExp = t.exps.head
     suggestedTrees = RemoveLambdaParamByReplacement.transform(t, defineExp)
     assert(suggestedTrees.length > 10)
+
     suggestedTrees.foreach(t => println(t.prettyString()))
 
     //remove param y
@@ -29,11 +31,10 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
 
     assertTreeString("(begin (define f (lambda (x) (* x x) (* 1 1))) (f 1) (f 111))")
 
-    assertTreeString("(begin (define f (lambda (x) (* x x) (* (lambda unique_args_6 1) (lambda unique_args_6 1)))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x) (* (lambda unique_args_40 ()) (lambda unique_args_41 ())))) (f 1) (f 111))")
 
     //remove param x
     assertTreeString("(begin (define f (lambda (y) (* 'S 'S) (* y y))) (f 2) (f 222))")
-
 
     assertTreeString("(begin (define f (lambda (y) (* \"S\" \"S\") (* y y))) (f 2) (f 222))")
 

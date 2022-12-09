@@ -1,8 +1,11 @@
-package maf.TurgutsThesis.gtr.transformations
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
-import maf.core.Identifier
+package maf.TurgutsThesis.gtr.transformations.schemeLambda
 
-object RemoveCalls extends Transformation:
+import maf.TurgutsThesis.gtr.transformations.Transformation
+import maf.TurgutsThesis.gtr.transformations.traits.Replacing
+import maf.core.Identifier
+import maf.language.scheme.*
+
+object RemoveCalls extends Transformation with Replacing:
   override val name: String = "RemoveCalls"
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
 
@@ -14,8 +17,9 @@ object RemoveCalls extends Transformation:
       })
 
       applsRemoved match
-        case Some(applsRemovedTree) =>
-          addTree(applsRemovedTree)
+        case Some(callsRemovedTree) =>
+          val trees = replaceCallWithAllValues(callsRemovedTree, id) //this removes any non-call references to the lambda
+          addTrees(trees)
         case _ =>
 
     node match
