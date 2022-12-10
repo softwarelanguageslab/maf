@@ -10,8 +10,9 @@ import org.scalatest.Assertions.fail
 import java.io.FileWriter
 import java.io.File
 import java.io.BufferedWriter
+import scala.util.Random
 
-object DDWithProfiling extends DeltaDebugger:
+object DDWithoutProfiling extends DeltaDebugger:
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,
              benchmark: String,
@@ -19,7 +20,7 @@ object DDWithProfiling extends DeltaDebugger:
     var reduced = program
 
     def reduceWithProfiling(profiling: Array[(String, Int)]): Unit =
-      for (i <- profiling.indices)
+      for (i <- Random.shuffle(profiling.indices))
         GTR.reduce(
           reduced,
           p => {

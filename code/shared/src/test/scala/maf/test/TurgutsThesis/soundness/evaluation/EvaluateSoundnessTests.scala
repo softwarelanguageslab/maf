@@ -16,10 +16,10 @@ trait EvaluateSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:
       val program = parseProgram(content, benchmark)
 
       runAndCompare(program, benchmark) match
-        case Some((failureMsg, analysisResults, _)) =>
+        case Some((failureMsg, initAnalysisResults, _)) =>
           if failureMsg.nonEmpty then
-            DDWithProfilingEval.reduce(program, this, benchmark, analysisResults)
-            DDWithoutProfilingEval.reduce(program, this, benchmark, analysisResults)
+            DDWithProfilingEval.reduce(program, this, benchmark, initAnalysisResults)
+            DDWithoutProfilingEval.reduce(program, this, benchmark, initAnalysisResults)
         case None =>
 
       if onBenchmarkCount == benchmarks.size then

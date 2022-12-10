@@ -26,6 +26,7 @@ object DDWithAllTransformations extends DeltaDebugger:
               p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
             case None => false
         },
+        identity,
         TransformationManager.allTransformations
       )
 

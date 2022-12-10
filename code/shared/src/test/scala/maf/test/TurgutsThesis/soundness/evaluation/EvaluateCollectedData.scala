@@ -13,6 +13,7 @@ object EvaluateCollectedData:
       val numberOfPrograms = dataCollector.reducedSizes.values.size
       val averageReductionTime = dataCollector.reductionTimes.values.sum / dataCollector.reductionTimes.values.size
       val averageOracleCount = dataCollector.oracleCounts.values.sum / dataCollector.oracleCounts.values.size
+      val averageOracleTime = dataCollector.oracleTimes.values.flatMap(lst => lst.map(_._1)).sum / dataCollector.oracleTimes.values.flatMap(lst => lst.map(_._1)).size
       val averageOriginalProgramSize = dataCollector.programSizes.values.sum / dataCollector.programSizes.values.size
       val averageReducedProgramSize = dataCollector.reducedSizes.values.sum / dataCollector.reducedSizes.values.size
       val averageNumberOfFunctionsRemoved: Double = dataCollector.oracleHits.values.sum.toDouble / dataCollector.oracleHits.values.size
@@ -41,6 +42,7 @@ object EvaluateCollectedData:
       println("number of programs: " + numberOfPrograms)
       println("average reduction time: " + averageReductionTime)
       println("average oracle count: " + averageOracleCount)
+      println("average oracle time: " + averageOracleTime)
       println("average original program size: " + averageOriginalProgramSize)
       println("average reduced program size: " + averageReducedProgramSize)
       println("average number of functions removed: " + averageNumberOfFunctionsRemoved)

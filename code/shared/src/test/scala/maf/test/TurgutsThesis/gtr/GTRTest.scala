@@ -16,7 +16,7 @@ class GTRTest extends AnyFlatSpec {
     val t = SchemeParser.parseProgramText(programText).last
 
     val reduced = GTR.reduce(t,
-      t => t.isInstanceOf[SchemeBegin] && t.asInstanceOf[SchemeBegin].exps.length == 1,
+      t => t.isInstanceOf[SchemeBegin] && t.asInstanceOf[SchemeBegin].exps.length == 1, identity,
       List(ReplaceByChild, DeleteChildSimple))
 
     assert(reduced.isInstanceOf[SchemeBegin])

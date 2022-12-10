@@ -2,7 +2,7 @@ package maf.test.TurgutsThesis.soundness.dd.evaluation
 
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
 import maf.TurgutsThesis.gtr.GTR
-import maf.TurgutsThesis.gtr.transformations.schemeLambda.*
+import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
@@ -19,7 +19,7 @@ object DDWithoutProfilingEval extends DeltaDebugger:
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,
              benchmark: String,
-             analysisProfiling: Array[(String, Int)]): Unit =
+             initAnalysisProfiling: Array[(String, Int)]): Unit =
     var reduced = program
 
     var oracleTimes: List[(Long, Int)] = List()
@@ -30,41 +30,41 @@ object DDWithoutProfilingEval extends DeltaDebugger:
 
     val reductionStartTime = System.currentTimeMillis()
 
-    var couldReduce = true
-    while couldReduce do
-      val oldReduced = reduced
-      for (i <- Random.shuffle(analysisProfiling.indices))
-        reduced = GTR.reduce(
+    def reduceWithProfiling(profiling: Array[(String, Int)]): Unit =
+      for (i <- Random.shuffle(profiling.indices))
+        GTR.reduce(
           reduced,
           p => {
             val startTime = System.currentTimeMillis()
             soundnessTester.runAndCompare(p, benchmark) match
-              case Some((failureMsg, analysisProfiling, evalSteps)) =>
+              case Some((failureMsg, runAnalysisSteps, evalSteps)) =>
                 oracleCount += 1
                 val endTime = System.currentTimeMillis()
-
                 oracleTimes = oracleTimes.::((endTime - startTime, oracleHits))
-                analysisSteps = analysisSteps.::((analysisProfiling.map(_._2).sum, oracleHits))
+                analysisSteps = analysisSteps.::((runAnalysisSteps.map(_._2).sum, oracleHits))
                 interpreterSteps = interpreterSteps.::((evalSteps, oracleHits))
-
-                val bool = p.findUndefinedVariables().isEmpty &&
+                p.findUndefinedVariables().isEmpty &&
                   failureMsg.nonEmpty
-                if bool then
-                  oracleHits += 1
-                bool
               case None => false
           },
-          List(ReplaceNthExpensiveFunction(analysisProfiling, i))
+          newReduction => {
+            oracleHits += 1
+            soundnessTester.runAndCompare(newReduction, benchmark) match
+              case Some((_, newReductionProfiled, _)) =>
+                reduced = newReduction
+                return reduceWithProfiling(newReductionProfiled)
+              case _ =>
+          },
+          List(ReplaceNthExpensiveFunction(profiling, i))
         )
-      if reduced eq oldReduced then
-        couldReduce = false
-      else couldReduce = true
+
+    reduceWithProfiling(initAnalysisProfiling)
 
     val reductionEndTime = System.currentTimeMillis()
     val reductionTime = reductionEndTime - reductionStartTime
 
     dataCollector.newID()
-    dataCollector.addCandidateFunctionCount(analysisProfiling.length)
+    dataCollector.addCandidateFunctionCount(initAnalysisProfiling.length)
     dataCollector.addFunctionCount(CountLambdaBindings.count(program))
     dataCollector.addOracleHit(oracleHits)
     dataCollector.addOracleCount(oracleCount)
@@ -74,3 +74,4 @@ object DDWithoutProfilingEval extends DeltaDebugger:
     dataCollector.addAnalysisSteps(analysisSteps)
     dataCollector.addInterpreterSteps(interpreterSteps)
     dataCollector.addReductionTime(reductionTime)
+

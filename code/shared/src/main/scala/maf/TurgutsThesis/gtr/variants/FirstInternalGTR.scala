@@ -12,13 +12,13 @@ object FirstInternalGTR:
   def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, transformations: List[Transformation]): SchemeExp =
     var reducedTree: SchemeExp = tree
     if reducedTree.height < 3 then
-      GTR.reduce(reducedTree, oracle, transformations)
+      GTR.reduce(reducedTree, oracle, identity,transformations)
     else
       for(lvl <- 0 to (reducedTree.height - 3))
         for(transformation <- transformations)
           reducedTree = reduceLevelNodes(reducedTree, lvl, oracle, transformation)
       if tree.size == reducedTree.size then
-        GTR.reduce(reducedTree, oracle, transformations)
+        GTR.reduce(reducedTree, oracle, identity, transformations)
       else reduce(reducedTree, oracle, transformations)
 
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, transformation: Transformation): SchemeExp =
