@@ -19,8 +19,8 @@ object RemoveCallsAndReplaceByBody extends Transformation with Replacing:
       })
 
       callsRemoved match
-        case Some(tree) =>
-          addTrees(trees)
+        case Some(tree: SchemeExp) =>
+          addTree(tree)
         case _ =>
 
     node match
