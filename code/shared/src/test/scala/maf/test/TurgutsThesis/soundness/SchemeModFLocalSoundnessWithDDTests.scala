@@ -9,13 +9,14 @@ import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.TurgutsThesis.soundness.evaluation.EvaluateProfiling
 import maf.test.TurgutsThesis.soundness.{SchemeModFLocalSoundnessTests, SchemeSoundnessWithDeltaDebuggingTests}
 import maf.test.{AllBenchmarks, AllSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
+import maf.test.TurgutsThesis.soundnessBugs.*
 
-trait SchemeModFLocalSoundnessTests extends EvaluateProfiling with AllSequentialBenchmarks:
-/*
+trait SchemeModFLocalSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:
+
   override def benchmarks: Set[Benchmark] = Set(
     "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/flatten.scm",
     "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/sim-fast-multiply.scm"
-  )*/
+  )
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
@@ -33,6 +34,7 @@ class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
       with SchemeModFLocalAdaptiveWideningPolicyA(n)
+      with BeginBug
 
 class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
   def l = 10

@@ -30,3 +30,4 @@ code/**/*.semanticdb
 out/
 *.dep
 *.zo
+/evaluationLogs
