@@ -13,7 +13,7 @@ import java.io.File
 import java.io.BufferedWriter
 
 object DDWithProfilingEval extends DeltaDebugger:
-  val dataCollector = new DataCollector
+  val dataCollector = new ProfilingDataCollector
 
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,

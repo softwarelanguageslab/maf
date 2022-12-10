@@ -2,14 +2,14 @@ package maf.test.TurgutsThesis.soundness.dd.evaluation
 
 import java.io.{ByteArrayOutputStream, ObjectOutputStream, FileOutputStream, ObjectInputStream, FileInputStream}
 
-object DataCollector:
-  def readObject(suffix: String): DataCollector =
+object ProfilingDataCollector:
+  def readObject(suffix: String): ProfilingDataCollector =
     val ois = new ObjectInputStream(new FileInputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/objects/" + suffix))
-    val o = ois.readObject.asInstanceOf[DataCollector]
+    val o = ois.readObject.asInstanceOf[ProfilingDataCollector]
     ois.close()
     o
 
-class DataCollector extends Serializable:
+class ProfilingDataCollector extends Serializable:
   private var id = 0
   def newID(): Unit =
     id += 1

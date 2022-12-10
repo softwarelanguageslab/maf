@@ -1,11 +1,11 @@
 package maf.test.TurgutsThesis.soundness.evaluation
 
 import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.TurgutsThesis.soundness.dd.evaluation.{DDWithProfilingEval, DDWithoutProfilingEval, DataCollector}
+import maf.test.TurgutsThesis.soundness.dd.evaluation.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
-trait EvaluateSoundnessTests extends SchemeSoundnessWithDeltaDebuggingTests:
+trait EvaluateProfiling extends SchemeSoundnessWithDeltaDebuggingTests:
 
   var onBenchmarkCount = 0
   override def onBenchmark(benchmark: Benchmark): Unit =

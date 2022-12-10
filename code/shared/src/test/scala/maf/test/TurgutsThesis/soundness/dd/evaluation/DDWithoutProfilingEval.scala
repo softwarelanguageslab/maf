@@ -14,7 +14,7 @@ import java.io.BufferedWriter
 import scala.util.Random
 
 object DDWithoutProfilingEval extends DeltaDebugger:
-  val dataCollector = new DataCollector
+  val dataCollector = new ProfilingDataCollector
 
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,

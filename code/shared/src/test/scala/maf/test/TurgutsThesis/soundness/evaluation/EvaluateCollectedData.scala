@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.soundness.evaluation
 
-import maf.test.TurgutsThesis.soundness.dd.evaluation.{DDWithProfilingEval, DDWithoutProfilingEval, DataCollector}
+import maf.test.TurgutsThesis.soundness.dd.evaluation.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
 
 object EvaluateCollectedData:
 
@@ -9,7 +9,7 @@ object EvaluateCollectedData:
   }
 
   def evaluateData(): Unit =
-    def evaluateDataCollector(dataCollector: DataCollector): Unit =
+    def evaluateDataCollector(dataCollector: ProfilingDataCollector): Unit =
       val numberOfPrograms = dataCollector.reducedSizes.values.size
       val averageReductionTime = dataCollector.reductionTimes.values.sum / dataCollector.reductionTimes.values.size
       val averageOracleCount = dataCollector.oracleCounts.values.sum / dataCollector.oracleCounts.values.size
@@ -65,8 +65,8 @@ object EvaluateCollectedData:
         println("avg number of steps for analysis after " + idx + " reductions: " + avg)
       })
 
-    val withProfilingDataCollector = DataCollector.readObject("withProfilingDataCollector")
-    val withoutProfilingDataCollector = DataCollector.readObject("withoutProfilingDataCollector")
+    val withProfilingDataCollector = ProfilingDataCollector.readObject("withProfilingDataCollector")
+    val withoutProfilingDataCollector = ProfilingDataCollector.readObject("withoutProfilingDataCollector")
 
     println(">>>>> results WITHOUT profiling <<<<< ")
     evaluateDataCollector(withoutProfilingDataCollector)
