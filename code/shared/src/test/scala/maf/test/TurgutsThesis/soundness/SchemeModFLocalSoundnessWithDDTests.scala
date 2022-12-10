@@ -6,11 +6,11 @@ import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
-import maf.test.TurgutsThesis.soundness.evaluation.EvaluateSoundnessTests
+import maf.test.TurgutsThesis.soundness.evaluation.EvaluateProfiling
 import maf.test.TurgutsThesis.soundness.{SchemeModFLocalSoundnessTests, SchemeSoundnessWithDeltaDebuggingTests}
 import maf.test.{AllBenchmarks, AllSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 
-trait SchemeModFLocalSoundnessTests extends EvaluateSoundnessTests with VariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends EvaluateProfiling with AllSequentialBenchmarks:
 /*
   override def benchmarks: Set[Benchmark] = Set(
     "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/flatten.scm",
