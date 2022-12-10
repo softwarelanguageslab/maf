@@ -14,5 +14,16 @@ trait LetrecBug extends SchemeSemantics:
   import analysisM._
 
   override protected def evalLetrec(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
-    super.evalLet(bds, bdy)
+    val (vrs, rhs) = bds.unzip
+    for
+      ads <- vrs.mapM(allocVar)
+      res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
+        for
+          _ <- ads.zip(rhs).take(2).mapM_ { case (adr, rhs) =>  //bug is here: take 2
+            eval(rhs).flatMap(vlu => extendSto(adr, vlu))
+          }
+          vlu <- evalSequence(bdy)
+        yield vlu
+      }
+    yield res
 

@@ -14,6 +14,14 @@ trait LetStarBug extends SchemeSemantics:
   import analysisM._
   
   override protected def evalLetStar(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
-    super.evalLet(bds, bdy) //let star evaluated like let
-
-
+    val (vrs, rhs) = bds.unzip
+    for
+      vls <- rhs.mapM(arg => eval(arg))
+      ads <- vrs.mapM(allocVar)
+      res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
+        for
+          _ <- extendSto(ads.zip(vls))
+          vlu <- evalSequence(bdy)
+        yield vlu
+      }
+    yield lattice.void //bug on this line
