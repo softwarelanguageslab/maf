@@ -1,6 +1,8 @@
-package maf.test.TurgutsThesis.soundness.dd.evaluation
+package maf.test.TurgutsThesis.soundness.dd.evaluation.profiling
 
-import java.io.{ByteArrayOutputStream, ObjectOutputStream, FileOutputStream, ObjectInputStream, FileInputStream}
+import maf.test.TurgutsThesis.soundness.dd.evaluation.ProfilingDataCollector
+
+import java.io.{ByteArrayOutputStream, FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 
 object ProfilingDataCollector:
   def readObject(suffix: String): ProfilingDataCollector =

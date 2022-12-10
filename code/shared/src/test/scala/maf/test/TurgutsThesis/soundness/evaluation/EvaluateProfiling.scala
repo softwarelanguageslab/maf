@@ -1,7 +1,7 @@
 package maf.test.TurgutsThesis.soundness.evaluation
 
 import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.TurgutsThesis.soundness.dd.evaluation.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
+import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 

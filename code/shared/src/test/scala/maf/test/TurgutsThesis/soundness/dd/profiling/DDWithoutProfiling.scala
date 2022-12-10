@@ -1,4 +1,4 @@
-package maf.test.TurgutsThesis.soundness.dd
+package maf.test.TurgutsThesis.soundness.dd.profiling
 
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
@@ -7,11 +7,10 @@ import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
 import org.scalatest.Assertions.fail
 
-import java.io.FileWriter
-import java.io.File
-import java.io.BufferedWriter
+import java.io.{BufferedWriter, File, FileWriter}
+import scala.util.Random
 
-object DDWithProfiling extends DeltaDebugger:
+object DDWithoutProfiling extends DeltaDebugger:
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,
              benchmark: String,
@@ -19,7 +18,7 @@ object DDWithProfiling extends DeltaDebugger:
     var reduced = program
 
     def reduceWithProfiling(profiling: Array[(String, Int)]): Unit =
-      for (i <- profiling.indices)
+      for (i <- Random.shuffle(profiling.indices))
         GTR.reduce(
           reduced,
           p => {

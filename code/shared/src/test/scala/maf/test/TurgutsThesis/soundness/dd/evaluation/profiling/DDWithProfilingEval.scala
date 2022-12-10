@@ -1,16 +1,14 @@
-package maf.test.TurgutsThesis.soundness.dd.evaluation
+package maf.test.TurgutsThesis.soundness.dd.evaluation.profiling
 
-import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
+import maf.test.TurgutsThesis.soundness.dd.evaluation.{CountLambdaBindings, ProfilingDataCollector}
 import org.scalatest.Assertions.fail
 
-import java.io.FileWriter
-import java.io.File
-import java.io.BufferedWriter
+import java.io.{BufferedWriter, File, FileWriter}
 
 object DDWithProfilingEval extends DeltaDebugger:
   val dataCollector = new ProfilingDataCollector

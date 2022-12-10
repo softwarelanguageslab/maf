@@ -1,6 +1,6 @@
 package maf.test.TurgutsThesis.soundness.evaluation
 
-import maf.test.TurgutsThesis.soundness.dd.evaluation.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
+import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
 
 object EvaluateCollectedData:
 
