@@ -5,7 +5,8 @@ import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFun
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
 import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
-import maf.test.TurgutsThesis.soundness.dd.evaluation.{CountLambdaBindings, ProfilingDataCollector}
+import maf.test.TurgutsThesis.soundness.dd.evaluation.CountLambdaBindings
+import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.*
 import org.scalatest.Assertions.fail
 
 import java.io.{BufferedWriter, File, FileWriter}
