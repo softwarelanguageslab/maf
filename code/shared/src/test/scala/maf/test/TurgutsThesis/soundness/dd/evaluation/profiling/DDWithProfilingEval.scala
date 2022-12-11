@@ -3,15 +3,14 @@ package maf.test.TurgutsThesis.soundness.dd.evaluation.profiling
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeExp, SchemeParser}
-import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
+import maf.test.TurgutsThesis.soundness.dd.SchemeSoundnessWithDeltaDebuggingTests
 import maf.test.TurgutsThesis.soundness.dd.evaluation.CountLambdaBindings
 import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.*
 import org.scalatest.Assertions.fail
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-object DDWithProfilingEval extends DeltaDebugger:
+object DDWithProfilingEval:
   val dataCollector = new ProfilingDataCollector
 
   def reduce(program: SchemeExp,

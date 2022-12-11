@@ -1,4 +1,4 @@
-package maf.test.TurgutsThesis.soundness
+package maf.test.TurgutsThesis.soundness.dd
 
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.*
@@ -11,8 +11,8 @@ import maf.language.scheme.interpreter.ConcreteValues.*
 import maf.language.scheme.lattices.SchemeOp
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.worklist.SequentialWorklistAlgorithm
-import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.DDWithProfilingEval
 import maf.test.TurgutsThesis.soundness.dd.DDWithAllTransformations
+import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.DDWithProfilingEval
 import maf.test.TurgutsThesis.soundness.dd.profiling.DDWithProfiling
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader

@@ -3,11 +3,9 @@ package maf.test.TurgutsThesis.soundness.dd
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
-import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
 import org.scalatest.Assertions.fail
 
-object DDWithAllTransformations extends DeltaDebugger:
+object DDWithAllTransformations:
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,
              benchmark: String,

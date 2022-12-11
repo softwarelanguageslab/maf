@@ -1,14 +1,18 @@
-package maf.test.TurgutsThesis.soundness.evaluation
+package maf.test.TurgutsThesis.soundness.dd.evaluation.profiling
 
-import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.{DDWithProfilingEval, DDWithoutProfilingEval, ProfilingDataCollector}
-
-object EvaluateCollectedData:
-
+object SaveData:
   def main(args: Array[String]): Unit = {
-    evaluateData()
+    org.scalatest.run(new EvalProfilingTestSuiteA)
+
+    val withProfilingDataCollector = DDWithProfilingEval.dataCollector
+    val withoutProfilingDataCollector = DDWithoutProfilingEval.dataCollector
+
+    withProfilingDataCollector.writeTo("withProfilingDataCollector")
+    withoutProfilingDataCollector.writeTo("withoutProfilingDataCollector")
   }
 
-  def evaluateData(): Unit =
+object ReadAndAnalyzeData:
+  def main(args: Array[String]): Unit = {
     def evaluateDataCollector(dataCollector: ProfilingDataCollector): Unit =
       val numberOfPrograms = dataCollector.reducedSizes.values.size
       val averageReductionTime = dataCollector.reductionTimes.values.sum / dataCollector.reductionTimes.values.size
@@ -77,3 +81,4 @@ object EvaluateCollectedData:
     println("")
     println(">>>>> results WITH profiling <<<<< ")
     evaluateDataCollector(withProfilingDataCollector)
+  }

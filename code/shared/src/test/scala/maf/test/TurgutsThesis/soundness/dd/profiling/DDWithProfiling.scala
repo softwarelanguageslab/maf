@@ -3,13 +3,12 @@ package maf.test.TurgutsThesis.soundness.dd.profiling
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeExp, SchemeParser}
-import maf.test.TurgutsThesis.soundness.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.TurgutsThesis.soundness.dd.DeltaDebugger
+import maf.test.TurgutsThesis.soundness.dd.SchemeSoundnessWithDeltaDebuggingTests
 import org.scalatest.Assertions.fail
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-object DDWithProfiling extends DeltaDebugger:
+object DDWithProfiling:
   def reduce(program: SchemeExp,
              soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,
              benchmark: String,

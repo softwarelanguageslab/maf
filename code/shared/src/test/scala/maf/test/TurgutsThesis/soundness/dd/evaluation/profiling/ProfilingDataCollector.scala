@@ -4,7 +4,7 @@ import java.io.{ByteArrayOutputStream, FileInputStream, FileOutputStream, Object
 
 object ProfilingDataCollector:
   def readObject(suffix: String): ProfilingDataCollector =
-    val ois = new ObjectInputStream(new FileInputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/objects/" + suffix))
+    val ois = new ObjectInputStream(new FileInputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/evaluationLogs/objects/" + suffix))
     val o = ois.readObject.asInstanceOf[ProfilingDataCollector]
     ois.close()
     o
@@ -55,7 +55,6 @@ class ProfilingDataCollector extends Serializable:
     interpreterSteps = interpreterSteps + (id -> steps)
 
   def writeTo(suffix: String): Unit =
-    // (2) write the instance out to a file
-    val oos = new ObjectOutputStream(new FileOutputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/fileLogs/objects/" + suffix))
+    val oos = new ObjectOutputStream(new FileOutputStream("/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/evaluationLogs/objects/" + suffix))
     oos.writeObject(this)
     oos.close()
