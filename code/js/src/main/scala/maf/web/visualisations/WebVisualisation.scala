@@ -83,9 +83,17 @@ abstract class WebVisualisation(width: Int, height: Int):
         def displayText(): String
         def data(): Any
 
+    object Node:
+        def apply(v: analysis.Component | Address): Node = v match
+            case cmp: analysis.Component => CmpNode(cmp)
+            case adr: Address            => AdrNode(adr)
     class CmpNode(val component: analysis.Component) extends Node:
         def displayText(): String = componentText(component)
         def data(): Any = component
+    class AdrNode(val addr: Address) extends Node:
+        def displayText(): String = addr.toString()
+        def data(): Any = addr
+
     object IsCmpNode:
         def unapply(v: js.Object): Option[CmpNode] =
             if v.isInstanceOf[CmpNode] then Some(v.asInstanceOf[CmpNode]) else None
@@ -97,21 +105,29 @@ abstract class WebVisualisation(width: Int, height: Int):
     var nodesData: Set[Node] = Set()
     var edgesData: Set[Edge] = Set()
     // TODO: use weak maps here to prevent memory leaks?
-    var nodesColl: Map[analysis.Component, CmpNode] = Map()
+    var nodesColl: Map[analysis.Component | Address, Node] = Map()
     var edgesColl: Map[(Node, Node), Edge] = Map()
 
-    def getNode(cmp: analysis.Component): CmpNode = nodesColl.get(cmp) match
+    def getNode(cmp: analysis.Component | Address): Node = nodesColl.get(cmp) match
         case None =>
-            val newNode = new CmpNode(cmp)
+            val newNode = Node(cmp)
             nodesColl += (cmp -> newNode)
             newNode
         case Some(existingNode) => existingNode
 
-    def getEdge(source: Node, target: Node): Edge = edgesColl.get((source, target)) match
+    def getEdge(source: Node, target: Node, kind: EdgeKind = EdgeKind.Call): Edge = edgesColl.get((source, target)) match
         case None =>
-            val newEdge = new Edge(source, target)
-            edgesColl += ((source, target) -> newEdge)
+            val newEdge = kind match
+                case EdgeKind.Read =>
+                    val newEdge = new Edge(target, source)
+                    edgesColl += ((target, source) -> newEdge)
+                    newEdge
+                case _ =>
+                    val newEdge = new Edge(source, target)
+                    edgesColl += ((source, target) -> newEdge)
+                    newEdge
             newEdge
+
         case Some(existingEdge) => existingEdge
 
     //
@@ -235,7 +251,9 @@ abstract class WebVisualisation(width: Int, height: Int):
         analysis.visited.foreach { cmp =>
             val node = getNode(cmp)
             nodesData += node
-            val targets = analysis.dependencies(cmp)
+            println(analysis.readDependencies)
+            println(analysis.writeEffects)
+            val targets: Set[analysis.Component | Address] = analysis.dependencies(cmp) ++ analysis.readDependencies(cmp) ++ analysis.writeEffects(cmp)
             targets.foreach { target =>
                 val targetNode = getNode(target)
                 val edge = getEdge(node, targetNode)
@@ -257,6 +275,11 @@ abstract class WebVisualisation(width: Int, height: Int):
         // refresh the visualisation
         refreshVisualisation()
 
+    enum EdgeKind:
+        case Call
+        case Read
+        case Write
+
     protected def refreshDataAfterStep(): Unit =
         val sourceNode = getNode(prevComponent)
         nodesData += sourceNode
@@ -266,9 +289,17 @@ abstract class WebVisualisation(width: Int, height: Int):
             edgesData -= edge
         }
         // add the new edges
-        analysis.dependencies(prevComponent).foreach { otherCmp =>
+        val targets: Set[(analysis.Component | Address, EdgeKind)] =
+            analysis.dependencies(prevComponent).map((_, EdgeKind.Call)) ++ analysis
+                .readDependencies(prevComponent)
+                .map((_, EdgeKind.Read)) ++ analysis
+                .writeEffects(
+                  prevComponent
+                )
+                .map((_, EdgeKind.Write))
+        targets.foreach { case (otherCmp, kind) =>
             val targetNode = getNode(otherCmp)
-            val edge = getEdge(sourceNode, targetNode)
+            val edge = getEdge(sourceNode, targetNode, kind)
             nodesData += targetNode
             edgesData += edge
         }

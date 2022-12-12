@@ -33,7 +33,7 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup:
     def createAnalysis(text: String): Analysis =
         val program = SchemeParser.parseProgram(text)
         println(s"Program $program")
-        new SimpleSchemeModFAnalysis(program)
+        val anl = new SimpleSchemeModFAnalysis(program)
             with SchemeModFNoSensitivity
             with SchemeConstantPropagationDomain
             with FIFOWorklistAlgorithm[SchemeExp]
@@ -47,6 +47,8 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup:
                 case Call((lambda, _), _) => Some(lambda)
             def moduleName(mdl: Module) = mdl.map(_.lambdaName).getOrElse("main")
         }
+        anl.init()
+        anl
 
 @JSExportTopLevel("standardModFLocalVisualisationSetup")
 object StandardModFLocalVisualisationSetup extends StandardVisualisationSetup:
