@@ -18,6 +18,8 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     // a single step in the worklist algorithm iteration
     // var intraCount: Long = 0L
     def step(timeout: Timeout.T): Unit =
+        // println(s"[seq] Analyzing ${workList.head}")
+        // println(s"[seq] Remaining ${workList.tail.toList}")
         // take the next component
         val current = workList.head
         workList = workList.tail
@@ -31,6 +33,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
         else
             // analysis finished properly => commit its changes to the global analysis state
             intra.commit()
+    //println(s"[seq] worklist after ${workList.toList}")
 
     // step until worklist is empty or timeout is reached
     def run(timeout: Timeout.T): Unit =

@@ -86,6 +86,9 @@ abstract class WebVisualisation(width: Int, height: Int):
     class CmpNode(val component: analysis.Component) extends Node:
         def displayText(): String = componentText(component)
         def data(): Any = component
+    object IsCmpNode:
+        def unapply(v: js.Object): Option[CmpNode] =
+            if v.isInstanceOf[CmpNode] then Some(v.asInstanceOf[CmpNode]) else None
 
     // An edge contains an id so it can be referenced (e.g., to add text).
     class Edge(val source: Node, val target: Node) extends js.Object:
@@ -181,34 +184,36 @@ abstract class WebVisualisation(width: Int, height: Int):
         // update the nodes
         nodes.attr("transform", (node: JsAny) => s"translate(${node.x},${node.y})")
         // update the edges
-        edges.attr(
-          "d",
-          (edge: JsAny) =>
-              if edge.source == edge.target then {
-                  val cx = edge.source.x.asInstanceOf[Double]
-                  val cy = edge.source.y.asInstanceOf[Double]
-                  val x1 = cx - __CIRCLE_RADIUS__
-                  val y1 = cy
-                  val x2 = cx - 9
-                  val y2 = cy - __CIRCLE_RADIUS__ - 8
-                  s"M$x1 $y1 A ${__CIRCLE_RADIUS__} ${__CIRCLE_RADIUS__} 1 1 1 $x2 $y2"
-              } else {
-                  val sourceX = edge.source.x.asInstanceOf[Double]
-                  val sourceY = edge.source.y.asInstanceOf[Double]
-                  val targetX = edge.target.x.asInstanceOf[Double]
-                  val targetY = edge.target.y.asInstanceOf[Double]
-                  val deltaX = targetX - sourceX
-                  val deltaY = targetY - sourceY
-                  val dist = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY))
-                  val scaleFactorSource = __CIRCLE_RADIUS__ / dist
-                  val scaleFactorTarget = (__CIRCLE_RADIUS__ + 10) / dist
-                  val x1 = sourceX + (deltaX * scaleFactorSource)
-                  val x2 = targetX - (deltaX * scaleFactorTarget)
-                  val y1 = sourceY + (deltaY * scaleFactorSource)
-                  val y2 = targetY - (deltaY * scaleFactorTarget)
-                  s"M$x1 $y1 L$x2 $y2"
-              }
-        )
+        try
+            edges.attr(
+              "d",
+              (edge: JsAny) =>
+                  if edge.source == edge.target then {
+                      val cx = edge.source.x.asInstanceOf[Double]
+                      val cy = edge.source.y.asInstanceOf[Double]
+                      val x1 = cx - __CIRCLE_RADIUS__
+                      val y1 = cy
+                      val x2 = cx - 9
+                      val y2 = cy - __CIRCLE_RADIUS__ - 8
+                      s"M$x1 $y1 A ${__CIRCLE_RADIUS__} ${__CIRCLE_RADIUS__} 1 1 1 $x2 $y2"
+                  } else {
+                      val sourceX = edge.source.x.asInstanceOf[Double]
+                      val sourceY = edge.source.y.asInstanceOf[Double]
+                      val targetX = edge.target.x.asInstanceOf[Double]
+                      val targetY = edge.target.y.asInstanceOf[Double]
+                      val deltaX = targetX - sourceX
+                      val deltaY = targetY - sourceY
+                      val dist = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY))
+                      val scaleFactorSource = __CIRCLE_RADIUS__ / dist
+                      val scaleFactorTarget = (__CIRCLE_RADIUS__ + 10) / dist
+                      val x1 = sourceX + (deltaX * scaleFactorSource)
+                      val x2 = targetX - (deltaX * scaleFactorTarget)
+                      val y1 = sourceY + (deltaY * scaleFactorSource)
+                      val y2 = targetY - (deltaY * scaleFactorTarget)
+                      s"M$x1 $y1 L$x2 $y2"
+                  }
+            )
+        catch case e => println(s"error $e")
         // Maybe perform other updates.
         // TODO: just override the existing onTick method (using super.onTick())?
         onTickHook()
@@ -254,6 +259,7 @@ abstract class WebVisualisation(width: Int, height: Int):
 
     protected def refreshDataAfterStep(): Unit =
         val sourceNode = getNode(prevComponent)
+        nodesData += sourceNode
         prevCalls.foreach { otherCmp =>
             val targetNode = getNode(otherCmp)
             val edge = getEdge(sourceNode, targetNode)
@@ -310,29 +316,38 @@ abstract class WebVisualisation(width: Int, height: Int):
     def classifyNodes(): Unit =
         nodes
             // Apparently the Scala compiler does not just accept the cases as anonymous function, hence the longer implementation.
-            .classed(__CSS_IN_WORKLIST__,
-                     (node: Node) =>
-                         node match {
-                             case node: CmpNode => analysis.workList.toSet.contains(node.component)
-                             case _             => false
-                         }
+            .classed(
+              __CSS_IN_WORKLIST__,
+              (node: Node) =>
+                  node match {
+                      case IsCmpNode(node) => analysis.workList.toSet.contains(node.component)
+                      case _               => false
+                  }
             )
-            .classed(__CSS_NOT_VISITED__,
-                     (node: Node) =>
-                         node match {
-                             case node: CmpNode => !analysis.visited.contains(node.component)
-                             case _             => false
-                         }
+            .classed(
+              __CSS_NOT_VISITED__,
+              (node: Node) =>
+                  node match {
+                      case IsCmpNode(node) => !analysis.visited.contains(node.component)
+                      case _               => false
+                  }
             )
-            .classed(__CSS_NEXT_COMPONENT__,
-                     (node: Node) =>
-                         node match {
-                             case node: CmpNode => analysis.workList.toList.headOption.contains(node.component)
-                             case _             => false
-                         }
+            .classed(
+              __CSS_NEXT_COMPONENT__,
+              (node: Node) =>
+                  node match {
+                      case IsCmpNode(node) => analysis.workList.toList.headOption.contains(node.component)
+                      case _               => false
+                  }
             )
-
-    //.style("fill", (node: Node) => colorFor(node.component))
+            .style("fill",
+                   (node: Node) =>
+                       node match {
+                           case IsCmpNode(node) =>
+                               colorFor(node.component)
+                           case _ => false
+                       }
+            )
 
     /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
     def classifyEdges(): Unit = ()

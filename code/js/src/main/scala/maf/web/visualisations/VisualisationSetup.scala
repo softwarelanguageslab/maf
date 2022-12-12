@@ -32,12 +32,15 @@ trait VisualisationSetup:
     @JSExport
     def setup() =
         // add an element to select a file
-        val input = FileInputElement(loadFile)
+        val input = EditText(loadFile)
         document.body.appendChild(input)
+
+        val nextButton = Button("Next")(onClick())
+        document.body.appendChild(nextButton)
         // input handling
         val body = d3.select(document.body)
-        body.on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
-        body.on("click", () => onClick())
+    //body.on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
+    //body.on("click", () => onClick())
 
     protected def loadFile(program: String): Unit =
         // create an analysis
@@ -66,7 +69,9 @@ trait VisualisationSetup:
         case "s"             => stepUntil(anl, stepLimit = Some(10))
         case "S"             => stepUntil(anl, stepLimit = Some(25))
 
-    protected def onClick() = this.analysis.foreach(stepAnalysis)
+    protected def onClick() =
+        println("Analysis has been clicked")
+        this.analysis.foreach(stepAnalysis)
 
     private def stepAnalysis(anl: Analysis) =
         if !anl.finished then anl.step(Timeout.none)

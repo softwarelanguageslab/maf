@@ -32,7 +32,8 @@ object StandardModFVisualisationSetup extends StandardVisualisationSetup:
 
     def createAnalysis(text: String): Analysis =
         val program = SchemeParser.parseProgram(text)
-        new SimpleSchemeModFAnalysis(program, None)
+        println(s"Program $program")
+        new SimpleSchemeModFAnalysis(program)
             with SchemeModFNoSensitivity
             with SchemeConstantPropagationDomain
             with FIFOWorklistAlgorithm[SchemeExp]
