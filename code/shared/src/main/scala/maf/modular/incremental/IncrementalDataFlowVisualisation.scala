@@ -27,10 +27,8 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
         override def writeAddr(addr: Addr, value: Value): Boolean =
             if configuration.cyclicValueInvalidation then
-                var flattenedFlows = implicitFlows.flatten.toSet
-                var set = lattice.getAddresses(value).map(a => AdrDep(a, true, flattenedFlows(a)))
-                flattenedFlows = flattenedFlows.filter(adr => set.find(_.a == adr).isEmpty)
-                set = set ++ flattenedFlows.map(a => AdrDep(a, false, true))
+                // TODO: it is no longer possible to distinguish implicit flows here.
+                val set = lattice.getAddresses(value).map(a => AdrDep(a, true, false))
                 val newDependencies = SmartUnion.sunion(addressDependenciesLog(component)(addr), set)
                 addressDependenciesLog = addressDependenciesLog + (component -> (addressDependenciesLog(component) + (addr -> newDependencies)))
             val b = super.writeAddr(addr, value)
