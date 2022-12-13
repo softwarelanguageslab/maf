@@ -229,10 +229,10 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
                         if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
                             logger.log(s"ADEP ${crop(r.toString)} ~> ${crop(addr.toString)}")
                     )
-                implicitFlows.flatten.foreach(f =>
-                    if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
-                        logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}")
-                )
+                //implicitFlows.flatten.foreach(f =>
+                //    if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
+                //        logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}")
+                //)
             val b = super.writeAddr(addr, value)
             if mode == Fine || select(addr) || stepSelect() then
                 logger.log(
