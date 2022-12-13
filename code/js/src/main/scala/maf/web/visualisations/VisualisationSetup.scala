@@ -70,7 +70,6 @@ trait VisualisationSetup:
         case "S"             => stepUntil(anl, stepLimit = Some(25))
 
     protected def onClick() =
-        println("Analysis has been clicked")
         this.analysis.foreach(stepAnalysis)
 
     private def stepAnalysis(anl: Analysis) =

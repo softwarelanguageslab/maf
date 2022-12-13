@@ -21,3 +21,9 @@ object D3Helpers:
         val g = (scala.math.random() * 255).toInt
         val b = (scala.math.random() * 255).toInt
         d3.rgb(r, g, b)
+
+    def rgb(r: Int, g: Int, b: Int): JSHelpers.JsAny = d3.rgb(r, g, b)
+
+    val RED = rgb(255, 0, 0)
+    val GREEN = rgb(0, 255, 0)
+    val BLUE = rgb(0, 0, 255)

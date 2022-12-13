@@ -53,7 +53,7 @@ abstract class WebVisualisation(width: Int, height: Int):
 
     // TODO: make these abstract
     def componentText(cmp: analysis.Component): String = cmp.toString
-    def componentKey(cmp: analysis.Component): Any = None
+    def componentKey(cmp: analysis.Component): Any = Some(RED)
 
     //
     // COLOR WHEEL
@@ -85,8 +85,8 @@ abstract class WebVisualisation(width: Int, height: Int):
 
     object Node:
         def apply(v: analysis.Component | Address): Node = v match
-            case cmp: analysis.Component => CmpNode(cmp)
-            case adr: Address            => AdrNode(adr)
+            case adr: Address                       => AdrNode(adr)
+            case cmp: analysis.Component @unchecked => CmpNode(cmp)
     class CmpNode(val component: analysis.Component) extends Node:
         def displayText(): String = componentText(component)
         def data(): Any = component
@@ -97,6 +97,9 @@ abstract class WebVisualisation(width: Int, height: Int):
     object IsCmpNode:
         def unapply(v: js.Object): Option[CmpNode] =
             if v.isInstanceOf[CmpNode] then Some(v.asInstanceOf[CmpNode]) else None
+    object IsAdrNode:
+        def unapply(v: js.Object): Option[AdrNode] =
+            if v.isInstanceOf[AdrNode] then Some(v.asInstanceOf[AdrNode]) else None
 
     // An edge contains an id so it can be referenced (e.g., to add text).
     class Edge(val source: Node, val target: Node) extends js.Object:
@@ -166,7 +169,7 @@ abstract class WebVisualisation(width: Int, height: Int):
     private val simulation = d3.forceSimulation()
     simulation
         .force(__FORCE_COLLIDE__, d3.forceCollide().radius(__CIRCLE_RADIUS__))
-        .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-500))
+        .force(__FORCE_CHARGE__, d3.forceManyBody().strength(-1000))
         .force(__FORCE_LINKS__, d3.forceLink().distance(150))
         .force(__FORCE_CENTER__, d3.forceCenter())
         .on("tick", () => onTick())
@@ -251,8 +254,6 @@ abstract class WebVisualisation(width: Int, height: Int):
         analysis.visited.foreach { cmp =>
             val node = getNode(cmp)
             nodesData += node
-            println(analysis.readDependencies)
-            println(analysis.writeEffects)
             val targets: Set[analysis.Component | Address] = analysis.dependencies(cmp) ++ analysis.readDependencies(cmp) ++ analysis.writeEffects(cmp)
             targets.foreach { target =>
                 val targetNode = getNode(target)
@@ -371,13 +372,16 @@ abstract class WebVisualisation(width: Int, height: Int):
                       case _               => false
                   }
             )
-            .style("fill",
-                   (node: Node) =>
-                       node match {
-                           case IsCmpNode(node) =>
-                               colorFor(node.component)
-                           case _ => false
-                       }
+            .style(
+              "fill",
+              (node: Node) =>
+                  node match {
+                      case IsCmpNode(node) =>
+                          colorFor(node.component)
+                      case IsAdrNode(node) =>
+                          BLUE
+                      case _ => false
+                  }
             )
 
     /** Classifies every edge based on its role in the analysis, so the edge can be coloured correctly. */
