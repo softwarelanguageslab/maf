@@ -173,8 +173,9 @@ trait SchemeModFBigStepTaintSemantics
                                 result = call(targetCmp) // TODO make sure the implicit flows are added to the component even when bottom is returned!
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
+                                // TODO should this be moved up? If call results bottom, this will otherwise not be executed, or only after a reanalysis, which may trigger further reanalysis.
                                 val old = implicitFlowsCut.getOrElse(targetCmp, Set())
-                                implicitFlowsCut =
+                                implicitFlowsCut = // FIXME shouldn't this also contain the cut flows to the current component?
                                     implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
                                 if old != implicitFlowsCut.getOrElse(targetCmp, Set()) then addToWorkList(targetCmp)
                                 updatedResult
@@ -197,7 +198,7 @@ trait SchemeModFBigStepTaintSemantics
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
                                 val old = implicitFlowsCut.getOrElse(targetCmp, Set())
-                                implicitFlowsCut =
+                                implicitFlowsCut = // FIXME shouldn't this also contain the cut flows to the current component?
                                     implicitFlowsCut + (targetCmp -> (implicitFlowsCut.getOrElse(targetCmp, Set()) ++ explicitFlows ++ iTaint)) // Added
                                 if old != implicitFlowsCut.getOrElse(targetCmp, Set()) then addToWorkList(targetCmp)
                                 updatedResult
