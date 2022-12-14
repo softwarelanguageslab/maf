@@ -46,5 +46,9 @@ class ExperimentLoader:
             else: 
                 filenames = [ item for sublist in filenames.values() for item in sublist ]
 
+        # prefix the file names with the path of the experiments file
+        dirname = os.path.dirname(experiment)
+        filenames = [ dirname+"/"+filename for filename in filenames ]
+
         return ExperimentLoader(filenames)
 

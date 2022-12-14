@@ -42,7 +42,7 @@ class Runner:
             shutil.move(self.out_path, new_path)
 
             # if we moved the original output path we should move it back
-            shutil.move(temporary_location, self.command)
+            shutil.move(temporary_location, self.out_path)
         else: 
             new_path = self.out_path
 
