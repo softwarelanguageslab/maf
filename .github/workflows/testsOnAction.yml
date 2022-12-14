@@ -5,8 +5,6 @@ name: MAF tests on action
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
   build:
