@@ -1,5 +1,5 @@
 #lang racket 
-
+(parse-cmdline!)
 (require acontracts)
 
 ;; Benchmark showing that when actors are allocated at the same call site, precision is lost.
@@ -22,4 +22,4 @@
 (send c2 check 2)
 (send c3 check 3)
 
-(print-statictics)
+(print-statistics)

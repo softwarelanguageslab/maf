@@ -1,4 +1,5 @@
 #lang racket 
+(parse-cmdline!)
 
 (require acontracts)
 
@@ -17,13 +18,13 @@
 
 (define display/c 
   (behavior/c () 
-     (message (any?) unconstrained/c)))
+     (message (any/c) unconstrained/c)))
 
 (define stack/c 
-  (behavior/c  (any?)
+  (behavior/c  (any/c)
     (pop (display/c) (lambda (payload) 
-                      (ensures/c (message (any?) unconstrained/c (specific-recipient (car payload))))))
-    (push (any?) unconstrained/c)))
+                      (ensures/c (message (any/c) unconstrained/c (specific-recipient (car payload))))))
+    (push (any/c) unconstrained/c)))
 
 (define display-actor 
   (actor "display" ()
@@ -33,8 +34,8 @@
 (define act (create/c stack/c stack-node #f #f))
 
 (send act push (random 42))
-(send act push (bool-top))
+(send act push #t)
 (send act push 3)
-(send act pop disp))
+(send act pop disp)
 
 (print-statistics)

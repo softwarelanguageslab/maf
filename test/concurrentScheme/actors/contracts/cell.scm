@@ -1,5 +1,6 @@
 #lang racket
 
+(parse-cmdline!)
 ;; If the analysis of the program is imprecise it will say that 
 ;; the error is reachable. However at run-time the error is unreachable 
 ;; since the cell contents will be 2 making the display-actor terminate.
@@ -7,7 +8,8 @@
 
 (define cell
     (actor "cell" (content)
-        (put (newcontent) (become cell newcontent))
+        (put (newcontent) 
+             (become cell newcontent))
         (get (act) (send act value content) (become cell content))))
 
 (define display-actor 
@@ -16,14 +18,14 @@
 
 (define display/c 
   (behavior/c () 
-     (value (any?) unconstrained/c)))
+     (value (any/c) unconstrained/c)))
 
 (define cell/c 
-  (behavior/c (any?)
-    (put (any?) unconstrained/c)
+  (behavior/c (any/c)
+    (put (any/c) unconstrained/c)
     (get (display/c) (lambda (payload) 
                        (ensures/c 
-                          (value (any?) unconstrained/c (specific-recipient (car payload))))))))
+                          (value (any/c) unconstrained/c (specific-recipient (car payload))))))))
 
 
 (define disp (create/c display/c display-actor))

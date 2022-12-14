@@ -1,5 +1,7 @@
 #lang racket
 
+(parse-cmdline!)
+
 (require acontracts) 
 
 ;; From Agha, 1986, p. 54
@@ -13,10 +15,10 @@
                                 (send self compute (- n 1) c)))
                           (become fact-actor))))
          (customer/c (lambda () (behavior/c (integer? (customer/c))
-                                            (ensure-sends-only/c (result (integer?))))))
+                                            (ensures/c (result (integer?))))))
          (fact-actor/c (behavior/c () 
                            (compute (integer? (customer/c))
-                                    (ensure-sends-one/c (result (integer?))
+                                    (ensures/c (result (integer?))
                                                         (compute (integer? customer/c))))))
          (customer-actor
           (actor "customer" (n customer)

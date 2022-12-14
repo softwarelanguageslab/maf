@@ -2,7 +2,6 @@
    "base": [
       "cell.scm",
       "check.scm",
-      "factorial.scm",
       "stack.scm"
    ]
 }
