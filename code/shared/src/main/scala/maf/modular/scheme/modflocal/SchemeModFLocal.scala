@@ -81,7 +81,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def extendV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.extend(adr, vlu)
     def updateV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.update(adr, vlu)
 
-    def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
+    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
             if a1 == a2 then
                 if sto.lookupCount(a1) == CountOne then BoolLattice[B].inject(true)
@@ -144,7 +144,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _, _) => Set((eqA(sto, anl), sto.emptyDelta, Set.empty))
+            (anl, _, sto, _, _) => Set((eqA(sto), sto.emptyDelta, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
             (anl, _, sto, _, _) => Set(((), extendV(sto, adr, vlu), Set.empty))
         def updateSto(adr: Adr, vlu: Val) =

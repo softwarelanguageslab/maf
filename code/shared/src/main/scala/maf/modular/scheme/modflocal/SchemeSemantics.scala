@@ -114,10 +114,7 @@ trait SchemeSemantics:
             vls <- nontail { evalAll(rhs) }
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-                for
-                    _ <- extendSto(ads.zip(vls))
-                    vlu <- evalSequence(bdy)
-                yield vlu
+                extendSto(ads.zip(vls)) >>> evalSequence(bdy) 
             }
         yield res
 
@@ -128,9 +125,7 @@ trait SchemeSemantics:
                 vlu <- nontail { eval(rhs) }
                 adr <- allocVar(vrb)
                 res <- withExtendedEnv(vrb.name, adr) {
-                    extendSto(adr, vlu).flatMap { _ =>
-                        evalLetStar(rst, bdy)
-                    }
+                    extendSto(adr, vlu) >>> evalLetStar(rst, bdy)
                 }
             yield res
 

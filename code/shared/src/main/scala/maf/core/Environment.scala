@@ -21,6 +21,8 @@ sealed trait Environment[A <: Address] extends SmartHash { outer =>
 
     def addrs: Set[Address]
 
+    def toList: List[(String, Address)]
+
     def size: Int
 }
 
@@ -31,10 +33,11 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
     def lookup(name: String): Option[A] = content.get(name)
     def extend(name: String, a: A): BasicEnvironment[A] = this.copy(content = content + (name -> a))
     def extend(values: Iterable[(String, A)]): BasicEnvironment[A] = this.copy(content = content ++ values)
+    def map[B <: Address](f: (String, A) => (String, B)): BasicEnvironment[B] = this.copy(content = content.map(f.tupled))
     def mapAddrs(f: A => A): BasicEnvironment[A] = this.copy(content.view.mapValues(f).toMap)
     def size: Int = content.size
     def addrs = content.values.toSet
-
+    def toList = content.toList
     /** Better printing. */
     override def toString: String = s"ENV{${content.filter(_._2.printable).mkString(", ")}}"
 //override def toString: String = "ENV"
@@ -51,6 +54,7 @@ case class WrappedEnv[A <: Address, D](
     def extend(values: Iterable[(String, A)]): WrappedEnv[A, D] = this.copy(env = env.extend(values))
     def mapAddrs(f: A => A): WrappedEnv[A, D] = this.copy(env = env.mapAddrs(f))
     def addrs = env.addrs
+    def toList = env.toList
     def size: Int = env.size
 
 object Environment:
@@ -76,3 +80,4 @@ case class NestedEnv[A <: Address, E <: Address](content: Map[String, A], rst: O
         case Some(addr) => content.values.toSet + addr
         case None       => content.values.toSet
     def size: Int = content.size
+    def toList = throw new Exception("NYI -- NestedEnv.toList")

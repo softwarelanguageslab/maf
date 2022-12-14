@@ -11,10 +11,11 @@ import maf.lattice.interfaces.BoolLattice
 // A basic store
 //
 
-case class BasicStore[A, V](content: Map[A, V])(using lat: Lattice[V]):
+case class BasicStore[A <: Address, V](content: Map[A, V])(using lat: LatticeWithAddrs[V, A]) extends AbstractGC[A]:
     inline def apply(a: A): V = content(a)
     inline def lookup(a: A): Option[V] = content.get(a)
     inline def extend(a: A, v: V): BasicStore[A, V] = extendOption(a, v).getOrElse(this)
+    inline def extend(bds: Iterable[(A,V)]): BasicStore[A, V] = bds.foldLeft(this) { case (acc, (a,v)) => acc.extend(a,v) }
     def extendOption(a: A, v: V): Option[BasicStore[A, V]] =
         content.get(a) match
             case None if lat.isBottom(v) => None
@@ -27,9 +28,17 @@ case class BasicStore[A, V](content: Map[A, V])(using lat: Lattice[V]):
         content.get(a) match
             case None    => throw new Exception("Attempting to update a non-existing address")
             case Some(_) => extend(a, v)
+    // abstract GC support
+    type This = BasicStore[A, V]
+    def fresh = BasicStore.empty
+    def move(addr: A, to: BasicStore[A, V]): (BasicStore[A, V], Set[A]) =
+        content.get(addr) match
+            case None => (to, Set.empty)
+            case Some(v) => (BasicStore(to.content + (addr -> v)), lat.refs(v))
+        
 
 object BasicStore:
-    def empty = BasicStore(Map.empty)
+    def empty[A <: Address, V](using LatticeWithAddrs[V, A]): BasicStore[A,V] = BasicStore(Map.empty)
 
 //
 // A store with abstract counting
@@ -51,6 +60,48 @@ case object CountOne extends AbstractCount:
 case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
+
+case class CountingStore[A <: Address, V](content: Map[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean) extends AbstractGC[A]:
+    // "get"-functions return an Option
+    inline def get(a: A): Option[(V, AbstractCount)] = content.get(a)
+    inline def getValue(a: A): Option[V] = get(a).map(_._1)
+    inline def getCount(a: A): Option[AbstractCount] = get(a).map(_._2)
+    // lookup functions return bottom if not found
+    inline def lookup(a: A): (V, AbstractCount) = get(a).getOrElse((lat.bottom, CountZero))
+    inline def lookupValue(a: A): V = getValue(a).getOrElse(lat.bottom)
+    inline def lookupCount(a: A): AbstractCount = getCount(a).getOrElse(CountZero)
+    inline def apply(a: A) = lookupValue(a)
+    inline def extend(a: A, v: V): CountingStore[A, V] = extendOption(a, v).getOrElse(this)
+    inline def extend(bds: Iterable[(A,V)]): CountingStore[A, V] = bds.foldLeft(this) { case (acc, (a,v)) => acc.extend(a,v) }
+    def extendOption(a: A, v: V): Option[CountingStore[A, V]] =
+        content.get(a) match
+            case None if lat.isBottom(v)    => None
+            case None                       => Some(CountingStore(content + (a -> (v, countFor(a)))))
+            case Some(old @ (oldV, oldC))   =>
+                val updated = (lat.join(oldV, v), oldC.inc)
+                if oldV == updated then None else Some(CountingStore(content + (a -> updated)))
+    def update(a: A, v: V): CountingStore[A, V] =
+        content.get(a) match
+            case None | Some((_, CountZero))    => throw new Exception("Attempting to update a non-existing address")
+            case Some((_, CountOne))            => CountingStore(content + (a -> (v, CountOne)))                    // strong update
+            case Some((oldV, CountInf))         => CountingStore(content + (a -> (lat.join(oldV, v), CountInf)))    // weak update
+    // Abstract counting GC
+    private def countFor(a: A): AbstractCount =
+        if shouldCount(a) then CountOne else CountInf
+    // Abstract GC support
+    type This = CountingStore[A, V]
+    def fresh = CountingStore.empty
+    def move(addr: A, to: CountingStore[A,V]): (This, Set[A]) = 
+        content.get(addr) match
+            case None => (to, Set.empty)
+            case Some(s @ (v, _)) => (CountingStore(to.content + (addr -> s)), lat.refs(v)) 
+
+object CountingStore:
+    def empty[A <: Address, V](using LatticeWithAddrs[V, A], A => Boolean): CountingStore[A, V] = CountingStore(Map.empty)
+
+//
+// for DSS: counting + delta stores
+//
 
 case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean)
     extends AbstractGC[A]:
@@ -119,13 +170,13 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     type This = LocalStore[A, V]
     def fresh = LocalStore.empty
     def move(addr: A, to: This): (This, Set[A]) =
-        content.get(addr) match
+        get(addr) match
             case None             => (to, Set.empty)
             case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lat.refs(v))
     // Deltas!
     def emptyDelta: Delta = Delta(SmartMap.empty)
     case class Delta(delta: SmartMap[A, (V, AbstractCount)]) extends AbstractGC[A]:
-        def inStore(a: A): Boolean = sto.contains(a)
+        inline def inStore(a: A): Boolean = sto.contains(a)
         // abstract GC support
         type This = Delta
         def fresh = sto.emptyDelta

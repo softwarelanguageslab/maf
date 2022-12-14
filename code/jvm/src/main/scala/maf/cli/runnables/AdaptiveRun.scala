@@ -117,3 +117,10 @@ object AdaptiveRun:
                 println(s"$cmp => $result")
             case _ => ()
         }
+
+    def runDSS(prg: SchemeExp) =
+        val anl = SchemeAnalyses.modflocalAnalysis(prg, 0)
+        anl.analyze()
+        val res = anl.results(anl.MainComponent).asInstanceOf[Set[(anl.Val, anl.Dlt, Set[anl.Adr])]]
+        val vlu = Lattice[anl.Val].join(res.map(_._1))
+        vlu 
