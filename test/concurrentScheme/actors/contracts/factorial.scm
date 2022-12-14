@@ -1,5 +1,6 @@
-(require contracts/actor)
-(require actor)
+#lang racket
+
+(require acontracts) 
 
 ;; From Agha, 1986, p. 54
 ;; Adapted with contracts by Bram Vandenbogaerde
@@ -25,6 +26,8 @@
          (display-actor
           (actor "display" ()
                  (result (n) (display n))))
-         (f (create fact-actor))
-         (disp (create display-actor)))
+         (f (create/c fact-actor/c fact-actor))
+         (disp (create/c custumer-actor display-actor)))
   (send f compute 5 disp))
+
+(print-statistics)
