@@ -5,6 +5,7 @@
       "stack.scm"
    ],
    "savina": [
-      "savina/sieve.scm"
+      "savina/sieve.scm",
+      "savina/phil.scm"
    ]
 }

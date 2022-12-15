@@ -1,6 +1,11 @@
-;; Adapted from Savina benchmarks ("Dining Philosophers benchmarks", coming from Wikipedia)
-(define Rounds (int-top))
-(define NumForks (int-top))
+#lang racket 
+
+(require acontracts)
+(parse-cmdline!)
+
+;; Adapted from Savina benchmarks ("Dining Philosophers benchmarks", coming from Wikipedia)
+(define Rounds 300)
+(define NumForks 5)
 (define NumPhilosophers NumForks)
 (define counter
   (actor "counter" (n)
@@ -31,7 +36,7 @@
 (define philosopher
   (actor "philosopher" (id rounds-so-far local-counter)
            (denied ()
-                   (send arbitrator-actor hungry a/self id)
+                   (send arbitrator-actor hungry self id)
                    (become philosopher id rounds-so-far (+ local-counter 1)))
            (eat ()
                 (send counter-actor add local-counter)
@@ -39,20 +44,40 @@
                 (if (< (+ rounds-so-far 1) Rounds)
                     (begin
                       ;; was: (send self start)
-                      (send arbitrator-actor hungry a/self id)
+                      (send arbitrator-actor hungry self id)
                       (become philosopher id (+ rounds-so-far 1) local-counter))
                     (begin
                       (send arbitrator-actor exit)
                       (terminate))))
            (start ()
-                  (send arbitrator-actor hungry a/self id)
+                  (send arbitrator-actor hungry self id)
                   (become philosopher id rounds-so-far local-counter))))
-(define counter-actor (create counter 0))
-(define arbitrator-actor (create arbitrator (make-vector NumForks #f) 0))
+
+(define counter/c (behavior/c (any/c any/c)
+  (add (integer?) unconstrained/c)
+  (finish () unconstrained/c)))
+
+;; TODO: specify a contract that the philosopher should contact the arbitrator again 
+(define philosopher/c (behavior/c (any/c any/c)
+  (denied () unconstrained/c)
+  (eat () unconstrained/c)
+  (start () unconstrained/c)))
+
+; TODO: for add specify an or/c contract on the behavior
+(define arbitrator/c (behavior/c (any/c any/c)
+ (hungry (philosopher/c integer?) unconstrained/c)
+ (done (integer?) unconstrained/c)
+ (exit () unconstrained/c)))
+
+
+(define counter-actor (create/c counter/c counter 0))
+(define arbitrator-actor (create/c arbitrator/c arbitrator (make-vector NumForks #f) 0))
 (define (create-philosophers i)
   (if (= i NumPhilosophers)
       #t
-      (let ((p (create philosopher i 0 0)))
+      (let ((p (create/c philosopher/c philosopher i 0 0)))
         (send p start)
         (create-philosophers (+ i 1)))))
 (create-philosophers 0)
+
+(print-statistics)
