@@ -3,5 +3,8 @@
       "cell.scm",
       "check.scm",
       "stack.scm"
+   ],
+   "savina": [
+      "savina/sieve.scm"
    ]
 }
