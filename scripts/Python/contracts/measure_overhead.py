@@ -7,25 +7,29 @@ import matplotlib.pyplot as plt
 
 
 def parse_stats(file): 
-    with open(file) as f:
-        lines = f.read()
-        # split the lines in two
-        sections = lines.split("---------------")
-        output = []
-        for section in sections[1:]: 
-            lines = section.strip().split('\n')
-            attribute_split = [ line.split(":") for line in lines ]
-            pair = [ (split[0], int(split[1])) for split in attribute_split ]
-            output.append(dict(pair))
+    try:
+        with open(file) as f:
+            lines = f.read()
+            # split the lines in two
+            sections = lines.split("---------------")
+            output = []
+            for section in sections[1:]: 
+                lines = section.strip().split('\n')
+                attribute_split = [ line.split(":") for line in lines ]
+                pair = [ (split[0], int(split[1])) for split in attribute_split ]
+                output.append(dict(pair))
 
-        with_contracts = output[0]
-        without_contracts = output[1]
-        with_contracts["with_contracts"] = True 
-        without_contracts["with_contracts"] = False
+            with_contracts = output[0]
+            without_contracts = output[1]
+            with_contracts["with_contracts"] = True 
+            without_contracts["with_contracts"] = False
 
-        return [
-                with_contracts, without_contracts
-        ]
+            return [
+                    with_contracts, without_contracts
+            ]
+    except Exception:
+        print(f"warning: couldn not parse file {file}")
+        return []
 
 
 if __name__ == "__main__":
@@ -42,8 +46,8 @@ if __name__ == "__main__":
         output.extend(parsed)
 
     df = pd.DataFrame(output)
-    print(df)
+    df.to_csv(f"{output_path}/out.csv")
     print(f"Raw Output is available at {output_path}")
-    sb.barplot(df, y = "# messages", x = "filename",  hue = "with_contracts")
+    # sb.barplot(df, y = "# messages", x = "filename",  hue = "with_contracts")
 
-plt.show()
+# plt.show()
