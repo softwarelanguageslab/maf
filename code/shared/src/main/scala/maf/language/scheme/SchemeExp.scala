@@ -732,17 +732,23 @@ case class AContractSchemeMessage(tag: String, argumentContracts: List[SchemeExp
 case class RacketModule(
     requires: List[RequireDirective],
     provides: List[ProvideDirective],
-    imports: Map[String, Identifier],
     bdy: SchemeExp,
     idn: Identity)
     extends SchemeExp:
-    override def fv: Set[String] = bdy.fv -- imports.values.map(_.toString).toSet
+    // The required module identifiers should be visible (and therefore free) within the module,
+    // all other variables should be imported from other modules or defined locally.
+    override def fv: Set[String] = requires.map(_.moduleName).toSet
     override def label: Label = MOD
     override def subexpressions: List[Expression] = List(bdy)
 
 case class RacketRequire(clauses: SchemeExp, idn: Identity) extends SchemeExp:
     override def fv: Set[String] = clauses.fv
     def label: Label = REQ
+    override def subexpressions: List[Expression] = List()
+
+case class RacketProvide(clauses: SchemeExp, idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = clauses.fv
+    def label: Label = PROV
     override def subexpressions: List[Expression] = List()
 
 abstract class MakeStruct extends ContractSchemeExp:
