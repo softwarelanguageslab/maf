@@ -54,6 +54,8 @@ enum Label:
     // Racket module system (used in the contract language)
     case PROV // Provide expression
     case PCO // Provide contract-out element
+    case MOD // A Racket module
+    case REQ // A Racket (require ...) statement
 
     // Structs
     case MSG // Struct getter

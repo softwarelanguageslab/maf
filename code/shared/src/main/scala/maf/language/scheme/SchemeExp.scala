@@ -7,6 +7,8 @@ import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
 import maf.util.Show
+import maf.language.racket.RequireDirective
+import maf.language.racket.ProvideDirective
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
@@ -718,6 +720,30 @@ case class AContractSchemeMessage(tag: String, argumentContracts: List[SchemeExp
 ///////////////////////////////////////////////////////
 // Racket Utilities
 ///////////////////////////////////////////////////////
+
+/**
+ * A Racket module, as a synthetic AST node.
+ *
+ * The RacketLoader generates a Racket module whenever it encounters a `#lang racket` at the beginning of the filter
+ *
+ * @param imports
+ *   a map build by the compiler consisting of identifiers mapped to the modules that there are coming from
+ */
+case class RacketModule(
+    requires: List[RequireDirective],
+    provides: List[ProvideDirective],
+    imports: Map[String, Identifier],
+    bdy: SchemeExp,
+    idn: Identity)
+    extends SchemeExp:
+    override def fv: Set[String] = bdy.fv -- imports.values.map(_.toString).toSet
+    override def label: Label = MOD
+    override def subexpressions: List[Expression] = List(bdy)
+
+case class RacketRequire(clauses: SchemeExp, idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = clauses.fv
+    def label: Label = REQ
+    override def subexpressions: List[Expression] = List()
 
 abstract class MakeStruct extends ContractSchemeExp:
     def fv: Set[String] = Set()
