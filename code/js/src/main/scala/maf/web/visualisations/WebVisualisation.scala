@@ -14,6 +14,7 @@ import org.scalajs.dom.document
 
 // null values are used here due to JS interop
 import scala.language.unsafeNulls
+import maf.modular.scheme.PrmAddr
 
 trait WebVisualisationAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] with DependencyTracking[Expr]:
 
@@ -254,7 +255,13 @@ abstract class WebVisualisation(width: Int, height: Int):
         analysis.visited.foreach { cmp =>
             val node = getNode(cmp)
             nodesData += node
-            val targets: Set[analysis.Component | Address] = analysis.dependencies(cmp) ++ analysis.readDependencies(cmp) ++ analysis.writeEffects(cmp)
+            val targets: Set[analysis.Component | Address] = analysis.dependencies(cmp) ++ analysis.readDependencies(cmp).filter {
+                case PrmAddr(_) => false
+                case _          => true
+            } ++ analysis.writeEffects(cmp).filter {
+                case PrmAddr(_) => false
+                case _          => true
+            }
             targets.foreach { target =>
                 val targetNode = getNode(target)
                 val edge = getEdge(node, targetNode)
@@ -293,10 +300,18 @@ abstract class WebVisualisation(width: Int, height: Int):
         val targets: Set[(analysis.Component | Address, EdgeKind)] =
             analysis.dependencies(prevComponent).map((_, EdgeKind.Call)) ++ analysis
                 .readDependencies(prevComponent)
+                .filter {
+                    case PrmAddr(_) => false
+                    case _          => true
+                }
                 .map((_, EdgeKind.Read)) ++ analysis
                 .writeEffects(
                   prevComponent
                 )
+                .filter {
+                    case PrmAddr(_) => false
+                    case _          => true
+                }
                 .map((_, EdgeKind.Write))
         targets.foreach { case (otherCmp, kind) =>
             val targetNode = getNode(otherCmp)
@@ -377,7 +392,7 @@ abstract class WebVisualisation(width: Int, height: Int):
               (node: Node) =>
                   node match {
                       case IsCmpNode(node) =>
-                          colorFor(node.component)
+                          GREEN
                       case IsAdrNode(node) =>
                           BLUE
                       case _ => false

@@ -11,6 +11,15 @@ import maf.web.utils._
 import maf.web.utils.D3Helpers._
 import scala.scalajs.js.annotation._
 import scala.scalajs.js
+import org.scalajs.dom.raw.HTMLElement
+
+object ExamplePrograms:
+    val factorial: String =
+        """|(define (factorial n)
+      | (if (= n 0)
+      |      1
+      |      (* n (factorial (- n 1)))))
+      |(factorial 5)""".stripMargin
 
 trait VisualisationSetup:
 
@@ -20,6 +29,8 @@ trait VisualisationSetup:
     var current: Option[(Analysis, dom.Node)] = None
     def analysis: Option[Analysis] = current.map(_._1)
     def webvis: Option[dom.Node] = current.map(_._2)
+    var nextButton: html.Element = _
+    var input: EditText = _
 
     // create some visualisation for the given program (with given dimensions)
     def createAnalysis(program: String): Analysis
@@ -32,29 +43,38 @@ trait VisualisationSetup:
     @JSExport
     def setup() =
         // add an element to select a file
-        val input = EditText(loadFile)
-        document.body.appendChild(input)
+        input = EditText(loadFile)
+        input.setFile(ExamplePrograms.factorial)
+        document.body.appendChild(input.render())
 
-        val nextButton = Button("Next")(onClick())
-        document.body.appendChild(nextButton)
+        nextButton = Button("Click 'Start Analysis' to start.")(onClick())
+        nextButton.classList.add("btn")
+        nextButton.classList.add("hidden")
+        input.appendChild(nextButton)
+
+        val div = document.createElement("div")
+        div.classList.add("visualisation")
+        document.body.appendChild(div)
+
         // input handling
         val body = d3.select(document.body)
-    //body.on("keypress", () => keyHandler(d3.event.key.asInstanceOf[String]))
-    //body.on("click", () => onClick())
 
     protected def loadFile(program: String): Unit =
+        nextButton.innerText = "Next"
+        nextButton.classList.remove("hidden")
+        nextButton.classList.remove("disabled")
         // create an analysis
         val analysis = createAnalysis(program)
         // remove the old visualisation if present
         this.webvis.foreach {
-            document.body.removeChild(_)
+            document.querySelector(".visualisation").removeChild(_)
         }
         // create a new visualisation
-        val width = js.Dynamic.global.document.documentElement.clientWidth.asInstanceOf[Int]
-        val height = js.Dynamic.global.document.documentElement.clientHeight.asInstanceOf[Int]
+        val width = document.querySelector(".visualisation").asInstanceOf[HTMLElement].offsetWidth.asInstanceOf[Int]
+        val height = document.querySelector(".visualisation").asInstanceOf[HTMLElement].offsetHeight.asInstanceOf[Int]
         val webvis = createVisualisation(analysis, width, height)
         // load it in the main web page HTML
-        document.body.appendChild(webvis)
+        document.querySelector(".visualisation").appendChild(webvis)
         // update the state of the visualisation setup
         current = Some((analysis, webvis))
 
@@ -74,7 +94,11 @@ trait VisualisationSetup:
 
     private def stepAnalysis(anl: Analysis) =
         if !anl.finished then anl.step(Timeout.none)
-        else println("The analysis has already terminated")
+        else
+            nextButton.innerText = "Analysis is finished"
+            nextButton.classList.add("disabled")
+            input.reset()
+            println("The analysis has already terminated")
 
     private def stepUntil(
         anl: Analysis,
