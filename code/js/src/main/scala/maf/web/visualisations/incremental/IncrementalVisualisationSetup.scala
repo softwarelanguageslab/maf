@@ -16,6 +16,7 @@ import org.scalajs.dom.Element
 
 import scala.concurrent.TimeoutException
 import scala.scalajs.js.annotation.JSExportTopLevel
+import org.scalajs.dom.raw.HTMLElement
 
 @JSExportTopLevel("incrementalVisualisationSetup")
 object IncrementalVisualisationSetup extends VisualisationSetup:
@@ -27,6 +28,8 @@ object IncrementalVisualisationSetup extends VisualisationSetup:
     def createAnalysis(text: String): IncrementalAnalysis =
         val program: SchemeExp = CSchemeParser.parseProgram(text)
         new IncrementalAnalysis(program, IncrementalConfiguration.allOptimisations)
+
+    def setupStoreVisualisation(container: HTMLElement): Unit = ()
 
     def createVisualisation(
         analysis: Analysis,
@@ -55,7 +58,8 @@ object IncrementalVisualisationSetup extends VisualisationSetup:
 
 class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfiguration)
     extends IncrementalSchemeModFAnalysisCPLattice(program, configuration)
-    with VisualisableIncrementalModAnalysis[SchemeExp]:
+    with VisualisableIncrementalModAnalysis[SchemeExp]
+    with GlobalStore[SchemeExp]:
 
     type Module = Option[SchemeLambdaExp]
 
@@ -84,6 +88,7 @@ class IncrementalAnalysis(program: SchemeExp, configuration: IncrementalConfigur
         cmp: SchemeModFComponent
       ) = new IntraAnalysis(cmp)
         with IncrementalSchemeModFBigStepIntra
+        with GlobalStoreIntra
         with IncrementalGlobalStoreIntraAnalysis
         // with AssertionModFIntra
         with VisualisableIntraAnalysis {

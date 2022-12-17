@@ -7,6 +7,7 @@ import maf.util.benchmarks.Timeout
 
 import maf.web.utils.JSHelpers._
 import maf.web.utils.D3Helpers._
+import maf.web.utils.*
 
 // Scala.js-related imports
 import scala.scalajs.js
@@ -15,8 +16,14 @@ import org.scalajs.dom.document
 // null values are used here due to JS interop
 import scala.language.unsafeNulls
 import maf.modular.scheme.PrmAddr
+import org.scalajs.dom.raw.HTMLElement
+import maf.modular.scheme.VarAddr
 
-trait WebVisualisationAnalysis[Expr <: Expression] extends ModAnalysis[Expr] with SequentialWorklistAlgorithm[Expr] with DependencyTracking[Expr]:
+trait WebVisualisationAnalysis[Expr <: Expression]
+    extends ModAnalysis[Expr]
+    with SequentialWorklistAlgorithm[Expr]
+    with DependencyTracking[Expr]
+    with GlobalStore[Expr]:
 
     type Module
     def module(cmp: Component): Module
@@ -24,7 +31,7 @@ trait WebVisualisationAnalysis[Expr <: Expression] extends ModAnalysis[Expr] wit
 
     var webvis: WebVisualisation = _
 
-    override def intraAnalysis(component: Component): IntraAnalysis with DependencyTrackingIntra
+    override def intraAnalysis(component: Component): IntraAnalysis with DependencyTrackingIntra with GlobalStoreIntra
 
     override def step(timeout: Timeout.T): Unit =
         webvis.beforeStep()
@@ -55,6 +62,58 @@ abstract class WebVisualisation(width: Int, height: Int):
     // TODO: make these abstract
     def componentText(cmp: analysis.Component): String = cmp.toString
     def componentKey(cmp: analysis.Component): Any = Some(RED)
+
+    //
+    // STORE VISUALISATION
+    //
+
+    /** Represent changes in the store */
+    enum Change:
+        /** A new entry in the store */
+        case Nww(adr: Address, vlu: analysis.Value)
+
+        /** An updated entry in the store * */
+        case Upd(adr: Address, oldVlu: analysis.Value, vlu: analysis.Value)
+
+    private def diff(old: Map[Address, analysis.Value], nww: Map[Address, analysis.Value]): List[Change] =
+        nww.keys.foldLeft(List[Change]())((changes, newKey) =>
+            import Change.*
+            (if old.contains(newKey) && old(newKey) != nww(newKey) then
+                 // an update
+                 Upd(newKey, old(newKey), nww(newKey))
+             else
+                 // a new key
+                 Nww(newKey, nww(newKey))
+            ) :: changes
+        )
+    private var storeTable: HtmlTable[(String, String)] = _
+
+    private var lastStore: Map[Address, analysis.Value] = Map()
+
+    protected def refreshStoreVisualisation(): Unit =
+        import Change.*
+        // compute the difference between the last know store and the new store
+        val newStore = analysis.store.view.filterKeys {
+            case PrmAddr(_) => false
+            case _          => true
+        }.toMap
+
+        val dff = diff(lastStore, newStore)
+        // reset classes for each row
+        storeTable.classed { case _ =>
+            ""
+        }
+        println(dff)
+        // add any new rows
+        dff.foreach {
+            case Nww(adr, vlu) => storeTable.addRow((adr.toString, vlu.toString), Some("added"))
+            case Upd(adr, oldVlu, vlu) =>
+                storeTable.update((adr.toString, oldVlu.toString), (adr.toString, vlu.toString), Some("updated"))
+        }
+
+    def enableStoreVisualisation(container: HTMLElement): Unit =
+        storeTable = HtmlTable(List("Address", "Value"))
+        storeTable.render(container)
 
     //
     // COLOR WHEEL
@@ -274,6 +333,7 @@ abstract class WebVisualisation(width: Int, height: Int):
     private var prevCalls: Set[analysis.Component] = _
 
     def beforeStep(): Unit =
+        lastStore = analysis.store
         prevComponent = analysis.workList.head
         prevCalls = analysis.dependencies(prevComponent)
 
@@ -282,6 +342,8 @@ abstract class WebVisualisation(width: Int, height: Int):
         refreshDataAfterStep()
         // refresh the visualisation
         refreshVisualisation()
+        // refresh the visualisation for the store
+        refreshStoreVisualisation()
 
     enum EdgeKind:
         case Call

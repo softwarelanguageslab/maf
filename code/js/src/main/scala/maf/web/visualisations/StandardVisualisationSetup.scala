@@ -9,6 +9,7 @@ import maf.language.scheme._
 import scala.scalajs.js.annotation._
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.scheme.modf.SchemeModFComponent.Call
+import org.scalajs.dom.raw.HTMLElement
 
 class SimpleWebVisualisation(
     override val analysis: WebVisualisationAnalysis[_],
@@ -20,12 +21,18 @@ trait StandardVisualisationSetup extends VisualisationSetup:
 
     type Analysis = WebVisualisationAnalysis[_]
 
+    private var visualisation: WebVisualisation = _
+
     def createVisualisation(
         analysis: Analysis,
         width: Int,
         height: Int
       ) =
-        new SimpleWebVisualisation(analysis, width, height).node
+        visualisation = new SimpleWebVisualisation(analysis, width, height)
+        visualisation.node
+
+    def setupStoreVisualisation(container: HTMLElement): Unit =
+        visualisation.enableStoreVisualisation(container)
 
 @JSExportTopLevel("standardModFVisualisationSetup")
 object StandardModFVisualisationSetup extends StandardVisualisationSetup:

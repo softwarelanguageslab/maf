@@ -31,6 +31,7 @@ trait VisualisationSetup:
     def webvis: Option[dom.Node] = current.map(_._2)
     var nextButton: html.Element = _
     var input: EditText = _
+    var storeVisualisation: HTMLElement = _
 
     // create some visualisation for the given program (with given dimensions)
     def createAnalysis(program: String): Analysis
@@ -40,21 +41,36 @@ trait VisualisationSetup:
         height: Int
       ): dom.Node
 
+    def setupStoreVisualisation(container: HTMLElement): Unit
+
     @JSExport
     def setup() =
-        // add an element to select a file
+        // add element to provide a program to the analysis
         input = EditText(loadFile)
         input.setFile(ExamplePrograms.factorial)
         document.body.appendChild(input.render())
 
+        // Add some buttons
         nextButton = Button("Click 'Start Analysis' to start.")(onClick())
         nextButton.classList.add("btn")
         nextButton.classList.add("hidden")
         input.appendChild(nextButton)
 
+        // Add the container that holds both the graph visualisation
+        // as well as the store visualisation
+        val container = document.createElement("div")
+        container.setAttribute("id", "visualisationContainer")
+        document.body.appendChild(container)
+
+        // Add the container for holding the store visualisation
+        storeVisualisation = document.createElement("div").asInstanceOf[HTMLElement]
+        storeVisualisation.setAttribute("id", "storeVisualisation")
+        container.appendChild(storeVisualisation)
+
+        // Add the visualisation div
         val div = document.createElement("div")
         div.classList.add("visualisation")
-        document.body.appendChild(div)
+        container.appendChild(div)
 
         // input handling
         val body = d3.select(document.body)
@@ -69,10 +85,13 @@ trait VisualisationSetup:
         this.webvis.foreach {
             document.querySelector(".visualisation").removeChild(_)
         }
+        // remove the old store visualisation
+        storeVisualisation.innerHTML = ""
         // create a new visualisation
         val width = document.querySelector(".visualisation").asInstanceOf[HTMLElement].offsetWidth.asInstanceOf[Int]
         val height = document.querySelector(".visualisation").asInstanceOf[HTMLElement].offsetHeight.asInstanceOf[Int]
         val webvis = createVisualisation(analysis, width, height)
+        setupStoreVisualisation(storeVisualisation)
         // load it in the main web page HTML
         document.querySelector(".visualisation").appendChild(webvis)
         // update the state of the visualisation setup
