@@ -20,7 +20,7 @@ The MAF framework can be used in several ways.
 ## Using the JavaScript visual front-end
 
 The framework includes a JavaScript front-end that can be used to visualise a modular analysis in the browser. Before
-the visualisation can be run, you have to ensure the code is compiled, by executing the commans `fastOptJS` (
+the visualisation can be run, you have to ensure the code is compiled, by executing the commands `fastOptJS` (
 or `fullOptJS`) in your sbt repl.
 
 The MAF framework currently provides a standard visualisation for modular analyses, as well as specific visualisations
