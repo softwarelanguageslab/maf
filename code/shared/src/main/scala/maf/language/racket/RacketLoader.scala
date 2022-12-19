@@ -17,13 +17,21 @@ import maf.lattice.AbstractSetType
 class ModuleGraph:
 
     /** Adds a dependsOn edge between `modulePath` and `otherModulePath` */
-    def dependsOn(modulePath: String, otherModulePath: String): Unit = ???
+    def dependsOn(moduleName: Modules.Name, otherModuleName: Modules.Name): Unit = ???
 
     /** Returns a topologically sorted list of the graph */
-    def topsort(): List[String] = ???
+    def topsort(): List[Modules.Name] = ???
 
     /** Register the given module in the dependency graph */
-    def registerModule(modulePath: String): Unit = ???
+    def registerModule(moduleName: Modules.Name): Unit = ???
+
+object Modules:
+    opaque type Name = String
+    opaque type Path = String
+
+    def pathAsName(name: Path): Name = name
+    def str(name: Name | Path): String = name
+    def name(nm: String): Name = nm
 
 /**
  * Adds semantics for evaluating `RacketModule` expressions as well as resolving `require` expressions by `provide` expressions during analysis time.
@@ -39,6 +47,15 @@ trait RacketLoaderSemantics extends SchemeSemantics, RacketDomain, SchemeModFLoc
                 evalMd <- eval(module)
                 rmod <- merge(lattice.rmods(evalMd).map(_.lookup(name.name)).map(unit))
             yield rmod
+
+        case RacketModule(name, requireDirs, provideDirs, includes, provides, bdy, idn) =>
+            for
+                evalBdy <- eval(bdy)
+                // the provided identifiers need to be exported
+                provided <- provides.map(_.originalName).mapM(exp => lookupEnv(???).flatMap(lookupSto))
+                rmod = RMod(provides.map(_.exposedName).zip(provided).toMap, Some(Modules.str(name)))
+            yield lattice.rmod(rmod)
+
         case _ => super.eval(exp)
 
 trait RacketLoader:
@@ -62,11 +79,11 @@ trait RacketLoader:
      * @param moduleName
      *   the logical name of the module
      */
-    private def findPhysical(moduleName: String): String = ???
+    private def findPhysical(moduleName: Modules.Name): Modules.Path = ???
 
     /** Parses the module on the given phyisical path to a scheme expression and discovers all its imports */
-    private def parseModule(modulePath: String): (SchemeExp, List[RequireDirective]) =
-        val contents = Reader.loadFile(modulePath)
+    private def parseModule(modulePath: Modules.Path): (SchemeExp, List[RequireDirective]) =
+        val contents = Reader.loadFile(Modules.str(modulePath))
         // parse the file
         val parsed = parse(contents)
         // walk the parsed tree to find require statements
@@ -75,39 +92,79 @@ trait RacketLoader:
         }.map(RequireDirective.fromExp)
         (parsed, requires)
 
+    private def resolveModule(resolvedModules: List[RacketModule], unresolvedModule: RacketModule): /* resolved */ List[RacketModule] =
+        def computeLocalDefines(exp: SchemeExp): List[String] =
+            exp match
+                case SchemeBegin(exs, _) =>
+                    exs.flatMap {
+                        case SchemeDefineVariable(Identifier(nam, _), value, idn) => List(nam)
+                        case SchemeBegin(exs, _)                                  => exs.flatMap(computeLocalDefines)
+                        case _                                                    => List()
+                    }
+                case _ => List()
+
+        // resolve the requires first
+        val includes: List[ResolvedRequire] = unresolvedModule.requiresDirectives.flatMap(_.resolve(resolvedModules))
+        // prepend defines to the body for adding the imported values to the scope
+        val loadedBdy = SchemeBegin(
+          includes.map(_.toDefine) ++ List(unresolvedModule.bdy),
+          Identity.none
+        )
+        // once the requires are resolved we need to compute which members will be provided
+        // for this we compute a list of locally defined members and then filter them based on the provide directives
+        val localDefines = computeLocalDefines(loadedBdy)
+        val onlyProvides: List[SelectedProvide] = unresolvedModule.providesDirectives.flatMap(_.select(localDefines))
+        // add an expose-module special form to the body so that all provided identifiers are exported
+        val exposedBdy = SchemeBegin(
+          loadedBdy :: List(RacketModuleExpose(onlyProvides.map((ex: SelectedProvide) => (ex.originalName -> ex.exposedName)).toMap, Identity.none)),
+          Identity.none
+        )
+        unresolvedModule.copy(provides = onlyProvides, includes = includes, bdy = loadedBdy) :: resolvedModules
+
     /** Loads a Racket project and returns a list of Racket modules */
-    def load(filename: String): SchemeExp =
+    def load(filename: Modules.Path): SchemeExp =
         val dependencyGraph = ModuleGraph()
         def loadAll(
-            entry: String,
-            loadedModules: Map[String, (SchemeExp, List[RequireDirective])]
-          ): Map[String, (SchemeExp, List[RequireDirective])] =
+            entry: Modules.Name,
+            loadedModules: Map[Modules.Name, (SchemeExp, List[RequireDirective])]
+          ): Map[Modules.Name, (SchemeExp, List[RequireDirective])] =
             dependencyGraph.registerModule(entry)
             if loadedModules.contains(entry) then
                 // if we discover a module again, this means that the imports are cyclic which is not allowed
                 sys.error(s"cyclic import path while trying to import $entry")
             else
                 // parse the module to a valid AST
-                val (entryExp, entryRequires) = parseModule(filename)
+                val (entryExp, entryRequires) = parseModule(findPhysical(entry))
                 // add the module to the dependency graph
-                entryRequires.foreach(entry => dependencyGraph.dependsOn(filename, findPhysical(entry.moduleName)))
+                entryRequires.foreach(re => dependencyGraph.dependsOn(entry, re.moduleName))
                 // recursively find the other modules and add them to the dependency graph
                 entryRequires
-                    .map(entry => loadAll(findPhysical(entry.moduleName), loadedModules))
-                    .foldLeft(loadedModules + (filename -> (entryExp, entryRequires)))((entries, nextEntries) => entries ++ nextEntries)
+                    .map(entry => loadAll(entry.moduleName, loadedModules))
+                    .foldLeft(loadedModules + (entry -> (entryExp, entryRequires)))((entries, nextEntries) => entries ++ nextEntries)
 
-        val modules = loadAll(filename, Map())
+        val modules = loadAll(Modules.pathAsName(filename), Map())
         // sort the modules topologically so that they are loaded in a correct order
         val topsorted = dependencyGraph.topsort()
         // create a racket module for each loaded module, and define its module name using a `define`
         val racketModules = topsorted.map(modulePath =>
             val (exp, requires) = modules(modulePath)
             val provideDirectives = find(exp) { case r: RacketProvide => r }
-            val module = RacketModule(requires, find(exp) { case r: RacketProvide => r }.map(ProvideDirective.fromExp), List(), List(), exp, exp.idn)
-            SchemeDefineVariable(Identifier(modulePath, exp.idn), module, exp.idn)
-        )
+            val module = RacketModule(modulePath,
+                                      requires,
+                                      find(exp) { case r: RacketProvide => r }.map(ProvideDirective.fromExp),
+                                      List(),
+                                      List(),
+                                      exp,
+                                      exp.idn
+            )
 
-        undefine(SchemeBegin(racketModules, Identity.none))
+            module
+        )
+        // resolve the includes and provides list in each of the modules
+        // to do this we accumulate into a list of resolved racket modules
+        val resolvedModules = racketModules.foldLeft(List[RacketModule]())(resolveModule)
+
+        undefine(SchemeBegin(racketModules.reverse, Identity.none))
 
 object ASchemeRacketLoader extends RacketLoader:
     override def parse(prg: String): SchemeExp =

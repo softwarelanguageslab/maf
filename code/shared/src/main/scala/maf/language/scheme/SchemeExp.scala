@@ -7,8 +7,7 @@ import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
 import maf.util.Show
-import maf.language.racket.RequireDirective
-import maf.language.racket.ProvideDirective
+import maf.language.racket.{Modules, ProvideDirective, RequireDirective, ResolvedRequire, SelectedProvide}
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
@@ -730,16 +729,17 @@ case class AContractSchemeMessage(tag: String, argumentContracts: List[SchemeExp
  *   a map build by the compiler consisting of identifiers mapped to the modules that there are coming from
  */
 case class RacketModule(
+    name: Modules.Name,
     requiresDirectives: List[RequireDirective],
     providesDirectives: List[ProvideDirective],
-    includes: List[Identifier],
-    provides: List[Identifier],
+    includes: List[ResolvedRequire],
+    provides: List[SelectedProvide],
     bdy: SchemeExp,
     idn: Identity)
     extends SchemeExp:
     // The required module identifiers should be visible (and therefore free) within the module,
     // all other variables should be imported from other modules or defined locally.
-    override def fv: Set[String] = requiresDirectives.map(_.moduleName).toSet
+    override def fv: Set[String] = Set() // TODO: requiresDirectives.map(_.moduleName).toSet
     override def label: Label = MOD
     override def subexpressions: List[Expression] = List(bdy)
 
@@ -761,6 +761,12 @@ case class RacketModuleLoad(module: SchemeExp, name: Identifier, idn: Identity) 
     def label: Label = RMOD
     override def subexpressions: List[Expression] = List(module)
     override def toString(): String = s"(module-load $module $name)"
+
+// (module-expose (original-name exposed-name) ...)
+case class RacketModuleExpose(exposed: Map[String, String], idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = Set()
+    def label: Label = REXP
+    override def subexpressions: List[Expression] = List()
 
 abstract class MakeStruct extends ContractSchemeExp:
     def fv: Set[String] = Set()

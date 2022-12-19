@@ -57,6 +57,7 @@ enum Label:
     case MOD // A Racket module
     case REQ // A Racket (require ...) statement
     case RMOD // A Racket (module-load ...) expression
+    case REXP // A Racket (module-expose ...) expression
 
     // Structs
     case MSG // Struct getter
