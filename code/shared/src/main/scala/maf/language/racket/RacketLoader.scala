@@ -13,17 +13,26 @@ import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.language.AScheme.ASchemeParser
 import maf.lattice.HMap
 import maf.lattice.AbstractSetType
+import maf.util.graph.TopSort
 
 class ModuleGraph:
+    /** A map from modules to their dependencies */
+    private var edges: Map[Modules.Name, Set[Modules.Name]] = Map()
+
+    /** A set of nodes */
+    private var nodes: Set[Modules.Name] = Set()
 
     /** Adds a dependsOn edge between `modulePath` and `otherModulePath` */
-    def dependsOn(moduleName: Modules.Name, otherModuleName: Modules.Name): Unit = ???
+    def dependsOn(moduleName: Modules.Name, otherModuleName: Modules.Name): Unit =
+        edges = edges + (moduleName -> (edges.get(moduleName).getOrElse(Set()) + otherModuleName))
 
     /** Returns a topologically sorted list of the graph */
-    def topsort(): List[Modules.Name] = ???
+    def topsort(): List[Modules.Name] =
+        TopSort.topsort(nodes.toList, edges)
 
     /** Register the given module in the dependency graph */
-    def registerModule(moduleName: Modules.Name): Unit = ???
+    def registerModule(moduleName: Modules.Name): Unit =
+        nodes = nodes + moduleName
 
 object Modules:
     opaque type Name = String
@@ -49,11 +58,13 @@ trait RacketLoaderSemantics extends SchemeSemantics, RacketDomain, SchemeModFLoc
             yield rmod
 
         case RacketModule(name, requireDirs, provideDirs, includes, provides, bdy, idn) =>
+            for evalBdy <- eval(bdy)
+            yield evalBdy
+
+        case RacketModuleExpose(exposed, idn) =>
             for
-                evalBdy <- eval(bdy)
-                // the provided identifiers need to be exported
-                provided <- provides.map(_.originalName).mapM(exp => lookupEnv(???).flatMap(lookupSto))
-                rmod = RMod(provides.map(_.exposedName).zip(provided).toMap, Some(Modules.str(name)))
+                provided <- exposed.mapM(binding => lookupEnv(Identifier(binding._1, Identity.none)) >>= lookupSto)
+                rmod = RMod[Value](exposed.map(_._2).zip(provided).toMap, None)
             yield lattice.rmod(rmod)
 
         case _ => super.eval(exp)
@@ -68,7 +79,7 @@ trait RacketLoader:
     def parse(prg: String): SchemeExp
 
     /** Runs an undefiner over the given Scheme AST */
-    def undefine(exp: SchemeExp): SchemeExp = ???
+    def undefine(exp: SchemeExp): SchemeExp
 
     /** Find all Scheme expressions that satisfy the given condition */
     private def find[A](e: SchemeExp)(cnd: PartialFunction[SchemeExp, A]): List[A] =
@@ -169,3 +180,6 @@ trait RacketLoader:
 object ASchemeRacketLoader extends RacketLoader:
     override def parse(prg: String): SchemeExp =
         ASchemeParser.parseProgramDefines(prg)
+
+    override def undefine(exp: SchemeExp): SchemeExp =
+        SchemeUndefiner.undefine(List(exp))
