@@ -1,12 +1,18 @@
 package maf.language.racket
 
 import maf.language.scheme.*
-import maf.core.{Expression, Identifier, Identity}
+import maf.lattice.interfaces.*
+import maf.core.Monad.*
+import maf.language.scheme.lattices.*
+import maf.core.{Address, Expression, Identifier, Identity}
 import maf.util.Reader
 import javax.lang.model.element.ModuleElement.ProvidesDirective
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
+import maf.language.AScheme.ASchemeParser
+import maf.lattice.HMap
+import maf.lattice.AbstractSetType
 
 class ModuleGraph:
 
@@ -25,7 +31,15 @@ class ModuleGraph:
  * TODO[medium]: much of this can be computed without abstractly interpreting the program, this should actually be an extension of the Scheme
  * compiler.
  */
-trait RacketLoaderSemantics extends SchemeSemantics, SchemeDomain, SchemeModFLocalSensitivity
+trait RacketLoaderSemantics extends SchemeSemantics, RacketDomain, SchemeModFLocalSensitivity:
+    import analysisM.*
+    override def eval(exp: SchemeExp): A[Val] = exp match
+        case RacketModuleLoad(module, name, idn) =>
+            for
+                evalMd <- eval(module)
+                rmod <- merge(lattice.rmods(evalMd).map(_.lookup(name.name)).map(unit))
+            yield rmod
+        case _ => super.eval(exp)
 
 trait RacketLoader:
     /**
@@ -88,8 +102,13 @@ trait RacketLoader:
         // create a racket module for each loaded module, and define its module name using a `define`
         val racketModules = topsorted.map(modulePath =>
             val (exp, requires) = modules(modulePath)
-            val module = RacketModule(requires, find(exp) { case r: RacketProvide => r }.map(ProvideDirective.fromExp), exp, exp.idn)
+            val provideDirectives = find(exp) { case r: RacketProvide => r }
+            val module = RacketModule(requires, find(exp) { case r: RacketProvide => r }.map(ProvideDirective.fromExp), List(), List(), exp, exp.idn)
             SchemeDefineVariable(Identifier(modulePath, exp.idn), module, exp.idn)
         )
 
         undefine(SchemeBegin(racketModules, Identity.none))
+
+object ASchemeRacketLoader extends RacketLoader:
+    override def parse(prg: String): SchemeExp =
+        ASchemeParser.parseProgramDefines(prg)

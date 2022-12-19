@@ -56,6 +56,7 @@ enum Label:
     case PCO // Provide contract-out element
     case MOD // A Racket module
     case REQ // A Racket (require ...) statement
+    case RMOD // A Racket (module-load ...) expression
 
     // Structs
     case MSG // Struct getter

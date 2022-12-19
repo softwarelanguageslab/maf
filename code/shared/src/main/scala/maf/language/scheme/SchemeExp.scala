@@ -730,14 +730,16 @@ case class AContractSchemeMessage(tag: String, argumentContracts: List[SchemeExp
  *   a map build by the compiler consisting of identifiers mapped to the modules that there are coming from
  */
 case class RacketModule(
-    requires: List[RequireDirective],
-    provides: List[ProvideDirective],
+    requiresDirectives: List[RequireDirective],
+    providesDirectives: List[ProvideDirective],
+    includes: List[Identifier],
+    provides: List[Identifier],
     bdy: SchemeExp,
     idn: Identity)
     extends SchemeExp:
     // The required module identifiers should be visible (and therefore free) within the module,
     // all other variables should be imported from other modules or defined locally.
-    override def fv: Set[String] = requires.map(_.moduleName).toSet
+    override def fv: Set[String] = requiresDirectives.map(_.moduleName).toSet
     override def label: Label = MOD
     override def subexpressions: List[Expression] = List(bdy)
 
@@ -750,6 +752,15 @@ case class RacketProvide(clauses: SchemeExp, idn: Identity) extends SchemeExp:
     override def fv: Set[String] = clauses.fv
     def label: Label = PROV
     override def subexpressions: List[Expression] = List()
+
+// (module-load module-exp ident)
+// Lookup the given identifier in the given module
+// This is a synthetic syntax element.
+case class RacketModuleLoad(module: SchemeExp, name: Identifier, idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = module.fv
+    def label: Label = RMOD
+    override def subexpressions: List[Expression] = List(module)
+    override def toString(): String = s"(module-load $module $name)"
 
 abstract class MakeStruct extends ContractSchemeExp:
     def fv: Set[String] = Set()
