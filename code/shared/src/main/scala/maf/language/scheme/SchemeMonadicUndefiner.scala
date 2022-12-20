@@ -344,6 +344,12 @@ trait BaseSchemeMonadicUndefiner:
                 result <- mk(AContractSchemeMessage(tag, `contracts′`, `ensureContract′`, idn))
             yield result
 
+        case RacketRequire(clauses, _) =>
+            clauses.mapM(undefineSingle).flatMap(clauses => mk(RacketRequire(clauses, exps.idn)))
+
+        case RacketProvide(clauses, _) =>
+            clauses.mapM(undefineSingle).flatMap(clauses => mk(RacketRequire(clauses, exps.idn)))
+
 object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
     import BaseSchemeMonadicUndefiner.*
     import maf.core.Monad.MonadSyntaxOps

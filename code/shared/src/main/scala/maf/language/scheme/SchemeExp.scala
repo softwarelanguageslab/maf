@@ -743,13 +743,13 @@ case class RacketModule(
     override def label: Label = MOD
     override def subexpressions: List[Expression] = List(bdy)
 
-case class RacketRequire(clauses: SchemeExp, idn: Identity) extends SchemeExp:
-    override def fv: Set[String] = clauses.fv
+case class RacketRequire(clauses: List[SchemeExp], idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = clauses.flatMap(_.fv).toSet
     def label: Label = REQ
     override def subexpressions: List[Expression] = List()
 
-case class RacketProvide(clauses: SchemeExp, idn: Identity) extends SchemeExp:
-    override def fv: Set[String] = clauses.fv
+case class RacketProvide(clauses: List[SchemeExp], idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = clauses.flatMap(_.fv).toSet
     def label: Label = PROV
     override def subexpressions: List[Expression] = List()
 

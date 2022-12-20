@@ -100,7 +100,7 @@ trait RacketLoader:
         // walk the parsed tree to find require statements
         val requires = find(parsed) { case r: RacketRequire =>
             r
-        }.map(RequireDirective.fromExp)
+        }.flatMap(RequireDirective.fromExp)
         (parsed, requires)
 
     private def resolveModule(resolvedModules: List[RacketModule], unresolvedModule: RacketModule): /* resolved */ List[RacketModule] =
@@ -162,7 +162,7 @@ trait RacketLoader:
             val provideDirectives = find(exp) { case r: RacketProvide => r }
             val module = RacketModule(modulePath,
                                       requires,
-                                      find(exp) { case r: RacketProvide => r }.map(ProvideDirective.fromExp),
+                                      find(exp) { case r: RacketProvide => r }.flatMap(ProvideDirective.fromExp),
                                       List(),
                                       List(),
                                       exp,

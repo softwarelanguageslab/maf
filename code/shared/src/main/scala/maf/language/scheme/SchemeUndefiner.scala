@@ -169,6 +169,12 @@ trait UndefinerTester:
                 // Nothing is allowed to have defines in them
                 argumentContracts.foldLeft[Result](false) { case (result, contract) => check(contract, false) } || check(ensureContract, false)
 
+            // Racket modules
+            case RacketRequire(clauses, _) =>
+                clauses.foldLeft[Result](false)((result, clause) => result || check(clause, false))
+            case RacketProvide(clauses, _) =>
+                clauses.foldLeft[Result](false)((result, clause) => result || check(clause, false))
+
             case _ =>
                 //false
                 throw new Exception(s"unrecongized expression $s")

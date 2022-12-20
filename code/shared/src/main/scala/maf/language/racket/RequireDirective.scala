@@ -39,4 +39,36 @@ case class ResolvedRequire(module: String, originalName: String, exposedName: St
     def toDefine: SchemeExp = SchemeDefineVariable(Identifier(exposedName, Identity.none), toLoad, Identity.none)
 
 object RequireDirective:
-    def fromExp(e: SchemeExp): RequireDirective = ???
+    private def parsePairs(ps: List[SchemeExp]): Map[String, String] = ps.map {
+        case SchemeFuncall(SchemeVar(Identifier(from, _)), List(SchemeVar(Identifier(to, _))), idn) =>
+            (from -> to)
+        case e => sys.error(s"invalid syntax at ${e.idn}")
+    }.toMap
+
+    def fromExp(e: SchemeExp): List[RequireDirective] = e match
+        case RacketRequire(clauses, _) =>
+            clauses.map {
+                case SchemeVar(Identifier(id, _)) => RequireFile(id)
+                case SchemeFuncall(SchemeVar(Identifier("prefix-in", _)), List(SchemeVar(Identifier(prefixId, _)), directive), idn) =>
+                    val spec = RequireDirective.fromExp(directive)
+                    assert(spec.size == 1)
+                    Prefix(spec.head, prefixId)
+
+                case SchemeFuncall(SchemeVar(Identifier("except-in", _)), directive :: ids, idn) =>
+                    val exceptIds = ids.collect {
+                        case SchemeVar(Identifier(name, _)) => name
+                        case _                              => sys.error(s"invalid except-in spec at $idn")
+                    }
+                    val spec = RequireDirective.fromExp(directive)
+                    assert(spec.size == 1)
+                    Except(spec.head, exceptIds)
+
+                case SchemeFuncall(SchemeVar(Identifier("rename-in", _)), directive :: pairs, idn) =>
+                    val spec = RequireDirective.fromExp(directive)
+                    assert(spec.size == 1)
+                    Rename(spec.head, parsePairs(pairs))
+
+                case _ => sys.error(s"invalid require directive $e")
+
+            }
+        case _ => sys.error(s"Invalid expression $e, expected 'require'")
