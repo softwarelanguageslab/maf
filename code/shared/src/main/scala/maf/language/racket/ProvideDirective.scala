@@ -13,6 +13,7 @@ enum ProvideDirective:
             // all local defines are provided
             localDefines.map(name => SelectedProvide(name, name))
         case IdentifierOut(name) =>
+            println(s"[provide] local defines are $localDefines")
             // only the given identifier is provided (if it is defined)
             if localDefines.contains(name) then List(SelectedProvide(name, name))
             else sys.error(s"cannot provide $name, undefined")
@@ -21,7 +22,8 @@ enum ProvideDirective:
             val toExcl = excludeList.toSet
             selectedNames.filterNot(sel => toExcl.contains(sel.exposedName))
 
-case class SelectedProvide(originalName: String, exposedName: String)
+case class SelectedProvide(originalName: String, exposedName: String):
+    override def toString: String = s"(provided $originalName $exposedName)"
 
 object ProvideDirective:
     def fromExp(exp: SchemeExp): List[ProvideDirective] = exp match

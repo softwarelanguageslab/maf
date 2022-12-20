@@ -19,6 +19,8 @@ import scala.reflect.ClassTag
 import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
 import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
+import maf.language.racket.RacketDomain
+import maf.language.racket.RacketLoaderSemantics
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -56,6 +58,16 @@ object SchemeAnalyses:
       ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString = "no-sensitivity"
     }
+
+    //def contextInsensitiveAnalysisRacket(
+    //    prg: SchemeExp
+    //  ) = new SimpleSchemeModFAnalysis(prg)
+    //    with SchemeModFNoSensitivity
+    //    with SchemeConstantPropagationDomain
+    //    with FIFOWorklistAlgorithm[SchemeExp]
+    //    with RacketLoaderSemantics {
+    //    override def toString = "no-sensitivity"
+    //}
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
         with SchemeModFCallSiteSensitivity
         with SchemeConstantPropagationDomain

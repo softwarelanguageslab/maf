@@ -2,6 +2,7 @@ package maf.language.racket
 
 import maf.language.scheme.*
 import maf.core.*
+import maf.language.sexp.Value
 
 enum RequireDirective:
     case RequireFile(name: String)
@@ -48,7 +49,8 @@ object RequireDirective:
     def fromExp(e: SchemeExp): List[RequireDirective] = e match
         case RacketRequire(clauses, _) =>
             clauses.map {
-                case SchemeVar(Identifier(id, _)) => RequireFile(id)
+                case SchemeVar(Identifier(id, _))      => RequireFile(id)
+                case SchemeValue(Value.String(s), idn) => RequireFile(s)
                 case SchemeFuncall(SchemeVar(Identifier("prefix-in", _)), List(SchemeVar(Identifier(prefixId, _)), directive), idn) =>
                     val spec = RequireDirective.fromExp(directive)
                     assert(spec.size == 1)

@@ -350,6 +350,12 @@ trait BaseSchemeMonadicUndefiner:
         case RacketProvide(clauses, _) =>
             clauses.mapM(undefineSingle).flatMap(clauses => mk(RacketRequire(clauses, exps.idn)))
 
+        case r @ RacketModuleExpose(exposed, idn)    => mk(r)
+        case l @ RacketModuleLoad(module, name, idn) => mk(l)
+
+        case mod @ RacketModule(_, _, _, _, _, bdy, _) =>
+            usingNewScope { undefine1(bdy) }.map(letrectify).map(b => mod.copy(bdy = SchemeBegin(b, Identity.none))).flatMap(mk)
+
 object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTester:
     import BaseSchemeMonadicUndefiner.*
     import maf.core.Monad.MonadSyntaxOps

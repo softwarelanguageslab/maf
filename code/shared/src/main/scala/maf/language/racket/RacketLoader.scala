@@ -14,6 +14,7 @@ import maf.language.AScheme.ASchemeParser
 import maf.lattice.HMap
 import maf.lattice.AbstractSetType
 import maf.util.graph.TopSort
+import java.io.File
 
 class ModuleGraph:
     /** A map from modules to their dependencies */
@@ -24,7 +25,7 @@ class ModuleGraph:
 
     /** Adds a dependsOn edge between `modulePath` and `otherModulePath` */
     def dependsOn(moduleName: Modules.Name, otherModuleName: Modules.Name): Unit =
-        edges = edges + (moduleName -> (edges.get(moduleName).getOrElse(Set()) + otherModuleName))
+        edges = edges + (otherModuleName -> (edges.get(otherModuleName).getOrElse(Set()) + moduleName))
 
     /** Returns a topologically sorted list of the graph */
     def topsort(): List[Modules.Name] =
@@ -40,6 +41,7 @@ object Modules:
 
     def pathAsName(name: Path): Name = name
     def str(name: Name | Path): String = name
+    def path(name: String): Path = name
     def name(nm: String): Name = nm
 
 /**
@@ -67,6 +69,10 @@ trait RacketLoaderSemantics extends SchemeSemantics, RacketDomain, SchemeModFLoc
                 rmod = RMod[Value](exposed.map(_._2).zip(provided).toMap, None)
             yield lattice.rmod(rmod)
 
+        // ignore require and provide statements since they are already transformed to different nodes
+        case RacketRequire(_, _) => unit(lattice.nil)
+        case RacketProvide(_, _) => unit(lattice.nil)
+
         case _ => super.eval(exp)
 
 trait RacketLoader:
@@ -90,7 +96,12 @@ trait RacketLoader:
      * @param moduleName
      *   the logical name of the module
      */
-    private def findPhysical(moduleName: Modules.Name): Modules.Path = ???
+    private def findPhysical(moduleName: Modules.Name): Modules.Path =
+        val modulePath = Modules.str(moduleName)
+        val candidates = List(modulePath, modulePath + ".rkt", modulePath + "/" + "main.rkt")
+        println(s"looking up candidates $candidates")
+        println(candidates.find(filename => File(filename).exists()))
+        Modules.path(candidates.find(filename => File(filename).exists()).getOrElse(sys.error(s"module $moduleName not found, tried $candidates")))
 
     /** Parses the module on the given phyisical path to a scheme expression and discovers all its imports */
     private def parseModule(modulePath: Modules.Path): (SchemeExp, List[RequireDirective]) =
@@ -106,12 +117,10 @@ trait RacketLoader:
     private def resolveModule(resolvedModules: List[RacketModule], unresolvedModule: RacketModule): /* resolved */ List[RacketModule] =
         def computeLocalDefines(exp: SchemeExp): List[String] =
             exp match
+                case SchemeDefineVariable(Identifier(nam, _), value, idn) =>
+                    List(nam)
                 case SchemeBegin(exs, _) =>
-                    exs.flatMap {
-                        case SchemeDefineVariable(Identifier(nam, _), value, idn) => List(nam)
-                        case SchemeBegin(exs, _)                                  => exs.flatMap(computeLocalDefines)
-                        case _                                                    => List()
-                    }
+                    exs.flatMap(computeLocalDefines)
                 case _ => List()
 
         // resolve the requires first
@@ -123,6 +132,7 @@ trait RacketLoader:
         )
         // once the requires are resolved we need to compute which members will be provided
         // for this we compute a list of locally defined members and then filter them based on the provide directives
+        println(loadedBdy)
         val localDefines = computeLocalDefines(loadedBdy)
         val onlyProvides: List[SelectedProvide] = unresolvedModule.providesDirectives.flatMap(_.select(localDefines))
         // add an expose-module special form to the body so that all provided identifiers are exported
@@ -130,7 +140,7 @@ trait RacketLoader:
           loadedBdy :: List(RacketModuleExpose(onlyProvides.map((ex: SelectedProvide) => (ex.originalName -> ex.exposedName)).toMap, Identity.none)),
           Identity.none
         )
-        unresolvedModule.copy(provides = onlyProvides, includes = includes, bdy = loadedBdy) :: resolvedModules
+        unresolvedModule.copy(provides = onlyProvides, includes = includes, bdy = exposedBdy) :: resolvedModules
 
     /** Loads a Racket project and returns a list of Racket modules */
     def load(filename: Modules.Path): SchemeExp =
@@ -171,11 +181,16 @@ trait RacketLoader:
 
             module
         )
+        println(s"Found modules $racketModules")
         // resolve the includes and provides list in each of the modules
         // to do this we accumulate into a list of resolved racket modules
         val resolvedModules = racketModules.foldLeft(List[RacketModule]())(resolveModule)
 
-        undefine(SchemeBegin(racketModules.reverse, Identity.none))
+        undefine(
+          SchemeBegin(resolvedModules.reverse.map(mod => SchemeDefineVariable(Identifier(Modules.str(mod.name), Identity.none), mod, Identity.none)),
+                      Identity.none
+          )
+        )
 
 object ASchemeRacketLoader extends RacketLoader:
     override def parse(prg: String): SchemeExp =
@@ -183,3 +198,7 @@ object ASchemeRacketLoader extends RacketLoader:
 
     override def undefine(exp: SchemeExp): SchemeExp =
         SchemeUndefiner.undefine(List(exp))
+
+object Test:
+    def main(args: Array[String]): Unit =
+        println(ASchemeRacketLoader.load(Modules.path("test.rkt")))

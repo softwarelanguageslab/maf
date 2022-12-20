@@ -1,5 +1,6 @@
 package maf.language.scheme.lattices
 
+import maf.language.racket.*
 import maf.core._
 import maf.lattice.{AbstractSetType, AbstractType, AbstractWrapType, HMap, HMapKey, NoExtract, NoInject}
 import maf.util.MonoidImplicits.*

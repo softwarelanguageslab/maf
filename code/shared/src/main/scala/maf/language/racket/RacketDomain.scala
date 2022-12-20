@@ -14,6 +14,7 @@ import maf.lattice.HMap
 import maf.lattice.AbstractSetType
 
 import maf.modular.scheme.SchemeDomain
+import maf.modular.AbstractDomain
 
 trait RacketDomain extends SchemeDomain:
     implicit override lazy val lattice: RacketSchemeLattice[Value, Address]
@@ -39,7 +40,7 @@ trait RacketSchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
     def rmods(mod: L): Set[RMod[L]]
 
 /** Add Racket module values to the module scheme lattice */
-class RacketModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
+trait RacketModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
     extends ModularSchemeLattice[A, S, B, I, R, C, Sym],
       RacketSchemeLattice[HMap, A] {
 

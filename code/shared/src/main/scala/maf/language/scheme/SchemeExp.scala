@@ -742,16 +742,19 @@ case class RacketModule(
     override def fv: Set[String] = Set() // TODO: requiresDirectives.map(_.moduleName).toSet
     override def label: Label = MOD
     override def subexpressions: List[Expression] = List(bdy)
+    override def toString: String = s"(module $bdy)"
 
 case class RacketRequire(clauses: List[SchemeExp], idn: Identity) extends SchemeExp:
     override def fv: Set[String] = clauses.flatMap(_.fv).toSet
     def label: Label = REQ
     override def subexpressions: List[Expression] = List()
+    override def toString: String = s"(require ${clauses.map(_.toString).mkString(" ")})"
 
 case class RacketProvide(clauses: List[SchemeExp], idn: Identity) extends SchemeExp:
     override def fv: Set[String] = clauses.flatMap(_.fv).toSet
     def label: Label = PROV
     override def subexpressions: List[Expression] = List()
+    override def toString: String = s"(provide ${clauses.map(_.toString).mkString(" ")})"
 
 // (module-load module-exp ident)
 // Lookup the given identifier in the given module
@@ -767,6 +770,7 @@ case class RacketModuleExpose(exposed: Map[String, String], idn: Identity) exten
     override def fv: Set[String] = Set()
     def label: Label = REXP
     override def subexpressions: List[Expression] = List()
+    override def toString: String = s"(expose ${exposed.map { case (k, v) => s"($k $v)" }.mkString(" ")})"
 
 abstract class MakeStruct extends ContractSchemeExp:
     def fv: Set[String] = Set()
