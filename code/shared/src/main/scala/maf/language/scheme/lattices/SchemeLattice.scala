@@ -6,6 +6,7 @@ import maf.language.CScheme.TID
 import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme._
 import maf.lattice.ConstantPropagation
+import maf.language.racket.RMod
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address]:
@@ -207,6 +208,16 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
     def void: L
 
     def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L
+
+    //
+    // Racket support
+    //
+
+    /** Inject a module in the abstract value domain */
+    def rmod(mod: RMod[L]): L
+
+    /** Extract the racket modules from the abstract values */
+    def rmods(mod: L): Set[RMod[L]]
 
     object Injector:
         implicit def inject(c: Closure): L = closure(c)

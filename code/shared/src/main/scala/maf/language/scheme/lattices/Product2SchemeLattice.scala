@@ -12,6 +12,7 @@ import maf.util.MonoidInstances.setMonoid
 import maf.util.benchmarks.Table
 import maf.util.*
 import maf.language.AScheme.ASchemeValues.*
+import maf.language.racket.RMod
 
 trait Product2SchemeLattice[L, O, A <: Address] extends SchemeLattice[L, A]:
     def getRight(v: L): O
@@ -126,3 +127,7 @@ class Product2ModularSchemeLattice[
 
         def getRight(v: PL): O = v.right
         def setRight(v: PL, o: O): PL = PL(v.left, o)
+
+        def rmods(mod: PL): Set[RMod[PL]] = schemeLattice.rmods(mod.left).map(_.mapValues(PL(_, Lattice[O].bottom)))
+        def rmod(mod: RMod[PL]): PL =
+            PL(schemeLattice.rmod(mod.mapValues(_.left)), Lattice[O].bottom)

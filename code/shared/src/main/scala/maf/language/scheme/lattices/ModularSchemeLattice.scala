@@ -385,6 +385,15 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     /** The injected false value */
     val False: Bool = Bool(BoolLattice[B].inject(false))
 
+    object RModT extends AbstractSetType[RMod[HMap], RMods]:
+        def wrap = RMods.apply
+
+    case class RMods(mods: Set[RMod[HMap]]) extends Value, Product1[Set[RMod[HMap]]]:
+        def ord = 34
+        def typeName: String = "RMOD"
+        val tpy = RModT
+        override def toString(): String = s"<mod: $mods>"
+
     object Value:
         // TODO: Opq has a special status for subsumes, in that it subsumes everything (i.e. it is like top)
 
@@ -994,6 +1003,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def arr(arr: Arr[L]): L = HMap.injected(ArrT, arr)
         def flat(flt: Flat[L]): L = HMap.injected(FlatT, flt)
         def opq(opq: Opq): L = HMap.injected(OpqT, opq)
+
+        def rmods(mod: HMap): Set[RMod[HMap]] = mod.get(RModT)
+        def rmod(mod: RMod[HMap]): HMap = HMap.injected(RModT, mod)
+
         def struct(struct: Struct[L]): L = HMap.injected(StructT, struct)
         def structPredicate(struct: StructPredicate): L = HMap.injected(StructPredicateT, struct)
         def structSetterGetter(setterGetter: StructSetterGetter): L =

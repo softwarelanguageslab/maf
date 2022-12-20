@@ -19,7 +19,6 @@ import scala.reflect.ClassTag
 import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
 import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
-import maf.language.racket.RacketDomain
 import maf.language.racket.RacketLoaderSemantics
 
 object SchemeAnalysesBoundedDomain:

@@ -50,7 +50,7 @@ object Modules:
  * TODO[medium]: much of this can be computed without abstractly interpreting the program, this should actually be an extension of the Scheme
  * compiler.
  */
-trait RacketLoaderSemantics extends SchemeSemantics, RacketDomain, SchemeModFLocalSensitivity:
+trait RacketLoaderSemantics extends SchemeSemantics, SchemeDomain, SchemeModFLocalSensitivity:
     import analysisM.*
     override def eval(exp: SchemeExp): A[Val] = exp match
         case RacketModuleLoad(module, name, idn) =>
