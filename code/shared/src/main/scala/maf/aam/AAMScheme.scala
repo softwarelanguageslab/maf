@@ -9,27 +9,11 @@ import maf.language.sexp
 
 import maf.core.MonadJoin.MonadJoinIterableSyntax
 import maf.lattice.interfaces.BoolLattice
+import maf.lattice.interfaces.LatticeWithAddrs
+import maf.util.Show
+import scala.annotation.tailrec
 
-trait AAMSchemeSensitivity extends AAMScheme:
-    this: SchemeDomain =>
-    // context is parameterisable 
-    type Context
-    def t0: Context
-    def tnext(app: App, clo: Clo, ctx: Ctx): Context
-
-trait AAMNoSensitivity extends AAMSchemeSensitivity:
-    this: SchemeDomain =>
-    type Context = Unit
-    def t0 = ()
-    def tnext(app: App, clo: Clo, ctx: Ctx): Context = ()
-
-trait AAMCallSiteSensitivity(k: Int) extends AAMSchemeSensitivity:
-    this: SchemeDomain =>
-    type Context = List[App]
-    def t0 = Nil
-    def tnext(app: App, clo: Clo, ctx: Ctx): Context = (app :: ctx).take(k)
-
-abstract class AAMScheme(prg: SchemeExp):
+trait AAMScheme:
     this: SchemeDomain with AAMSchemeSensitivity => 
 
     // shorthands
@@ -39,12 +23,14 @@ abstract class AAMScheme(prg: SchemeExp):
     type Var = Identifier
     type Lit = SchemeValue
     type App = SchemeFuncall
+    type Lam = SchemeLambdaExp
     type Adr = Address
     type Ctx = Context
-    type Clo = (SchemeLambdaExp, Environment[Adr])
+    type Clo = (Lam, Env)
     type Env = Environment[Adr]
     type Sto = CountingStore[Adr, Val]
-    type KSto = BasicStore[KAdr, Set[Frame]]
+    type Kon = Set[Frame]
+    type KSto = BasicStore[KAdr, Kon]
 
     // addresses
 
@@ -57,22 +43,26 @@ abstract class AAMScheme(prg: SchemeExp):
     case class PAdr(exp: Exp, ctx: Ctx) extends Address:
         def idn = exp.idn
         def printable = true
-    case class KAdr(exp: Exp, ctx: Ctx) extends Address:
-        def idn = exp.idn
+    trait KAdr extends Address:
         def printable = false
+    case class KA(e: Exp, ctx: Ctx) extends KAdr:
+        def idn = e.idn
+    case object HaltAddr extends KAdr:
+        def idn = Identity.none
 
-    def kalloc(e: Exp, ctx: Ctx) = KAdr(e, ctx)
+    def kalloc(e: Exp, ctx: Ctx) = KA(e, ctx)
     def alloc(v: Var, ctx: Ctx) = VAdr(v, ctx)
     def alloc(e: Exp, ctx: Ctx) = PAdr(e, ctx)
 
-    enum Frame:
-        case IffK(c: Exp, a: Exp, ρ: Env, t: Ctx, aₖ: KAdr)
-        case SeqK(r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr)
-        case LetK(l: List[(Var, Exp)], v: Var, a: List[(Var, Val)], b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr)
-        case LtsK(l: List[(Var, Exp)], v: Var, b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr)
-        case LtrK(l: List[(Adr, Exp)], a: Adr, b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr)
-        case FunK(a: App, r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr)
-        case ArgK(a: App, f: Val, v: List[Val], r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr)
+    sealed trait Frame:
+        val aₖ: KAdr
+    case class IffK(c: Exp, a: Exp, ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
+    case class SeqK(r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
+    case class LetK(l: List[(Var, Exp)], v: Var, a: List[(Var, Val)], b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
+    case class LtsK(l: List[(Var, Exp)], v: Var, b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
+    case class LtrK(l: List[(Adr, Exp)], a: Adr, b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
+    case class FunK(a: App, r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
+    case class ArgK(a: App, f: Val, v: List[Val], r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
 
     enum Control:
         case Ev(e: Exp, ρ: Env, t: Ctx)
@@ -81,9 +71,8 @@ abstract class AAMScheme(prg: SchemeExp):
     case class State(c: Control, σ: Sto, σₖ: KSto, aₖ: KAdr) 
     
     import Control.*
-    import Frame.*
 
-    private def step(ς: State): Set[State] = ς match
+    protected def step(ς: State): Set[State] = ς match
         case State(Ev(e, ρ, t), σ, σₖ, aₖ) => 
             eval(e, ρ, t, σ, σₖ, aₖ) 
         case State(Ap(v), σ, σₖ, aₖ) if !lattice.isBottom(v) =>
@@ -129,7 +118,6 @@ abstract class AAMScheme(prg: SchemeExp):
     private def copyAddr(adr: Adr, t: Ctx): Adr = adr match
         case VAdr(vrb, _)   => VAdr(vrb, t)
         case PAdr(exp, _)   => PAdr(exp, t) 
-        case KAdr(exp, _)   => KAdr(exp, t)
         case NAdr(nat)      => adr
 
     private def applyClosures(app: App, f: Val, vs: List[Val], t: Ctx, σ: Sto, σₖ: KSto, aₖ: KAdr): Set[State] =
@@ -274,3 +262,118 @@ abstract class AAMScheme(prg: SchemeExp):
                 then BoolLattice[B].inject(true)
                 else BoolLattice[B].top
             else BoolLattice[B].inject(false)
+
+    // fixed-point algorithm
+
+    given Show[Frame] with
+        def show(frm: Frame): String = frm.toString
+
+    import Lattice.*
+    
+    given shouldCount: (Adr => Boolean) =
+        case _: PAdr => true    // only pointers are mutable!
+        case _       => false
+
+    import Lattice.*
+    implicit object KontLattice extends SetLattice[Frame] with LatticeWithAddrs[Kon, KAdr]:
+        def refs(k: Kon): Set[KAdr] = k.map(_.aₖ)
+
+    def inject(e: Exp): State =
+        val initialBds =  
+            primitives.allPrimitives.view
+                      .filterKeys(e.fv)
+                      .map { case (name, p) => (name, NAdr(name), lattice.primitive(p.name)) }
+                      .toList
+        val (ρ0, σ0) = bind(initialBds, Environment.empty, CountingStore.empty)
+        State(Ev(e, ρ0, t0), σ0, BasicStore.empty, HaltAddr)
+
+    def analyze(e: Exp): Set[State] =
+        val ς = inject(e)
+        explore(Set(ς), Set(ς)) 
+
+    @tailrec
+    private def explore(worklist: Set[State], visited: Set[State]): Set[State] =
+        if worklist.nonEmpty then
+            val next = worklist.head
+            val rest = worklist.tail
+            val successors = step(next)
+            val newStates = successors.filterNot(visited)
+            explore(newStates ++ rest, visited ++ newStates) 
+        else
+            visited
+
+    // for convenience
+    def eval(e: Exp): Val = 
+        val states = analyze(e)
+        val values = states.collect { case State(Ap(v), _, _, HaltAddr) => v }
+        lattice.join(values)
+
+
+//
+// context-sensitivity 
+//
+
+trait AAMSchemeSensitivity extends AAMScheme:
+    this: SchemeDomain =>
+    // context is parameterisable 
+    type Context
+    def t0: Context
+    def tnext(app: App, clo: Clo, ctx: Ctx): Context
+
+trait AAMNoSensitivity extends AAMSchemeSensitivity:
+    this: SchemeDomain =>
+    type Context = Unit
+    def t0 = ()
+    def tnext(app: App, clo: Clo, ctx: Ctx): Context = ()
+
+trait AAMCallSiteSensitivity(k: Int) extends AAMSchemeSensitivity:
+    this: SchemeDomain =>
+    type Context = List[App]
+    def t0 = Nil
+    def tnext(app: App, clo: Clo, ctx: Ctx): Context = (app :: ctx).take(k)
+
+//
+// abstract GC
+//
+
+trait AAMGC extends AAMScheme:
+    this: SchemeDomain with AAMSchemeSensitivity => 
+        
+    import Control.*
+
+    // optimisation: restricting the environment to only free variables
+
+    def restrictEnv(ς: State): State = ς.copy(c = restrictEnv(ς.c))
+    def restrictEnv(c: Control): Control = c match
+        case Ev(e, ρ, t)    => Ev(e, ρ.restrictTo(e.fv), t)
+        case _: Ap          => c
+
+    def refs(ρ: Env): Set[Adr] = ρ.addrs
+    def refs(v: Val): Set[Adr] = lattice.refs(v)
+    def refs(k: Kon): Set[Adr] = k.flatMap { 
+        case IffK(c, a, ρ, t, aₖ) => refs(ρ)
+        case SeqK(r, ρ, t, aₖ) => refs(ρ)
+        case LetK(l, v, a, b, ρ, t, aₖ) => a.flatMap(b => refs(b._2)) ++ refs(ρ)
+        case LtsK(l, v, b, ρ, t, aₖ) => refs(ρ)
+        case LtrK(l, a, b, ρ, t, aₖ) => a :: l.map(_._1) ++ refs(ρ)
+        case FunK(a, r, ρ, t, aₖ) => refs(ρ)
+        case ArgK(a, f, v, r, ρ, t, aₖ) => refs(f) ++ v.flatMap(refs) ++ refs(ρ)
+    }
+    def refs(σₖ: KSto): Set[Adr] = σₖ.content.values.flatMap(refs).toSet
+    def refs(c: Control): Set[Adr] = c match
+        case Ev(_, ρ, _) => refs(ρ)
+        case Ap(v) => refs(v)
+
+    // optimisation: GC'ing the store and continuation store
+     
+    def gc(ς: State): State = 
+        val State(c, σ, σₖ, aₖ) = ς
+        val σₖ2 = σₖ.collect(Set(aₖ))
+        val σ2 = σ.collect(refs(c) ++ refs(σₖ2))
+        State(c, σ2, σₖ2, aₖ)
+    
+    // new step function integrates both optimisations
+    override def step(ς: State): Set[State] = 
+        super.step(ς)           // first do a normal step
+             .map(restrictEnv)  // restrict the environment
+             .map(gc)           // gc the stores
