@@ -99,8 +99,6 @@ trait RacketLoader:
     private def findPhysical(moduleName: Modules.Name): Modules.Path =
         val modulePath = Modules.str(moduleName)
         val candidates = List(modulePath, modulePath + ".rkt", modulePath + "/" + "main.rkt")
-        println(s"looking up candidates $candidates")
-        println(candidates.find(filename => File(filename).exists()))
         Modules.path(candidates.find(filename => File(filename).exists()).getOrElse(sys.error(s"module $moduleName not found, tried $candidates")))
 
     /** Parses the module on the given phyisical path to a scheme expression and discovers all its imports */
@@ -132,7 +130,6 @@ trait RacketLoader:
         )
         // once the requires are resolved we need to compute which members will be provided
         // for this we compute a list of locally defined members and then filter them based on the provide directives
-        println(loadedBdy)
         val localDefines = computeLocalDefines(loadedBdy)
         val onlyProvides: List[SelectedProvide] = unresolvedModule.providesDirectives.flatMap(_.select(localDefines))
         // add an expose-module special form to the body so that all provided identifiers are exported
@@ -181,7 +178,6 @@ trait RacketLoader:
 
             module
         )
-        println(s"Found modules $racketModules")
         // resolve the includes and provides list in each of the modules
         // to do this we accumulate into a list of resolved racket modules
         val resolvedModules = racketModules.foldLeft(List[RacketModule]())(resolveModule)
