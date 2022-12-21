@@ -15,6 +15,8 @@ import maf.lattice.HMap
 import maf.lattice.AbstractSetType
 import maf.util.graph.TopSort
 import java.io.File
+import maf.language.racket.Modules.Name
+import maf.language.racket.Modules.Path
 
 class ModuleGraph:
     /** A map from modules to their dependencies */
@@ -43,6 +45,24 @@ object Modules:
     def str(name: Name | Path): String = name
     def path(name: String): Path = name
     def name(nm: String): Name = nm
+    def concat(p1: Path, p2: Path): Path =
+        p1 + p2
+
+trait PhysicalLoader:
+    /** Returns a list of possible candidates */
+    def physicalPath(module: Modules.Name): List[Modules.Path] = List()
+
+/** A loader that suffixes the given files with a `.rkt` extension */
+trait RacketSuffixLoader extends PhysicalLoader:
+    override def physicalPath(module: Modules.Name): List[Modules.Path] =
+        List(Modules.str(module), Modules.str(module) + ".rkt", Modules.str(module) + "/main.rkt").map(Modules.path)
+
+/** A loader based on a set of search paths */
+class SearchPathPhysicalLoader(paths: List[String]) extends PhysicalLoader:
+    override def physicalPath(module: Modules.Name): List[Modules.Path] =
+        super.physicalPath(module).flatMap(p => paths.map(Modules.path).map(path => Modules.concat(path, p)))
+
+object WorkingDirectoryPhysicalLoader extends PhysicalLoader, RacketSuffixLoader
 
 /**
  * Adds semantics for evaluating `RacketModule` expressions as well as resolving `require` expressions by `provide` expressions during analysis time.
@@ -76,6 +96,8 @@ trait RacketLoaderSemantics extends SchemeSemantics, SchemeDomain, SchemeModFLoc
         case _ => super.eval(exp)
 
 trait RacketLoader:
+    def physicalLoader: PhysicalLoader = WorkingDirectoryPhysicalLoader
+
     /**
      * Should parse the given program to a valid AST
      *
@@ -98,8 +120,8 @@ trait RacketLoader:
      */
     private def findPhysical(moduleName: Modules.Name): Modules.Path =
         val modulePath = Modules.str(moduleName)
-        val candidates = List(modulePath, modulePath + ".rkt", modulePath + "/" + "main.rkt")
-        Modules.path(candidates.find(filename => File(filename).exists()).getOrElse(sys.error(s"module $moduleName not found, tried $candidates")))
+        val candidates = physicalLoader.physicalPath(moduleName)
+        candidates.find(filename => File(Modules.str(filename)).exists()).getOrElse(sys.error(s"module $moduleName not found, tried $candidates"))
 
     /** Parses the module on the given phyisical path to a scheme expression and discovers all its imports */
     private def parseModule(modulePath: Modules.Path): (SchemeExp, List[RequireDirective]) =
