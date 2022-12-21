@@ -142,7 +142,7 @@ object Monad:
             m.flatMap(f)
 
     /** For any Monad M provides a way to merge a set of such monads into a single monad-wrapped value using the join of the given lattice */
-    def merge[X: Lattice, M[_]: Monad](xs: Iterable[M[X]]): M[X] = xs match
+    def merge[X: Lattice, M[_]: Monad](xs: List[M[X]]): M[X] = xs match
         case List() => Monad[M].unit(Lattice[X].bottom)
         case x :: rest =>
             for

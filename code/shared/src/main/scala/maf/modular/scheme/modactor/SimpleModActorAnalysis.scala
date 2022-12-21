@@ -18,6 +18,7 @@ import maf.language.AScheme.ASchemeLattice
 import maf.modular.scheme.SchemeDomain
 import maf.lattice.ConstantPropagation
 import maf.language.scheme.primitives.SchemeLatticePrimitives
+import maf.language.racket.RacketLoaderSemantics
 
 trait ASchemeConstantPropagationDomain extends SchemeDomain:
     type S = ConstantPropagation.S
@@ -37,4 +38,5 @@ class SimpleSchemeModActorAnalysis(program: SchemeExp)
     extends SimpleGlobalStoreModActor(program)
     with ASchemeConstantPropagationDomain
     with PowersetMailboxAnalysis
+    with RacketLoaderSemantics
 //with SchemeModActorFutures

@@ -20,6 +20,7 @@ import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
 import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
 import maf.language.racket.RacketLoaderSemantics
+import maf.language.racket.RacketLoader
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:

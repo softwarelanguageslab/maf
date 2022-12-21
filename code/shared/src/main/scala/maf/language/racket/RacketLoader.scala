@@ -56,7 +56,7 @@ trait RacketLoaderSemantics extends SchemeSemantics, SchemeDomain, SchemeModFLoc
         case RacketModuleLoad(module, name, idn) =>
             for
                 evalMd <- eval(module)
-                rmod <- merge(lattice.rmods(evalMd).map(_.lookup(name.name)).map(unit))
+                rmod <- merge(lattice.rmods(evalMd).map(_.lookup(name.name)).map(unit).toList)
             yield rmod
 
         case RacketModule(name, requireDirs, provideDirs, includes, provides, bdy, idn) =>
@@ -195,6 +195,19 @@ trait RacketLoader:
 object ASchemeRacketLoader extends RacketLoader:
     override def parse(prg: String): SchemeExp =
         ASchemeParser.parseProgramDefines(prg)
+
+    override def undefine(exp: SchemeExp): SchemeExp =
+        SchemeUndefiner.undefine(List(exp))
+
+/**
+ * A loader that is generic over the parser, note that the parser should NOT undefine the program.
+ *
+ * @parser
+ *   a function that takes a Scheme program and parses it into a Scheme AST
+ */
+class GenericRacketLoader(parser: String => SchemeExp) extends RacketLoader:
+    override def parse(prg: String): SchemeExp =
+        parser(prg)
 
     override def undefine(exp: SchemeExp): SchemeExp =
         SchemeUndefiner.undefine(List(exp))
