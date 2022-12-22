@@ -13,7 +13,12 @@ import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.Show
 import scala.annotation.tailrec
 
-trait AAMScheme:
+import maf.modular.scheme._
+import maf.modular.ModAnalysis
+import maf.util.benchmarks.Timeout.T
+
+
+abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     this: SchemeDomain with AAMSchemeSensitivity => 
 
     // shorthands
@@ -287,26 +292,20 @@ trait AAMScheme:
         val (ρ0, σ0) = bind(initialBds, Environment.empty, CountingStore.empty)
         State(Ev(e, ρ0, t0), σ0, BasicStore.empty, HaltAddr)
 
-    def analyze(e: Exp): Set[State] =
-        val ς = inject(e)
-        explore(Set(ς), Set(ς)) 
-
-    @tailrec
-    private def explore(worklist: Set[State], visited: Set[State]): Set[State] =
-        if worklist.nonEmpty then
-            val next = worklist.head
-            val rest = worklist.tail
-            val successors = step(next)
-            val newStates = successors.filterNot(visited)
-            explore(newStates ++ rest, visited ++ newStates) 
-        else
-            visited
+    // ModX machinery
+    type Component = State 
+    lazy val initialComponent: State = inject(prg)
+    def expr(ς: State): SchemeExp = throw new Exception("Not supported")
+    def intraAnalysis(ς: State): IntraAnalysis = new AAMStep(ς)
+    class AAMStep(ς: State) extends IntraAnalysis(ς):
+        def analyzeWithTimeout(timeout: T) = step(ς).foreach(spawn) 
 
     // for convenience
-    def eval(e: Exp): Val = 
-        val states = analyze(e)
-        val values = states.collect { case State(Ap(v), _, _, HaltAddr) => v }
-        lattice.join(values)
+    def finalValues: Set[Val] = 
+        visited.collect { case State(Ap(v), _, _, HaltAddr) => v }
+    def finalValue: Val = 
+        lattice.join(finalValues)
+    
 
 
 //
@@ -377,3 +376,11 @@ trait AAMGC extends AAMScheme:
         super.step(ς)           // first do a normal step
              .map(restrictEnv)  // restrict the environment
              .map(gc)           // gc the stores
+
+// simple instantiations
+
+abstract class StandardAAM(prg: SchemeExp, k: Int) extends AAMScheme(prg)
+                                             with SchemeConstantPropagationDomain
+                                             with AAMCallSiteSensitivity(k)
+
+abstract class AAMWithGC(prg: SchemeExp, k: Int) extends StandardAAM(prg, k) with AAMGC
