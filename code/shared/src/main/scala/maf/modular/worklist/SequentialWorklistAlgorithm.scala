@@ -12,7 +12,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     // we can choose what kind of worklist to pick
     def emptyWorkList: WorkList[Component]
     // adding elements to the worklist
-    var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
+    var workList: WorkList[Component] = emptyWorkList
     def addToWorkList(cmp: Component) = workList = workList.add(cmp)
     def finished: Boolean = workList.isEmpty
     // a single step in the worklist algorithm iteration
@@ -35,6 +35,11 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     // step until worklist is empty or timeout is reached
     def run(timeout: Timeout.T): Unit =
         while !finished && !timeout.reached do step(timeout)
+
+    // add the initial component during initialisation
+    override def init() = 
+        super.init()
+        addToWorkList(initialComponent)
 
 /** Provides a work list with a depth-first exploration order to a modular analysis. */
 trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr]:
