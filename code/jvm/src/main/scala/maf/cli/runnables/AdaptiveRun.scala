@@ -11,6 +11,7 @@ import maf.modular.worklist._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 import maf.modular.scheme.modflocal._
+import maf.modular.scheme.aam.*
 
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
@@ -24,15 +25,18 @@ import maf.core._
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = testConcrete()
+    def main(args: Array[String]): Unit = print(runAAM(parse(txt)))
+
+    val txt = 
+            """
+            | (define (foo x)
+            |    (+ x 1))
+            | (define x 5)
+            | (foo 1)
+            | x
+            """.stripMargin
 
     def testConcrete() =
-        val txt =
-            """
-          | (letrec ((x y)
-          |          (y 2))
-          |    y) 
-          """.stripMargin
         val prg = CSchemeParser.parseProgram(txt)
         val int = new SchemeInterpreter(io = new FileIO(Map()))
         int.run(prg, Timeout.none)
@@ -58,6 +62,12 @@ object AdaptiveRun:
         val prg = CSchemeParser.undefine(transf)
         val anl = SchemeAnalyses.modflocalAnalysis(prg, 100)
         anl.analyze()
+
+    def parse(txt: String): SchemeExp =
+        val parsed = CSchemeParser.parse(txt)
+        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val transf = SchemeMutableVarBoxer.transform(prelud)
+        CSchemeParser.undefine(transf)
 
     def testModConc(): Unit =
         val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
@@ -124,3 +134,9 @@ object AdaptiveRun:
         val res = anl.results(anl.MainComponent).asInstanceOf[Set[(anl.Val, anl.Dlt, Set[anl.Adr])]]
         val vlu = Lattice[anl.Val].join(res.map(_._1))
         vlu 
+
+    def runAAM(prg: SchemeExp) = 
+        val aam = new SchemeAAMAnalysis(prg, 0) with AAMAbstractCounting with AAMAnalysisResults
+        aam.analyze()
+        println(aam.resultsPerIdn)
+        aam.finalValue
