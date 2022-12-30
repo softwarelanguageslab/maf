@@ -225,7 +225,7 @@ object MAFLogger:
     )
 
     /** Loads the config that is applicable for the current environment */
-    private def currentConfig: Map[LogLevel, LogLevelPolicy] =
+    private lazy val currentConfig: Map[LogLevel, LogLevelPolicy] =
         sys.env.get("LOG_ENV").getOrElse("local") match
             case "local" => configs(LogEnvironment.Local)
             case "ci"    => configs(LogEnvironment.CI)

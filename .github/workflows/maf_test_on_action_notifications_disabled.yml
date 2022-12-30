@@ -3,7 +3,7 @@ name: MAF tests on action
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
 on:
-  push:
+  pull_request:
     branches: [ master ]
 
 jobs:
@@ -11,16 +11,6 @@ jobs:
     name: Run fast tests
     runs-on: ubuntu-latest
     steps:
-      # Send a notification to Slack.
-      - name: Notify push
-        id: slack
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          channel: maf-logs
-          status: STARTED
-          color: warning
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
       # Check out the GitHub repository.
       - name: Checkout the repository
         uses: actions/checkout@v2
@@ -47,28 +37,6 @@ jobs:
         with: 
           name: Test logging output 
           path: logs/log-${{ github.sha }}.txt
-      # If successful, update the Slack notification.
-      - name: Notify slack success
-        if: success()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf-logs
-          status: SUCCESS
-          color: good
-      # If failed, update the Slack notification.
-      - name: Notify slack fail
-        if: failure() || cancelled()
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          message_id: ${{ steps.slack.outputs.message_id }}
-          channel: maf-logs
-          status: FAILED
-          color: danger
       # Send an additional notification upon failure.
       #- name: Stress slack fail
       #  if: failure()
