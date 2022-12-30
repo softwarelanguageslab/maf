@@ -16,7 +16,6 @@ trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
         SchemeParser.undefine(transf)
 
 class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
-    def n = 100
     def name = s"DSS"
     def analysis(prg: SchemeExp) =
         new SchemeModFLocal(prg)

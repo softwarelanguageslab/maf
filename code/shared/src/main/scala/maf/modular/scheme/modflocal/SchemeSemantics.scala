@@ -173,7 +173,7 @@ trait SchemeSemantics:
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
             for
-                _ <- guard(lam.check(agc))
+                _   <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
                 res <- applyClosure(app, lam, ags, fvs)
             yield res
@@ -206,12 +206,11 @@ trait SchemeSemantics:
                         adr <- allocVar(varArg)
                     yield List((varArg.name, adr, lst))
             // free variables
-            frv <- fvs.mapM((adr, vlu) =>
-                adr match {
+            frv <- fvs.mapM { (adr, vlu) =>
+                adr match
                     case VarAddr(idf, _) => allocVar(idf).map((idf.name, _, vlu))
                     case PrmAddr(nam)    => unit((nam, adr, vlu))
-                }
-            )
+            }
         yield fxa ++ vra ++ frv
 
     private def storeVal(exp: Exp, vlu: Val): A[Val] =

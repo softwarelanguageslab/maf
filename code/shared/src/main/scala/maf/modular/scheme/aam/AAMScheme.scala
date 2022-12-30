@@ -1,22 +1,20 @@
-package maf.aam
+package maf.modular.scheme.aam
 
 import maf.core.* 
-import maf.language.scheme._
+import maf.language.scheme.*
 import maf.language.scheme.lattices.*
 import maf.language.scheme.primitives.*
 import maf.modular.scheme.SchemeDomain
 import maf.language.sexp
-
 import maf.core.MonadJoin.MonadJoinIterableSyntax
-import maf.lattice.interfaces.BoolLattice
-import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.Show
 import scala.annotation.tailrec
-
 import maf.modular.scheme._
 import maf.modular.ModAnalysis
 import maf.util.benchmarks.Timeout.T
-
+import maf.util.Wrapper
+import maf.util.Wrapper.*
+import maf.core.Store.{SimpleStore, given}
 
 abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     this: SchemeDomain with AAMSchemeSensitivity => 
@@ -33,9 +31,23 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     type Ctx = Context
     type Clo = (Lam, Env)
     type Env = Environment[Adr]
-    type Sto = CountingStore[Adr, Val]
+    type Sto = storeWrapper_.T
     type Kon = Set[Frame]
-    type KSto = BasicStore[KAdr, Kon]
+    type KSto = kstoreWrapper_.T
+
+    // store
+
+    type Store[X] = maf.core.Store[X, Adr, Val] 
+    def storeWrapper: Wrapper[Store] = Wrapper.wrapper(using Store.simpleInstance: Store[SimpleStore[Adr,Val]])
+    lazy final val storeWrapper_ = storeWrapper
+    lazy given store: Store[Sto] = storeWrapper_.instance
+    lazy val σ0 = store.empty
+
+    type KStore[X] = maf.core.Store[X, KAdr, Kon] 
+    def kstoreWrapper: Wrapper[KStore] = Wrapper.wrapper(using Store.simpleInstance: KStore[SimpleStore[KAdr, Kon]])
+    lazy final val kstoreWrapper_ = kstoreWrapper
+    lazy given kstore: KStore[KSto] = kstoreWrapper_.instance
+    lazy val σₖ0 = kstore.empty 
 
     // addresses
 
@@ -59,6 +71,8 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     def alloc(v: Var, ctx: Ctx) = VAdr(v, ctx)
     def alloc(e: Exp, ctx: Ctx) = PAdr(e, ctx)
 
+    // frames
+
     sealed trait Frame:
         val aₖ: KAdr
     case class IffK(c: Exp, a: Exp, ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
@@ -69,14 +83,17 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     case class FunK(a: App, r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
     case class ArgK(a: App, f: Val, v: List[Val], r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
 
-    enum Control:
-        case Ev(e: Exp, ρ: Env, t: Ctx)
-        case Ap(v: Val)
+    given Show[Frame] with
+        def show(frm: Frame): String = frm.toString
+
+    // AAM
+
+    sealed trait Control
+    case class Ev(e: Exp, ρ: Env, t: Ctx) extends Control
+    case class Ap(v: Val) extends Control
 
     case class State(c: Control, σ: Sto, σₖ: KSto, aₖ: KAdr) 
     
-    import Control.*
-
     protected def step(ς: State): Set[State] = ς match
         case State(Ev(e, ρ, t), σ, σₖ, aₖ) => 
             eval(e, ρ, t, σ, σₖ, aₖ) 
@@ -163,7 +180,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
         case l: SchemeValue => 
             evalLiteral(l, σ, σₖ, aₖ, t)
         case λ: SchemeLambdaExp => 
-            result(lattice.closure((λ, ρ)), σ, σₖ, aₖ)
+            result(lattice.closure((λ, ρ.restrictTo(λ.fv))), σ, σₖ, aₖ)
         case SchemeVar(v) => 
             result(σ(ρ(v.name)), σ, σₖ, aₖ)
         case SchemeIf(p, c, a, _) => 
@@ -241,146 +258,45 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     // this method can be overriden to implement a more interesting analysis w.r.t. assert expressions
     protected def evalAssert(e: Exp, ρ: Env, t: Ctx, σ: Sto, σₖ: KSto, aₖ: KAdr) =
         result(lattice.void, σ, σₖ, aₖ)
-    
+
     // for the primitives
 
     type AAM[X] = (Ctx, Sto) => Set[(X, Sto)]
 
-    given SchemePrimM[AAM, Address, Val] with
-        def lookupSto(a: Address): AAM[Val] = (_, sto) => Set((sto(a), sto))
-        def extendSto(a: Address, v: Val) = (_, sto) => Set(((), sto.extend(a, v)))
-        def updateSto(a: Address, v: Val) = (_, sto) => Set(((), sto.update(a, v)))
-        def allocVar(vrb: Var): AAM[Address] = (ctx, sto) => Set((alloc(vrb, ctx), sto))
-        def allocPtr(exp: Exp): AAM[Address] = (ctx, sto) => Set((alloc(exp, ctx), sto))
+    given SchemePrimM[AAM, Adr, Val] with
+        def lookupSto(a: Adr): AAM[Val] = (_, σ) => Set((σ(a), σ))
+        def extendSto(a: Adr, v: Val) = (_, σ) => Set(((), σ.extend(a, v)))
+        def updateSto(a: Adr, v: Val) = (_, σ) => Set(((), σ.extend(a, v)))
+        def allocVar(v: Var): AAM[Adr] = (c, σ) => Set((alloc(v, c), σ))
+        def allocPtr(e: Exp): AAM[Adr] = (c, σ) => Set((alloc(e, c), σ))
         def mbottom[X]: AAM[X] = (_, _) => Set.empty
-        def mjoin[X: Lattice](x: AAM[X], y: AAM[X]) = (ctx, sto) => x(ctx, sto) ++ y(ctx, sto)
-        def unit[X](x: X): AAM[X] = (_, sto) => Set((x, sto))
-        def map[X, Y](m: AAM[X])(f: X => Y) = (ctx, sto) => m(ctx, sto).map((a,s) => (f(a), s))
-        def flatMap[X, Y](m: AAM[X])(f: X => AAM[Y]) = (ctx, sto) => m(ctx, sto).flatMap((a,s) => f(a)(ctx, s))
+        def mjoin[X: Lattice](x: AAM[X], y: AAM[X]) = (c, σ) => x(c, σ) ++ y(c, σ)
+        def unit[X](x: X): AAM[X] = (_, σ) => Set((x, σ))
+        def map[X, Y](m: AAM[X])(f: X => Y) = (c, σ) => m(c, σ).map((a, σ2) => (f(a), σ2))
+        def flatMap[X, Y](m: AAM[X])(f: X => AAM[Y]) = (c, σ) => m(c, σ).flatMap((a, σ2) => f(a)(c, σ2))
         def fail[X](err: Error): AAM[X] = mbottom
-        def addrEq: AAM[MaybeEq[Adr]] = (_, sto) => Set((eqA(sto), sto))
+        def addrEq: AAM[MaybeEq[Adr]] = (_, σ) => Set((σ.addrEq, σ))
 
-    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
-        def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
-            if a1 == a2 then
-                if sto.lookupCount(a1) == CountOne 
-                then BoolLattice[B].inject(true)
-                else BoolLattice[B].top
-            else BoolLattice[B].inject(false)
-
-    // fixed-point algorithm
-
-    given Show[Frame] with
-        def show(frm: Frame): String = frm.toString
-
-    import Lattice.*
-    
-    given shouldCount: (Adr => Boolean) =
-        case _: PAdr => true    // only pointers are mutable!
-        case _       => false
-
-    import Lattice.*
-    implicit object KontLattice extends SetLattice[Frame] with LatticeWithAddrs[Kon, KAdr]:
-        def refs(k: Kon): Set[KAdr] = k.map(_.aₖ)
+    // ModX machinery for fixed-point algorithm
 
     def inject(e: Exp): State =
         val initialBds =  
             primitives.allPrimitives.view
                       .filterKeys(e.fv)
                       .map { case (name, p) => (name, NAdr(name), lattice.primitive(p.name)) }
-                      .toList
-        val (ρ0, σ0) = bind(initialBds, Environment.empty, CountingStore.empty)
-        State(Ev(e, ρ0, t0), σ0, BasicStore.empty, HaltAddr)
+        val (ρ, σ) = bind(initialBds.toList, Environment.empty, σ0)
+        State(Ev(e, ρ, t0), σ, σₖ0, HaltAddr)
 
-    // ModX machinery
     type Component = State 
     lazy val initialComponent: State = inject(prg)
-    def expr(ς: State): SchemeExp = throw new Exception("Not supported")
+    def expr(ς: State): SchemeExp = throw new Exception("NYI -- expr(ς: State): SchemeExp")
     def intraAnalysis(ς: State): IntraAnalysis = new AAMStep(ς)
     class AAMStep(ς: State) extends IntraAnalysis(ς):
         def analyzeWithTimeout(timeout: T) = step(ς).foreach(spawn) 
 
     // for convenience
+
     def finalValues: Set[Val] = 
         visited.collect { case State(Ap(v), _, _, HaltAddr) => v }
     def finalValue: Val = 
         lattice.join(finalValues)
-    
-
-
-//
-// context-sensitivity 
-//
-
-trait AAMSchemeSensitivity extends AAMScheme:
-    this: SchemeDomain =>
-    // context is parameterisable 
-    type Context
-    def t0: Context
-    def tnext(app: App, clo: Clo, ctx: Ctx): Context
-
-trait AAMNoSensitivity extends AAMSchemeSensitivity:
-    this: SchemeDomain =>
-    type Context = Unit
-    def t0 = ()
-    def tnext(app: App, clo: Clo, ctx: Ctx): Context = ()
-
-trait AAMCallSiteSensitivity(k: Int) extends AAMSchemeSensitivity:
-    this: SchemeDomain =>
-    type Context = List[App]
-    def t0 = Nil
-    def tnext(app: App, clo: Clo, ctx: Ctx): Context = (app :: ctx).take(k)
-
-//
-// abstract GC
-//
-
-trait AAMGC extends AAMScheme:
-    this: SchemeDomain with AAMSchemeSensitivity => 
-        
-    import Control.*
-
-    // optimisation: restricting the environment to only free variables
-
-    def restrictEnv(ς: State): State = ς.copy(c = restrictEnv(ς.c))
-    def restrictEnv(c: Control): Control = c match
-        case Ev(e, ρ, t)    => Ev(e, ρ.restrictTo(e.fv), t)
-        case _: Ap          => c
-
-    def refs(ρ: Env): Set[Adr] = ρ.addrs
-    def refs(v: Val): Set[Adr] = lattice.refs(v)
-    def refs(k: Kon): Set[Adr] = k.flatMap { 
-        case IffK(c, a, ρ, t, aₖ) => refs(ρ)
-        case SeqK(r, ρ, t, aₖ) => refs(ρ)
-        case LetK(l, v, a, b, ρ, t, aₖ) => a.flatMap(b => refs(b._2)) ++ refs(ρ)
-        case LtsK(l, v, b, ρ, t, aₖ) => refs(ρ)
-        case LtrK(l, a, b, ρ, t, aₖ) => a :: l.map(_._1) ++ refs(ρ)
-        case FunK(a, r, ρ, t, aₖ) => refs(ρ)
-        case ArgK(a, f, v, r, ρ, t, aₖ) => refs(f) ++ v.flatMap(refs) ++ refs(ρ)
-    }
-    def refs(σₖ: KSto): Set[Adr] = σₖ.content.values.flatMap(refs).toSet
-    def refs(c: Control): Set[Adr] = c match
-        case Ev(_, ρ, _) => refs(ρ)
-        case Ap(v) => refs(v)
-
-    // optimisation: GC'ing the store and continuation store
-     
-    def gc(ς: State): State = 
-        val State(c, σ, σₖ, aₖ) = ς
-        val σₖ2 = σₖ.collect(Set(aₖ))
-        val σ2 = σ.collect(refs(c) ++ refs(σₖ2))
-        State(c, σ2, σₖ2, aₖ)
-    
-    // new step function integrates both optimisations
-    override def step(ς: State): Set[State] = 
-        super.step(ς)           // first do a normal step
-             .map(restrictEnv)  // restrict the environment
-             .map(gc)           // gc the stores
-
-// simple instantiations
-
-abstract class StandardAAM(prg: SchemeExp, k: Int) extends AAMScheme(prg)
-                                             with SchemeConstantPropagationDomain
-                                             with AAMCallSiteSensitivity(k)
-
-abstract class AAMWithGC(prg: SchemeExp, k: Int) extends StandardAAM(prg, k) with AAMGC
