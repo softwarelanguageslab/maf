@@ -1,22 +1,16 @@
-package maf.test.TurgutsThesis.soundness.dd.evaluation.profiling
+package maf.test.TurgutsThesis.soundnessDD.implementation
 
 import maf.core.Position
-import maf.language.scheme.primitives.SchemePrelude
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
+import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.*
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAdaptiveWideningPolicyB, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
-import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.EvaluateProfiling
-import maf.test.TurgutsThesis.soundness.SchemeModFLocalSoundnessTests
-import maf.test.TurgutsThesis.soundness.dd.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.{AllBenchmarks, AllSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.TurgutsThesis.soundnessBugs.*
 
-trait SchemeModFLocalSoundnessTests extends EvaluateProfiling:
-
+trait SchemeModFLocalSoundnessTests extends SoundnessDDTester:
   override def benchmarks: Set[Benchmark] = Set(
-    "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/flatten.scm",
-    "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/scp1/sim-fast-multiply.scm"
+    "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/work.scm"
   )
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
@@ -25,7 +19,7 @@ trait SchemeModFLocalSoundnessTests extends EvaluateProfiling:
     val transf = SchemeMutableVarBoxer.transform(prelud)
     SchemeParser.rename(SchemeParser.undefine(transf))
 
-class EvalProfilingTestSuiteA extends SchemeModFLocalSoundnessTests:
+class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
   def analysis(prg: SchemeExp) =
@@ -35,4 +29,15 @@ class EvalProfilingTestSuiteA extends SchemeModFLocalSoundnessTests:
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
       with SchemeModFLocalAdaptiveWideningPolicyA(n)
-      with BeginBug
+
+class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
+  def l = 10
+  def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
+  def analysis(prg: SchemeExp) =
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
+      with SchemeModFLocalNoSensitivity
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with SchemeModFLocalAnalysisResults
+      with SchemeModFLocalAdaptiveWideningPolicyB(l)
+      with CallBug

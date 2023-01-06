@@ -1,26 +1,22 @@
-package maf.test.TurgutsThesis.soundness.dd
+package maf.test.TurgutsThesis.soundnessDD.implementation
 
 import maf.TurgutsThesis.gtr.GTR
 import maf.TurgutsThesis.gtr.transformations.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
+import maf.test.TurgutsThesis.soundnessDD.implementation.SoundnessDDTester
 import org.scalatest.Assertions.fail
 
 object DDWithAllTransformations:
   def reduce(program: SchemeExp,
-             soundnessTester: SchemeSoundnessWithDeltaDebuggingTests,
-             benchmark: String,
-             analysisProfiling: Array[(String, Int)]): Unit =
+             soundnessTester: SoundnessDDTester,
+             benchmark: String): Unit =
       var count = 0
       val reduced = GTR.reduce(
         program,
         p => {
           count += 1
-          /**
-           * without the line below, one might have undefined variables that are never needed dynamically (e.g. dead-code)
-           * And that brings shallow/deep dropping into an infinite loop, since they try to drop all undefined variables
-           */
           soundnessTester.runAndCompare(p, benchmark) match
-            case Some((failureMsg, _, _)) =>
+            case Some(failureMsg) =>
               p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
             case None => false
         },
@@ -29,7 +25,7 @@ object DDWithAllTransformations:
       )
 
       val parsedAgain = SchemeParser.parse(reduced.prettyString()).head //parse again, to generate file-related information (e.g. bug is at offset 20-25)
-      val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark).get._1
+      val failureMsg = soundnessTester.runAndCompare(parsedAgain, benchmark).get
 
       fail(
         "FAILED:\n " +

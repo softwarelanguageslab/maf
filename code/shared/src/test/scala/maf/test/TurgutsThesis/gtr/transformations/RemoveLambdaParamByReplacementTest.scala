@@ -31,8 +31,6 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
 
     assertTreeString("(begin (define f (lambda (x) (* x x) (* 1 1))) (f 1) (f 111))")
 
-    assertTreeString("(begin (define f (lambda (x) (* x x) (* (lambda unique_args_40 ()) (lambda unique_args_41 ())))) (f 1) (f 111))")
-
     //remove param x
     assertTreeString("(begin (define f (lambda (y) (* 'S 'S) (* y y))) (f 2) (f 222))")
 

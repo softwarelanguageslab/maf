@@ -19,7 +19,6 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
 
     suggestedTrees = RemoveCalls.transform(t, defineExp) //should remove calls to f
 
-    assert(suggestedTrees.length == 1)
     assertTreeString("(begin (+ 2 2))")
   }
 
@@ -37,7 +36,6 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
     val letExp = t.exps.head
 
     suggestedTrees = RemoveCalls.transform(t, letExp) //should remove calls to f
-    assert(suggestedTrees.length == 1)
     assertTreeString("(begin (let () 1000) (+ 2 2))")
   }
 

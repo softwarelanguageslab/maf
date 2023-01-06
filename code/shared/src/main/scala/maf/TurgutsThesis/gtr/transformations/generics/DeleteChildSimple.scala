@@ -27,19 +27,3 @@ object DeleteChildSimple extends Transformation:
         for ((identifier, exp) <- bindings)
           addReplacement(lettishExp.dropBinding(identifier.name))
       case _ =>
-
-  /*
-  def deleteChildLettishExp(lettishExp: SchemeLettishExp,
-                            factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): Unit = {
-    val bindings = lettishExp.bindings
-    val body = lettishExp.body
-    val idn = lettishExp.idn
-
-    if body.length > 1 then
-      for (i <- body.indices)
-        addReplacement(factoryMethod(bindings, body.take(i) ++ body.drop(i + 1), idn))
-
-    for (i <- bindings.indices)
-      val bindingDropped = factoryMethod(bindings.take(i) ++ bindings.drop(i + 1), body, idn)
-      addReplacement(bindingDropped)
-  }*/

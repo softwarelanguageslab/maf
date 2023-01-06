@@ -1,25 +1,53 @@
 package maf.TurgutsThesis.gtr.transformations.traits
 
 import maf.core.{Identifier, NoCodeIdentity}
-import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeValue, SchemeVar, SchemeVarArgLambda, SchemeVarExp}
+import maf.language.scheme.*
 import maf.language.sexp.Value
 
 trait Replacing:
-  
   private var count = -1
   def newID(): String =
     count += 1
     "unique_args_" + count.toString
 
-  def lambdaValues(): List[SchemeVarArgLambda] = List(
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.Integer(0), NoCodeIdentity)), None, NoCodeIdentity),
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.Integer(1), NoCodeIdentity)), None, NoCodeIdentity),
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.String("S"), NoCodeIdentity)), None, NoCodeIdentity),
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.Symbol("S"), NoCodeIdentity)), None, NoCodeIdentity),
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.Boolean(true), NoCodeIdentity)), None, NoCodeIdentity),
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.Boolean(false), NoCodeIdentity)), None, NoCodeIdentity),
-    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(SchemeValue(Value.Nil, NoCodeIdentity)), None, NoCodeIdentity)
+  def newCallerLambda(args: List[SchemeExp]) =
+    val id = newID()
+    SchemeLambda(
+      None,
+      List(Identifier(id, NoCodeIdentity)),
+      List(SchemeFuncall(
+        f = SchemeVar(Identifier(id, NoCodeIdentity)),
+        args = args,
+        idn = NoCodeIdentity,
+      )),
+      None,
+      NoCodeIdentity)
+
+  def callerLambdas(): List[SchemeLambda] =
+    val values: List[SchemeExp] =
+      List(
+        SchemeValue(Value.Integer(0), NoCodeIdentity),
+        SchemeValue(Value.Boolean(true), NoCodeIdentity),
+        SchemeValue(Value.Nil, NoCodeIdentity)
+      )
+    val valuesToTry = values.combinations(1).toList ++ values.combinations(2).toList ++ values.combinations(3).toList
+    valuesToTry.map(args => newCallerLambda(args))
+
+  def newConstantLambda(BodyExp: SchemeExp): SchemeVarArgLambda =
+    SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(BodyExp), None, NoCodeIdentity)
+
+  def constantLambdas(): List[SchemeVarArgLambda] = List(
+    newConstantLambda(SchemeValue(Value.Integer(0), NoCodeIdentity)),
+    newConstantLambda(SchemeValue(Value.Integer(1), NoCodeIdentity)),
+    newConstantLambda(SchemeValue(Value.String("S"), NoCodeIdentity)),
+    newConstantLambda(SchemeValue(Value.Symbol("S"), NoCodeIdentity)),
+    newConstantLambda(SchemeValue(Value.Boolean(true), NoCodeIdentity)),
+    newConstantLambda(SchemeValue(Value.Boolean(false), NoCodeIdentity)),
+    newConstantLambda(SchemeValue(Value.Nil, NoCodeIdentity)),
   )
+
+  def lambdaValues(): List[SchemeLambdaExp] =
+    constantLambdas() ++ callerLambdas()
 
   def values(): List[SchemeExp] = List(
     SchemeValue(Value.Integer(0), NoCodeIdentity),
@@ -31,7 +59,8 @@ trait Replacing:
     SchemeValue(Value.Nil, NoCodeIdentity)
   )
 
-  def allValues(): List[SchemeExp] = values() ++ lambdaValues()
+  def allValues(): List[SchemeExp] =
+    values() ++ lambdaValues()
 
   def replaceWithAllValues(exp: SchemeExp, toReplace: SchemeExp => Boolean): List[SchemeExp] =
     allValues().map(value => {

@@ -15,7 +15,7 @@ trait CallBug extends SchemeSemantics:
   override protected def evalCall(app: App): A[Val] =
     for
       fun <- eval(app.f)
-      ags <- app.args.take(3).mapM(arg => eval(arg)) //bug is here: arguments only up to 3 supported
+      ags <- app.args.take(2).mapM(arg => eval(arg)) //bug is here: arguments only up to 3 supported
       res <- applyFun(app, fun, ags)
     yield res
     

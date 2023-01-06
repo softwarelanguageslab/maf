@@ -8,7 +8,6 @@ import maf.language.scheme.*
 object RemoveCalls extends Transformation with Replacing:
   override val name: String = "RemoveCalls"
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
-
     def removeIdCalls(id: Identifier, newTree: SchemeExp): Unit =
       val applsRemoved: Option[SchemeExp] = newTree.deleteChildren({
         case SchemeFuncall(f: SchemeVarExp, _, _) =>

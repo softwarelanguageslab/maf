@@ -7,6 +7,12 @@ import maf.TurgutsThesis.gtr.transformations.generics.*
 import maf.TurgutsThesis.gtr.transformations.schemeIdentifier.ReplaceIdentifier
 
 object TransformationManager:
+  
+  val genericTransformations: List[Transformation] =
+    List(
+      DeleteChildSimple,
+      ReplaceByChild
+    )
 
   val allTransformations: List[Transformation] =
     List(
@@ -21,5 +27,6 @@ object TransformationManager:
       RemoveLambdaParamWithShallowDrop,
       ReplaceByChild,
       ReplaceCalls,
-      ReplaceIdentifier
+      ReplaceIdentifier,
+      ReplaceByValue,
     )

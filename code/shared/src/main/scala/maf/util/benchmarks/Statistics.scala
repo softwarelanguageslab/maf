@@ -36,6 +36,11 @@ object Statistics:
         val s = l.sorted
         val split: Int = s.length / 2
         if s.length % 2 == 0 then (s(split - 1) + s(split)) / 2 else s(split)
+    
+    def Q3(l: List[Double]): Double =
+        val s = l.sorted
+        val split: Int = (s.length.toDouble * 0.75).toInt
+        s(split)
 
     /** Computes the standard deviation of a list of measurements. */
     def stddev(l: List[Double]): Double =

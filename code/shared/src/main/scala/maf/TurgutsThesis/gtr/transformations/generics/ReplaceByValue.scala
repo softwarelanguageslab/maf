@@ -10,4 +10,5 @@ object ReplaceByValue extends Transformation with Replacing:
   override val name: String = "ReplaceIdentifier"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
-    addReplacements(allValues())
+    if node.size > 15 then //only apply this to large nodes, otherwise its too expensive
+      addReplacements(allValues())

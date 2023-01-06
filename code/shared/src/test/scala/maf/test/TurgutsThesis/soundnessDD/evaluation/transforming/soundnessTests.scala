@@ -1,19 +1,15 @@
-package maf.test.TurgutsThesis.soundness.dd.evaluation.baseline
+package maf.test.TurgutsThesis.soundnessDD.evaluation.transforming
 
 import maf.core.Position
-import maf.language.scheme.primitives.SchemePrelude
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
+import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.*
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAdaptiveWideningPolicyB, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
-import maf.test.TurgutsThesis.soundness.SchemeModFLocalSoundnessTests
-import maf.test.TurgutsThesis.soundness.dd.SchemeSoundnessWithDeltaDebuggingTests
-import maf.test.TurgutsThesis.soundness.dd.evaluation.baseline.{DDWithAllTransformationsEval, EvaluationBaseline}
-import maf.test.TurgutsThesis.soundness.dd.evaluation.profiling.EvaluateProfiling
-import maf.test.TurgutsThesis.soundnessBugs.*
-import maf.test.{AllBenchmarks, AllSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
+import maf.test.TurgutsThesis.soundnessBugs.{BeginBug, CallBug, IfBug, LetBug, LetStarBug, LetrecBug, LiteralValueBug, VariableBug}
+import maf.test.{AllSequentialBenchmarks, CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 
-trait SchemeModFLocalSoundnessTests extends EvaluationBaseline with VariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends TransformingTester with VariousSequentialBenchmarks:
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
