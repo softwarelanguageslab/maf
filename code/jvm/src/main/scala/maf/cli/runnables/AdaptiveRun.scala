@@ -136,7 +136,6 @@ object AdaptiveRun:
         vlu 
 
     def runAAM(prg: SchemeExp) = 
-        val aam = new SchemeAAMAnalysis(prg, 0) with AAMAbstractCounting with AAMAnalysisResults
+        val aam = new SchemeAAMAnalysis(prg, 0)
         aam.analyze()
-        println(aam.resultsPerIdn)
         aam.finalValue
