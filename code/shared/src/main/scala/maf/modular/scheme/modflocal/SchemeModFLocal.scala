@@ -96,7 +96,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 (v, sto.replay(gcd, tai), u)
             }
 
-    import analysisM._
+    import analysisM_._
     override def eval(exp: Exp): A[Val] =
         withEnv(_.restrictTo(exp.fv)) {
             getEnv >>= { env =>
@@ -122,7 +122,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx, tai: Boolean) => Set[(X, sto.Delta, Set[Adr])]
 
-    given analysisM: AnalysisM[A] with
+    protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
             (_, _, sto, _, _) => Set((x, sto.emptyDelta, Set.empty))
@@ -221,3 +221,11 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)
+
+
+// a standard instance 
+
+class SchemeDSSAnalysis(prg: SchemeExp, k: Int) extends SchemeModFLocal(prg)
+                                                   with SchemeConstantPropagationDomain
+                                                   with SchemeModFLocalCallSiteSensitivity(k)
+                                                   with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp]
