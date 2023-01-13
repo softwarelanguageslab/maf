@@ -304,7 +304,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         }
     end testComplexSCADetection
 
-   // testComponentDeletion()
-   // testDependencyDeletion()
-   // testUpdatedComponents()
-    testComplexSCADetection()
+    testComponentDeletion()
+    testDependencyDeletion()
+    testUpdatedComponents()
+    //testComplexSCADetection()

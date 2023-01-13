@@ -100,17 +100,8 @@ object IncrementalRun extends App:
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
 
     val modFbenchmarks: List[String] = List(
-      //  "test/DEBUG1.scm",
-      //    "test/DEBUG2.scm"
-      //"test/changes/scheme/freeze.scm"
-      //  "test/changes/scheme/generated/R5RS_gambit_earley-4.scm"
-      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
-      // "test/changes/scheme/satMiddle.scm",
-      //"test/changes/scheme/satFine.scm",
-      "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
-      //"test/DEBUG3.scm",
-      // "test/changes/scheme/nbody-processed.scm"
-      // "test/changes/scheme/browse.scm"
+        "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook).
+      "test/changes/scheme/freeze.scm" // Nog niet precies.
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
