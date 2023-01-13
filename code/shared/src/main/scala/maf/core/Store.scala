@@ -31,8 +31,8 @@ trait Store[S, A, V]:
                 if a1 == a2 then BoolLattice[B].top else BoolLattice[B].inject(false)
         // extra operations to manipulate the store
         // TODO: put in separate "sub" typeclasses?
-        def copyTo(a: A, t: S): S = throw new Exception("NYI -- copyTo")
-        def values: Set[V] = throw new Exception("NYI -- values")
+        def copyTo(a: A, t: S): S
+        def values: Set[V]
 
 object Store:
 
@@ -46,10 +46,10 @@ object Store:
                 case None       => v
                 case Some(oldV) => Lattice[V].join(oldV, v)
             }
-            override def copyTo(a: A, t: SimpleStore[A, V]) = m.get(a) match
+            def copyTo(a: A, t: SimpleStore[A, V]) = m.get(a) match
                 case None       => t
                 case Some(v)    => t + (a -> v)
-            override def values = m.values.toSet
+            def values = m.values.toSet
 
     // a counting instance
     opaque type CountingStore[A, V] = Map[A, (V, AbstractCount)]
@@ -79,10 +79,10 @@ object Store:
                         else BoolLattice[B].top
                     else BoolLattice[B].inject(false)
             // extra ops
-            override def copyTo(a: A, t: CountingStore[A, V]) = s.get(a) match
+            def copyTo(a: A, t: CountingStore[A, V]) = s.get(a) match
                 case None           => t
                 case Some(c@(v,_))  => t + (a -> c)
-            override def values = s.values.map(_._1).toSet
+            def values = s.values.map(_._1).toSet
 
 
 // Abstract GC

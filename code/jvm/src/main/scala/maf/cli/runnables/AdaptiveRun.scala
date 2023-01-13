@@ -25,7 +25,7 @@ import maf.core._
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = print(runDSS(counterExample))
+    def main(args: Array[String]): Unit = print(runAAM(counterExample))
 
     val prg1 = parse(
         """
@@ -60,6 +60,6 @@ object AdaptiveRun:
         vlu 
 
     def runAAM(prg: SchemeExp) = 
-        val aam = new SchemeAAMAnalysis(prg, 0) with AAMNameBasedAllocator with AAMGC
+        val aam = new SchemeAAMAnalysis(prg, 0) with AAMGC with AAMNameBasedAllocator with AAMAnalysisResults
         aam.analyze()
         aam.finalValue
