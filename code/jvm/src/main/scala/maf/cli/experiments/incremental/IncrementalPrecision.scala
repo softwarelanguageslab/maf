@@ -148,7 +148,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
+    val configurations: List[IncrementalConfiguration] = List(allOptimisations) // allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -202,26 +202,26 @@ object IncrementalSchemeModXPrecision:
         if args.typeLattice then
             if args.curated then
                 splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite),
-                            s"${outDir}type-curated-precision.csv",
-                            s"${outDir}type-curated-precision-noopt.csv"
+                            s"${outDir}type-curated-precision-vs-full.csv",
+                            s"${outDir}type-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput(
                   (new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
-                  s"${outDir}type-generated-precision.csv",
-                  s"${outDir}type-generated-precision-noopt.csv"
+                  s"${outDir}type-generated-precision-vs-full.csv",
+                  s"${outDir}type-generated-precision-vs-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
                 splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite),
-                            s"${outDir}cp-curated-precision.csv",
-                            s"${outDir}cp-curated-precision-noopt.csv"
+                            s"${outDir}cp-curated-precision-vs-full.csv",
+                            s"${outDir}cp-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite),
-                            s"${outDir}cp-generated-precision.csv",
-                            s"${outDir}cp-generated-precision-noopt.csv"
+                            s"${outDir}cp-generated-precision-vs-full.csv",
+                            s"${outDir}cp-generated-precision-vs-noopt.csv"
                 )
         end if
     end main

@@ -135,8 +135,9 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     case (SchemeLambda(_, prs, _, _, _), _) =>
                         if prs.length == arity then
                             val argVals = args.map(_._2)
+                            val argsVNoFlow = argVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
                             for
-                                context <- ctx.allocM(clo, argVals, cll, component)
+                                context <- ctx.allocM(clo, argsVNoFlow, cll, component)
                                 targetCall = Call(clo, context)
                                 targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, argVals)
@@ -153,9 +154,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                         if prs.length <= arity then
                             val (fixedArgs, varArgs) = args.splitAt(prs.length)
                             val fixedArgVals = fixedArgs.map(_._2)
+                            val fixedArgsVNoFlow = fixedArgVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
                             for
                                 varArgVal <- allocateList(varArgs)
-                                context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
+                                context <- ctx.allocM(clo, fixedArgsVNoFlow :+ varArgVal, cll, component)
                                 targetCall = Call(clo, context)
                                 targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, fixedArgVals)

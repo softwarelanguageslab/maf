@@ -196,8 +196,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         super.spawn(cmp)
 
     override def refineSCA(sca: SCA): Unit =
-        if mode != Summary && (mode != Step || stepSelect()) then logger.log(s"RSCA ${sca.mkString("{", ", ", "}")}")
+        var values: Map[Addr, Value] = Map()
+        if mode != Summary && (mode != Step || stepSelect()) then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
         super.refineSCA(sca)
+        if mode != Summary && (mode != Step || stepSelect()) then
+            logger.log(s"RSCA ${sca.map(a => s"$a (${values(a)} -> ${store.getOrElse(a, lattice.bottom)})").mkString("{", ", ", "}")}")
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreCYIntraAnalysis:
         intra =>
