@@ -36,6 +36,18 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
     end IncrementalVisualIntra
 
+    trait Edge
+    case class ExplicitOrIntraCImplicit(source: Addr, target: Addr) extends Edge
+    case class InterComponentImplicit(source: Addr, target: Addr) extends Edge
+
+    def computeEdges(): Set[Edge] =
+        val flowsR = explicitAndIntraComponentImplicitFlowsR()
+        val transitiveInterComponentFlows = computeTransitiveInterComponentFlows()
+        val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
+        val e: Set[Edge] = flowsR.toList.flatMap {case (target, sources) => sources.map(s => ExplicitOrIntraCImplicit(s, target))}.toSet
+        val i: Set[Edge] = allFlowsR.toList.flatMap {case (target, sources) => sources.map(s => InterComponentImplicit(s, target))}.toSet
+        e ++ i
+
     /** Computes the color of an edge based on its specifications. */
     private def edgeColor(directFlow: Boolean, indirectFlow: Boolean): Option[Color] = (directFlow, indirectFlow) match {
         case (true, true)  => Some(Colors.DarkBlue) // Both direct and indirect flows
@@ -61,29 +73,32 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
                     (addr,
                      GE(addr.toString,
                         if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else nodeColors(addr),
-                        if addr.isInstanceOf[LitAddr[_]] then "triangle" else "box"
+                        if addr.isInstanceOf[LitAddr[_]] then "octagon" else "box"
                      )
                     )
                 )
                 .toMap
         // Compute the edges.
-        var edges: Set[(GE, GE, AdrDep)] =
-            addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
+        var edges: Set[Edge] = computeEdges() // Set[(GE, GE, AdrDep)] =
+          //  addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
         val g = DotGraph[GE, GE]().G.typeclass
         // Do not show the implicit flows when there are many edges... Otherwise the graph becomes intractable.
         val edgeCut = 250
-        if edges.size > edgeCut then edges = edges.filter(_._3.directFlow)
+        // if edges.size > edgeCut then edges = edges.filter(_._3.directFlow)
         edges
             .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
-                case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
-                    edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
+                case (graph, ExplicitOrIntraCImplicit(s, t)) => g.addEdge(graph, nodes(s), GE("", Colors.Black), nodes(t))
+                case (graph, InterComponentImplicit(s, t)) => g.addEdge(graph, nodes(s), GE("", Colors.DarkBlue), nodes(t))
+               // case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
+               //     edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
             }
             .toFile(fileName)
 
     def dataFlowToImage(fileName: String): Unit =
         flowInformationToDotGraph(fileName)
-        DotGraph.createSVG(fileName, true)
+        if !DotGraph.createSVG(fileName, true)
+        then System.err.nn.println("Conversion failed.")
 
 /*
 class IncrementalDataFlowVisualiser[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
