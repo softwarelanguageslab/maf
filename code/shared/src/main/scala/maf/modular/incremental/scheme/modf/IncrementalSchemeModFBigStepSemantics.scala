@@ -119,9 +119,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         /** Evaluation of a literal value that adds a "literal address" as source. */
         override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] =
             // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
+            // Make it part of an SCA using implicit flows! This fixes precision loss due to conditional reading of literals!
             if configuration.cyclicValueInvalidation then
                 val a = LitAddr(exp)
-                for value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking.
+                for
+                    iFlows <- getImplicitFlows
+                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddresses(_, iFlows + a)) // Attach the address to the value for flow tracking + implicit flows!.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield value
             else super.evalLiteralValue(literal, exp)
