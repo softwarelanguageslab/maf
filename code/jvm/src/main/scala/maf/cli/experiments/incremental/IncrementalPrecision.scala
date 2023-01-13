@@ -148,7 +148,7 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = List(allOptimisations) // allConfigurations
+    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
