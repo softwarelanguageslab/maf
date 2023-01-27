@@ -136,13 +136,13 @@ class IncrementalSchemeModConcCPProperties() extends IncrementalSchemeProperties
 object IncrementalSchemeModXProperties:
     def main(args: IncArgs): Unit =
         if args.typeLattice then
-            if args.curated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated)
-            if args.generated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
+            if args.curated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated, args.stopOnError)
+            if args.generated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated, args.stopOnError)
         end if
 
         if args.cpLattice then
-            if args.curated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated)
-            if args.generated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
+            if args.curated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated, args.stopOnError)
+            if args.generated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated, args.stopOnError)
         end if
     end main
 end IncrementalSchemeModXProperties

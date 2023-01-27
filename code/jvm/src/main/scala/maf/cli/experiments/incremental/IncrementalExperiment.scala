@@ -37,7 +37,7 @@ trait IncrementalExperiment[E <: Expression]:
     def createOutput(): String
 
     // Can be used for debugging.
-    val catchErrors: Boolean = true
+    var catchErrors: Boolean = true
 
     // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
     def measure(bench: Set[String]): Unit =
@@ -66,8 +66,9 @@ trait IncrementalExperiment[E <: Expression]:
     private var executed = false
 
     /** Runs the benchmarks. Returns the path to the output file. */
-    def execute(args: Set[String]): String =
+    def execute(args: Set[String], stopOnError: Boolean): String =
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
+        if stopOnError then catchErrors = false
         executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         output = writer

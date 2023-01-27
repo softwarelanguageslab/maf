@@ -201,25 +201,25 @@ object IncrementalSchemeModXPrecision:
 
         if args.typeLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite),
+                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args.stopOnError),
                             s"${outDir}type-curated-precision-vs-full.csv",
                             s"${outDir}type-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput(
-                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
+                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite, args.stopOnError),
                   s"${outDir}type-generated-precision-vs-full.csv",
                   s"${outDir}type-generated-precision-vs-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args.stopOnError),
                             s"${outDir}cp-curated-precision-vs-full.csv",
                             s"${outDir}cp-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError),
                             s"${outDir}cp-generated-precision-vs-full.csv",
                             s"${outDir}cp-generated-precision-vs-noopt.csv"
                 )

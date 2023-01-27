@@ -90,7 +90,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
         table.prettyString(rowName = "Step",
                            rows = (1 until step).toList.map(_.toString),
-                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
+                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot"),
+                           format = s => crop(s)
         )
 
     private def addressDependenciesToString(): String =

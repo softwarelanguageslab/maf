@@ -95,12 +95,12 @@ object IncrementalRun extends App:
             with IncrementalLogging[SchemeExp]
             with IncrementalDataFlowVisualisation[SchemeExp]
             with IncrementalGlobalStoreCY[SchemeExp]:
-        override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr")
+        override def focus(a: Addr): Boolean = false //!a.toString.contains("PrmAddr")
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
 
     val modFbenchmarks: List[String] = List(
-        "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook).
+      //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
       "test/changes/scheme/freeze.scm" // Nog niet precies.
     )
 

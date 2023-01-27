@@ -271,14 +271,14 @@ object IncrementalSchemeModXPerformance:
                 val modfTypeCur = new IncrementalSchemeModFTypePerformance()
                 modfTypeCur.maxWarmupRuns = args.warmUp
                 modfTypeCur.measuredRuns = args.repetitions
-                val curatedType = modfTypeCur.execute(curatedSuite)
+                val curatedType = modfTypeCur.execute(curatedSuite, args.stopOnError)
                 FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
             end if
             if args.generated then
                 val modfTypeGen = new IncrementalSchemeModFTypePerformance()
                 modfTypeGen.maxWarmupRuns = args.warmUp
                 modfTypeGen.measuredRuns = args.repetitions
-                val generatedType = modfTypeGen.execute(generatedSuite)
+                val generatedType = modfTypeGen.execute(generatedSuite, args.stopOnError)
                 FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
             end if
         end if
@@ -288,14 +288,14 @@ object IncrementalSchemeModXPerformance:
                 val modfCPCur = new IncrementalSchemeModFCPPerformance()
                 modfCPCur.maxWarmupRuns = args.warmUp
                 modfCPCur.measuredRuns = args.repetitions
-                val curatedCP = modfCPCur.execute(curatedSuite)
+                val curatedCP = modfCPCur.execute(curatedSuite, args.stopOnError)
                 FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
             end if
             if args.generated then
                 val modfCPGen = new IncrementalSchemeModFCPPerformance()
                 modfCPGen.maxWarmupRuns = args.warmUp
                 modfCPGen.measuredRuns = args.repetitions
-                val generatedCP = modfCPGen.execute(generatedSuite)
+                val generatedCP = modfCPGen.execute(generatedSuite, args.stopOnError)
                 FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
             end if
         end if
