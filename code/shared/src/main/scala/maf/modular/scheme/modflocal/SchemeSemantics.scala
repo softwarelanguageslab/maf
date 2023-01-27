@@ -17,6 +17,7 @@ trait SchemeSemantics:
     type Val = Value
     type Adr = Address
     type Exp = SchemeExp
+    type Var = Identifier
     type Lam = SchemeLambdaExp
     type App = SchemeFuncall
     type Env = Environment[Adr]
@@ -54,8 +55,9 @@ trait SchemeSemantics:
         def apply[M[_]: AnalysisM]: AnalysisM[M] = implicitly
 
     type A[_]
-    implicit val analysisM: AnalysisM[A]
-    import analysisM._
+    protected def analysisM: AnalysisM[A]
+    protected final implicit lazy val analysisM_ :  AnalysisM[A] = analysisM
+    import analysisM_._
 
     def eval(exp: SchemeExp): A[Val] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)

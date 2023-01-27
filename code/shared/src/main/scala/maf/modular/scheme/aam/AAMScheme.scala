@@ -90,17 +90,20 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
 
     sealed trait Control
     case class Ev(e: Exp, ρ: Env, t: Ctx) extends Control
-    case class Ap(v: Val) extends Control
+    case class Ko(v: Val) extends Control
+    case class Ap(c: App, f: Val, a: List[Val], t: Ctx) extends Control
 
     case class State(c: Control, σ: Sto, σₖ: KSto, aₖ: KAdr) 
     
     protected def step(ς: State): Set[State] = ς match
         case State(Ev(e, ρ, t), σ, σₖ, aₖ) => 
             eval(e, ρ, t, σ, σₖ, aₖ) 
-        case State(Ap(v), σ, σₖ, aₖ) if !lattice.isBottom(v) =>
-            σₖ(aₖ).flatMap(frm => continue(frm, v, σ, σₖ))
-        case _ => // stop on bottom
+        case State(Ko(v), _, _, _) if lattice.isBottom(v) => // stop on bottom
             Set.empty 
+        case State(Ko(v), σ, σₖ, aₖ) => 
+            σₖ(aₖ).flatMap(frm => continue(frm, v, σ, σₖ))
+        case State(Ap(c, f, a, t), σ, σₖ, aₖ) =>
+            apply(c, f, a, t, σ, σₖ, aₖ)
 
     private def continue(f: Frame, v: Val, σ: Sto, σₖ: KSto): Set[State] = f match
         case IffK(c, a, ρ, t, aₖ) =>
@@ -123,7 +126,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
 
     private def evalArgs(app: App, f: Val, vs: List[Val], as: List[Exp], ρ: Env, t: Ctx, σ: Sto, σₖ: KSto, aₖ: KAdr) = as match
         case Nil =>
-            apply(app, f, vs.reverse, t, σ, σₖ, aₖ)
+            Set(State(Ap(app, f, vs.reverse, t), σ, σₖ, aₖ))
         case arg :: rst =>
             push(ArgK(app, f, vs, rst, ρ, t, aₖ), arg, ρ, t, σ, σₖ)
 
@@ -134,7 +137,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
         lattice.getPrimitives(f).flatMap { prm =>
             primitives(prm).call[AAM](app, vs)
                            .apply(t, σ)
-                           .map((v, σ2) => State(Ap(v), σ2, σₖ, aₖ))
+                           .map((v, σ2) => State(Ko(v), σ2, σₖ, aₖ))
         }
 
     private def copyAddr(adr: Adr, t: Ctx): Adr = adr match
@@ -244,7 +247,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
         Set(State(Ev(e, ρ, t), σ, σₖ.extend(ak2, Set(frm)), ak2))
 
     private def result(v: Val, σ: Sto, σₖ: KSto, aₖ: KAdr) =
-        Set(State(Ap(v), σ, σₖ, aₖ))
+        Set(State(Ko(v), σ, σₖ, aₖ))
 
     private def evalSequence(eps: Iterable[Exp], ρ: Env, t: Ctx, σ: Sto, σₖ: KSto, aₖ: KAdr) = eps match
         case Nil => 
@@ -297,6 +300,6 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     // for convenience
 
     def finalValues: Set[Val] = 
-        visited.collect { case State(Ap(v), _, _, HaltAddr) => v }
+        visited.collect { case State(Ko(v), _, _, HaltAddr) => v }
     def finalValue: Val = 
         lattice.join(finalValues)

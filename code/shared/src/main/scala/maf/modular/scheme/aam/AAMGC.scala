@@ -38,7 +38,8 @@ trait AAMGC extends AAMScheme:
     def refs(σₖ: KSto): Set[Adr] = σₖ.values.flatMap(refs)
     def refs(c: Control): Set[Adr] = c match
         case Ev(_, ρ, _) => refs(ρ)
-        case Ap(v) => refs(v)
+        case Ko(v) => refs(v)
+        case Ap(_, f, a, _) => refs(f) ++ a.flatMap(refs)
 
     // optimisation #1: restricting the environment to only free variables
     // this improves abstract GC, as there are less addresses in the root set (i.e., refs(ρ) is smaller)
@@ -46,6 +47,7 @@ trait AAMGC extends AAMScheme:
     def restrictEnv(ς: State): State = ς.copy(c = restrictEnv(ς.c))
     def restrictEnv(c: Control): Control = c match
         case Ev(e, ρ, t)    => Ev(e, ρ.restrictTo(e.fv), t)
+        case _: Ko          => c
         case _: Ap          => c
 
     // optimisation #2: GC'ing the store and continuation store
