@@ -59,6 +59,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * the implicit flows a* must also be attached to B. After all, if an implicit flow causes a call of A, then this implicit flow also causes the call to B.
      *
      * @return A map containing the set of transitive implicit flows for every component.
+     * @note These flows cannot be kept/computed right away by the intra-component analyses as this would created cycles again (on the level of these flows).
      */
     def computeTransitiveInterComponentFlows(): Map[Component, Set[Addr]] =
         // Compute the transitive inter-component flows. Propagate the cut implicit flows along calls. (The implicit flows to a component must also be added to all components called from it.)

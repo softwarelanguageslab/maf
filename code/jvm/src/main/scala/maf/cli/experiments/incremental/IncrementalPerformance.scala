@@ -281,6 +281,13 @@ object IncrementalSchemeModXPerformance:
                 val generatedType = modfTypeGen.execute(generatedSuite, args.stopOnError)
                 FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
             end if
+            if args.file.nonEmpty then
+                val modfType = new IncrementalSchemeModFTypePerformance()
+                modfType.maxWarmupRuns = args.warmUp
+                modfType.measuredRuns = args.repetitions
+                val result = modfType.execute(Set(args.file.get), args.stopOnError)
+                FileOps.copy(result, outDir + "type-file-performance.csv")
+            end if
         end if
 
         if args.cpLattice then
@@ -297,6 +304,13 @@ object IncrementalSchemeModXPerformance:
                 modfCPGen.measuredRuns = args.repetitions
                 val generatedCP = modfCPGen.execute(generatedSuite, args.stopOnError)
                 FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
+            end if
+            if args.file.nonEmpty then
+                val modfCP = new IncrementalSchemeModFCPPerformance()
+                modfCP.maxWarmupRuns = args.warmUp
+                modfCP.measuredRuns = args.repetitions
+                val generatedCP = modfCP.execute(Set(args.file.get), args.stopOnError)
+                FileOps.copy(generatedCP, outDir + "cp-file-performance.csv")
             end if
         end if
     end main

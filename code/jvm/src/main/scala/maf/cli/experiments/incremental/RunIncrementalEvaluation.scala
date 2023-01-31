@@ -12,7 +12,8 @@ case class IncArgs(
     warmUp: Int = 3,
     repetitions: Int = 15,
     count: Option[Int] = None,
-    stopOnError: Boolean = false)
+    stopOnError: Boolean = false,
+    file: Option[String] = None)
 
 object RunIncrementalEvaluation:
 
@@ -29,6 +30,7 @@ object RunIncrementalEvaluation:
             case "--repet" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(repetitions = n.toInt))
             case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
             case "--stop" :: tail                                       => processArgs(tail, options.copy(stopOnError = true))
+            case "--file" :: f :: tail                                  => processArgs(tail, options.copy(file = Some(f)))
             case Nil                                                    => options
             case o =>
                 System.err.nn.println(s"Unknown options: $o")
@@ -40,6 +42,7 @@ object RunIncrementalEvaluation:
             |   --precision    run the precision experiments
             |   --curated      run experiments that use the curated benchmarking suite
             |   --generated    run experiments that use the generated benchmarking suite
+            |   --file         run the experiments on a certain file
             |   --type         run experiments that use the type lattice
             |   --cp           run experiments that use the cp lattice
             |   --warmup n     use n warmup runs for the performance experiments

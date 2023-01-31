@@ -211,6 +211,12 @@ object IncrementalSchemeModXPrecision:
                   s"${outDir}type-generated-precision-vs-full.csv",
                   s"${outDir}type-generated-precision-vs-noopt.csv"
                 )
+            if args.file.nonEmpty then
+                splitOutput(
+                    (new IncrementalSchemeModFTypePrecision).execute(Set(args.file.get), args.stopOnError),
+                    s"${outDir}type-file-precision-vs-full.csv",
+                    s"${outDir}type-file-precision-vs-noopt.csv"
+                )
         end if
         if args.cpLattice then
             if args.curated then
@@ -222,6 +228,11 @@ object IncrementalSchemeModXPrecision:
                 splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError),
                             s"${outDir}cp-generated-precision-vs-full.csv",
                             s"${outDir}cp-generated-precision-vs-noopt.csv"
+                )
+            if args.file.nonEmpty then
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(Set(args.file.get), args.stopOnError),
+                    s"${outDir}cp-file-precision-vs-full.csv",
+                    s"${outDir}cp-file-precision-vs-noopt.csv"
                 )
         end if
     end main
