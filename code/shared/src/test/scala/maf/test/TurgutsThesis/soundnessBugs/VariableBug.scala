@@ -1,5 +1,6 @@
 package maf.test.TurgutsThesis.soundnessBugs
 
+import maf.core.*
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.{SchemeModFLocalSensitivity, SchemeSemantics}
 
@@ -12,8 +13,8 @@ trait VariableBug extends SchemeSemantics:
   implicit val analysisM: AnalysisM[A]
   import analysisM._
 
-  override protected def evalVariable(nam: String): A[Val] =
+  override protected def evalVariable(vrb: Identifier): A[Val] =
     for
-      adr <- lookupEnv(nam)
+      adr <- lookupEnv(vrb)
       vlu <- lookupSto(adr)
     yield lattice.join(lattice.number(3), lattice.bool(true))

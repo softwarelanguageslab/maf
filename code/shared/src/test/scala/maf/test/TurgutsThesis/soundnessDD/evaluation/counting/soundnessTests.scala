@@ -4,7 +4,7 @@ import maf.core.Position
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAdaptiveWideningPolicyB, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.{AllSequentialBenchmarks, CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.TurgutsThesis.soundnessBugs.*
@@ -26,7 +26,6 @@ class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyA(n)
       with BeginBug
 
 class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
@@ -39,7 +38,6 @@ class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with CallBug
 
 class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
@@ -52,7 +50,6 @@ class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with IfBug
 
 class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
@@ -66,7 +63,6 @@ class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with LetBug
 
 class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
@@ -79,7 +75,6 @@ class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with LetrecBug
 
 class SchemeModFLocalAdaptiveTests6 extends SchemeModFLocalSoundnessTests:
@@ -92,7 +87,6 @@ class SchemeModFLocalAdaptiveTests6 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with LetStarBug
 
 class SchemeModFLocalAdaptiveTests7 extends SchemeModFLocalSoundnessTests:
@@ -105,7 +99,6 @@ class SchemeModFLocalAdaptiveTests7 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with LiteralValueBug
 
 class SchemeModFLocalAdaptiveTests8 extends SchemeModFLocalSoundnessTests:
@@ -118,6 +111,5 @@ class SchemeModFLocalAdaptiveTests8 extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with VariableBug
 

@@ -26,7 +26,6 @@ class EvalProfilingTestSuiteA extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyA(n)
       with BeginBug
 
 class EvalProfilingTestSuiteB extends SchemeModFLocalSoundnessTests:
@@ -38,7 +37,6 @@ class EvalProfilingTestSuiteB extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyA(n)
       with CallBug
 
 class EvalProfilingTestSuiteC extends SchemeModFLocalSoundnessTests:
@@ -50,5 +48,4 @@ class EvalProfilingTestSuiteC extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyA(n)
       with LetBug

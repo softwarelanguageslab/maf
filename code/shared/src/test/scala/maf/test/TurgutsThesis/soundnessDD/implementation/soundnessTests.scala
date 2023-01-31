@@ -4,7 +4,7 @@ import maf.core.Position
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAdaptiveWideningPolicyB, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.scheme.modflocal.{SchemeModFLocal,  SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.TurgutsThesis.soundnessBugs.*
 
@@ -28,7 +28,6 @@ class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyA(n)
 
 class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
   def l = 10
@@ -39,5 +38,4 @@ class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with SchemeModFLocalAdaptiveWideningPolicyB(l)
       with CallBug
