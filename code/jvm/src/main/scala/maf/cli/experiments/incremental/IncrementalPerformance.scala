@@ -12,6 +12,7 @@ import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagati
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain.modularLattice
 import maf.modular.scheme.{PtrAddr, VarAddr}
 import maf.modular.scheme.modf.SchemeModFComponent
+import maf.util.ColouredFormatting.*
 import maf.util.{FileOps, Reader, Writer}
 import maf.util.benchmarks.*
 
@@ -98,7 +99,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
                     times = t :: times
                     timesIntra = (analysis.intraComponentAnalysisTimeAcc.toDouble / 1000000) :: timesIntra
                 case None =>
-                    println(" timed out.")
+                    println(markWarning(" timed out."))
                     return None
         println()
         Some((times, timesIntra))

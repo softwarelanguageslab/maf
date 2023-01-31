@@ -1,18 +1,19 @@
 package maf.cli.experiments.incremental
 
 import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
-import maf.core._
+import maf.core.*
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
-import maf.language.scheme._
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
-import maf.modular.scheme._
-import maf.util._
-import maf.util.benchmarks._
+import maf.language.change.CodeVersion.*
+import maf.language.scheme.*
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.scheme.*
+import maf.util.*
+import maf.util.ColouredFormatting.*
+import maf.util.benchmarks.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[E, String]:
 
@@ -90,7 +91,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
 
         // Run the initial analysis and full reanalysis. They both need to finish.
         if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut)) then
-            print("timed out.")
+            print(markWarning("timed out."))
             columns.foreach(c => results = results.add(file, c, infS))
             return ()
 
@@ -100,7 +101,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then results = compareAnalyses(file, copy, a2, results)
             else
                 propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
-                print(" timed out - ")
+                print(markWarning(" timed out - "))
         }
 
     def compareToNoOptimisations(file: String): Unit =

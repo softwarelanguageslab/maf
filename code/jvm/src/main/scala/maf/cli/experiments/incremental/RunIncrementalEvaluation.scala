@@ -1,6 +1,7 @@
 package maf.cli.experiments.incremental
 
 import maf.modular.incremental.IncrementalConfiguration
+import maf.util.ColouredFormatting.*
 
 import scala.annotation.tailrec
 
@@ -71,7 +72,7 @@ object RunIncrementalEvaluation:
     def main(args: Array[String]): Unit =
         val arguments = parseArgs(args)
         if arguments.precision then
-            println("Measuring precision.")
+            println(markHeader("Measuring precision."))
             try IncrementalSchemeModXPrecision.main(arguments)
             catch
                 case t: Throwable =>
@@ -84,7 +85,7 @@ object RunIncrementalEvaluation:
               System.err.nn.println(s"Obtaining properties failed: ${t.getMessage}.")
          */
         if arguments.performance then
-            println("Measuring performance.")
+            println(markHeader("Measuring performance."))
             try IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
             catch
                 case t: Throwable =>

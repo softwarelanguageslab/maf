@@ -3,6 +3,7 @@ package maf.cli.experiments.incremental
 import maf.core.Expression
 import maf.modular.incremental.IncrementalConfiguration
 import maf.util.benchmarks.Table
+import maf.util.ColouredFormatting.*
 
 trait TableOutput[E <: Expression, R]:
     this: IncrementalExperiment[E] =>

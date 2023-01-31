@@ -3,6 +3,7 @@ package maf.cli.experiments.incremental
 import maf.core.Expression
 import maf.modular.incremental.*
 import maf.modular.incremental.IncrementalConfiguration.allConfigurations
+import maf.util.ColouredFormatting.*
 import maf.util.Writer.*
 import maf.util.Writer
 import maf.util.benchmarks.Timeout
@@ -53,9 +54,11 @@ trait IncrementalExperiment[E <: Expression]:
                 case e: Exception if catchErrors =>
                     // writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
                     //e.getStackTrace.nn.take(5).foreach(ste => writeErrln(ste.toString))
+                    println(markError(s"Running $file resulted in an exception: ${e.getMessage}"))
                     reportError(file)
                 case e: VirtualMachineError if catchErrors =>
                     // writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
+                    println(markError(s"Running $file resulted in an exception: ${e.getMessage}"))
                     reportError(file)
                 case e => throw e
             println()
