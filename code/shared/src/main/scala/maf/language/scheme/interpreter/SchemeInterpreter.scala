@@ -1,16 +1,16 @@
 package maf.language.scheme.interpreter
 
-import maf.core._
-import maf.language.change.CodeVersion._
-import maf.language.scheme._
-import maf.util._
+import maf.core.*
+import maf.language.change.CodeVersion.*
+import maf.language.scheme.*
+import maf.util.*
 import maf.util.benchmarks.Timeout
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
-import scala.concurrent._
-import scala.util.control.TailCalls._
+import scala.concurrent.duration.{Duration, SECONDS}
+import scala.concurrent.*
+import scala.util.control.TailCalls.*
 
 case class ChildThreadDiedException(e: VirtualMachineError) extends Exception(s"A child thread has tragically died with ${e.getMessage}.")
 
@@ -208,12 +208,28 @@ class SchemeInterpreter(
             case v =>
                 signalException(ValueNotApplicable(v, idn))
 
+    private var evalSteps: Long = 0
+    def getEvalSteps(): Long = evalSteps
+    var maxEvalSteps: Long = Long.MaxValue //the maximum number of eval steps before a TimeoutException
+    var buffer: Int = 10000                //buffer has to be sufficiently large
+
+    def runWithMaxSteps(
+                         program: SchemeExp,
+                         maxSteps: Long,
+                         version: Version = New
+                       ): Value =
+        setStore(initialSto)
+        maxEvalSteps = maxSteps
+        eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result
+
     def eval(
         e: SchemeExp,
         env: Env,
         timeout: Timeout.T,
-        version: Version
+        version: Version,
       ): TailRec[Value] =
+        evalSteps += 1
+        if (evalSteps - buffer) > maxEvalSteps then throw new TimeoutException()
         if timeout.reached then throw new TimeoutException()
         e match
             case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))

@@ -92,6 +92,27 @@ object SchemeBenchmarkPrograms:
       "Streams.scm", // Uses define-macro.
       "callcc.scm" // call/cc not yet support in concrete interpreter
     )
+    lazy val certainVarious: Set[String] = fromFolder("test/R5RS/various")(
+      ".DS_Store",
+      "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
+      "quasiquoting.scm", // Uses unquote-splicing.
+      "Streams.scm", // Uses define-macro.
+      "callcc.scm", // call/cc not yet support in concrete interpreter
+      "blur.scm",
+      "count.scm",
+      "foo.scm",
+      "eta.scm",
+      "four-in-a-row.scm",
+      "infinite-1.scm",
+      "infinite-2.scm",
+      "kcfa2.scm",
+      "my-list.scm",
+      "rsa.scm",
+      "scm2java.scm",
+      "sym.scm",
+      "widen.scm",
+      "mj09.scm"
+    )
     lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
     lazy val sequentialBenchmarks: Set[String] =
         SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, various))
