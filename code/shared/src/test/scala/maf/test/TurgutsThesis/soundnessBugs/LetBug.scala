@@ -12,8 +12,7 @@ trait LetBug extends SchemeSemantics:
   import maf.core.Monad._
   import maf.core.MonadJoin._
 
-  implicit val analysisM: AnalysisM[A]
-  import analysisM._
+  import analysisM_._
 
   override protected def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
     val (vrs, rhs) = bds.unzip
