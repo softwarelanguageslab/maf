@@ -71,7 +71,7 @@ object WorkingDirectoryPhysicalLoader extends PhysicalLoader, RacketSuffixLoader
  * compiler.
  */
 trait RacketLoaderSemantics extends SchemeSemantics, SchemeDomain, SchemeModFLocalSensitivity:
-    import analysisM.*
+    import analysisM_.*
     override def eval(exp: SchemeExp): A[Val] = exp match
         case RacketModuleLoad(module, name, idn) =>
             for

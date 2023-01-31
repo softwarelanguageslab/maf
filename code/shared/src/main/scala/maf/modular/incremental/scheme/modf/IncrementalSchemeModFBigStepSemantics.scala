@@ -119,9 +119,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         /** Evaluation of a literal value that adds a "literal address" as source. */
         override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] =
             // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
+            // Make it part of an SCA using implicit flows! This fixes precision loss due to conditional reading of literals!
             if configuration.cyclicValueInvalidation then
                 val a = LitAddr(exp)
-                for value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking.
+                for
+                    iFlows <- getImplicitFlows
+                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddresses(_, iFlows + a)) // Attach the address to the value for flow tracking + implicit flows!.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield value
             else super.evalLiteralValue(literal, exp)
@@ -135,8 +138,9 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     case (SchemeLambda(_, prs, _, _, _), _) =>
                         if prs.length == arity then
                             val argVals = args.map(_._2)
+                            val argsVNoFlow = argVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
                             for
-                                context <- ctx.allocM(clo, argVals, cll, component)
+                                context <- ctx.allocM(clo, argsVNoFlow, cll, component)
                                 targetCall = Call(clo, context)
                                 targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, argVals)
@@ -153,9 +157,10 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                         if prs.length <= arity then
                             val (fixedArgs, varArgs) = args.splitAt(prs.length)
                             val fixedArgVals = fixedArgs.map(_._2)
+                            val fixedArgsVNoFlow = fixedArgVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
                             for
                                 varArgVal <- allocateList(varArgs)
-                                context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
+                                context <- ctx.allocM(clo, fixedArgsVNoFlow :+ varArgVal, cll, component)
                                 targetCall = Call(clo, context)
                                 targetCmp <- newComponentM(targetCall)
                                 _ = bindArgs(targetCmp, prs, fixedArgVals)

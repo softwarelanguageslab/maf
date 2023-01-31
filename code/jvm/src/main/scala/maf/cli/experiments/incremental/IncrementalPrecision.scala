@@ -1,20 +1,21 @@
 package maf.cli.experiments.incremental
 
 import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
-import maf.core._
+import maf.core.*
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
-import maf.language.scheme._
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
-import maf.modular.scheme._
-import maf.util._
-import maf.util.benchmarks._
+import maf.language.change.CodeVersion.*
+import maf.language.scheme.*
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.scheme.*
+import maf.util.*
+import maf.util.ColouredFormatting.*
+import maf.util.benchmarks.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
-trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String]:
+trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[E, String]:
 
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
@@ -90,7 +91,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
 
         // Run the initial analysis and full reanalysis. They both need to finish.
         if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut)) then
-            print("timed out.")
+            print(markWarning("timed out."))
             columns.foreach(c => results = results.add(file, c, infS))
             return ()
 
@@ -100,7 +101,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then results = compareAnalyses(file, copy, a2, results)
             else
                 propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
-                print(" timed out - ")
+                print(markWarning(" timed out - "))
         }
 
     def compareToNoOptimisations(file: String): Unit =
@@ -148,7 +149,6 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -201,27 +201,38 @@ object IncrementalSchemeModXPrecision:
 
         if args.typeLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite),
-                            s"${outDir}type-curated-precision.csv",
-                            s"${outDir}type-curated-precision-noopt.csv"
+                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args.stopOnError, args.config),
+                            s"${outDir}type-curated-precision-vs-full.csv",
+                            s"${outDir}type-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput(
-                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
-                  s"${outDir}type-generated-precision.csv",
-                  s"${outDir}type-generated-precision-noopt.csv"
+                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite, args.stopOnError, args.config),
+                  s"${outDir}type-generated-precision-vs-full.csv",
+                  s"${outDir}type-generated-precision-vs-noopt.csv"
+                )
+            if args.file.nonEmpty then
+                splitOutput(
+                    (new IncrementalSchemeModFTypePrecision).execute(Set(args.file.get), args.stopOnError, args.config),
+                    s"${outDir}type-file-precision-vs-full.csv",
+                    s"${outDir}type-file-precision-vs-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite),
-                            s"${outDir}cp-curated-precision.csv",
-                            s"${outDir}cp-curated-precision-noopt.csv"
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args.stopOnError, args.config),
+                            s"${outDir}cp-curated-precision-vs-full.csv",
+                            s"${outDir}cp-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite),
-                            s"${outDir}cp-generated-precision.csv",
-                            s"${outDir}cp-generated-precision-noopt.csv"
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError, args.config),
+                            s"${outDir}cp-generated-precision-vs-full.csv",
+                            s"${outDir}cp-generated-precision-vs-noopt.csv"
+                )
+            if args.file.nonEmpty then
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(Set(args.file.get), args.stopOnError, args.config),
+                    s"${outDir}cp-file-precision-vs-full.csv",
+                    s"${outDir}cp-file-precision-vs-noopt.csv"
                 )
         end if
     end main

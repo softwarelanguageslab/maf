@@ -81,7 +81,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def extendV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.extend(adr, vlu)
     def updateV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.update(adr, vlu)
 
-    def eqA(sto: Sto, anl: Anl): MaybeEq[Adr] = new MaybeEq[Adr]:
+    def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
             if a1 == a2 then
                 if sto.lookupCount(a1) == CountOne then BoolLattice[B].inject(true)
@@ -96,7 +96,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
                 (v, sto.replay(gcd, tai), u)
             }
 
-    import analysisM._
+    import analysisM_._
     override def eval(exp: Exp): A[Val] =
         withEnv(_.restrictTo(exp.fv)) {
             getEnv >>= { env =>
@@ -122,7 +122,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 
     type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx, tai: Boolean) => Set[(X, sto.Delta, Set[Adr])]
 
-    given analysisM: AnalysisM[A] with
+    protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
             (_, _, sto, _, _) => Set((x, sto.emptyDelta, Set.empty))
@@ -144,7 +144,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _, _) => Set((eqA(sto, anl), sto.emptyDelta, Set.empty))
+            (anl, _, sto, _, _) => Set((eqA(sto), sto.emptyDelta, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
             (anl, _, sto, _, _) => Set(((), extendV(sto, adr, vlu), Set.empty))
         def updateSto(adr: Adr, vlu: Val) =
@@ -221,3 +221,11 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)
+
+
+// a standard instance 
+
+class SchemeDSSAnalysis(prg: SchemeExp, k: Int) extends SchemeModFLocal(prg)
+                                                   with SchemeConstantPropagationDomain
+                                                   with SchemeModFLocalCallSiteSensitivity(k)
+                                                   with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp]

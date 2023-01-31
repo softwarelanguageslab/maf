@@ -2,6 +2,8 @@ package maf.cli.experiments.incremental
 
 import maf.core.Expression
 import maf.modular.incremental.*
+import maf.modular.incremental.IncrementalConfiguration.allConfigurations
+import maf.util.ColouredFormatting.*
 import maf.util.Writer.*
 import maf.util.Writer
 import maf.util.benchmarks.Timeout
@@ -15,7 +17,7 @@ trait IncrementalExperiment[E <: Expression]:
     def analysis(e: E, config: IncrementalConfiguration): Analysis
 
     // The analysis configurations to use.
-    val configurations: List[IncrementalConfiguration]
+    var configurations: List[IncrementalConfiguration] = List()
 
     // Parsing.
     def parse(string: String): E
@@ -37,7 +39,7 @@ trait IncrementalExperiment[E <: Expression]:
     def createOutput(): String
 
     // Can be used for debugging.
-    val catchErrors: Boolean = true
+    var catchErrors: Boolean = true
 
     // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
     def measure(bench: Set[String]): Unit =
@@ -52,9 +54,11 @@ trait IncrementalExperiment[E <: Expression]:
                 case e: Exception if catchErrors =>
                     // writeErrln(s"Running $file resulted in an exception: ${e.getMessage}")
                     //e.getStackTrace.nn.take(5).foreach(ste => writeErrln(ste.toString))
+                    println(markError(s"Running $file resulted in an exception: ${e.getMessage}"))
                     reportError(file)
                 case e: VirtualMachineError if catchErrors =>
                     // writeErrln(s"Running $file resulted in an error: ${e.getMessage}\n")
+                    println(markError(s"Running $file resulted in an exception: ${e.getMessage}"))
                     reportError(file)
                 case e => throw e
             println()
@@ -66,8 +70,10 @@ trait IncrementalExperiment[E <: Expression]:
     private var executed = false
 
     /** Runs the benchmarks. Returns the path to the output file. */
-    def execute(args: Set[String]): String =
+    def execute(args: Set[String], stopOnError: Boolean, config: Option[IncrementalConfiguration]): String =
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
+        if stopOnError then catchErrors = false
+        if config.nonEmpty then configurations = List(config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
         executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         output = writer

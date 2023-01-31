@@ -1,5 +1,8 @@
 package maf.cli.experiments.incremental
 
+import maf.modular.incremental.IncrementalConfiguration
+import maf.util.ColouredFormatting.*
+
 import scala.annotation.tailrec
 
 case class IncArgs(
@@ -11,7 +14,10 @@ case class IncArgs(
     cpLattice: Boolean = false,
     warmUp: Int = 3,
     repetitions: Int = 15,
-    count: Option[Int] = None)
+    count: Option[Int] = None,
+    stopOnError: Boolean = false,
+    file: Option[String] = None,
+    config: Option[IncrementalConfiguration] = None)
 
 object RunIncrementalEvaluation:
 
@@ -27,6 +33,16 @@ object RunIncrementalEvaluation:
             case "--warmup" :: n :: tail if n.forall(Character.isDigit) => processArgs(tail, options.copy(warmUp = n.toInt))
             case "--repet" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(repetitions = n.toInt))
             case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
+            case "--stop" :: tail                                       => processArgs(tail, options.copy(stopOnError = true))
+            case "--file" :: f :: tail                                  => processArgs(tail, options.copy(file = Some(f)))
+            case "--config" :: c :: tail                                =>
+                IncrementalConfiguration.fromString(c) match {
+                    case None =>
+                        System.err.nn.println(s"Unknown configuration: $c")
+                        sys.exit(2)
+                    case Some(c) =>
+                        processArgs(tail, options.copy(config = Some(c)))
+                }
             case Nil                                                    => options
             case o =>
                 System.err.nn.println(s"Unknown options: $o")
@@ -38,11 +54,13 @@ object RunIncrementalEvaluation:
             |   --precision    run the precision experiments
             |   --curated      run experiments that use the curated benchmarking suite
             |   --generated    run experiments that use the generated benchmarking suite
+            |   --file         run the experiments on a certain file
             |   --type         run experiments that use the type lattice
             |   --cp           run experiments that use the cp lattice
             |   --warmup n     use n warmup runs for the performance experiments
             |   --repet n      use n measured runs for each performance experiment
             |   --count n      use only n benchmarks from the benchmarking suite
+            |   --stop         use to stop on errors (errors will be thrown and not be caught)
             | Any combination of arguments can be used.
             | To run experiments, you will at least need to provide a type of experiment (performance/precision),
             | a benchmarking suite (curated/generated), a lattice (type/cp).
@@ -54,7 +72,7 @@ object RunIncrementalEvaluation:
     def main(args: Array[String]): Unit =
         val arguments = parseArgs(args)
         if arguments.precision then
-            println("Measuring precision.")
+            println(markHeader("Measuring precision."))
             try IncrementalSchemeModXPrecision.main(arguments)
             catch
                 case t: Throwable =>
@@ -67,7 +85,7 @@ object RunIncrementalEvaluation:
               System.err.nn.println(s"Obtaining properties failed: ${t.getMessage}.")
          */
         if arguments.performance then
-            println("Measuring performance.")
+            println(markHeader("Measuring performance."))
             try IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
             catch
                 case t: Throwable =>

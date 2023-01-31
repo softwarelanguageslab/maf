@@ -86,7 +86,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
     def project(v: Val): LatVal
 
     /** Instantiation of the `Storable` lattice. Only elements of the same type can be joined together, and there are no bottom or top elements */
-    given storableLattice: Lattice[Storable] with
+    given storableLattice: LatticeWithAddrs[Storable, Address] with
         import Storable.*
         def bottom: Storable =
             Storable.V(lattice.bottom)
@@ -105,6 +105,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
         def show(v: Storable): String = v match
             case V(v1) => s"V($v1)"
             case K(k1) => s"K($k1)"
+        def refs(x: Storable): Set[Address] = throw new Exception("NYI -- storableLattice.refs(x)")
 
     /**
      * An address under which a continuation is stored. To preserve call-return semantics, this address should be (e, p) where e is the call targets

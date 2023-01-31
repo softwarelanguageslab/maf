@@ -17,6 +17,7 @@ trait SchemeSemantics:
     type Val = Value
     type Adr = Address
     type Exp = SchemeExp
+    type Var = Identifier
     type Lam = SchemeLambdaExp
     type App = SchemeFuncall
     type Env = Environment[Adr]
@@ -54,8 +55,9 @@ trait SchemeSemantics:
         def apply[M[_]: AnalysisM]: AnalysisM[M] = implicitly
 
     type A[_]
-    implicit val analysisM: AnalysisM[A]
-    import analysisM._
+    protected def analysisM: AnalysisM[A]
+    protected final implicit lazy val analysisM_ :  AnalysisM[A] = analysisM
+    import analysisM_._
 
     def eval(exp: SchemeExp): A[Val] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)
@@ -114,10 +116,7 @@ trait SchemeSemantics:
             vls <- nontail { evalAll(rhs) }
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-                for
-                    _ <- extendSto(ads.zip(vls))
-                    vlu <- evalSequence(bdy)
-                yield vlu
+                extendSto(ads.zip(vls)) >>> evalSequence(bdy) 
             }
         yield res
 
@@ -128,9 +127,7 @@ trait SchemeSemantics:
                 vlu <- nontail { eval(rhs) }
                 adr <- allocVar(vrb)
                 res <- withExtendedEnv(vrb.name, adr) {
-                    extendSto(adr, vlu).flatMap { _ =>
-                        evalLetStar(rst, bdy)
-                    }
+                    extendSto(adr, vlu) >>> evalLetStar(rst, bdy)
                 }
             yield res
 
@@ -178,7 +175,7 @@ trait SchemeSemantics:
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
             for
-                _ <- guard(lam.check(agc))
+                _   <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
                 res <- applyClosure(app, lam, ags, fvs)
             yield res
@@ -211,12 +208,11 @@ trait SchemeSemantics:
                         adr <- allocVar(varArg)
                     yield List((varArg.name, adr, lst))
             // free variables
-            frv <- fvs.mapM((adr, vlu) =>
-                adr match {
+            frv <- fvs.mapM { (adr, vlu) =>
+                adr match
                     case VarAddr(idf, _) => allocVar(idf).map((idf.name, _, vlu))
                     case PrmAddr(nam)    => unit((nam, adr, vlu))
-                }
-            )
+            }
         yield fxa ++ vra ++ frv
 
     private def storeVal(exp: Exp, vlu: Val): A[Val] =

@@ -51,6 +51,11 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
         reAnalysisMap = Map()
         while !finished && !timeout.reached do step(timeout)
 
+    // add the initial component during initialisation
+    override def init() = 
+        super.init()
+        addToWorkList(initialComponent)
+
 /** Provides a work list with a depth-first exploration order to a modular analysis. */
 trait LIFOWorklistAlgorithm[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr]:
     def emptyWorkList = LIFOWorkList()
