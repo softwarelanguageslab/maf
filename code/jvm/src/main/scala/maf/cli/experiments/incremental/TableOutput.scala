@@ -1,14 +1,14 @@
 package maf.cli.experiments.incremental
 
+import maf.core.Expression
 import maf.modular.incremental.IncrementalConfiguration
 import maf.util.benchmarks.Table
 
-trait TableOutput[R]:
+trait TableOutput[E <: Expression, R]:
+    this: IncrementalExperiment[E] =>
 
     var results: Table[R]
     val error: R
-
-    val configurations: List[IncrementalConfiguration]
 
     final val initS: String = "init" // Initial run.
     final val reanS: String = "rean" // Full reanalysis.

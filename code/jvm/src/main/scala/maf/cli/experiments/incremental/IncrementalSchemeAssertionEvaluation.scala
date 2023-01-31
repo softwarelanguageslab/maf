@@ -14,7 +14,7 @@ import maf.util.benchmarks.*
 
 import scala.concurrent.duration.*
 
-trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[String]:
+trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeExp] with TableOutput[SchemeExp, String]:
 
     final val veriS: String = "veri" // Verified assertions.
     final val failS: String = "fail" // Failed assertions.
@@ -111,7 +111,6 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 trait IncrementalSchemeModFAssertionEvaluation extends IncrementalSchemeAssertionEvaluation:
     def benchmarks(): Set[String] = IncrementalSchemeBenchmarkPrograms.assertions ++ IncrementalSchemeBenchmarkPrograms.sequentialCurated
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 //object IncrementalSchemeBigStepCPAssertionEvaluation extends IncrementalSchemeModFAssertionEvaluation:
 //    override def analysis(e: SchemeExp, config: IncrementalConfiguration) = new IncrementalSchemeModFAssertionAnalysisCPLattice(e, config)

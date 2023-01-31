@@ -112,4 +112,6 @@ object IncrementalConfiguration:
           // allOptimisations,
         )
 
+    def fromString(string: String): Option[IncrementalConfiguration] = List(noOptimisations, ci, di, wi, ci_di, ci_wi, di_wi, ci_di_wi, allOptimisations).find(_.toString == string)
+
     case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception(message)

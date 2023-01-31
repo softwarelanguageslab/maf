@@ -1,5 +1,7 @@
 package maf.cli.experiments.incremental
 
+import maf.modular.incremental.IncrementalConfiguration
+
 import scala.annotation.tailrec
 
 case class IncArgs(
@@ -13,7 +15,8 @@ case class IncArgs(
     repetitions: Int = 15,
     count: Option[Int] = None,
     stopOnError: Boolean = false,
-    file: Option[String] = None)
+    file: Option[String] = None,
+    config: Option[IncrementalConfiguration] = None)
 
 object RunIncrementalEvaluation:
 
@@ -31,6 +34,14 @@ object RunIncrementalEvaluation:
             case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
             case "--stop" :: tail                                       => processArgs(tail, options.copy(stopOnError = true))
             case "--file" :: f :: tail                                  => processArgs(tail, options.copy(file = Some(f)))
+            case "--config" :: c :: tail                                =>
+                IncrementalConfiguration.fromString(c) match {
+                    case None =>
+                        System.err.nn.println(s"Unknown configuration: $c")
+                        sys.exit(2)
+                    case Some(c) =>
+                        processArgs(tail, options.copy(config = Some(c)))
+                }
             case Nil                                                    => options
             case o =>
                 System.err.nn.println(s"Unknown options: $o")

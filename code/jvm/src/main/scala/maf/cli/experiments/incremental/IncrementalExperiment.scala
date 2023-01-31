@@ -2,6 +2,7 @@ package maf.cli.experiments.incremental
 
 import maf.core.Expression
 import maf.modular.incremental.*
+import maf.modular.incremental.IncrementalConfiguration.allConfigurations
 import maf.util.Writer.*
 import maf.util.Writer
 import maf.util.benchmarks.Timeout
@@ -15,7 +16,7 @@ trait IncrementalExperiment[E <: Expression]:
     def analysis(e: E, config: IncrementalConfiguration): Analysis
 
     // The analysis configurations to use.
-    val configurations: List[IncrementalConfiguration]
+    var configurations: List[IncrementalConfiguration] = List()
 
     // Parsing.
     def parse(string: String): E
@@ -66,9 +67,10 @@ trait IncrementalExperiment[E <: Expression]:
     private var executed = false
 
     /** Runs the benchmarks. Returns the path to the output file. */
-    def execute(args: Set[String], stopOnError: Boolean): String =
+    def execute(args: Set[String], stopOnError: Boolean, config: Option[IncrementalConfiguration]): String =
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
         if stopOnError then catchErrors = false
+        if config.nonEmpty then configurations = List(config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
         executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         output = writer

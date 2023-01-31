@@ -14,7 +14,7 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String]:
+trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[E, String]:
 
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
@@ -148,7 +148,6 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
     override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -201,36 +200,36 @@ object IncrementalSchemeModXPrecision:
 
         if args.typeLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args.stopOnError),
+                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args.stopOnError, args.config),
                             s"${outDir}type-curated-precision-vs-full.csv",
                             s"${outDir}type-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput(
-                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite, args.stopOnError),
+                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite, args.stopOnError, args.config),
                   s"${outDir}type-generated-precision-vs-full.csv",
                   s"${outDir}type-generated-precision-vs-noopt.csv"
                 )
             if args.file.nonEmpty then
                 splitOutput(
-                    (new IncrementalSchemeModFTypePrecision).execute(Set(args.file.get), args.stopOnError),
+                    (new IncrementalSchemeModFTypePrecision).execute(Set(args.file.get), args.stopOnError, args.config),
                     s"${outDir}type-file-precision-vs-full.csv",
                     s"${outDir}type-file-precision-vs-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args.stopOnError),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args.stopOnError, args.config),
                             s"${outDir}cp-curated-precision-vs-full.csv",
                             s"${outDir}cp-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError, args.config),
                             s"${outDir}cp-generated-precision-vs-full.csv",
                             s"${outDir}cp-generated-precision-vs-noopt.csv"
                 )
             if args.file.nonEmpty then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(Set(args.file.get), args.stopOnError),
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(Set(args.file.get), args.stopOnError, args.config),
                     s"${outDir}cp-file-precision-vs-full.csv",
                     s"${outDir}cp-file-precision-vs-noopt.csv"
                 )
