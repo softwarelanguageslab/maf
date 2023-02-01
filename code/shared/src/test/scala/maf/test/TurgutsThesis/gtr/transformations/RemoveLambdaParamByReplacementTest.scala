@@ -15,7 +15,7 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
-    suggestedTrees = RemoveLambdaParamByReplacement.transform(t, defineExp)
+    suggestedTrees = RemoveLambdaParamByReplacement.transform(t, defineExp).toList
     assert(suggestedTrees.length > 10)
 
     suggestedTrees.foreach(t => println(t.prettyString()))
@@ -54,7 +54,7 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val fApplication = t.exps.last
 
-    suggestedTrees = RemoveLambdaParamByReplacement.transform(t, fApplication)
+    suggestedTrees = RemoveLambdaParamByReplacement.transform(t, fApplication).toList
     assert(suggestedTrees equals List())
   }
 }

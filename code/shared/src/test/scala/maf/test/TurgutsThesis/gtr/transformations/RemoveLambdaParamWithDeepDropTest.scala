@@ -16,7 +16,7 @@ class RemoveLambdaParamWithDeepDropTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    suggestedTrees = RemoveLambdaParamWithDeepDrop.transform(t, defineExp)
+    suggestedTrees = RemoveLambdaParamWithDeepDrop.transform(t, defineExp).toList
     assert(suggestedTrees.length == 2)
     assertTreeString("(begin (define f (lambda (x) (* x x) (*))) (f 1) (f 111))")
 
@@ -34,7 +34,7 @@ class RemoveLambdaParamWithDeepDropTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val fAppl = t.exps.last
 
-    suggestedTrees = RemoveLambdaParamWithDeepDrop.transform(t, fAppl)
+    suggestedTrees = RemoveLambdaParamWithDeepDrop.transform(t, fAppl).toList
     assert(suggestedTrees equals List())
   }
 }
