@@ -18,7 +18,7 @@ class RemoveLambdaParamByReplacementTest extends AnyFlatSpecTransformations {
     suggestedTrees = RemoveLambdaParamByReplacement.transform(t, defineExp).toList
     assert(suggestedTrees.length > 10)
 
-    suggestedTrees.foreach(t => println(t.prettyString()))
+    //suggestedTrees.foreach(t => println(t.prettyString()))
 
     //remove param y
     assertTreeString("(begin (define f (lambda (x) (* x x) (* 'S 'S))) (f 1) (f 111))")

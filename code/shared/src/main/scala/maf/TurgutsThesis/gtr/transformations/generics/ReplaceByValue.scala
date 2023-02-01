@@ -9,6 +9,9 @@ import maf.language.sexp.Value
 object ReplaceByValue extends Transformation with Replacing:
   override val name: String = "ReplaceIdentifier"
 
+  //replace by value under certain circumstances, avoiding time/space overheads
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
-    if node.size > 15 then //only apply this to large nodes, otherwise its too expensive
+    if tree.size < 125 && node.size > 50 then //small program?
+      addReplacements(allValues())
+    else if node.size > 125 then //big node?
       addReplacements(allValues())
