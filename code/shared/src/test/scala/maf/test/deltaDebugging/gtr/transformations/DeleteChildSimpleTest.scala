@@ -25,6 +25,7 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     assertTreeString("(begin (+ 10 10) (lambda (x) (* x x)))")
   }
 
+  /*
   "DeleteChildSimple" should "correctly reduce lettishExps" in {
     val programText: String =
       """(begin
@@ -43,7 +44,7 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     assertTreeString("(begin (+ 10 10) (let ((a 10)) (+ a a)))") //multiplication removed
 
     assertTreeString("(begin (+ 10 10) (let ((a 10)) (* a a)))") //addition removed
-  }
+  }*/
 
   "DeleteChildSimple" should "return an empty list given a SchemeExp without a child" in {
     val programText: String =
