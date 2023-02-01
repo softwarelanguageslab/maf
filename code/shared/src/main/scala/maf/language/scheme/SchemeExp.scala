@@ -6,7 +6,7 @@ import maf.language.sexp.*
 import maf.language.scheme.ContractSchemeExp
 import maf.language.ContractScheme.MatchPat
 import Label.*
-import maf.TurgutsThesis.primitiveOpNames.PrimitiveOpNames
+import maf.deltaDebugging.primitiveOpNames.PrimitiveOpNames
 import maf.language.scheme
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show

@@ -1,0 +1,12 @@
+package maf.test.deltaDebugging.gtr.transformations
+import maf.language.scheme.SchemeExp
+import org.scalatest.flatspec.AnyFlatSpec
+
+class AnyFlatSpecTransformations extends AnyFlatSpec {
+  var suggestedTrees: List[SchemeExp] = List()
+
+  def assertTreeString(treeString: String): Unit =
+    assert(suggestedTrees.exists(tree => {
+      tree.toString equals treeString
+    }))
+}
