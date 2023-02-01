@@ -8,7 +8,7 @@ import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.{AllBenchmarks, AllSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.soundnessBugs.*
-import maf.test.deltaDebugging.soundnessDD.implementation.SoundnessDDTester
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 
 trait SchemeModFLocalSoundnessTests extends ProfilingTester with VariousSequentialBenchmarks:
   override def parseProgram(txt: String, benchmark: String): SchemeExp =

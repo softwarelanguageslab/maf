@@ -3,9 +3,9 @@ package maf.test.deltaDebugging.soundnessDD.evaluation.profiling
 import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeExp, SchemeParser}
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.evaluation.profiling.*
 import maf.test.deltaDebugging.soundnessDD.evaluation.CountLambdaBindings
-import maf.test.deltaDebugging.soundnessDD.implementation.SoundnessDDTester
 import org.scalatest.Assertions.fail
 
 import java.io.{BufferedWriter, File, FileWriter}

@@ -8,8 +8,9 @@ import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWid
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.soundnessBugs.*
 import maf.test.VariousSequentialBenchmarks
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 
-trait SchemeModFLocalSoundnessTests extends SoundnessDDTester with VariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends DDTester with VariousSequentialBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/work.scm")
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
@@ -28,6 +29,7 @@ class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
       with SchemeModFLocalAdaptiveWideningPolicyA(n)
+      with IfBug
 
 class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
   def l = 10

@@ -1,17 +1,18 @@
-package maf.test.deltaDebugging.soundnessDD.implementation
+package maf.test.deltaDebugging.soundnessDD
 
 import maf.core.Identity
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO}
 import maf.test.SlowTest
+import maf.test.deltaDebugging.soundnessDD.implementation.DD
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
 import scala.concurrent.duration.{Duration, SECONDS}
 
-trait SoundnessDDTester extends SchemeSoundnessTests :
+trait SoundnessDDTester extends SchemeSoundnessTests:
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, SECONDS))
   override def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(5, SECONDS)) //remember: concrete run may not halt
 
@@ -66,15 +67,7 @@ trait SoundnessDDTester extends SchemeSoundnessTests :
       None
   }
 
+  /* Subclass responsibility
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound.", SlowTest) {
-      // load the benchmark program
-      val content = Reader.loadFile(benchmark)
-      val program = parseProgram(content, benchmark)
-
-      runAndCompare(program, benchmark) match
-        case Some(failureMsg) =>
-          if failureMsg.nonEmpty then
-            DDWithAllTransformations.reduce(program, this, benchmark)
-        case _ =>
-    }
+    ...
+  */

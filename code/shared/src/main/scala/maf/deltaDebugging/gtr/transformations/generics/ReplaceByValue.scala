@@ -7,7 +7,7 @@ import maf.language.scheme.*
 import maf.language.sexp.Value
 
 object ReplaceByValue extends Transformation with Replacing:
-  override val name: String = "ReplaceIdentifier"
+  override val name: String = "ReplaceByValue"
 
   //replace by value under certain circumstances, avoiding time/space overheads
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =

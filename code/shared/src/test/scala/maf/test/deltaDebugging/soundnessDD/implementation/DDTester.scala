@@ -1,4 +1,4 @@
-package maf.test.deltaDebugging.soundnessDD.evaluation.counting
+package maf.test.deltaDebugging.soundnessDD.implementation
 
 import maf.core.Identity
 import maf.language.scheme.SchemeExp
@@ -6,20 +6,18 @@ import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
 import maf.test.SlowTest
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
-import maf.test.deltaDebugging.soundnessDD.evaluation.baseline.BaselineDD
+import maf.test.deltaDebugging.soundnessDD.evaluation.counting.CountingDD
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timer
 
-trait CountingTester extends SoundnessDDTester {
-  val bugName: String
-
+trait DDTester extends SoundnessDDTester {
   protected def runInterpreterWithMaxSteps(
-                                i: SchemeInterpreter,
-                                p: SchemeExp,
-                                maxSteps: Long,
-                              ): Value =
-    i.runWithMaxSteps(p, maxSteps) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
+                                            i: SchemeInterpreter,
+                                            p: SchemeExp,
+                                            maxSteps: Long,
+                                          ): Value =
+    i.runWithMaxSteps(p, maxSteps)
 
   def evalProgramWithMaxSteps(program: SchemeExp, benchmark: Benchmark, maxSteps: Long): (Map[Identity, Set[Value]], Long) =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
@@ -82,9 +80,8 @@ trait CountingTester extends SoundnessDDTester {
       runCompareAndtimeWithMaxSteps(program, benchmark, Long.MaxValue) match
         case (Some((failureMsg, evalSteps)), _) =>
           if failureMsg.nonEmpty then
-            CountingDD.maxSteps = evalSteps
-            CountingDD.bugName = bugName
-            CountingDD.reduce(program, this, benchmark)
+            DD.maxSteps = evalSteps
+            DD.reduce(program, this, benchmark)
         case _ =>
     }
 }

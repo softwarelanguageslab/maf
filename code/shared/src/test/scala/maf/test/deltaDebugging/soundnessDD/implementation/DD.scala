@@ -3,22 +3,25 @@ package maf.test.deltaDebugging.soundnessDD.implementation
 import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.transformations.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
-import maf.test.deltaDebugging.soundnessDD.implementation.SoundnessDDTester
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import org.scalatest.Assertions.fail
 
-object DDWithAllTransformations:
+object DD:
+  var maxSteps: Long = Long.MaxValue
   def reduce(program: SchemeExp,
-             soundnessTester: SoundnessDDTester,
+             soundnessTester: DDTester,
              benchmark: String): Unit =
-      var count = 0
-      val reduced = GTR.reduce(
+
+      val reduced: SchemeExp = GTR.reduce(
         program,
         p => {
-          count += 1
-          soundnessTester.runAndCompare(p, benchmark) match
-            case Some(failureMsg) =>
+          soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
+            case (Some((failureMsg, evalSteps)), (runTime, analysisTime)) =>
+              maxSteps = evalSteps
               p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
-            case None => false
+
+            case (None, (runTime, analysisTime)) =>
+              false
         },
         identity,
         TransformationManager.allTransformations

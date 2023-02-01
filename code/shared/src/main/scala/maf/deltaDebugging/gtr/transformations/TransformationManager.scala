@@ -29,4 +29,5 @@ object TransformationManager:
       ReplaceCalls,
       ReplaceIdentifier,
       ReplaceByValue,
+      ReplaceBySimpleValue
     )

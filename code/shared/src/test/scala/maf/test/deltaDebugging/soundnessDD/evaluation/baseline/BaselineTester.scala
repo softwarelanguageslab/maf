@@ -4,7 +4,7 @@ import maf.core.Identity
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.test.SlowTest
-import maf.test.deltaDebugging.soundnessDD.implementation.SoundnessDDTester
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.util.Reader
 
 trait BaselineTester extends SoundnessDDTester {

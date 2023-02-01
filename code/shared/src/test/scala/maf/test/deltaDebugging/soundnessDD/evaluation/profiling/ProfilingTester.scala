@@ -3,7 +3,7 @@ package maf.test.deltaDebugging.soundnessDD.evaluation.profiling
 import maf.language.scheme.SchemeExp
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.test.SlowTest
-import maf.test.deltaDebugging.soundnessDD.implementation.SoundnessDDTester
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
