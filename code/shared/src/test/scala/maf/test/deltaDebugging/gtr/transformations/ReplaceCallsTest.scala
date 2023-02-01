@@ -16,12 +16,12 @@ class ReplaceCallsTest extends AnyFlatSpecTransformations:
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    suggestedTrees = ReplaceCalls.transform(t, defineExp).toList //should remove calls to f
+    val suggestedTrees = ReplaceCalls.transform(t, defineExp).toList //should remove calls to f
 
     assert(suggestedTrees.length > 1)
-    assertTreeString("(begin #f (+ 2 2) #f)")
-    assertTreeString("(begin 1 (+ 2 2) 1)")
-    assertTreeString("(begin 'S (+ 2 2) 'S)")
+    assertTreeString("(begin #f (+ 2 2) #f)", suggestedTrees)
+    assertTreeString("(begin 1 (+ 2 2) 1)", suggestedTrees)
+    assertTreeString("(begin 'S (+ 2 2) 'S)", suggestedTrees)
   }
 
   "ReplaceCalls" should "remove the calls to let-bound lambda" in {
@@ -37,11 +37,11 @@ class ReplaceCallsTest extends AnyFlatSpecTransformations:
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    suggestedTrees = ReplaceCalls.transform(t, letExp).toList //should remove calls to f
+    val suggestedTrees = ReplaceCalls.transform(t, letExp).toList //should remove calls to f
     assert(suggestedTrees.length > 1)
-    assertTreeString("(begin (let () #t #t 1000) (+ 2 2))")
-    assertTreeString("(begin (let () 1 1 1000) (+ 2 2))")
-    assertTreeString("(begin (let () 'S 'S 1000) (+ 2 2))")
+    assertTreeString("(begin (let () #t #t 1000) (+ 2 2))", suggestedTrees)
+    assertTreeString("(begin (let () 1 1 1000) (+ 2 2))", suggestedTrees)
+    assertTreeString("(begin (let () 'S 'S 1000) (+ 2 2))", suggestedTrees)
   }
 
   "ReplaceCalls" should "return an empty list given a non-lambda-binding exp" in {
@@ -56,6 +56,6 @@ class ReplaceCallsTest extends AnyFlatSpecTransformations:
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    suggestedTrees = ReplaceCalls.transform(t, letExp).toList
+    val suggestedTrees = ReplaceCalls.transform(t, letExp).toList
     assert(suggestedTrees equals List())
   }

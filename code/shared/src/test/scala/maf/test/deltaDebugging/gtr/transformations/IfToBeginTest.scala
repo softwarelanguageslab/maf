@@ -14,11 +14,11 @@ class IfToBeginTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val ifExp = t.exps.head
 
-    suggestedTrees = IfToBegin.transform(t, ifExp).toList
+    val suggestedTrees = IfToBegin.transform(t, ifExp).toList
 
-    assertTreeString("(begin (begin (> 1 2) 'then-case) 10)")
+    assertTreeString("(begin (begin (> 1 2) 'then-case) 10)", suggestedTrees)
 
-    assertTreeString("(begin (begin (> 1 2) 'else-case) 10)")
+    assertTreeString("(begin (begin (> 1 2) 'else-case) 10)", suggestedTrees)
   }
 
   "IfToBegin" should "return empty list for a non-if expression" in {
@@ -30,7 +30,7 @@ class IfToBeginTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val numberExp = t.exps(1) //corresponds to 10
 
-    suggestedTrees = IfToBegin.transform(t, numberExp).toList
+    val suggestedTrees = IfToBegin.transform(t, numberExp).toList
 
     assert(suggestedTrees equals List())
   }

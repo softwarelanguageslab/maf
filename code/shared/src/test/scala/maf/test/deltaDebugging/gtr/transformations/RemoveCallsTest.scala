@@ -17,9 +17,9 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    suggestedTrees = RemoveCalls.transform(t, defineExp).toList //should remove calls to f
+    val suggestedTrees = RemoveCalls.transform(t, defineExp).toList //should remove calls to f
 
-    assertTreeString("(begin (+ 2 2))")
+    assertTreeString("(begin (+ 2 2))", suggestedTrees)
   }
 
   "RemoveCalls" should "remove the calls to let-bound lambda" in {
@@ -35,8 +35,8 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    suggestedTrees = RemoveCalls.transform(t, letExp).toList //should remove calls to f
-    assertTreeString("(begin (let () 1000) (+ 2 2))")
+    val suggestedTrees = RemoveCalls.transform(t, letExp).toList //should remove calls to f
+    assertTreeString("(begin (let () 1000) (+ 2 2))", suggestedTrees)
   }
 
   "RemoveCalls" should "return an empty list given a non-lambda-binding exp" in {
@@ -51,7 +51,7 @@ class RemoveCallsTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    suggestedTrees = RemoveCalls.transform(t, letExp).toList
+    val suggestedTrees = RemoveCalls.transform(t, letExp).toList
     assert(suggestedTrees equals List())
   }
 }

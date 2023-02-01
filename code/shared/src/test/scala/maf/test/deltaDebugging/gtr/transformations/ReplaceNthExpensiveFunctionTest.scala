@@ -19,9 +19,9 @@ class ReplaceNthExpensiveFunctionTest extends AnyFlatSpecTransformations:
 
     val transformation = new ReplaceNthExpensiveFunction(Array(("f", 100)), 0)
 
-    suggestedTrees = transformation.transform(tree, let).toList
+    val suggestedTrees = transformation.transform(tree, let).toList
 
-    assertTreeString("(begin (let ((a 1)) (+ a 1) 1 a) 10)")
+    assertTreeString("(begin (let ((a 1)) (+ a 1) 1 a) 10)", suggestedTrees)
   }
 
   "ReplaceNthExpensiveFunction" should "replace calls to the correct function and remove it, def-exp" in {
@@ -37,9 +37,8 @@ class ReplaceNthExpensiveFunctionTest extends AnyFlatSpecTransformations:
 
     val transformation = new ReplaceNthExpensiveFunction(Array(("square", 100)), 0)
 
-    suggestedTrees = transformation.transform(t, defineExp).toList //should remove calls to f
-    //suggestedTrees.foreach(t => println(t.prettyString()))
+    val suggestedTrees = transformation.transform(t, defineExp).toList //should remove calls to f
 
-    assertTreeString("(begin #t (map #t (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 ())))))")
+    assertTreeString("(begin #t (map #t (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 ())))))", suggestedTrees)
   }
 
