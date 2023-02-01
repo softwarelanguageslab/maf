@@ -17,7 +17,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp) //should remove calls to f
+    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp).toList //should remove calls to f
 
     assert(suggestedTrees.length == 1)
     assertTreeString("(begin (define f (begin (* x x))) (+ 2 2))")
@@ -36,7 +36,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp) //should remove calls to f
+    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp).toList //should remove calls to f
     assert(suggestedTrees.length == 1)
     assertTreeString("(begin (let ((f (begin (* x x)))) 1000) (+ 2 2))")
   }
@@ -53,7 +53,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp)
+    suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp).toList
     assert(suggestedTrees equals List())
   }
 }

@@ -14,7 +14,7 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val lambdaExp = t.exps(1)
 
-    suggestedTrees = DeleteChildSimple.transform(t, lambdaExp)
+    suggestedTrees = DeleteChildSimple.transform(t, lambdaExp).toList
 
     assert(suggestedTrees.length == 2)
     assert(!(suggestedTrees.head eq t)) //should return a new tree
@@ -36,7 +36,7 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps(1)
 
-    suggestedTrees = DeleteChildSimple.transform(t, letExp)
+    suggestedTrees = DeleteChildSimple.transform(t, letExp).toList
     
     assertTreeString("(begin (+ 10 10) (let () (+ a a) (* a a)))") //binding reduced
 
@@ -52,7 +52,7 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     val t: SchemeFuncall = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeFuncall]
     val numberExp = t.args.head
 
-    suggestedTrees = DeleteChildSimple.transform(t, numberExp)
+    suggestedTrees = DeleteChildSimple.transform(t, numberExp).toList
 
     assert(suggestedTrees equals List())
   }
@@ -64,7 +64,7 @@ class DeleteChildSimpleTest extends AnyFlatSpecTransformations {
     val t: SchemeFuncall = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeFuncall]
     val begin = t.args.head
 
-    suggestedTrees = DeleteChildSimple.transform(t, begin)
+    suggestedTrees = DeleteChildSimple.transform(t, begin).toList
 
     assert(suggestedTrees equals List())
   }

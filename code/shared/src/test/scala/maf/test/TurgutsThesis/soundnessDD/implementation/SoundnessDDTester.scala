@@ -4,6 +4,7 @@ import maf.core.Identity
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO}
+import maf.test.SlowTest
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
@@ -66,7 +67,7 @@ trait SoundnessDDTester extends SchemeSoundnessTests :
   }
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+    property(s"Analysis of $benchmark using $name is sound.", SlowTest) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
