@@ -2,6 +2,7 @@ package maf.test.TurgutsThesis.soundnessDD.evaluation.profiling
 
 import maf.language.scheme.SchemeExp
 import maf.modular.worklist.SequentialWorklistAlgorithm
+import maf.test.SlowTest
 import maf.test.TurgutsThesis.soundnessDD.implementation.SoundnessDDTester
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
@@ -22,7 +23,7 @@ trait ProfilingTester extends SoundnessDDTester:
   }
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name has ran.", testTags(benchmark): _*) {
+    property(s"Analysis of $benchmark using $name has ran.", SlowTest) {
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
