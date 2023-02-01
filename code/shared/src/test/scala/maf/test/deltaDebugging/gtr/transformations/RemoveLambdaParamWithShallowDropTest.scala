@@ -16,12 +16,12 @@ class RemoveLambdaParamWithShallowDropTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    suggestedTrees = RemoveLambdaParamWithShallowDrop.transform(t, defineExp).toList
+    val suggestedTrees = RemoveLambdaParamWithShallowDrop.transform(t, defineExp).toList
     
     assert(suggestedTrees.length == 2)
-    assertTreeString("(begin (define f (lambda (x) (* x x))) (f 1) (f 111))")
+    assertTreeString("(begin (define f (lambda (x) (* x x))) (f 1) (f 111))", suggestedTrees)
 
-    assertTreeString("(begin (define f (lambda (y) (* y y))) (f 2) (f 222))")
+    assertTreeString("(begin (define f (lambda (y) (* y y))) (f 2) (f 222))", suggestedTrees)
   }
 
   "RemoveLambdaParamWithShallowDrop" should "return empty list given a non-lambda-binding exp" in {
@@ -35,7 +35,7 @@ class RemoveLambdaParamWithShallowDropTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val fAppl = t.exps.last
 
-    suggestedTrees = RemoveLambdaParamWithShallowDrop.transform(t, fAppl).toList
+    val suggestedTrees = RemoveLambdaParamWithShallowDrop.transform(t, fAppl).toList
     assert(suggestedTrees equals List())
   }
 }

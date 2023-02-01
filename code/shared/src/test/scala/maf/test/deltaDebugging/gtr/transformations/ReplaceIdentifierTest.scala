@@ -19,7 +19,7 @@ class ReplaceIdentifierTest extends AnyFlatSpecTransformations {
     val letExp = t.exps.head.asInstanceOf[SchemeLet]
     val varExp = letExp.body.head.asInstanceOf[SchemeFuncall].args.head
 
-    suggestedTrees = ReplaceIdentifier.transform(t, varExp).toList
-    assertTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* a b)) 10)")
+    val suggestedTrees = ReplaceIdentifier.transform(t, varExp).toList
+    assertTreeString("(begin (let ((a 1) (b 2)) (+ 1 b) (* a b)) 10)", suggestedTrees)
   }
 }

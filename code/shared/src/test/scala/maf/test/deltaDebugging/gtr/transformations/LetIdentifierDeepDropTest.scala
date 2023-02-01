@@ -17,11 +17,11 @@ class LetIdentifierDeepDropTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps(1)
 
-    suggestedTrees = LetIdentifierDeepDrop.transform(t, letExp).toList
+    val suggestedTrees = LetIdentifierDeepDrop.transform(t, letExp).toList
 
-    assertTreeString("(begin (+ 2 2) (let ((a 10)) (+ a) (if #t a 99)))")
+    assertTreeString("(begin (+ 2 2) (let ((a 10)) (+ a) (if #t a 99)))", suggestedTrees)
 
-    assertTreeString( "(begin (+ 2 2) (let ((b 100)) b (+ b) (begin #t 99)))")
+    assertTreeString( "(begin (+ 2 2) (let ((b 100)) b (+ b) (begin #t 99)))", suggestedTrees)
   }
 
   "LetIdentifierDeepDrop" should "return empty list for non-let exps" in {
@@ -35,7 +35,7 @@ class LetIdentifierDeepDropTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val lambdaExp = t.exps(1)
 
-    suggestedTrees = LetIdentifierDeepDrop.transform(t, lambdaExp).toList
+    val suggestedTrees = LetIdentifierDeepDrop.transform(t, lambdaExp).toList
 
     assert(suggestedTrees equals List())
   }

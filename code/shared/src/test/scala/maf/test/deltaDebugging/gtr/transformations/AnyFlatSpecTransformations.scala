@@ -3,9 +3,7 @@ import maf.language.scheme.SchemeExp
 import org.scalatest.flatspec.AnyFlatSpec
 
 class AnyFlatSpecTransformations extends AnyFlatSpec {
-  var suggestedTrees: List[SchemeExp] = List()
-
-  def assertTreeString(treeString: String): Unit =
+  def assertTreeString(treeString: String, suggestedTrees: List[SchemeExp]): Unit =
     assert(suggestedTrees.exists(tree => {
       tree.toString equals treeString
     }))
