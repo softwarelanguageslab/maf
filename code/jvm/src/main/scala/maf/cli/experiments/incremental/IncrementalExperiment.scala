@@ -71,7 +71,7 @@ trait IncrementalExperiment[E <: Expression]:
     private var executed = false
 
     /** Runs the benchmarks. Returns the path to the output file. */
-    def execute(args: Set[String], stopOnError: Boolean, config: Option[IncrementalConfiguration]): String =
+    def execute(bench: Set[String], stopOnError: Boolean, config: Option[IncrementalConfiguration]): String =
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
         if stopOnError then catchErrors = false
         if config.nonEmpty then configurations = List(config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
@@ -79,7 +79,7 @@ trait IncrementalExperiment[E <: Expression]:
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         output = writer
         Writer.enableReporting(output)
-        measure(args)
+        measure(bench)
         val out: String = createOutput()
         writeln(output, out)
         Writer.close(output)

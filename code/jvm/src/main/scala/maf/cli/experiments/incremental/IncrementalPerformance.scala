@@ -257,6 +257,13 @@ class IncrementalSchemeModConcCPPerformance() extends IncrementalSchemePerforman
     override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPerformance:
+
+    def runPerformanceExperiment(exp: IncrementalTime[_], bench: Set[String], args: IncArgs, out: String): Unit =
+        exp.maxWarmupRuns = args.warmUp
+        exp.measuredRuns = args.repetitions
+        val res = exp.execute(bench, args.stopOnError, args.config)
+        FileOps.copy(res, out)
+
     def main(args: IncArgs): Unit =
         val outDir: String = "benchOutput/"
 
@@ -267,51 +274,13 @@ object IncrementalSchemeModXPerformance:
         }
 
         if args.typeLattice then
-            if args.curated then
-                val modfTypeCur = new IncrementalSchemeModFTypePerformance()
-                modfTypeCur.maxWarmupRuns = args.warmUp
-                modfTypeCur.measuredRuns = args.repetitions
-                val curatedType = modfTypeCur.execute(curatedSuite, args.stopOnError, args.config)
-                FileOps.copy(curatedType, outDir + "type-curated-performance.csv")
-            end if
-            if args.generated then
-                val modfTypeGen = new IncrementalSchemeModFTypePerformance()
-                modfTypeGen.maxWarmupRuns = args.warmUp
-                modfTypeGen.measuredRuns = args.repetitions
-                val generatedType = modfTypeGen.execute(generatedSuite, args.stopOnError, args.config)
-                FileOps.copy(generatedType, outDir + "type-generated-performance.csv")
-            end if
-            if args.file.nonEmpty then
-                val modfType = new IncrementalSchemeModFTypePerformance()
-                modfType.maxWarmupRuns = args.warmUp
-                modfType.measuredRuns = args.repetitions
-                val result = modfType.execute(Set(args.file.get), args.stopOnError, args.config)
-                FileOps.copy(result, outDir + "type-file-performance.csv")
-            end if
-        end if
+            if args.curated then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), curatedSuite, args, outDir + "type-curated-performance.csv")
+            if args.generated then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), generatedSuite, args, outDir + "type-generated-performance.csv")
+            if args.file.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), Set(args.file.get), args, outDir + "type-file-performance.csv")
 
         if args.cpLattice then
-            if args.curated then
-                val modfCPCur = new IncrementalSchemeModFCPPerformance()
-                modfCPCur.maxWarmupRuns = args.warmUp
-                modfCPCur.measuredRuns = args.repetitions
-                val curatedCP = modfCPCur.execute(curatedSuite, args.stopOnError, args.config)
-                FileOps.copy(curatedCP, outDir + "cp-curated-performance.csv")
-            end if
-            if args.generated then
-                val modfCPGen = new IncrementalSchemeModFCPPerformance()
-                modfCPGen.maxWarmupRuns = args.warmUp
-                modfCPGen.measuredRuns = args.repetitions
-                val generatedCP = modfCPGen.execute(generatedSuite, args.stopOnError, args.config)
-                FileOps.copy(generatedCP, outDir + "cp-generated-performance.csv")
-            end if
-            if args.file.nonEmpty then
-                val modfCP = new IncrementalSchemeModFCPPerformance()
-                modfCP.maxWarmupRuns = args.warmUp
-                modfCP.measuredRuns = args.repetitions
-                val generatedCP = modfCP.execute(Set(args.file.get), args.stopOnError, args.config)
-                FileOps.copy(generatedCP, outDir + "cp-file-performance.csv")
-            end if
-        end if
+            if args.curated then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), curatedSuite, args, outDir + "cp-curated-performance.csv")
+            if args.generated then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), generatedSuite, args, outDir + "cp-generated-performance.csv")
+            if args.file.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), Set(args.file.get), args, outDir + "cp-file-performance.csv")
     end main
 end IncrementalSchemeModXPerformance
