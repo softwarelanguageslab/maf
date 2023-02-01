@@ -28,9 +28,8 @@ trait Replacing:
       List(
         SchemeValue(Value.Integer(0), NoCodeIdentity),
         SchemeValue(Value.Boolean(true), NoCodeIdentity),
-        SchemeValue(Value.Nil, NoCodeIdentity)
       )
-    val valuesToTry = values.combinations(1).toList ++ values.combinations(2).toList ++ values.combinations(3).toList
+    val valuesToTry = values.combinations(1).toList ++ values.combinations(2).toList
     valuesToTry.map(args => newCallerLambda(args))
 
   def newConstantLambda(BodyExp: SchemeExp): SchemeVarArgLambda =
