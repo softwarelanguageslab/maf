@@ -7,11 +7,10 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAdaptiveWideningPolicyB, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.TurgutsThesis.soundnessBugs.*
+import maf.test.VariousSequentialBenchmarks
 
-trait SchemeModFLocalSoundnessTests extends SoundnessDDTester:
-  override def benchmarks: Set[Benchmark] = Set(
-    "/Users/turgut/Desktop/cs5/thesis/AnalysisDevTools/test/R5RS/various/work.scm"
-  )
+trait SchemeModFLocalSoundnessTests extends SoundnessDDTester with VariousSequentialBenchmarks:
+  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/work.scm")
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
