@@ -48,7 +48,8 @@ trait IncrementalExperiment[E <: Expression]:
         bench.toList.sorted.foreach { file =>
             try
                 count += 1
-                println(s"\nTesting $file ($count of $total)")
+                println()
+                println(markTask(s"Testing $file ($count of $total)"))
                 onBenchmark(file)
             catch
                 case e: Exception if catchErrors =>

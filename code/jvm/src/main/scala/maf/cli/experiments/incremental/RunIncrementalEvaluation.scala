@@ -73,10 +73,11 @@ object RunIncrementalEvaluation:
         val arguments = parseArgs(args)
         if arguments.precision then
             println(markHeader("Measuring precision."))
-            try IncrementalSchemeModXPrecision.main(arguments)
-            catch
-                case t: Throwable =>
-                    System.err.nn.println(s"Measuring precision failed: ${t.getMessage}.")
+            IncrementalSchemeModXPrecision.main(arguments)
+            //try IncrementalSchemeModXPrecision.main(arguments)
+            //catch
+            //    case t: Throwable if arguments.stopOnError =>
+            //        System.err.nn.println(s"Measuring precision failed: ${t.getMessage}.")
         end if
         /*
         try IncrementalSchemeModXProperties.main(args)
@@ -86,10 +87,11 @@ object RunIncrementalEvaluation:
          */
         if arguments.performance then
             println(markHeader("Measuring performance."))
-            try IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
-            catch
-                case t: Throwable =>
-                    System.err.nn.println(s"Measuring performance failed: ${t.getMessage}.")
+            IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
+            //try IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
+            //catch
+            //    case t: Throwable if arguments.stopOnError =>
+            //        System.err.nn.println(s"Measuring performance failed: ${t.getMessage}.")
         end if
-        println("Done.")
+        println(markOK("Done."))
     end main

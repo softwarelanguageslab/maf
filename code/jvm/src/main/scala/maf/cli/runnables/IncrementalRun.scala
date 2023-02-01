@@ -17,6 +17,7 @@ import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.*
 import maf.modular.worklist.{LIFOWorklistAlgorithm, *}
 import maf.util.*
+import maf.util.ColouredFormatting.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.*
 import maf.util.graph.{DotGraph, Graph}
@@ -108,7 +109,7 @@ object IncrementalRun extends App:
 
     modFbenchmarks.foreach { bench =>
         try {
-            println(s"***** $bench *****")
+            println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
             val a = new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations)
             val b = new IncrementalSchemeModFAnalysisTypeLattice(text, noOptimisations)
@@ -131,7 +132,7 @@ object IncrementalRun extends App:
                 e.printStackTrace(System.out)
         }
     }
-    println("\n\n**Done**\n\n")
+    println(markOK("\n\n**Done**\n\n"))
 end IncrementalRun
 
 // Prints the maximal heap size.
