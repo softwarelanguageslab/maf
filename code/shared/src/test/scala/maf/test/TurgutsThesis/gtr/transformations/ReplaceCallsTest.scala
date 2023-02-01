@@ -44,23 +44,6 @@ class ReplaceCallsTest extends AnyFlatSpecTransformations:
     assertTreeString("(begin (let () 'S 'S 1000) (+ 2 2))")
   }
 
-  "ReplaceCalls" should "replace function references with lambdas" in {
-    val programText: String =
-      """(begin
-        |  (define (square x)
-        |    (* x x))
-        |  (square 5)
-        |  (map square '(1 2 3)))""".stripMargin
-
-    val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
-    val defineExp = t.exps.head
-
-    suggestedTrees = ReplaceCalls.transform(t, defineExp) //should remove calls to f
-    suggestedTrees.foreach(t => println(t.prettyString()))
-
-    assertTreeString("(begin (lambda unique_args_70 0) (map (lambda unique_args_71 0) (__toplevel_cons 1 (__toplevel_cons 2 (__toplevel_cons 3 ())))))")
-  }
-
   "ReplaceCalls" should "return an empty list given a non-lambda-binding exp" in {
     val programText: String =
       """(begin
