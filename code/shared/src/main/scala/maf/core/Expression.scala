@@ -1,5 +1,8 @@
 package maf.core
 
+import maf.language.change.ChangeExp
+import maf.language.scheme.SchemeExp
+import maf.language.sexp.SExp
 import maf.util.SmartHash
 
 /** An expression */
@@ -29,6 +32,9 @@ trait Expression extends SmartHash:
             subExpressions = sub ::: subExpressions
             toExplore = sub
         subExpressions
+
+    def size: Int = allSubexpressions.size
+    
 
     /**
      * Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses.

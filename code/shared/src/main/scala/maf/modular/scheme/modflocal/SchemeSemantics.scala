@@ -81,10 +81,10 @@ trait SchemeSemantics:
                 vs <- evalAll(rest)
             yield v :: vs
 
-    private def evalLambda(lam: Lam): A[Val] =
+    protected def evalLambda(lam: Lam): A[Val] =
         for env <- getEnv yield lattice.closure((lam, env.restrictTo(lam.fv)))
 
-    private def evalLiteralValue(exp: SchemeValue): A[Val] = exp.value match
+    protected def evalLiteralValue(exp: SchemeValue): A[Val] = exp.value match
         case sexp.Value.String(s)    => storeVal(exp, lattice.string(s))
         case sexp.Value.Integer(n)   => unit(lattice.number(n))
         case sexp.Value.Real(r)      => unit(lattice.real(r))
@@ -104,13 +104,13 @@ trait SchemeSemantics:
         case last :: Nil  => eval(last)
         case next :: rest => nontail { eval(next) } >>> evalSequence(rest)
 
-    private def evalIf(prd: Exp, csq: Exp, alt: Exp): A[Val] =
+    protected def evalIf(prd: Exp, csq: Exp, alt: Exp): A[Val] =
         for
             cnd <- nontail { eval(prd) }
             res <- cond(cnd, eval(csq), eval(alt))
         yield res
 
-    private def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
+    protected def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
             vls <- nontail { evalAll(rhs) }
@@ -120,7 +120,7 @@ trait SchemeSemantics:
             }
         yield res
 
-    private def evalLetStar(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = bds match
+    protected def evalLetStar(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = bds match
         case Nil => evalSequence(bdy)
         case (vrb, rhs) :: rst =>
             for
@@ -131,7 +131,7 @@ trait SchemeSemantics:
                 }
             yield res
 
-    private def evalLetrec(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
+    protected def evalLetrec(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
             ads <- vrs.mapM(allocVar)
@@ -148,19 +148,19 @@ trait SchemeSemantics:
     // by default, asserts are ignored
     protected def evalAssert(exp: Exp): A[Val] = unit(lattice.void)
 
-    private def cond(cnd: Val, csq: A[Val], alt: A[Val]): A[Val] =
+    protected def cond(cnd: Val, csq: A[Val], alt: A[Val]): A[Val] =
         val tru = guard(lattice.isTrue(cnd)).flatMap(_ => csq)
         val fls = guard(lattice.isFalse(cnd)).flatMap(_ => alt)
         mjoin(tru, fls)
 
-    private def evalCall(app: App): A[Val] =
+    protected def evalCall(app: App): A[Val] =
         for
             fun <- nontail { eval(app.f) }
             ags <- nontail { evalAll(app.args) }
             res <- applyFun(app, fun, ags)
         yield res
 
-    private def applyFun(app: App, fun: Val, ags: List[Val]): A[Val] =
+    protected def applyFun(app: App, fun: Val, ags: List[Val]): A[Val] =
         mjoin(applyPrimitives(app, fun, ags), applyClosures(app, fun, ags))
 
     protected def applyPrimitives(app: App, fun: Val, ags: List[Val]): A[Val] =
