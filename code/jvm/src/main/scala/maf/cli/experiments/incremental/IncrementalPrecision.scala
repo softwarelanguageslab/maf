@@ -206,9 +206,9 @@ object IncrementalSchemeModXPrecision:
                   s"${outDir}type-generated-precision-vs-full.csv",
                   s"${outDir}type-generated-precision-vs-noopt.csv"
                 )
-            if args.file.nonEmpty then
+            if args.files.nonEmpty then
                 splitOutput(
-                    (new IncrementalSchemeModFTypePrecision).execute(Set(args.file.get), args.stopOnError, args.config),
+                    (new IncrementalSchemeModFTypePrecision).execute(args.files, args.stopOnError, args.config),
                     s"${outDir}type-file-precision-vs-full.csv",
                     s"${outDir}type-file-precision-vs-noopt.csv"
                 )
@@ -224,8 +224,8 @@ object IncrementalSchemeModXPrecision:
                             s"${outDir}cp-generated-precision-vs-full.csv",
                             s"${outDir}cp-generated-precision-vs-noopt.csv"
                 )
-            if args.file.nonEmpty then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(Set(args.file.get), args.stopOnError, args.config),
+            if args.files.nonEmpty then
+                splitOutput((new IncrementalSchemeModFCPPrecision).execute(args.files, args.stopOnError, args.config),
                     s"${outDir}cp-file-precision-vs-full.csv",
                     s"${outDir}cp-file-precision-vs-noopt.csv"
                 )

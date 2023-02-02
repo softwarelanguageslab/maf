@@ -6,19 +6,19 @@ import maf.util.ColouredFormatting.*
 import scala.annotation.tailrec
 
 case class IncArgs(
-    performance: Boolean = false,
-    precision: Boolean = false,
-    properties: Boolean = false,
-    curated: Boolean = false,
-    generated: Boolean = false,
-    typeLattice: Boolean = false,
-    cpLattice: Boolean = false,
-    warmUp: Int = 3,
-    repetitions: Int = 15,
-    count: Option[Int] = None,
-    stopOnError: Boolean = false,
-    file: Option[String] = None,
-    config: Option[IncrementalConfiguration] = None)
+                      performance: Boolean = false,
+                      precision: Boolean = false,
+                      properties: Boolean = false,
+                      curated: Boolean = false,
+                      generated: Boolean = false,
+                      typeLattice: Boolean = false,
+                      cpLattice: Boolean = false,
+                      warmUp: Int = 3,
+                      repetitions: Int = 15,
+                      count: Option[Int] = None,
+                      stopOnError: Boolean = false,
+                      files: Set[String] = Set(),
+                      config: Option[IncrementalConfiguration] = None)
 
 object RunIncrementalEvaluation:
 
@@ -36,7 +36,7 @@ object RunIncrementalEvaluation:
             case "--repet" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(repetitions = n.toInt))
             case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
             case "--stop" :: tail                                       => processArgs(tail, options.copy(stopOnError = true))
-            case "--file" :: f :: tail                                  => processArgs(tail, options.copy(file = Some(f)))
+            case "--file" :: f :: tail                                  => processArgs(tail, options.copy(files = options.files + f))
             case "--config" :: c :: tail                                => IncrementalConfiguration.fromString(c) match {
                                                                                 case None => System.err.nn.println(s"Unknown configuration: $c"); sys.exit(2)
                                                                                 case Some(c) => processArgs(tail, options.copy(config = Some(c)))
@@ -51,7 +51,7 @@ object RunIncrementalEvaluation:
             |   --properties   run the properties experiments
             |   --curated      run experiments that use the curated benchmarking suite
             |   --generated    run experiments that use the generated benchmarking suite
-            |   --file         run the experiments on a certain file
+            |   --file         run the experiments on a certain file (this argument can be specified multiple times)
             |   --type         run experiments that use the type lattice
             |   --cp           run experiments that use the cp lattice
             |   --warmup n     use n warmup runs for the performance experiments

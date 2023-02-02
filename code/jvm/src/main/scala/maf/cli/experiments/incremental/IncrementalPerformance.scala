@@ -236,11 +236,11 @@ object IncrementalSchemeModXPerformance:
         if args.typeLattice then
             if args.curated then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), curatedSuite, args, outDir + "type-curated-performance.csv")
             if args.generated then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), generatedSuite, args, outDir + "type-generated-performance.csv")
-            if args.file.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), Set(args.file.get), args, outDir + "type-file-performance.csv")
+            if args.files.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), args.files, args, outDir + "type-file-performance.csv")
 
         if args.cpLattice then
             if args.curated then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), curatedSuite, args, outDir + "cp-curated-performance.csv")
             if args.generated then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), generatedSuite, args, outDir + "cp-generated-performance.csv")
-            if args.file.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), Set(args.file.get), args, outDir + "cp-file-performance.csv")
+            if args.files.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), args.files, args, outDir + "cp-file-performance.csv")
     end main
 end IncrementalSchemeModXPerformance
