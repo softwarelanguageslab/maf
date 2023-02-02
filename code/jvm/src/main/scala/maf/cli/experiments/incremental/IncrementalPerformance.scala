@@ -1,7 +1,7 @@
 package maf.cli.experiments.incremental
 
 import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
-import maf.core.{Expression, Identifier}
+import maf.core.*
 import maf.language.CScheme.CSchemeParser
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
@@ -10,10 +10,10 @@ import maf.modular.incremental.*
 import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeConstantPropagationDomain.modularLattice
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain.modularLattice
-import maf.modular.scheme.{PtrAddr, VarAddr}
+import maf.modular.scheme.*
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.util.ColouredFormatting.*
-import maf.util.{FileOps, Reader, Writer}
+import maf.util.*
 import maf.util.benchmarks.*
 
 import java.nio.file.StandardCopyOption
@@ -138,11 +138,11 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
             // Full reanalysis.
 
-            runNTimes("Warming up reanalysis", 
+            runNTimes("Warming up reanalysis",
                 () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
                 (timeout, analysis) => analysis.analyzeWithTimeout(timeout), Some(timeout()))
-             val reanTs = runNTimes("Measuring reanalysis", 
-                 () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a }, 
+             val reanTs = runNTimes("Measuring reanalysis",
+                 () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
                  (timeout, analysis) => analysis.analyzeWithTimeout(timeout), None)
              addToResults(file, reanTs, reanS)
 
@@ -160,7 +160,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
                     () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
                     (timeout, analysis) => analysis.updateAnalysis(timeout), Some(timeout()))
                 val incTs = runNTimes(s"Measuring ${config.toString}",
-                    () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a }, 
+                    () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
                     (timeout, analysis) => analysis.updateAnalysis(timeout), None)
                 addToResults(file, incTs, config.toString)
             }
@@ -229,8 +229,7 @@ object IncrementalSchemeModXPerformance:
         val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
-            case Some(n) =>
-                (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
+            case Some(n) => (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
             case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
         }
 

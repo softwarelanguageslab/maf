@@ -8,6 +8,7 @@ import scala.annotation.tailrec
 case class IncArgs(
     performance: Boolean = false,
     precision: Boolean = false,
+    properties: Boolean = false,
     curated: Boolean = false,
     generated: Boolean = false,
     typeLattice: Boolean = false,
@@ -26,6 +27,7 @@ object RunIncrementalEvaluation:
         def processArgs(args: List[String], options: IncArgs): IncArgs = args match {
             case "--performance" :: tail                                => processArgs(tail, options.copy(performance = true))
             case "--precision" :: tail                                  => processArgs(tail, options.copy(precision = true))
+            case "--properties" :: tail                                 => processArgs(tail, options.copy(properties = true))
             case "--curated" :: tail                                    => processArgs(tail, options.copy(curated = true))
             case "--generated" :: tail                                  => processArgs(tail, options.copy(generated = true))
             case "--type" :: tail                                       => processArgs(tail, options.copy(typeLattice = true))
@@ -35,23 +37,18 @@ object RunIncrementalEvaluation:
             case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
             case "--stop" :: tail                                       => processArgs(tail, options.copy(stopOnError = true))
             case "--file" :: f :: tail                                  => processArgs(tail, options.copy(file = Some(f)))
-            case "--config" :: c :: tail                                =>
-                IncrementalConfiguration.fromString(c) match {
-                    case None =>
-                        System.err.nn.println(s"Unknown configuration: $c")
-                        sys.exit(2)
-                    case Some(c) =>
-                        processArgs(tail, options.copy(config = Some(c)))
-                }
+            case "--config" :: c :: tail                                => IncrementalConfiguration.fromString(c) match {
+                                                                                case None => System.err.nn.println(s"Unknown configuration: $c"); sys.exit(2)
+                                                                                case Some(c) => processArgs(tail, options.copy(config = Some(c)))
+                                                                            }
             case Nil                                                    => options
-            case o =>
-                System.err.nn.println(s"Unknown options: $o")
-                sys.exit(1)
+            case o                                                      => System.err.nn.println(s"Unknown options: $o"); sys.exit(1)
         }
         if args.length == 0 then
             println("""Arguments:
             |   --performance  run the performance experiments
             |   --precision    run the precision experiments
+            |   --properties   run the properties experiments
             |   --curated      run experiments that use the curated benchmarking suite
             |   --generated    run experiments that use the generated benchmarking suite
             |   --file         run the experiments on a certain file
@@ -62,8 +59,8 @@ object RunIncrementalEvaluation:
             |   --count n      use only n benchmarks from the benchmarking suite
             |   --stop         use to stop on errors (errors will be thrown and not be caught)
             | Any combination of arguments can be used.
-            | To run experiments, you will at least need to provide a type of experiment (performance/precision),
-            | a benchmarking suite (curated/generated), a lattice (type/cp).
+            | To run experiments, you will at least need to provide a type of experiment (performance/precision/properties),
+            | a benchmarking suite (curated/generated/a specific file), and a lattice (type/cp).
             | Example arguments: --precision --curated --type""".stripMargin)
             sys.exit(0)
         else processArgs(args.toList, IncArgs())
@@ -71,27 +68,19 @@ object RunIncrementalEvaluation:
 
     def main(args: Array[String]): Unit =
         val arguments = parseArgs(args)
+
         if arguments.precision then
             println(markHeader("Measuring precision."))
             IncrementalSchemeModXPrecision.main(arguments)
-            //try IncrementalSchemeModXPrecision.main(arguments)
-            //catch
-            //    case t: Throwable if arguments.stopOnError =>
-            //        System.err.nn.println(s"Measuring precision failed: ${t.getMessage}.")
-        end if
-        /*
-        try IncrementalSchemeModXProperties.main(args)
-        catch
-            case t: Throwable =>
-              System.err.nn.println(s"Obtaining properties failed: ${t.getMessage}.")
-         */
+
+        if arguments.properties then
+            println(markHeader("Measuring properties."))
+            IncrementalSchemeModXProperties.main(arguments)
+
+        // Run this last to have the other results sooner.
         if arguments.performance then
             println(markHeader("Measuring performance."))
-            IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
-            //try IncrementalSchemeModXPerformance.main(arguments) // Run this last to have the other results sooner.
-            //catch
-            //    case t: Throwable if arguments.stopOnError =>
-            //        System.err.nn.println(s"Measuring performance failed: ${t.getMessage}.")
-        end if
+            IncrementalSchemeModXPerformance.main(arguments)
+
         println(markOK("Done."))
     end main
