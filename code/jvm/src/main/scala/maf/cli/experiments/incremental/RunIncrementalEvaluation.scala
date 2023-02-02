@@ -6,19 +6,19 @@ import maf.util.ColouredFormatting.*
 import scala.annotation.tailrec
 
 case class IncArgs(
-                      performance: Boolean = false,
-                      precision: Boolean = false,
-                      properties: Boolean = false,
-                      curated: Boolean = false,
-                      generated: Boolean = false,
-                      typeLattice: Boolean = false,
-                      cpLattice: Boolean = false,
-                      warmUp: Int = 3,
-                      repetitions: Int = 15,
-                      count: Option[Int] = None,
-                      stopOnError: Boolean = false,
-                      files: Set[String] = Set(),
-                      config: Option[IncrementalConfiguration] = None)
+    performance: Boolean = false,
+    precision: Boolean = false,
+    properties: Boolean = false,
+    curated: Boolean = false,
+    generated: Boolean = false,
+    typeLattice: Boolean = false,
+    cpLattice: Boolean = false,
+    warmUp: Int = 3,
+    repetitions: Int = 15,
+    count: Option[Int] = None,
+    stopOnError: Boolean = false,
+    files: Set[String] = Set(),
+    config: Option[IncrementalConfiguration] = None)
 
 object RunIncrementalEvaluation:
 
@@ -37,12 +37,13 @@ object RunIncrementalEvaluation:
             case "--count" :: n :: tail if n.forall(Character.isDigit)  => processArgs(tail, options.copy(count = Some(n.toInt)))
             case "--stop" :: tail                                       => processArgs(tail, options.copy(stopOnError = true))
             case "--file" :: f :: tail                                  => processArgs(tail, options.copy(files = options.files + f))
-            case "--config" :: c :: tail                                => IncrementalConfiguration.fromString(c) match {
-                                                                                case None => System.err.nn.println(s"Unknown configuration: $c"); sys.exit(2)
-                                                                                case Some(c) => processArgs(tail, options.copy(config = Some(c)))
-                                                                            }
-            case Nil                                                    => options
-            case o                                                      => System.err.nn.println(s"Unknown options: $o"); sys.exit(1)
+            case "--config" :: c :: tail =>
+                IncrementalConfiguration.fromString(c) match {
+                    case None    => System.err.nn.println(s"Unknown configuration: $c"); sys.exit(2)
+                    case Some(c) => processArgs(tail, options.copy(config = Some(c)))
+                }
+            case Nil => options
+            case o   => System.err.nn.println(s"Unknown options: $o"); sys.exit(1)
         }
         if args.length == 0 then
             println("""Arguments:

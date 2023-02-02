@@ -37,7 +37,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
         while !finished && !timeout.reached do step(timeout)
 
     // add the initial component during initialisation
-    override def init() = 
+    override def init() =
         super.init()
         addToWorkList(initialComponent)
 

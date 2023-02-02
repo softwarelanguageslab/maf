@@ -14,7 +14,7 @@ object Wrapper:
 
 // Wrapper2
 
-trait Wrapper2[+C[_,_]]:
+trait Wrapper2[+C[_, _]]:
     type T1
     type T2
     lazy val instance: C[T1, T2]

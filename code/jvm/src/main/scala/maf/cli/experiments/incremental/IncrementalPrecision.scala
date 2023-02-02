@@ -115,15 +115,14 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         configurations.foreach { config =>
             val copy = init.deepCopy()
             copy.configuration = config
-            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut))
-            then
+            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then
                 results = compareAnalyses(file, copy, rean, results)
                 resultsNoOpt = compareAnalyses(file, init, noOpt, resultsNoOpt)
             else
                 print(markWarning(" timed out - "))
                 propertiesS.foreach { o =>
-                  results = results.add(file, columnName(o, config.toString), infS)
-                  resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS)
+                    results = results.add(file, columnName(o, config.toString), infS)
+                    resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS)
                 }
         }
         println()
@@ -196,9 +195,10 @@ object IncrementalSchemeModXPrecision:
 
         if args.typeLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args.stopOnError, args.config),
-                            s"${outDir}type-curated-precision-vs-full.csv",
-                            s"${outDir}type-curated-precision-vs-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args.stopOnError, args.config),
+                  s"${outDir}type-curated-precision-vs-full.csv",
+                  s"${outDir}type-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput(
@@ -208,26 +208,29 @@ object IncrementalSchemeModXPrecision:
                 )
             if args.files.nonEmpty then
                 splitOutput(
-                    (new IncrementalSchemeModFTypePrecision).execute(args.files, args.stopOnError, args.config),
-                    s"${outDir}type-file-precision-vs-full.csv",
-                    s"${outDir}type-file-precision-vs-noopt.csv"
+                  (new IncrementalSchemeModFTypePrecision).execute(args.files, args.stopOnError, args.config),
+                  s"${outDir}type-file-precision-vs-full.csv",
+                  s"${outDir}type-file-precision-vs-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args.stopOnError, args.config),
-                            s"${outDir}cp-curated-precision-vs-full.csv",
-                            s"${outDir}cp-curated-precision-vs-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args.stopOnError, args.config),
+                  s"${outDir}cp-curated-precision-vs-full.csv",
+                  s"${outDir}cp-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError, args.config),
-                            s"${outDir}cp-generated-precision-vs-full.csv",
-                            s"${outDir}cp-generated-precision-vs-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args.stopOnError, args.config),
+                  s"${outDir}cp-generated-precision-vs-full.csv",
+                  s"${outDir}cp-generated-precision-vs-noopt.csv"
                 )
             if args.files.nonEmpty then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(args.files, args.stopOnError, args.config),
-                    s"${outDir}cp-file-precision-vs-full.csv",
-                    s"${outDir}cp-file-precision-vs-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFCPPrecision).execute(args.files, args.stopOnError, args.config),
+                  s"${outDir}cp-file-precision-vs-full.csv",
+                  s"${outDir}cp-file-precision-vs-noopt.csv"
                 )
         end if
     end main

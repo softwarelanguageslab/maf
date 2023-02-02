@@ -222,10 +222,10 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
             case _ => ()
         super.updateV(sto, adr, vlu)
 
+// a standard instance
 
-// a standard instance 
-
-class SchemeDSSAnalysis(prg: SchemeExp, k: Int) extends SchemeModFLocal(prg)
-                                                   with SchemeConstantPropagationDomain
-                                                   with SchemeModFLocalCallSiteSensitivity(k)
-                                                   with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp]
+class SchemeDSSAnalysis(prg: SchemeExp, k: Int)
+    extends SchemeModFLocal(prg)
+    with SchemeConstantPropagationDomain
+    with SchemeModFLocalCallSiteSensitivity(k)
+    with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp]

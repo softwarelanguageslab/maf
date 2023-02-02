@@ -255,11 +255,13 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
             with IncrementalSchemeConstantPropagationDomain
             with IncrementalGlobalStoreCY[SchemeExp]
             //with IncrementalLogging[SchemeExp]
-        {
+            {
             // override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
             var configuration: IncrementalConfiguration = allOptimisations
 
-            override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis //with IncrementalLoggingIntra
+            override def intraAnalysis(
+                cmp: Component
+              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis //with IncrementalLoggingIntra
         }
 
         // More test programs: use /test/taint folder but remove the taint annotations.
@@ -272,10 +274,12 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
                 |  (if (= y 0)
                 |      (f)))
                 |(h x)""".stripMargin
-        def c1(SCAs: Set[Set[Address]]): Unit = assert(SCAs.exists(sca => sca.exists(a => a.toString.contains("x@1:9")) && sca.exists(a => a.toString.contains("y@4:12"))))
+        def c1(SCAs: Set[Set[Address]]): Unit = assert(
+          SCAs.exists(sca => sca.exists(a => a.toString.contains("x@1:9")) && sca.exists(a => a.toString.contains("y@4:12")))
+        )
 
         val p2: String = // tainted-function-choice-2
-          """(define a #t)
+            """(define a #t)
               |(define (b x) x)
               |(define (set-b)
               |  (set! b (lambda (x) #f)))
@@ -285,8 +289,8 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         def c2(SCAs: Set[Set[Address]]): Unit = assert(SCAs.isEmpty)
 
         val tests = List(
-            (p1, c1, "p1"),
-            (p2, c2, "p2")
+          (p1, c1, "p1"),
+          (p2, c2, "p2")
         ).map(t => (CSchemeParser.parseProgram(t._1), t._2, t._3))
 
         tests.foreach { case (p, c, n) =>
@@ -307,4 +311,4 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
     testComponentDeletion()
     testDependencyDeletion()
     testUpdatedComponents()
-    //testComplexSCADetection()
+//testComplexSCADetection()
