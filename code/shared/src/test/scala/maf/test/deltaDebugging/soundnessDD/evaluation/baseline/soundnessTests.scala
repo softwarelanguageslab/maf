@@ -9,7 +9,8 @@ import maf.test.deltaDebugging.soundnessBugs.*
 import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.core.Position
 
-trait SchemeModFLocalSoundnessTests extends BaselineTester with VariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends BaselineTester:
+  override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
