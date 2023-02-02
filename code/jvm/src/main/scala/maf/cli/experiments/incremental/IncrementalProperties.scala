@@ -108,7 +108,6 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
 
 class IncrementalSchemeModFTypeProperties() extends IncrementalSchemeProperties:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -138,7 +137,7 @@ object IncrementalSchemeModXProperties:
         if args.curated then bench = bench ++ IncrementalSchemeBenchmarkPrograms.sequentialCurated
         if args.generated then bench = bench ++ IncrementalSchemeBenchmarkPrograms.sequentialGenerated
 
-        if args.typeLattice then (new IncrementalSchemeModFTypeProperties).execute(bench, args.stopOnError, args.config)
-        if args.cpLattice then (new IncrementalSchemeModFCPProperties).execute(bench, args.stopOnError, args.config)
+        if args.typeLattice then (new IncrementalSchemeModFTypeProperties).execute(bench, args)
+        if args.cpLattice then (new IncrementalSchemeModFCPProperties).execute(bench, args)
     end main
 end IncrementalSchemeModXProperties

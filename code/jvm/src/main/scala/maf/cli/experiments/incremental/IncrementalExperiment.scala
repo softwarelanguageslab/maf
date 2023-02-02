@@ -8,6 +8,8 @@ import maf.util.Writer.*
 import maf.util.Writer
 import maf.util.benchmarks.Timeout
 
+import scala.concurrent.duration.{Duration, MINUTES}
+
 trait IncrementalExperiment[E <: Expression]:
 
     // Type bound for an analysis.
@@ -23,7 +25,8 @@ trait IncrementalExperiment[E <: Expression]:
     def parse(string: String): E
 
     // The timeout to be used. The timeout also indicates half of the time maximally spent on warm-up.
-    def timeout(): Timeout.T
+    def timeout(): Timeout.T = Timeout.start(Duration(minutes, MINUTES))
+    var minutes: Int = 10
 
     // What is to be done for each benchmark program.
     def onBenchmark(file: String): Unit
@@ -71,10 +74,11 @@ trait IncrementalExperiment[E <: Expression]:
     private var executed = false
 
     /** Runs the benchmarks. Returns the path to the output file. */
-    def execute(bench: Set[String], stopOnError: Boolean, config: Option[IncrementalConfiguration]): String =
+    def execute(bench: Set[String], args: IncArgs): String =
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
-        if stopOnError then catchErrors = false
-        if config.nonEmpty then configurations = List(config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
+        if args.stopOnError then catchErrors = false
+        if args.config.nonEmpty then configurations = List(args.config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
+        if args.minutes >= 0 then minutes = args.minutes
         executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         output = writer

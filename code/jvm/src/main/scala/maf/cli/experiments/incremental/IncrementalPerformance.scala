@@ -181,7 +181,6 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
 trait IncrementalSchemePerformance extends IncrementalTime[SchemeExp]:
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(30, MINUTES))
 
 class IncrementalSchemeModFTypePerformance() extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -222,7 +221,7 @@ object IncrementalSchemeModXPerformance:
     def runPerformanceExperiment(exp: IncrementalTime[_], bench: Set[String], args: IncArgs, out: String): Unit =
         exp.maxWarmupRuns = args.warmUp
         exp.measuredRuns = args.repetitions
-        val res = exp.execute(bench, args.stopOnError, args.config)
+        val res = exp.execute(bench, args)
         FileOps.copy(res, out)
 
     def main(args: IncArgs): Unit =
