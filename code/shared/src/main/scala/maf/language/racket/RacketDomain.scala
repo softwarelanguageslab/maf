@@ -5,7 +5,7 @@ import maf.lattice.interfaces.*
 import maf.language.scheme.lattices.*
 import maf.core.{Address, Expression, Identifier, Identity}
 import maf.util.Reader
-import javax.lang.model.element.ModuleElement.ProvidesDirective
+//import javax.lang.model.element.ModuleElement.ProvidesDirective
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
