@@ -18,7 +18,7 @@ case class IncArgs(
     count: Option[Int] = None,
     stopOnError: Boolean = false,
     files: Set[String] = Set(),
-    minutes: Int = -1,
+    timeout: Int = -1,
     config: Option[IncrementalConfiguration] = None)
 
 object RunIncrementalEvaluation:
@@ -38,7 +38,7 @@ object RunIncrementalEvaluation:
             case "--count" :: n :: tail if n.forall(Character.isDigit)      => processArgs(tail, options.copy(count = Some(n.toInt)))
             case "--stop" :: tail                                           => processArgs(tail, options.copy(stopOnError = true))
             case "--file" :: f :: tail                                      => processArgs(tail, options.copy(files = options.files + f))
-            case "--minutes" :: m :: tail if m.forall(Character.isDigit)    => processArgs(tail, options.copy(minutes = m.toInt))
+            case "--timeout" :: m :: tail if m.forall(Character.isDigit)    => processArgs(tail, options.copy(timeout = m.toInt))
             case "--config" :: c :: tail =>
                 IncrementalConfiguration.fromString(c) match {
                     case None    => System.err.nn.println(s"Unknown configuration: $c"); sys.exit(2)
@@ -61,7 +61,7 @@ object RunIncrementalEvaluation:
             |   --repet n      use n measured runs for each performance experiment
             |   --count n      use only n benchmarks from the benchmarking suite
             |   --stop         use to stop on errors (errors will be thrown and not be caught)
-            |   --minutes      specify the timeout to be used for each run of the (incremental) analysis in minutes
+            |   --timeout      specify the timeout to be used for each run of the (incremental) analysis in minutes
             | Any combination of arguments can be used.
             | To run experiments, you will at least need to provide a type of experiment (performance/precision/properties),
             | a benchmarking suite (curated/generated/a specific file), and a lattice (type/cp).

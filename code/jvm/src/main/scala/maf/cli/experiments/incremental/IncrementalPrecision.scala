@@ -74,7 +74,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
-        println(markTask(s"Testing precision of $file: "))
+        print(markTask(s"Testing precision: "))
         val program = parse(file)
         // Initial analysis: analyse + update.
         val init = analysis(program, allOptimisations) // Allow tracking for all optimisations.
@@ -119,13 +119,12 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
                 results = compareAnalyses(file, copy, rean, results)
                 resultsNoOpt = compareAnalyses(file, init, noOpt, resultsNoOpt)
             else
-                print(markWarning(" timed out - "))
+                print(markWarning("timed out - "))
                 propertiesS.foreach { o =>
                     results = results.add(file, columnName(o, config.toString), infS)
                     resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS)
                 }
         }
-        println()
     end onBenchmark
 
     def interestingAddress[A <: Address](a: A): Boolean

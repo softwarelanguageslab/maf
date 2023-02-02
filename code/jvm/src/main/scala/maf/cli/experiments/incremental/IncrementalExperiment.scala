@@ -78,7 +78,7 @@ trait IncrementalExperiment[E <: Expression]:
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
         if args.stopOnError then catchErrors = false
         if args.config.nonEmpty then configurations = List(args.config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
-        if args.minutes >= 0 then minutes = args.minutes
+        if args.timeout >= 0 then minutes = args.timeout
         executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
         output = writer
