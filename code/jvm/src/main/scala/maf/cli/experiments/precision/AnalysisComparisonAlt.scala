@@ -9,7 +9,6 @@ import maf.util.{Reader, Writer}
 import maf.language.scheme.primitives.SchemePrelude
 
 import scala.concurrent.duration._
-import maf.modular.scheme.modflocal.SchemeModFLocalAdaptiveWidening
 
 abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
     extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
@@ -80,13 +79,12 @@ object AnalysisComparisonAlt1
     def ls = List(100)
     lazy val modf: (SchemeExp => Analysis, String) = (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
     lazy val dss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS")
-    lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
-    lazy val dssFS: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalFSAnalysis(_, k), s"$k-CFA DSS-FS")
-    lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
-        (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
-    }
-    def analyses = modf :: dssFS :: dss :: Nil
-    def main0(args: Array[String]) = check("test/R5RS/gambit/matrix.scm")
+    //lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
+    //lazy val dssFS: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalFSAnalysis(_, k), s"$k-CFA DSS-FS")
+    //lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
+    //    (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+    //}
+    def analyses = modf :: dss :: Nil
     def main(args: Array[String]) = runBenchmarks(
       Set(
         //"test/R5RS/various/collatz.scm",
@@ -123,23 +121,6 @@ object AnalysisComparisonAlt1
         "test/R5RS/various/strong-update.scm"
       )
     )
-
-    def check(path: String) =
-        val prg = parseProgram(Reader.loadFile(path))
-        var prv1: SchemeModFLocalAdaptiveWidening | Null = null
-        val anl1: SchemeExp => Analysis = (prg: SchemeExp) =>
-            prv1 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 900)
-            prv1.asInstanceOf[Analysis]
-        var prv2: SchemeModFLocalAdaptiveWidening | Null = null
-        val anl2: SchemeExp => Analysis = (prg: SchemeExp) =>
-            prv2 = SchemeAnalyses.modflocalAnalysisAdaptiveA(prg, 0, 1000)
-            prv2.asInstanceOf[Analysis]
-        //val sel1: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv1.nn.widened)
-        //val sel2: SchemeExp => Analysis = SchemeAnalyses.modFlocalAnalysisSelective(_, 0, prv2.nn.widened)
-        //val concrete = runInterpreter(prg, path, Timeout.none, runs).get
-        val Terminated(res1) = runAnalysis(anl1, "adaptive analysis (l = 900)", prg, "test/R5RS/gambit/matrix.scm")
-        val Terminated(res2) = runAnalysis(anl2, "selective analysis (l = 1000)", prg, "test/R5RS/gambit/matrix.scm")
-        println(s"SUBSET?: ${prv1.nn.widened.subsetOf(prv2.nn.widened)} (${prv2.nn.widened.size} vs ${prv1.nn.widened.size})")
 
     override def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)

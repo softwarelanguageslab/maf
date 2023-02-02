@@ -4,7 +4,7 @@ import maf.core.NoCodeIdentity
 import maf.language.scheme.{SchemeBegin, SchemeExp}
 import maf.language.scheme.primitives.SchemeLatticePrimitives
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAdaptiveWideningPolicyA, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 
 object PrimitiveOpNames:
@@ -16,7 +16,6 @@ object PrimitiveOpNames:
       with SchemeModFLocalNoSensitivity
       with SchemeModFLocalAnalysisResults
       with FIFOWorklistAlgorithm[SchemeExp]
-      with SchemeModFLocalAdaptiveWideningPolicyA(1)
 
   /** Easy/efficient way of getting all primitive names */
   val allNames: List[String] =

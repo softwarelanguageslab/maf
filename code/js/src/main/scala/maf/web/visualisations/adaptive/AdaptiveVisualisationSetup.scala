@@ -15,6 +15,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation._
 import org.scalajs.dom._
 import maf.web.visualisations._
+import org.scalajs.dom.raw.HTMLElement
 
 //
 // VISUALISATION SETUP
@@ -24,6 +25,8 @@ import maf.web.visualisations._
 object AdaptiveVisualisationSetup extends VisualisationSetup:
 
     type Analysis = WebVisualisationAnalysisAdaptive[SchemeExp] with WebSummaryAdaptiveAnalysis
+
+    def setupStoreVisualisation(container: HTMLElement): Unit = ()
 
     def createAnalysis(text: String) =
         val prg = SchemeParser.parseProgram(text)

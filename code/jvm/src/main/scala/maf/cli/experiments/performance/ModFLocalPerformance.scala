@@ -12,8 +12,6 @@ object ModFLocalPerformance extends PerformanceEvaluation:
         )
     def analyses =
         List(
-          (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, 0, 10), "0-CFA DSS"),
-          (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, 1, 10), "1-CFA DSS"),
           (SchemeAnalyses.kCFAAnalysis(_, 0), "0-CFA MODF"),
           (SchemeAnalyses.kCFAAnalysis(_, 1), "1-CFA MODF"),
         )

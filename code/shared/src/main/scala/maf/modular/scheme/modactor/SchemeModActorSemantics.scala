@@ -45,6 +45,8 @@ import maf.lattice.interfaces.BoolLattice
 import maf.core.worklist.WorkList
 import maf.modular.AnalysisEntry
 import maf.util.benchmarks.Timeout.T
+import maf.language.AScheme.ASchemeValues.*
+import maf.language.scheme.primitives.SchemePrimitives
 
 /**
  * An implementation of ModConc for actors, as described in the following publication: Stiévenart, Quentin, et al. "A general method for rendering
@@ -101,14 +103,15 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
     //
 
     // TODO: remove these methods, in favor of the one in the monad
-    def mkMessage(tpy: String, arguments: List[Value]): Msg
-    def getTag(msg: Msg): String
-    def getArgs(msg: Msg): List[Value]
+    def mkMessage(tpy: Value, arguments: Value): Msg
 
     //
     // Mailboxes
     //
-    type Mailbox = AbstractMailbox[Msg]
+    type MessageContext
+    def emptyContext: MessageContext
+
+    type Mailbox = AbstractMailbox[Msg, MessageContext]
 
     def emptyMailbox: Mailbox
 
@@ -164,7 +167,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
         def behaviors = (putBehaviors, getBehaviors)
 
         /* Tracking message sends */
-        def trackSend(st: S, from: Component, to: Component, tag: String): S
+        def trackSend(st: S, from: Component, to: Component, tag: Value): S
 
     implicit override val analysisM: ModularAnalysisM
 
@@ -191,7 +194,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
 
         given componentGiven: ClassTag[Component]
 
-        override def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): A[ActorRef] = for
+        override def spawnActor(beh: Behavior, ags: List[Value], idn: Identity, defer: Boolean = false): A[ActorRef] = for
             adrs <- beh.prs.mapM(allocVar(_))
             // Allocate the component in the correct environment
             cmp <-
@@ -200,11 +203,15 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 }
             // allocate actor arguments
             _ <- beh.prs.mapM(allocVar(_)).flatMap(adrs => extendSto(adrs.zip(ags)))
-            // spawn the actor
-            _ <- spawn(cmp)
+            // spawn the actor (or do nothing if spawning is defered)
+            _ <- if defer then unit(()) else spawn(cmp)
             // put the newly spawned actor in the list of actors
             _ <- get.map(lens.modify(lens.actors)(_ + cmp)) >>= put
         yield (maf.language.AScheme.ASchemeValues.Actor(beh.name, cmp))
+
+        override def deferedSpawnActor(actor: ActorRef): A[Unit] =
+            // TODO: make this more type safe? asInstanceOf could potentially crash the application at run-time
+            spawn(actor.tid.asInstanceOf[Component])
 
         override def become(beh: Behavior, ags: List[Value], idn: Identity): A[Unit] =
             for
@@ -224,14 +231,8 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 BoolLattice[B].inject(a1 == a2)
         })
 
-        override def getMessageTag(m: Msg): String =
-            inter.getTag(m)
-
-        override def mkMessage(tpy: String, arguments: List[Value]): A[Msg] =
+        override def mkMessage(tpy: Value, arguments: Value): A[Msg] =
             unit(inter.mkMessage(tpy, arguments))
-
-        override def getMessageArguments(m: Msg): List[Val] =
-            inter.getArgs(m)
 
         override def call(lam: Lam): A[Val] =
             for
@@ -254,7 +255,7 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
             register(AddrDependency(a)) >>>
                 get.map(lens.getSto).flatMap(_.get(a).map(unit).getOrElse(mbottom))
 
-        def send(to: ActorRef, m: Msg): A[Unit] =
+        def send(to: ActorRef, m: Msg, context: MessageContext): A[Unit] =
             val receiver = actorIdComponent(to.tid)
             // A message send stores the message in the receiver's mailbox and triggers a re-analysis of the receiver
             //
@@ -262,38 +263,43 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
                 _ <- get.map(
                   lens.modify(lens.mailboxes)(mbs =>
                       mbs + (receiver ->
-                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m))
+                          mbs.get(receiver).getOrElse(emptyMailbox).enqueue(m, context))
                   )
                 ) >>= putDoIfChanged { trigger(MailboxDep(receiver)) }
                 self <- selfCmp
+                tag <- m.tag
                 // Track the message send
-                _ <- get.map(st => lens.trackSend(st, self, receiver, getMessageTag(m))) >>= put
+                _ <- get.map(st => lens.trackSend(st, self, receiver, tag)) >>= put
             yield ()
 
-        def ask(to: ActorRef, m: Msg): A[Value] =
+        def ask(to: ActorRef, m: Msg, context: MessageContext): A[Value] =
+            given SchemePrimitives[Value, Address] = primitives
             for
                 // create the empheral child
                 self <- selfActorCmp
                 empheralChild <- allocateEmpheralChild(self, m)
                 // send the message to "to"
-                nm <- mkMessage(getMessageTag(m), lattice.actor(ASchemeValues.Actor(None, empheralChild)) :: getMessageArguments(m))
-                _ <- send(to, nm)
+                tag <- m.tag
+                nm <- m.prepend(lattice.actor(ASchemeValues.Actor(None, empheralChild))).map(_.asInstanceOf[Msg])
+                _ = log(s"+++ sending $nm")
+                _ <- send(to, nm, context)
                 // read the result from the mailbox
                 _ <- register(MailboxDep(empheralChild))
                 mb <- get.map(lens.getMailboxes).map(_.get(empheralChild).getOrElse(emptyMailbox))
                 ms <- nondets(mb.dequeue.map(unit))
-                (msg, mb1) = ms
+                ((msg, _), mb1) = ms
                 _ <- get.map(lens.modify(lens.mailboxes)(_ + (empheralChild -> mb1))) >>= put
-                tag = getMessageTag(msg)
-                vlus = getMessageArguments(msg)
+                tag <- msg.tag
+                vlus <- msg.vlus
                 // make sure that the tag is a receive
-                _ <- guard(tag == "answer" && vlus.size == 1)
-            yield vlus.head
+                _ <- guard(lattice.mayEql(tag, lattice.symbol("answer")))
+                result <- vlus.take(primitives)(1)
+            yield result.head
 
         def mailbox: A[Mailbox] =
             get.map(lens.getMailboxes).flatMap(boxes => selfCmp.map(enclosing).map(boxes.get(_)).map(_.getOrElse(emptyMailbox)))
 
-        def receive: A[Msg] =
+        def receive: A[(Msg, MessageContext)] =
             for
                 // register receive
                 cmp <- selfCmp map enclosing
@@ -319,8 +325,8 @@ abstract class SchemeModActorSemantics(val program: SchemeExp) extends AnalysisE
     // Auxilary functions for initializing the correct environment
     //////////////////////////////////////////////////////////////
 
-    lazy val initialEnv: Env
-    lazy val initialSto: Map[Adr, Val]
+    def initialEnv: Env
+    def initialSto: Map[Adr, Val]
 
     ////////////////////////////////
     // AnalysisEntry

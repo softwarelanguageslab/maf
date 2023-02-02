@@ -90,7 +90,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
         table.prettyString(rowName = "Step",
                            rows = (1 until step).toList.map(_.toString),
-                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot")
+                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot"),
+                           format = s => crop(s)
         )
 
     private def addressDependenciesToString(): String =
@@ -196,8 +197,11 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         super.spawn(cmp)
 
     override def refineSCA(sca: SCA): Unit =
-        if mode != Summary && (mode != Step || stepSelect()) then logger.log(s"RSCA ${sca.mkString("{", ", ", "}")}")
+        var values: Map[Addr, Value] = Map()
+        if mode != Summary && (mode != Step || stepSelect()) then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
         super.refineSCA(sca)
+        if mode != Summary && (mode != Step || stepSelect()) then
+            logger.log(s"RSCA ${sca.map(a => s"$a (${values(a)} -> ${store.getOrElse(a, lattice.bottom)})").mkString("{", ", ", "}")}")
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreCYIntraAnalysis:
         intra =>
@@ -229,10 +233,10 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
                         if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
                             logger.log(s"ADEP ${crop(r.toString)} ~> ${crop(addr.toString)}")
                     )
-                implicitFlows.flatten.foreach(f =>
-                    if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
-                        logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}")
-                )
+                //implicitFlows.flatten.foreach(f =>
+                //    if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
+                //        logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}")
+                //)
             val b = super.writeAddr(addr, value)
             if mode == Fine || select(addr) || stepSelect() then
                 logger.log(

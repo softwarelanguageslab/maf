@@ -11,6 +11,7 @@ import maf.util.MonoidInstances.setMonoid
 import maf.util.benchmarks.Table
 import maf.util.*
 import maf.language.AScheme.ASchemeValues.*
+import maf.language.racket.RMod
 
 /** A modular Scheme lattice that also provides operations on address-annotated values. */
 class IncrementalModularSchemeLattice[
@@ -152,6 +153,12 @@ class IncrementalModularSchemeLattice[
         def void: AL = toAL(schemeLattice.void)
         def eql[B2: BoolLattice](x: AL, y: AL): B2 = schemeLattice.eql(x.toL(), y.toL())(BoolLattice[B2])
         def eq(xs: AL, ys: AL)(cmp: MaybeEq[A]): AL = annotate(schemeLattice.eq(xs.toL(), ys.toL())(cmp), xs.joinedSources(ys))
+
+        override def rmods(mod: AL): Set[RMod[AL]] =
+            schemeLattice.rmods(mod.toL()).map(_.mapValues(annotate(_, Set())))
+
+        override def rmod(mod: RMod[AL]): AL =
+            annotate(schemeLattice.rmod(mod.mapValues(_.toL())), Set())
 
         override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.toL(), v.sources.union(addresses))
         override def getAddresses(v: AL): Set[A] = v.sources

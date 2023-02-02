@@ -52,7 +52,7 @@ import monocle.macros.GenIso
 import monocle.Iso
 import maf.util.graph.GraphElement
 
-class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Value](using lattice: SchemeLattice[Value, Address]):
+class GlobalStoreState[K, Component, M, Mailbox <: AbstractMailbox[M, K]: Default, Value](using lattice: SchemeLattice[Value, Address]):
     case class IntraState(
         /** Keep track of the component that is currently being analysed */
         self: Component,
@@ -69,9 +69,11 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
         /** Keep track of the set of behaviors that a specific actor can have */
         behaviors: Map[Component, Set[Behavior]] = Map(),
         /** Keep track of the sends. Represented by a mapping from sender to (receiver, tag) */
-        sends: Set[(Component, (Component, String))] = Set(),
+        sends: Set[(Component, (Component, Any))] = Set(),
         /** Keep track of the global store */
-        sto: Map[Address, Value] = Map())
+        sto: Map[Address, Value] = Map(),
+        /** Keeps track of the errors */
+        errors: Set[maf.core.Error] = Set())
 
     case class InterState(
         /** Set of mailboxes */
@@ -81,9 +83,11 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
         /* Mapping from components to the set of behaviors */
         behaviors: Map[Component, Set[Behavior]] = Map(),
         /** Keep track of the message sends */
-        sends: Set[(Component, (Component, String))] = Set(),
+        sends: Set[(Component, (Component, Any))] = Set(),
         /** Global store */
-        sto: Map[Address, Value])
+        sto: Map[Address, Value],
+        /** Keep track of the errors */
+        errors: Set[maf.core.Error] = Set())
 
     /** Sync the intra state with the current inter state */
     def sync(intra: IntraState, inter: InterState): InterState =
@@ -109,7 +113,8 @@ class GlobalStoreState[Component, M, Mailbox <: AbstractMailbox[M]: Default, Val
           mailboxes = newMailboxes,
           behaviors = MonoidInstances.mapMonoid.append(inter.behaviors, intra.behaviors),
           actors = inter.actors ++ intra.actors,
-          sends = newSends
+          sends = newSends,
+          errors = intra.errors ++ inter.errors
         )
 
 trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox, PowersetMailboxAnalysis, ASchemeConstantPropagationDomain:
@@ -118,14 +123,19 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     val outerClassTag: ClassTag[Component] = summon[ClassTag[Component]]
 
     def actorIdComponent(a: AID)(using ClassTag[Component]): Component = a match
-        case ActorAnalysisComponent(enclosingActor, _, _)              => enclosingActor
-        case e: EmpheralChildComponent[Ctx @unchecked, Msg @unchecked] => e
-        case _                                                         => throw new Exception(s"unknown actor id $a")
+        case ActorAnalysisComponent(enclosingActor: SchemeModActorComponent[Ctx], _, _) => enclosingActor
+        case e: EmpheralChildComponent[Ctx @unchecked, Msg @unchecked]                  => e
+        case _                                                                          => throw new Exception(s"unknown actor id $a")
 
     protected def enclosing(cmp: Component): Component = cmp match
         case ActorAnalysisComponent(enclosingActor, _, _) => enclosingActor
 
-    type Context = Unit
+    abstract class Context
+    case object EmptyContext extends Context
+    case class MsgCtxContext(mCtx: MessageContext) extends Context
+    // TODO: remove since implicit conversions should not be necessary
+    implicit def toContextComponent(cmp: SchemeModActorComponent[Unit]): SchemeModActorComponent[Context] = cmp.replaceContext(EmptyContext)
+    //type Context = Unit
     override type Component = SchemeModActorComponent[Ctx]
 
     import maf.core.SetMonad.*
@@ -136,7 +146,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     given defaultMailbox: Default[Mailbox] with
         def default: Mailbox = emptyMailbox
 
-    protected val globalStore = GlobalStoreState[Component, Msg, Mailbox, Value](using defaultMailbox, lattice)
+    protected val globalStore = GlobalStoreState[MessageContext, Component, Msg, Mailbox, Value](using defaultMailbox, lattice)
 
     protected type IntraState = globalStore.IntraState
     protected type InterState = globalStore.InterState
@@ -151,7 +161,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
     //////////////////////////////////////////////////
 
     def initialComponent: Component =
-        ActorAnalysisComponent(MainActor, None, Some(()))
+        ActorAnalysisComponent(MainActor, None, Some(EmptyContext))
 
     //
     // Body
@@ -190,9 +200,9 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         case ActorAnalysisComponent(_, _, ctx) =>
             ctx.get
 
-    override def initialCtx: Ctx = ()
+    override def initialCtx: Ctx = EmptyContext
 
-    override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ()
+    override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = EmptyContext
 
     //
     // Env
@@ -222,6 +232,8 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         println(StoreUtil.storeString(interLens.get(_result.nn).sto))
         println(s"Number of spawned actors ${interLens.get(_result.nn).actors.size}")
         println(s"Number of message sends ${interLens.get(_result.nn).mailboxes.values.map(_.messages.size).sum}")
+        println(s"Errors: ")
+        interLens.get(_result.nn).errors.foreach(println)
 
     /** Render the message sends between components as a dot graph */
     override def toDot(filename: String): Unit =
@@ -240,7 +252,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             case (g, (from, (to, tag))) => {
                 val fromN = ComponentGraphElement(from.toString)
                 val toN = ComponentGraphElement(to.toString)
-                val edge = MessageSendEdge(tag)
+                val edge = MessageSendEdge(tag.toString)
 
                 G.addEdge(g, fromN, edge, toN)
             }
@@ -260,12 +272,12 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
         // TODO: to not use implicit conversion but provide explicit one
         initialInterState(globalStore.InterState(sto = initialSto))
 
-    override lazy val initialEnv: Env =
+    override def initialEnv: Env =
         Environment(primitives.allPrimitives.map { case (name, vlu) =>
             name -> PrmAddr(name)
         })
 
-    override lazy val initialSto: Map[Address, Value] =
+    override def initialSto: Map[Address, Value] =
         primitives.allPrimitives.map { case (name, vlu) =>
             PrmAddr(name) -> lattice.primitive(name)
         }.toMap
@@ -350,7 +362,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             intraLens.get(s).self
 
         /* Tracking message sends */
-        def trackSend(st: Intra, from: Component, to: Component, tag: String): Intra =
+        def trackSend(st: Intra, from: Component, to: Component, tag: Value): Intra =
             intraLens.modify(intra => intra.copy(sends = intra.sends + (from -> (to, tag))))(st)
 
     }
@@ -401,7 +413,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             for
                 ctx <- getCtx
                 env <- getEnv
-            yield ActorAnalysisComponent(Actor(initialBehavior, env, ()), None, Some(ctx))
+            yield ActorAnalysisComponent(Actor(initialBehavior, env, EmptyContext), None, Some(ctx))
 
         def allocateEmpheralChild(component: Component, m: Msg): A[Component] =
             unit(EmpheralChildComponent[Ctx, Msg](component, m))
@@ -432,7 +444,8 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
                 )
             )
 
-        def fail[X](err: maf.core.Error): A[X] = { println(s"failing with $err"); mbottom }
+        def fail[X](err: maf.core.Error): A[X] =
+            (get >>= (intraLens.modify(st => st.copy(errors = st.errors + err)) andThen put)) >>> mbottom[X]
 
         /**
          * Runs the analysis represented by `m` for the given `cmp`.
@@ -460,6 +473,9 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
 end GlobalStoreModActor
 
 class SimpleGlobalStoreModActor(prog: SchemeExp) extends SchemeModActorSemantics(prog), GlobalStoreModActor:
+    type MessageContext = Unit
+    def emptyContext: MessageContext = ()
+
     type State = IntraState
     type Inter = InterState
 

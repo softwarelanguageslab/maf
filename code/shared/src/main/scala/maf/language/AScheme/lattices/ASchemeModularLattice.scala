@@ -14,6 +14,9 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
     extends ModularSchemeLattice[A, S, B, I, R, C, Sym],
       ASchemeLattice[HMap, A]:
 
+    object ErrorT extends AbstractSetType[Error, Errors]:
+        def wrap = Errors.apply
+
     object ActorT extends AbstractSetType[Actor, Actors]:
         def wrap = Actors.apply
         lazy val oldLattice: Lattice[Set[Actor]] = summon[Lattice[Set[Actor]]]
@@ -74,12 +77,19 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
         val tpy = EnvelopeT
         override def toString: String = s"<envelope $envelopes>"
 
+    case class Errors(err: Set[Error]) extends Value, Product1[Set[Error]]:
+        def ord = 33
+        def typeName = "ERR"
+        val tpy = ErrorT
+        override def toString: String = s"<error: $err>"
+
     def getActors(x: L): Set[Actor] = x.get(ActorT)
     def getBehs(x: L): Set[Behavior] = x.get(BehaviorT)
     def getFutures(x: L): Set[Future] = x.get(FutureT)
     def getMessages(x: L): Set[ReifiedMessage] = x.get(MessageT)
     def getMirrors(x: L): Set[Mirror[Actor]] = x.get(MirrorT)
     def getEnvelopes(x: L): Set[Envelope[Actor, L]] = x.get(EnvelopeT)
+    def getErrors(x: L): Set[Error] = x.get(ErrorT)
 
     def actor(actor: Actor): L = HMap.injected(ActorT, actor)
     def beh(behavior: Behavior): L = HMap.injected(BehaviorT, behavior)
@@ -87,3 +97,17 @@ class ASchemeModularLattice[A <: Address, S: StringLattice, B: BoolLattice, I: I
     def mirrors(x: Mirror[Actor]): L = HMap.injected(MirrorT, x)
     def message(m: ReifiedMessage): L = HMap.injected(MessageT, m)
     def envelope(e: Envelope[Actor, L]): L = HMap.injected(EnvelopeT, e)
+    def error(e: L): L = HMap.injected(ErrorT, Error(e))
+
+    import maf.util.Monoid.*
+    override def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L = join(
+      x.elements
+          .flatMap((x: Value) => y.elements.map((y: Value) => (x, y)))
+          .map {
+              case (Actors(s1), Actors(s2)) =>
+                  if s1.intersect(s2).isEmpty then bool(false) else boolTop
+              case _ => bool(false)
+          }
+          .mconcat,
+      super.eq(x, y)(comparePtr)
+    )

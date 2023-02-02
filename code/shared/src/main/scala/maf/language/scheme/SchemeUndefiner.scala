@@ -59,6 +59,10 @@ trait UndefinerTester:
     private def checkSequence(s: List[SchemeExp])(allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
+            case (RacketRequire(_, _)) :: rest =>
+                checkSequence(rest)(true)
+            case (RacketProvide(_, _)) :: rest =>
+                checkSequence(rest)(true)
             case (SchemeDefineVariable(name, value, idn)) :: rest =>
                 if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
             case (e @ SchemeBegin(_, _)) :: rest =>
@@ -168,6 +172,17 @@ trait UndefinerTester:
             case AContractSchemeMessage(tag, argumentContracts, ensureContract, _) =>
                 // Nothing is allowed to have defines in them
                 argumentContracts.foldLeft[Result](false) { case (result, contract) => check(contract, false) } || check(ensureContract, false)
+
+            // Racket modules
+            case RacketRequire(clauses, _) =>
+                clauses.foldLeft[Result](false)((result, clause) => result || check(clause, false))
+            case RacketProvide(clauses, _) =>
+                clauses.foldLeft[Result](false)((result, clause) => result || check(clause, false))
+            case RacketModuleExpose(_, _)  => false
+            case RacketModuleLoad(_, _, _) => false
+
+            case mod @ RacketModule(_, _, _, _, _, bdy, _) =>
+                check(bdy, true)
 
             case _ =>
                 //false

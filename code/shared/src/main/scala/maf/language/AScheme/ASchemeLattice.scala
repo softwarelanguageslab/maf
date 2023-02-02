@@ -2,12 +2,15 @@ package maf.language.AScheme
 
 import maf.core.*
 import maf.language.scheme.lattices.SchemeLattice
-import maf.language.AScheme.ASchemeValues.{Actor, Behavior, Future, Message}
+import maf.language.AScheme.ASchemeValues.{AbstractMessage, Actor, Behavior, Future}
 import maf.modular.scheme.modactor.MirrorValues.Mirror
 import maf.modular.scheme.modactor.MirrorValues.Envelope
+import maf.language.AScheme.ASchemeValues.MetaMessage
 
 trait ASchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
-    type ReifiedMessage = Message[L]
+    case class Error(vlu: L)
+
+    type ReifiedMessage = AbstractMessage[L]
 
     /** Injection of an actor */
     def actor(actor: Actor): L
@@ -44,3 +47,12 @@ trait ASchemeLattice[L, A <: Address] extends SchemeLattice[L, A]:
 
     /** Injects an envelope in the abstract domain */
     def envelope(e: Envelope[Actor, L]): L
+
+    /** Injects an error message in the abstract domain */
+    def error(e: L): L
+
+    /** Returns the errors in the abstract value */
+    def getErrors(e: L): Set[Error]
+
+    /** Returns true if the value might be an error */
+    def isError(e: L): Boolean = getErrors(e).nonEmpty

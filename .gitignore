@@ -30,4 +30,5 @@ code/**/*.semanticdb
 out/
 *.dep
 *.zo
-/evaluationLogs
+__pycache__
+stats/

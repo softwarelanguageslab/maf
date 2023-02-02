@@ -263,14 +263,14 @@ class CPSASchemeInterpreter(
 
     /** Handle the given message using the given select statement */
     private def handleMessage(ms: M, selection: ASchemeSelect, env: Env, cc: Continuation): State =
-        selection.handlers.get(ms.tag) match
+        selection.handlers.get(ms._tag) match
             case Some((prs, first :: rest)) =>
-                val extendedEnv = extendEnv(prs, ms.vlus, env)
+                val extendedEnv = extendEnv(prs, ms._vlus, env)
                 val nextCc = if rest.nonEmpty then BegC(rest, extendedEnv, cc) else cc
                 Step(first, extendedEnv, nextCc)
             case Some((prs, List())) =>
                 Kont(Value.Nil, cc)
-            case None => throw new Exception(s"no suitable handler for ${ms.tag}")
+            case None => throw new Exception(s"no suitable handler for ${ms._tag}")
 
     /** Asynchronously sends a message to the given actor's mailbox */
     private def sendMessage(actorRef: Actor, tag: String, ags: List[Value], idn: Identity, cc: Continuation): State =

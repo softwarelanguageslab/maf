@@ -11,6 +11,7 @@ import maf.modular.worklist._
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
 import maf.modular.scheme.modflocal._
+import maf.modular.scheme.aam.*
 
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
@@ -24,122 +25,41 @@ import maf.core._
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = testConcrete()
+    def main(args: Array[String]): Unit = print(runAAM(counterExample))
 
-    def testConcrete() =
-        val txt =
-            """
-          | (letrec ((x y)
-          |          (y 2))
-          |    y) 
-          """.stripMargin
-        val prg = CSchemeParser.parseProgram(txt)
-        val int = new SchemeInterpreter(io = new FileIO(Map()))
-        int.run(prg, Timeout.none)
-        int.store.foreach {
-            case (addr, value) if !addr._2.isInstanceOf[ConcreteValues.AddrInfo.PrmAddr] =>
-                println(s"${addr} -> ${value}")
-            case _ => ()
-        }
+    val prg1 = parse(
+        """
+        | (define (foo x)
+        |    (+ x 1))
+        | (define x 5)
+        | (foo 1)
+        | x
+        """.stripMargin
+    )
 
-    def testTransform(): Unit =
-        val txt = Reader.loadFile("test/DEBUG2.scm")
-        val parsed = CSchemeParser.parse(txt)
-        val prelud = SchemePrelude.addPrelude(parsed, Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
-        val transf = SchemeMutableVarBoxer.transform(prelud)
-        val prg = CSchemeParser.undefine(transf)
-        println(prg.prettyString(2))
+    val counterExample = parse(
+        """
+        | (let*
+        |   ((g (lambda (v) (lambda () v)))
+        |    (a (let ((v 100)) (g 42))))
+        |   (a))
+        """.stripMargin
+    )
 
-    def adaptiveAnalysisA(prg: SchemeExp, n: Int) =
-        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalCallSiteSensitivity(0) with FIFOWorklistAlgorithm[SchemeExp]:
-            override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
-            //override def debug(msg: => String): Unit = println(s"[DEBUG $i] $msg")
-            var i = 0
-            override def step(t: Timeout.T): Unit =
-                i += 1
-                val cmp = workList.head
-                println(s"[$i] Analysing $cmp")
-                super.step(t)
-            def printStore(sto: Sto) =
-                sto.content.view.toMap
-                    .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-            def printDelta(dlt: Dlt) =
-                dlt.delta.view.toMap
-                    .foreach { case (a, (v, _)) => println(s"$a -> $v") }
-            def printCmp(cmp: Cmp) =
-                val (res, dlt) = results.getOrElse(cmp, (lattice.bottom, Delta.empty)).asInstanceOf[(Val, Dlt)]
-                println()
-                println(s"COMPONENT $cmp WHERE")
-                printStore(cmp.sto)
-                println(s"==> RESULTS: $res")
-                println(s"==> DELTA (updated: ${dlt.updates.mkString("{", ",", "}")}):")
-                printDelta(dlt)
-                println()
-
-    def testModFLocal(): Unit =
-        val txt = Reader.loadFile("test/R5RS/gambit/peval.scm")
+    def parse(txt: String): SchemeExp =
         val parsed = CSchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
-        val prg = CSchemeParser.undefine(transf)
-        val anl = adaptiveAnalysisA(prg, 100)
+        CSchemeParser.undefine(transf)
+
+    def runDSS(prg: SchemeExp) =
+        val anl = new SchemeDSSAnalysis(prg, 0) with NameBasedAllocator
         anl.analyze()
+        val res = anl.results(anl.MainComponent).asInstanceOf[Set[(anl.Val, anl.Dlt, Set[anl.Adr])]]
+        val vlu = Lattice[anl.Val].join(res.map(_._1))
+        vlu 
 
-    def testModConc(): Unit =
-        val txt = Reader.loadFile("test/concurrentScheme/threads/msort.scm")
-        val prg = CSchemeParser.parseProgram(txt)
-        val anl = SchemeAnalyses.modConcAnalysis(prg, 0)
-        anl.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)))
-        print(anl.store)
-
-    def testAbstract(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/my-test.scm")
-        val prg = CSchemeParser.parseProgram(txt)
-        val anl = new SimpleSchemeModFAnalysis(prg)
-            with SchemeModFNoSensitivity
-            with SchemeConstantPropagationDomain
-            with FIFOWorklistAlgorithm[SchemeExp] {
-            var step = 0
-            override def step(timeout: Timeout.T): Unit =
-                val cmp = workList.head
-                step += 1
-                println(s"[$step] Analysing ${view(cmp)}")
-                super.step(timeout)
-        }
-        anl.analyze()
-        //debugClosures(analysis)
-        //println(anl.finished)
-        debugResults(anl, false)
-
-    def testAbstractAdaptive(): Unit =
-        val txt = Reader.loadFile("test/R5RS/various/mceval.scm")
-        val prg = CSchemeParser.parseProgram(txt)
-        val anl = new AdaptiveModAnalysis(prg, rate = 1000)
-            with AdaptiveSchemeModFSemantics
-            with AdaptiveContextSensitivity
-            with AdaptiveKCFA
-            with SchemeConstantPropagationDomain
-            with FIFOWorklistAlgorithm[SchemeExp] {
-            // logging the analysis
-            var step = 0
-            override def step(timeout: Timeout.T): Unit =
-                //val cmp = workList.head
-                step += 1
-                //println(s"[$step] Analysing ${view(cmp)}")
-                super.step(timeout)
-            override protected def debug(message: => String) = println(s"DEBUG: [$step] $message")
-            override protected def warn(message: => String) = println(s"WARN: [$step] $message")
-        }
-        anl.analyze()
-        //debugClosures(analysis)
-        println("===================")
-        println(s"Steps: ${anl.step}")
-        println(s"Finished: ${anl.finished}")
-        debugResults(anl, false)
-
-    def debugResults(machine: BaseSchemeModFSemantics, printMore: Boolean = false): Unit =
-        machine.store.foreach {
-            case (ReturnAddr(cmp: machine.Component @unchecked, _), result) if cmp == machine.initialComponent || printMore =>
-                println(s"$cmp => $result")
-            case _ => ()
-        }
+    def runAAM(prg: SchemeExp) = 
+        val aam = new SchemeAAMAnalysis(prg, 0) with AAMGC with AAMNameBasedAllocator with AAMAnalysisResults
+        aam.analyze()
+        aam.finalValue

@@ -25,7 +25,12 @@ case class IncrementalConfiguration(
     cyclicValueInvalidation: Boolean = true):
 
     if cyclicValueInvalidation && !writeInvalidation then
-        throw new InvalidConfigurationException("Illegal configuration state: cyclic value invalidation requires write invalidation.", this)
+        throw InvalidConfigurationException("Illegal configuration state: cyclic value invalidation requires write invalidation.", this)
+    if cyclicValueInvalidation && !componentInvalidation then
+        throw InvalidConfigurationException(
+          "Illegal configuration state: cyclic value invalidation requires component invalidation to detect inter-component implicit flows.",
+          this
+        )
 
     private def booleanToString(b: Boolean): String = if b then "enabled" else "disabled"
 
@@ -101,13 +106,16 @@ object IncrementalConfiguration:
           ci_di,
           ci_wi,
           di_wi,
-          // wi_cy,
+          // wi_cy, // No longer possible (ci required).
           // Three optimisations
           ci_di_wi,
           //  ci_wi_cy,
-          //  di_wi_cy,
+          //  di_wi_cy, // No longer possible (ci required).
           // Four optimisations
           // allOptimisations,
         )
+
+    def fromString(string: String): Option[IncrementalConfiguration] =
+        List(noOptimisations, ci, di, wi, ci_di, ci_wi, di_wi, ci_di_wi, allOptimisations).find(_.toString == string)
 
     case class InvalidConfigurationException(message: String, config: IncrementalConfiguration) extends Exception(message)

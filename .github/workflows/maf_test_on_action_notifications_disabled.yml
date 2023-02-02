@@ -1,0 +1,48 @@
+name: MAF tests on action
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Run fast tests
+    runs-on: self-hosted
+    steps:
+      # Check out the GitHub repository.
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: openjdk@1.15
+      - name: Setup Z3 
+        uses: pavpanchekha/setup-z3@0.2.0
+        with: 
+          version: 4.8.12
+          distribution: glibc-2.31
+      # Compile the code.
+      - name: Compile MAF
+        run: sbt compile
+      # Perform the actual tests.
+      - name: Run the tests
+        run: sbt "maf/testOnly -- -l IncrementalTest -l SlowTest"
+        env: 
+          LOG_ENV: ci
+          LOG_LOCATION: log-${{ github.sha }}
+      - name: Upload log
+        uses: actions/upload-artifact@v2 
+        with: 
+          name: Test logging output 
+          path: logs/log-${{ github.sha }}.txt
+      # Send an additional notification upon failure.
+      #- name: Stress slack fail
+      #  if: failure()
+      #  env:
+      #    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_BOT_TOKEN }}
+      #  uses: 8398a7/action-slack@v3
+      #  with:
+      #    status: ${{ job.status }}
+      #    fields: message,commit,author

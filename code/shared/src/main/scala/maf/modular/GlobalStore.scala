@@ -62,7 +62,7 @@ trait GlobalStore[Expr <: Expression] extends ModAnalysis[Expr] with AbstractDom
 
     /** Returns a string representation of the store. */
     def storeString(primitives: Boolean = false): String =
-        StoreUtil.storeString(store, primitives)
+        StoreUtil.storeString(store, primitives, Some(50))
 
     override def configString(): String = super.configString() + s"\n  with a global store and a $domainName"
 }

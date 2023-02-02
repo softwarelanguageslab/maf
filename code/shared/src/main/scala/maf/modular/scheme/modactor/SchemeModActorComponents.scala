@@ -9,11 +9,13 @@ import maf.language.AScheme.ASchemeValues.Behavior
 import maf.modular.scheme.modf.SchemeModFComponent
 
 sealed trait SchemeModActorComponent[+Context] extends SmartHash with AID:
+    def replaceContext[Other](otherCtx: Other): SchemeModActorComponent[Other]
     def removeContext: SchemeModActorComponent[Unit]
     override def removeEnv: SchemeModActorComponent[Context]
 
 // The main actor of the program
 case object MainActor extends SchemeModActorComponent[Nothing]:
+    def replaceContext[Other](otherCtx: Other): SchemeModActorComponent[Other] = MainActor
     def removeContext: SchemeModActorComponent[Unit] = MainActor
     def removeEnv: SchemeModActorComponent[Nothing] = MainActor
 
@@ -30,6 +32,8 @@ case class Actor[Context](
     ctx: Context)
     extends SchemeModActorComponent[Context]:
 
+    def replaceContext[Other](otherCtx: Other): SchemeModActorComponent[Other] =
+        Actor(beh, env, otherCtx)
     def removeContext: SchemeModActorComponent[Unit] = Actor(beh, env, ())
     def removeEnv: Actor[Context] = Actor(beh.copy(lexEnv = Environment.empty), Environment.empty, ctx)
 
@@ -40,14 +44,17 @@ trait StandardSchemeModActorComponents extends SchemeModActorSemantics:
     def view(cmp: Component) = cmp
 
 /** The analysis of an actor consists of analyzing all the components within that actor */
-case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[Unit], innerComponent: Option[SchemeModFComponent], ctx: Option[Ctx])
+case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[Ctx], innerComponent: Option[SchemeModFComponent], ctx: Option[Ctx])
     extends SchemeModActorComponent[Ctx]:
+
+    def replaceContext[Other](otherCtx: Other): SchemeModActorComponent[Other] =
+        ActorAnalysisComponent(enclosingActor.replaceContext(otherCtx), innerComponent, ctx = Some(otherCtx))
 
     override def removeEnv: SchemeModActorComponent[Ctx] =
         this.copy(enclosingActor = enclosingActor.removeEnv)
 
     override def removeContext: SchemeModActorComponent[Unit] =
-        this.copy(ctx = None, innerComponent = None)
+        ActorAnalysisComponent(enclosingActor.removeContext, None, None)
 
     private def showInner: String = innerComponent match
         case Some(BehaviorComponent(beh, _, _))     => s"<behavior: ${beh.name}:${beh.bdy.idn}>"
@@ -58,7 +65,7 @@ case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[U
 
     override def toString: String =
         enclosingActor match
-            case MainActor                               => "<aid: MainActor>"
+            case MainActor                               => s"<aid: MainActor $showInner>"
             case Actor(beh, _, _)                        => s"<aid: ${beh.name}:${beh.bdy.idn}, ${showInner}>"
             case ActorAnalysisComponent(enclosing, _, _) => enclosing.toString
 
@@ -67,6 +74,7 @@ case class ActorAnalysisComponent[Ctx](enclosingActor: SchemeModActorComponent[U
  * it is awaiting a response.
  */
 case class EmpheralChildComponent[Ctx, M](childOf: SchemeModActorComponent[Ctx], m: M) extends SchemeModActorComponent[Ctx]:
+    def replaceContext[Other](otherCtx: Other): SchemeModActorComponent[Other] = EmpheralChildComponent(childOf.replaceContext(otherCtx), m)
     def removeContext: SchemeModActorComponent[Unit] = this.copy(childOf = childOf.removeContext)
     override def removeEnv: SchemeModActorComponent[Ctx] = this.copy(childOf = childOf.removeEnv)
 

@@ -4,14 +4,19 @@ import maf.language.AScheme.ASchemeValues.Message
 import maf.language.AScheme.ASchemeValues
 import maf.util.datastructures.SmartUnion
 import maf.util.Default
+import maf.core.Lattice
+import maf.language.AScheme.ASchemeValues.AbstractMessage
+import maf.language.AScheme.ASchemeValues.MetaMessage
 
 /**
  * An abstract representation of a mailbox.
  *
  * @tparam M
  *   the type of the messages in the mailbox
+ * @tparam K
+ *   the type of context of the messages in the mailbox
  */
-trait AbstractMailbox[M]:
+trait AbstractMailbox[M, K]:
     /**
      * Enqueue a message in the mailbox.
      *
@@ -23,58 +28,45 @@ trait AbstractMailbox[M]:
      *   implementations of this method may assume that the a sequence of <code>enqueue</code> commands entails a sending order of the messages in the
      *   mailbox.
      */
-    def enqueue(msg: M): AbstractMailbox[M]
-
-    /**
-     * Enqueues a list of messages
-     *
-     * @param msgs
-     *   the list of messages to enqueue in the mailbox
-     * @return
-     *   an updated mailbox.
-     */
-    def enqueue(msgs: List[M]): AbstractMailbox[M] =
-        msgs.foldLeft(this)((mailbox, msg) => mailbox.enqueue(msg))
+    def enqueue(msg: M, ctx: K): AbstractMailbox[M, K]
 
     /**
      * Pop a message from the mailbox. Depending on the level of abstraction used, it can return a set of messages that might be received during that
      * turn.
      */
-    def dequeue: Set[(M, AbstractMailbox[M])] // TODO: rename to dequeue
+    def dequeue: Set[((M, K), AbstractMailbox[M, K])] // TODO: rename to dequeue
 
     /** Returns all messages in the mailbox */
     def messages: Set[M]
 
     /** Merge the given mailbox with the current one */
-    def merge(other: AbstractMailbox[M]): AbstractMailbox[M]
+    def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K]
 
 /**
  * A powerset implementation of the mailbox, as used in Emanuele D’Osualdo, Jonathan Kochems, and Luke Ong. Automatic verification of erlang- style
  * concurrency. In Static Analysis - 20th International Symposium, SAS 2013
  */
-case class PowersetMailbox[M](msgs: Set[M]) extends AbstractMailbox[M]:
-    def enqueue(msg: M): PowersetMailbox[M] =
-        this.copy(msgs = msgs + msg)
+case class PowersetMailbox[M, K](msgs: Set[(M, K)]) extends AbstractMailbox[M, K]:
+    def enqueue(msg: M, ctx: K): PowersetMailbox[M, K] =
+        this.copy(msgs = msgs + ((msg, ctx)))
 
-    def dequeue: Set[(M, AbstractMailbox[M])] =
+    def dequeue: Set[((M, K), AbstractMailbox[M, K])] =
         // We return a copy of the same mailbox for each message since message multiplicity is unknown
         msgs.map(m => (m, PowersetMailbox(msgs)))
 
-    val messages: Set[M] = msgs
+    val messages: Set[M] = msgs.map(_._1)
 
-    def merge(other: AbstractMailbox[M]): AbstractMailbox[M] = other match
+    def merge(other: AbstractMailbox[M, K]): AbstractMailbox[M, K] = other match
         case PowersetMailbox(msgs) => this.copy(msgs = SmartUnion.sunion(this.msgs, msgs))
 
 object PowersetMailbox:
-    given [M]: Default[PowersetMailbox[M]] with
-        def default: PowersetMailbox[M] = PowersetMailbox(Set())
+    given [M, K]: Default[PowersetMailbox[M, K]] with
+        def default: PowersetMailbox[M, K] = PowersetMailbox(Set())
 
 /** This trait implements simple messages where the arguments of the messages are not store allocated */
 trait SimpleMessageMailbox extends SchemeModActorSemantics:
-    type Msg = ASchemeValues.Message[Value]
-    def mkMessage(tpy: String, arguments: List[Value]): Msg = Message(tpy, arguments)
-    def getTag(msg: Msg): String = msg.tag
-    def getArgs(msg: Msg): List[Value] = msg.vlus
+    type Msg = AbstractMessage[Value]
+    override def mkMessage(tpy: Value, arguments: Value): Msg = MetaMessage(tpy, arguments)
 
 /** An analysis with a powerset mailbox */
 trait PowersetMailboxAnalysis extends SchemeModActorSemantics:

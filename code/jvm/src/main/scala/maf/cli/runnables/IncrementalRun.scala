@@ -17,6 +17,7 @@ import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.*
 import maf.modular.worklist.{LIFOWorklistAlgorithm, *}
 import maf.util.*
+import maf.util.ColouredFormatting.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.*
 import maf.util.graph.{DotGraph, Graph}
@@ -24,6 +25,8 @@ import maf.util.graph.{DotGraph, Graph}
 import scala.concurrent.duration.*
 
 object IncrementalRun extends App:
+
+    type A = ModAnalysis[SchemeExp] with IncrementalGlobalStoreCY[SchemeExp] with IncrementalSchemeTypeDomain
 
     class Analysis(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends ModAnalysis[SchemeExp](prg)
@@ -63,7 +66,7 @@ object IncrementalRun extends App:
         }
         println("Done interpreting.")
 
-    def checkEqState(a: Analysis, b: Analysis, message: String = ""): Unit =
+    def checkEqState(a: A, b: A, message: String = ""): Unit =
         (a.store.keySet ++ b.store.keySet).foreach { addr =>
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
             val valB = b.store.getOrElse(addr, b.lattice.bottom)
@@ -87,48 +90,49 @@ object IncrementalRun extends App:
         //assert(a.implicitFlows == b.implicitFlows, message + " (flow mismatch)") // TODO Readd?
         assert(a.dataFlowR == b.dataFlowR, message + " (reverse flow mismatch)") */
 
+    class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
+        extends BaseModFAnalysisIncremental(prg)
+            with IncrementalSchemeTypeDomain
+            with IncrementalLogging[SchemeExp]
+            with IncrementalDataFlowVisualisation[SchemeExp]
+            with IncrementalGlobalStoreCY[SchemeExp]:
+        override def focus(a: Addr): Boolean = false //!a.toString.contains("PrmAddr")
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
+
     val modFbenchmarks: List[String] = List(
-      //  "test/DEBUG1.scm",
-      //    "test/DEBUG2.scm"
-      "test/DEBUG3.scm"
-      //  "test/changes/scheme/generated/R5RS_gambit_earley-4.scm"
-      // "test/changes/scheme/reinforcingcycles/cycleCreation.scm",
-      // "test/changes/scheme/satMiddle.scm",
-      //"test/changes/scheme/satFine.scm",
-      //"test/changes/scheme/reinforcingcycles/implicit-paths.scm",
-      //"test/DEBUG3.scm",
-      // "test/changes/scheme/nbody-processed.scm"
-      // "test/changes/scheme/browse.scm"
+      //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
+      "test/changes/scheme/freeze.scm" // Nog niet precies.
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
 
     modFbenchmarks.foreach { bench =>
         try {
-            println(s"***** $bench *****")
+            println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            val a = new Analysis(text, ci_di_wi)
-            val b = new Analysis(text, ci_wi)
+            val a = new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations)
+            val b = new IncrementalSchemeModFAnalysisTypeLattice(text, noOptimisations)
+
+            println(text.prettyString())
+
             println("init")
             a.analyzeWithTimeout(newTimeout())
+            b.version = New
             b.analyzeWithTimeout(newTimeout())
 
             println("upd")
+            a.computeSCAs().foreach(s => println(s.mkString(" ")))
             a.updateAnalysis(newTimeout())
-            b.updateAnalysis(newTimeout())
-            checkEqState(a, b)
 
-            // val c = new Analysis(text, ci_di_wi)
-            // c.version = New
-            // c.analyzeWithTimeout(newTimeout())
-            // checkEqState(a, c)
-            // checkEqState(b, c)
+            a.dataFlowToImage("flows.dot")
+            checkEqState(a, b)
         } catch {
             case e: Exception =>
                 e.printStackTrace(System.out)
         }
     }
-    println("\n\n**Done**\n\n")
+    println(markOK("\n\n**Done**\n\n"))
 end IncrementalRun
 
 // Prints the maximal heap size.
@@ -147,21 +151,3 @@ object IncrementalExtraction extends App:
 
     val program = CSchemeParser.parseProgram(Reader.loadFile(text))
     println((if version == New then ProgramVersionExtracter.getUpdated(program) else ProgramVersionExtracter.getInitial(program)).prettyString())
-
-/*
-    Key not found error in deleteContribution (when W not removed during cycle cleanup):
-
-(letrec ((for-each (lambda (f l)
-                      (if (null? l)
-                        #t
-                        (begin
-                          (for-each f (cdr l))))))
-          (list (lambda args args))
-          (_0 (letrec ((loop (lambda (level)
-                                (if (< level 2)
-                                  (for-each (lambda (child-pt1) (loop (+ 1 level))) (list ((<change> list vector) '<pt>)))
-                                  #f))))
-                (loop 0))))
-  _0)
-
- */

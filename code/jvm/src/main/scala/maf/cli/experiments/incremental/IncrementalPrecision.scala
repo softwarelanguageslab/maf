@@ -1,20 +1,21 @@
 package maf.cli.experiments.incremental
 
 import maf.bench.scheme.IncrementalSchemeBenchmarkPrograms
-import maf.core._
+import maf.core.*
 import maf.language.CScheme.CSchemeParser
-import maf.language.change.CodeVersion._
-import maf.language.scheme._
-import maf.modular.incremental.IncrementalConfiguration._
-import maf.modular.incremental._
-import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations._
-import maf.modular.scheme._
-import maf.util._
-import maf.util.benchmarks._
+import maf.language.change.CodeVersion.*
+import maf.language.scheme.*
+import maf.modular.incremental.IncrementalConfiguration.*
+import maf.modular.incremental.*
+import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
+import maf.modular.scheme.*
+import maf.util.*
+import maf.util.ColouredFormatting.*
+import maf.util.benchmarks.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
-trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String]:
+trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] with TableOutput[E, String]:
 
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E]
 
@@ -73,65 +74,59 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
-        // TODO merge `compareToFullReanalysis` and `compareToNoOptimisations` for efficiency!
-        compareToFullReanalysis(file)
-        println()
-        compareToNoOptimisations(file)
-
-    def compareToFullReanalysis(file: String): Unit =
-        print(s"Testing $file (full R) ")
+        println(markTask(s"Testing precision of $file: "))
         val program = parse(file)
         // Initial analysis: analyse + update.
-        val a1 = analysis(program, allOptimisations) // Allow tracking for all optimisations.
+        val init = analysis(program, allOptimisations) // Allow tracking for all optimisations.
 
-        // Base case: analysis of new program version.
-        val a2 = analysis(program, noOptimisations) // The configuration does not matter here.
-        a2.version = New
+        // Run the initial analsyis and make sure it finishes.
+        if runAnalysis(s"init ", timeOut => init.analyzeWithTimeout(timeOut)) then
+            print(markWarning("timed out."))
+            columns.foreach { c =>
+                resultsNoOpt = resultsNoOpt.add(file, c, infS)
+                results = results.add(file, c, infS)
+            }
+            return
 
-        // Run the initial analysis and full reanalysis. They both need to finish.
-        if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) || runAnalysis("rean ", timeOut => a2.analyzeWithTimeout(timeOut)) then
-            print("timed out.")
+        // Full reanalysis of the program.
+        val rean = analysis(program, noOptimisations) // The configuration does not matter here.
+        rean.version = New
+        var reanTO = false
+
+        if runAnalysis("rean ", timeOut => rean.analyzeWithTimeout(timeOut)) then
+            print(markWarning("timed out - "))
             columns.foreach(c => results = results.add(file, c, infS))
-            return ()
+            reanTO = true
 
-        configurations.foreach { config =>
-            val copy = a1.deepCopy()
-            copy.configuration = config
-            if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then results = compareAnalyses(file, copy, a2, results)
-            else
-                propertiesS.foreach(o => results = results.add(file, columnName(o, config.toString), infS))
-                print(" timed out - ")
-        }
+        // Incremental update without optimisations.
+        val noOpt = init.deepCopy()
+        noOpt.configuration = noOptimisations
+        var noOptTO = false
 
-    def compareToNoOptimisations(file: String): Unit =
-        print(s"Testing $file (noOpt) ")
-        val program = parse(file)
-        // Initial analysis: analyse + update.
-        val a1 = analysis(program, allOptimisations) // Allow tracking for all optimisations.
-
-        // Run the initial analysis which needs to finish.
-        if runAnalysis("init ", timeOut => a1.analyzeWithTimeout(timeOut)) then
-            print("timed out.")
+        if runAnalysis("noOpt ", timeOut => noOpt.updateAnalysis(timeOut)) then
+            print(markWarning("timed out - "))
             columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
-            return ()
+            noOptTO = true
 
-        // Update the analysis without optimisations. Needs to finish as well.
-        val a2 = a1.deepCopy()
-        a2.configuration = noOptimisations
-        if runAnalysis("noOpt ", timeOut => a2.updateAnalysis(timeOut)) then
-            print("timed out.")
-            columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
-            return ()
+        // Abort if nothing to compare to.
+        if reanTO && noOptTO then { println(); return }
 
+        // Run the incremental update using each configuration and compare.
         configurations.foreach { config =>
-            val copy = a1.deepCopy()
+            val copy = init.deepCopy()
             copy.configuration = config
             if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then
-                resultsNoOpt = compareAnalyses(file, copy, a2, resultsNoOpt)
+                results = compareAnalyses(file, copy, rean, results)
+                resultsNoOpt = compareAnalyses(file, init, noOpt, resultsNoOpt)
             else
-                propertiesS.foreach(o => resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS))
-                print(" timed out - ")
+                print(markWarning(" timed out - "))
+                propertiesS.foreach { o =>
+                    results = results.add(file, columnName(o, config.toString), infS)
+                    resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS)
+                }
         }
+        println()
+    end onBenchmark
 
     def interestingAddress[A <: Address](a: A): Boolean
     def createOutput(): String =
@@ -147,8 +142,6 @@ trait IncrementalSchemePrecision extends IncrementalPrecision[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(2, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypePrecision() extends IncrementalSchemePrecision:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -201,27 +194,42 @@ object IncrementalSchemeModXPrecision:
 
         if args.typeLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFTypePrecision).execute(curatedSuite),
-                            s"${outDir}type-curated-precision.csv",
-                            s"${outDir}type-curated-precision-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFTypePrecision).execute(curatedSuite, args),
+                  s"${outDir}type-curated-precision-vs-full.csv",
+                  s"${outDir}type-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
                 splitOutput(
-                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite),
-                  s"${outDir}type-generated-precision.csv",
-                  s"${outDir}type-generated-precision-noopt.csv"
+                  (new IncrementalSchemeModFTypePrecision).execute(generatedSuite, args),
+                  s"${outDir}type-generated-precision-vs-full.csv",
+                  s"${outDir}type-generated-precision-vs-noopt.csv"
+                )
+            if args.files.nonEmpty then
+                splitOutput(
+                  (new IncrementalSchemeModFTypePrecision).execute(args.files, args),
+                  s"${outDir}type-file-precision-vs-full.csv",
+                  s"${outDir}type-file-precision-vs-noopt.csv"
                 )
         end if
         if args.cpLattice then
             if args.curated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(curatedSuite),
-                            s"${outDir}cp-curated-precision.csv",
-                            s"${outDir}cp-curated-precision-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFCPPrecision).execute(curatedSuite, args),
+                  s"${outDir}cp-curated-precision-vs-full.csv",
+                  s"${outDir}cp-curated-precision-vs-noopt.csv"
                 )
             if args.generated then
-                splitOutput((new IncrementalSchemeModFCPPrecision).execute(generatedSuite),
-                            s"${outDir}cp-generated-precision.csv",
-                            s"${outDir}cp-generated-precision-noopt.csv"
+                splitOutput(
+                  (new IncrementalSchemeModFCPPrecision).execute(generatedSuite, args),
+                  s"${outDir}cp-generated-precision-vs-full.csv",
+                  s"${outDir}cp-generated-precision-vs-noopt.csv"
+                )
+            if args.files.nonEmpty then
+                splitOutput(
+                  (new IncrementalSchemeModFCPPrecision).execute(args.files, args),
+                  s"${outDir}cp-file-precision-vs-full.csv",
+                  s"${outDir}cp-file-precision-vs-noopt.csv"
                 )
         end if
     end main

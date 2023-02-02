@@ -1,5 +1,6 @@
 package maf.language.scheme.lattices
 
+import maf.language.racket.*
 import maf.core._
 import maf.lattice.{AbstractSetType, AbstractType, AbstractWrapType, HMap, HMapKey, NoExtract, NoInject}
 import maf.util.MonoidImplicits.*
@@ -383,6 +384,15 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     /** The injected false value */
     val False: Bool = Bool(BoolLattice[B].inject(false))
+
+    object RModT extends AbstractSetType[RMod[HMap], RMods]:
+        def wrap = RMods.apply
+
+    case class RMods(mods: Set[RMod[HMap]]) extends Value, Product1[Set[RMod[HMap]]]:
+        def ord = 34
+        def typeName: String = "RMOD"
+        val tpy = RModT
+        override def toString(): String = s"<mod: $mods>"
 
     object Value:
         // TODO: Opq has a special status for subsumes, in that it subsumes everything (i.e. it is like top)
@@ -993,6 +1003,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def arr(arr: Arr[L]): L = HMap.injected(ArrT, arr)
         def flat(flt: Flat[L]): L = HMap.injected(FlatT, flt)
         def opq(opq: Opq): L = HMap.injected(OpqT, opq)
+
+        def rmods(mod: HMap): Set[RMod[HMap]] = mod.get(RModT)
+        def rmod(mod: RMod[HMap]): HMap = HMap.injected(RModT, mod)
+
         def struct(struct: Struct[L]): L = HMap.injected(StructT, struct)
         def structPredicate(struct: StructPredicate): L = HMap.injected(StructPredicateT, struct)
         def structSetterGetter(setterGetter: StructSetterGetter): L =
@@ -1001,7 +1015,15 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             HMap.injected(StructConstructorT, constructor)
         def nil: L = HMap.wrapInserted(NilT, Nil)
         def void: L = HMap.wrapInserted(VoidT, Void)
-        def eql[B2: BoolLattice](x: L, y: L): B2 = ??? // TODO[medium] implement
+        def eql[B2: BoolLattice](x: L, y: L): B2 =
+            x.elements[Value].foldMap[B2] {
+                case Symbol(s1) =>
+                    y.elements.foldMap[B2] {
+                        case Symbol(s2) => SymbolLattice[Sym].eql[B2](s1, s2)
+                        case _          => BoolLattice[B2].top
+                    }
+                case _ => BoolLattice[B2].top
+            }
         def refs(x: L): Set[Address] = x.elements[Value].foldMap(x => Value.refs(x))(setMonoid) // TODO: put in HMap lattice
         def eq(xs: L, ys: L)(comparePtr: MaybeEq[A]): L = // TODO: put in HMap lattice
             xs.elements[Value].foldMap { x =>
@@ -1010,6 +1032,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 }
             }
     }
+
+    override def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L = schemeLattice.eq(x, y)(comparePtr)
 
     private def emptyEnv[A <: Address] = Environment[A](Iterable.empty)
 
@@ -1039,7 +1063,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case v            => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
     // Make this an instance of SchemeLattice
-    export L.lattice.*
+    export L.lattice.{eq => _, *}
 
     object L:
         implicit val lattice: SchemeLattice[L, A] = schemeLattice

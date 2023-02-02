@@ -58,19 +58,20 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
     trait BigStepModFIntraT extends IntraAnalysis with SchemeModFSemanticsIntra:
         import evalM._
         // simple big-step eval
-        protected def eval(exp: SchemeExp): EvalM[Value] = exp match
-            case SchemeValue(value, _)              => evalLiteralValue(value, exp)
-            case lambda: SchemeLambdaExp            => evalClosure(lambda)
-            case SchemeVar(nam)                     => evalVariable(nam)
-            case SchemeBegin(exps, _)               => evalSequence(exps)
-            case SchemeSet(id, vexp, _)             => evalSet(id, vexp)
-            case SchemeIf(prd, csq, alt, _)         => evalIf(prd, csq, alt)
-            case SchemeLet(bindings, body, _)       => evalLet(bindings, body)
-            case SchemeLetStar(bindings, body, _)   => evalLetStar(bindings, body)
-            case SchemeLetrec(bindings, body, _)    => evalLetRec(bindings, body)
-            case call @ SchemeFuncall(fun, args, _) => evalCall(call, fun, args)
-            case SchemeAssert(exp, _)               => evalAssert(exp)
-            case _                                  => throw new Exception(s"Unsupported Scheme expression: $exp")
+        protected def eval(exp: SchemeExp): EvalM[Value] =
+            exp match
+                case SchemeValue(value, _)              => evalLiteralValue(value, exp)
+                case lambda: SchemeLambdaExp            => evalClosure(lambda)
+                case SchemeVar(nam)                     => evalVariable(nam)
+                case SchemeBegin(exps, _)               => evalSequence(exps)
+                case SchemeSet(id, vexp, _)             => evalSet(id, vexp)
+                case SchemeIf(prd, csq, alt, _)         => evalIf(prd, csq, alt)
+                case SchemeLet(bindings, body, _)       => evalLet(bindings, body)
+                case SchemeLetStar(bindings, body, _)   => evalLetStar(bindings, body)
+                case SchemeLetrec(bindings, body, _)    => evalLetRec(bindings, body)
+                case call @ SchemeFuncall(fun, args, _) => evalCall(call, fun, args)
+                case SchemeAssert(exp, _)               => evalAssert(exp)
+                case _                                  => throw new Exception(s"Unsupported Scheme expression: $exp")
         protected def evalVariable(id: Identifier): EvalM[Value] =
             getEnv.flatMap(env => lookup(id, env))
         protected def evalClosure(lam: SchemeLambdaExp): EvalM[Value] =

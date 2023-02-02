@@ -12,6 +12,10 @@ import maf.core.LatticeTopUndefined
 import monocle.macros.GenLens
 import maf.language.AScheme.ASchemeValues
 import maf.language.AScheme.ASchemeValues.ASchemeValue
+import maf.language.AScheme.ASchemeValues.Message
+import maf.language.AScheme.ASchemeValues.AbstractMessage
+import maf.modular.scheme.PrmAddr
+import maf.core.Address
 
 trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     /** Encodes whether an actor has a mirror or not */
@@ -62,6 +66,16 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     implicit override val analysisM: GlobalMetaSemanticsM
 
     class GlobalMetaSemanticsM extends GlobalStoreAnalysisM, MetaAnalyisM[A] {
+        override def currentBehavior: A[Behavior] =
+            selfActorCmp flatMap {
+                case a @ ActorAnalysisComponent(Actor(beh, _, _), None, _)                => unit(beh)
+                case a @ ActorAnalysisComponent(_, Some(BehaviorComponent(beh, _, _)), _) => unit(beh)
+                case c =>
+                    println(s"+++ meta/receive component is $c which does not satisfy the currentBehavior constraints")
+                    mbottom
+            }
+        override def baseFail(error: Value): A[Unit] = ??? // TODO: remove
+        override def isFail(vlu: Value): A[Boolean] = ??? // TODO: remove
         override def lookupMirror(actor: ActorRef): A[Option[Mirror[ActorRef]]] =
             for
                 mirror <- get.map(_.mirrors(actor))
@@ -106,7 +120,20 @@ trait ModActorWithMirrors extends GlobalStoreModActor, ASchemeMirrorsSemantics:
     override protected def initialIntra(cmp: Component, intra: globalStore.IntraState): Intra =
         IntraMirrorState(intra)
 
+    // Add the meta primitives to the environment
+    override def initialEnv: Env =
+        super.initialEnv.extend(MetaPrimitives.primitiveNames.map(name => name -> PrmAddr(name)))
+
+    // Add the meta primitives to the store as well
+    override def initialSto: Map[Address, Val] =
+        super.initialSto ++ MetaPrimitives.primitiveNames.map(name => PrmAddr(name) -> lattice.primitive(name))
+
 class SimpleModActorWithMirrors(prog: SchemeExp) extends SchemeModActorSemantics(prog), ModActorWithMirrors:
+    def messageCtx(mCtx: MessageContext)(ctx: Ctx): Ctx = MsgCtxContext(mCtx)
+
+    override def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx = ctx
     implicit override val analysisM: GlobalMetaSemanticsM = new GlobalMetaSemanticsM()
-    def reifyMessage(m: Msg): ASchemeValues.Message[Value] = m
-    def abstractMessage(m: Msg): ASchemeValues.Message[Value] = m
+    def reifyMessage(m: Msg, exs: List[SchemeExp]): AbstractMessage[Value] = m match
+        case m: Message[_] => m.copy(_exs = exs)
+        case _             => m
+    def errors: Set[maf.core.Error] = _result.nn.inner.errors

@@ -21,11 +21,15 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
     import MonadJoin.*
     import maf.util.LogOps.*
 
-    given Logger.Logger = Logger.ConsoleLog()
+    given Logger.Logger = Logger.DisabledLog()
 
     type ActorRef = Actor
     type Behavior = ASchemeValues.Behavior
-    type Msg
+
+    type MessageContext
+    def emptyContext: MessageContext
+
+    type Msg <: AbstractMessage[Value]
 
     implicit override lazy val lattice: ASchemeLattice[Val, Adr]
 
@@ -40,13 +44,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   the new message wrapped in the analysis monad
          */
-        def mkMessage(tpy: String, arguments: List[Value]): M[Msg]
-
-        /** Get the tag of a message */
-        def getMessageTag(m: Msg): String
-
-        /** Get the arguments of a message */
-        def getMessageArguments(m: Msg): List[Val]
+        def mkMessage(tpy: Value, arguments: Value): M[Msg]
 
     trait ActorAnalysisM[M[_]] extends AnalysisM[M], MessageM[M]:
         /**
@@ -57,30 +55,30 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @param msg
          *   the message to send
          */
-        def sendMessage(to: Val, tag: String, ags: List[Val]): M[Unit] =
+        def sendMessage(to: Val, tag: Val, ags: Val, context: MessageContext): M[Unit] =
             given Monad[M] = this
             mkMessage(tag, ags).flatMap { msg =>
                 mjoin(
                   lattice
                       .getActors(to)
                       .map { actor =>
-                          send(actor, msg)
+                          send(actor, msg, context)
                       }
                       .toList
                 )
             }
 
-        def send(to: ActorRef, m: Msg): M[Unit]
-        def send_(to: ActorRef)(m: Msg): M[Unit] = send(to, m)
+        def send(to: ActorRef, m: Msg, context: MessageContext): M[Unit]
+        def send_(context: MessageContext)(to: ActorRef)(m: Msg): M[Unit] = send(to, m, context)
 
         /** Same as sends but "blocks" until an answer has been received */
-        def ask(to: ActorRef, m: Msg): M[Value]
+        def ask(to: ActorRef, m: Msg, context: MessageContext): M[Value]
 
         def nondets[X](xs: Iterable[M[X]]): M[X]
 
         /** Create an actor */
-        def create(beh: Value, ags: List[Value], idn: Identity): M[ActorRef] =
-            nondets(lattice.getBehs(beh).map(b => spawnActor(b, ags, idn)))
+        def create(beh: Value, ags: List[Value], idn: Identity, defer: Boolean = false): M[ActorRef] =
+            nondets(lattice.getBehs(beh).map(b => spawnActor(b, ags, idn, defer)))
 
         /** Become a new behavior */
         def become(beh: Behavior, ags: List[Value], idn: Identity): M[Unit]
@@ -94,15 +92,20 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
          * @return
          *   the message wrapped in the analysis monad
          */
-        def receive: M[Msg]
+        def receive: M[(Msg, MessageContext)]
 
         /**
          * Spawn a new actor
          *
+         * @param defer
+         *   true if queuing the actor for analysis should be defered to a later point in time
          * @return
          *   a value representing the actor reference of the just created actor
          */
-        def spawnActor(beh: Behavior, ags: List[Value], idn: Identity): M[ActorRef]
+        def spawnActor(beh: Behavior, ags: List[Value], idn: Identity, defer: Boolean = false): M[ActorRef]
+
+        /** Queue an actor for analysis that has been defered by spawnActor */
+        def deferedSpawnActor(actor: ActorRef): M[Unit]
 
     implicit override val analysisM: ActorAnalysisM[A]
     import analysisM.*
@@ -118,9 +121,9 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             allocVar(par).flatMap(addr => extendSto(addr, vlu) >>> unit(env.extend(par.name, addr)))
         }
 
-    override protected def evalVariable(nam: String): A[Val] = nam match
+    override protected def evalVariable(id: Identifier): A[Val] = id.name match
         case "self" | "a/self" => selfActor.map(lattice.actor)
-        case _                 => super.evalVariable(nam)
+        case _                 => super.evalVariable(id)
 
     override def eval(exp: SchemeExp): A[Val] =
         exp match
@@ -132,26 +135,30 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             // Evaluating a create expression spawns a new actor and returns a reference to it
             case ASchemeCreate(beh, ags, idn) =>
                 for
-                    evaluatedBeh <- eval(beh)
                     env <- getEnv
-                    evaluatedAgs <- ags.mapM(eval)
+                    evaluatedBeh <- nontail(eval(beh))
+                    evaluatedAgs <- evalAll(ags)
                     actorRef <- create(evaluatedBeh, evaluatedAgs, idn)
                 yield lattice.actor(actorRef)
 
             // Sending a message is atomic (asynchronous) and results in nil
             case ASchemeSend(actorRef, messageTpy, ags, idn) =>
                 for
-                    evaluatedActorRef <- eval(actorRef)
-                    evaluatedAgs <- ags.mapM(eval)
+                    evaluatedActorRef <- nontail(eval(actorRef))
+                    evaluatedAgs <- evalAll(ags)
                     _ = { log(s"++ intra - actor/send $evaluatedActorRef $messageTpy $evaluatedAgs") }
-                    _ <- sendMessage(evaluatedActorRef, messageTpy.name, evaluatedAgs)
+                    // TODO: the context should be inherited from the current context.
+                    // perhaps add a new function to the monad to create a new context based on the
+                    // previous one.
+                    msgAgs <- allocLst(ags.zip(evaluatedAgs))
+                    _ <- sendMessage(evaluatedActorRef, lattice.symbol(messageTpy.name), msgAgs, emptyContext)
                 yield lattice.nil
 
             // Change the behavior of the current actor, and return nil
             case ASchemeBecome(beh, ags, idn) =>
                 for
-                    evaluatedBeh <- eval(beh)
-                    evaluatedAgs <- ags.mapM(eval)
+                    evaluatedBeh <- nontail(eval(beh))
+                    evaluatedAgs <- evalAll(ags)
                     _ <- become(evaluatedBeh, evaluatedAgs, idn)
                     // we stop the analysis here because the actor is in a suspended state,
                     // waiting for new messages defined by the behavior.
@@ -160,23 +167,28 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
                     res <- mbottom[Value]
                 yield res
 
+            // Stay in the same behavior
+            case SchemeFuncall(SchemeVar(Identifier("same-behavior", _)), List(), _) =>
+                // since no new behavior is produced we can simply return bottom
+                mbottom[Value]
+
+            case SchemeFuncall(SchemeVar(Identifier("same-behavior", _)), _, idn) =>
+                throw new Exception(s"Invalid syntax: same-behavior at $idn")
+
             // Receive a message from the mailbox
-            case ASchemeSelect(handlers, idn) =>
+            case select @ ASchemeSelect(handlers, idn) =>
                 for
                     // select a message from the mailbox
-                    msg <- receive
+                    msgWithContext <- receive
+                    (msg, context) = msgWithContext
                     _ = { log(s"actor/recv $msg") }
                     // see if there is an applicable handler
-                    tag = getMessageTag(msg)
-                    args = getMessageArguments(msg)
-                    handler = handlers.get(tag)
-                    result <-
-                        if handler.isEmpty then mbottom
-                        else
-                            val (pars, bdy) = handler.get
-                            withEnvM(bindArgs(pars, args)) {
-                                Monad.sequence(bdy.map(eval))
-                            } >>= trace(s"actor/recv $msg result")
+                    tag <- msg.tag
+                    args <- msg.vlus
+                    handler <- nondets(select.lookupHandler(tag).map(unit))
+                    (pars, bdy) = handler
+                    fixedArgs <- args.take(primitives)(pars.size)
+                    result <- withEnvM(bindArgs(pars, fixedArgs)) { eval(bdy) } >>= trace(s"actor/recv $msg result")
                 yield lattice.nil
 
             case SchemeFuncall(SchemeVar(Identifier("terminate", _)), _, _) =>

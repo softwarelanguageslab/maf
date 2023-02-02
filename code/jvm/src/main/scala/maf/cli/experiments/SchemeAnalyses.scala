@@ -19,6 +19,8 @@ import scala.reflect.ClassTag
 import maf.modular.scheme.modactor.SimpleSchemeModActorAnalysis
 import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
 import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
+import maf.language.racket.RacketLoaderSemantics
+import maf.language.racket.RacketLoader
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -56,6 +58,16 @@ object SchemeAnalyses:
       ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString = "no-sensitivity"
     }
+
+    //def contextInsensitiveAnalysisRacket(
+    //    prg: SchemeExp
+    //  ) = new SimpleSchemeModFAnalysis(prg)
+    //    with SchemeModFNoSensitivity
+    //    with SchemeConstantPropagationDomain
+    //    with FIFOWorklistAlgorithm[SchemeExp]
+    //    with RacketLoaderSemantics {
+    //    override def toString = "no-sensitivity"
+    //}
     def callSiteContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
         with SchemeModFCallSiteSensitivity
         with SchemeConstantPropagationDomain
@@ -135,34 +147,6 @@ object SchemeAnalyses:
             with SchemeModFLocalCallSiteSensitivity(k)
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
-    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
-        new SchemeModFLocalFS(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalFSAnalysisResults
-    def modflocalAnalysisAdaptiveA(prg: SchemeExp, k: Int, n: Int) =
-        new SchemeModFLocal(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalAnalysisResults
-            with SchemeModFLocalAdaptiveWideningPolicyA(n)
-    def modFlocalAnalysisSelective(prg: SchemeExp, k: Int, widened: Set[Address]) =
-        new SchemeModFLocal(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalAnalysisResults:
-            override def customPolicy(adr: Adr): AddrPolicy =
-                if widened(adr) then AddrPolicy.Widened else AddrPolicy.Local
-    def modFlocalAnalysisWidened(prg: SchemeExp, k: Int) =
-        new SchemeModFLocal(prg)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFLocalAnalysisResults:
-            override def customPolicy(adr: Adr): AddrPolicy = AddrPolicy.Widened
 
     // Flow sensitive analysis
     def modFFlowSensitive(prg: SchemeExp) =

@@ -1,5 +1,6 @@
 package maf.test.modular.scheme.incremental
 
+import maf.core.Address
 import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.*
 import maf.modular.incremental.IncrementalConfiguration.*
@@ -72,7 +73,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
         try
             val to = timeout()
             a.analyzeWithTimeout(to)
-            assume(a.finished, "Analysis timed out.")
+            assume(a.finished, s"Analysis of $benchmark timed out.")
         catch
             case e: VirtualMachineError =>
                 System.gc()
@@ -241,6 +242,73 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
                         cancel(s"Analysis of program encountered an error: $e.")
             }
 
+    def testComplexSCADetection() =
+
+        type A = Analysis with IncrementalGlobalStoreCY[SchemeExp]
+
+        def analysis(p: SchemeExp): A = new ModAnalysis[SchemeExp](p)
+            with StandardSchemeModFComponents
+            with SchemeModFCallSiteSensitivity
+            with SchemeModFSemanticsM
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with IncrementalSchemeModFBigStepSemantics
+            with IncrementalSchemeConstantPropagationDomain
+            with IncrementalGlobalStoreCY[SchemeExp]
+            //with IncrementalLogging[SchemeExp]
+            {
+            // override def focus(a: Addr): Boolean = !a.toString.toLowerCase().nn.contains("prm")
+            var configuration: IncrementalConfiguration = allOptimisations
+
+            override def intraAnalysis(
+                cmp: Component
+              ) = new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis //with IncrementalLoggingIntra
+        }
+
+        // More test programs: use /test/taint folder but remove the taint annotations.
+        val p1: String =
+            // Cycle: x -[explicit]-> y -[implicit]-> x
+            """(define x 0)
+                |(define (f) (g))
+                |(define (g) (set! x #t))
+                |(define (h y)
+                |  (if (= y 0)
+                |      (f)))
+                |(h x)""".stripMargin
+        def c1(SCAs: Set[Set[Address]]): Unit = assert(
+          SCAs.exists(sca => sca.exists(a => a.toString.contains("x@1:9")) && sca.exists(a => a.toString.contains("y@4:12")))
+        )
+
+        val p2: String = // tainted-function-choice-2
+            """(define a #t)
+              |(define (b x) x)
+              |(define (set-b)
+              |  (set! b (lambda (x) #f)))
+              |(if a (set-b))
+              |(define res (b 10))
+              |res""".stripMargin
+        def c2(SCAs: Set[Set[Address]]): Unit = assert(SCAs.isEmpty)
+
+        val tests = List(
+          (p1, c1, "p1"),
+          (p2, c2, "p2")
+        ).map(t => (CSchemeParser.parseProgram(t._1), t._2, t._3))
+
+        tests.foreach { case (p, c, n) =>
+            property(s"Complex implicit cycle is found for constructed program $n", IncrementalTest) {
+                val a = analysis(p)
+                a.analyzeWithTimeout(timeout())
+                assume(a.finished)
+                val SCAs = a.computeSCAs()
+                println(a.program.prettyString())
+                println(a.explicitAndIntraComponentImplicitFlowsR())
+                println(a.computeTransitiveInterComponentFlows())
+                println(SCAs)
+                c(SCAs)
+            }
+        }
+    end testComplexSCADetection
+
     testComponentDeletion()
     testDependencyDeletion()
     testUpdatedComponents()
+//testComplexSCADetection()

@@ -12,8 +12,7 @@ trait LiteralValueBug extends SchemeSemantics:
   import maf.core.Monad._
   import maf.core.MonadJoin._
 
-  implicit val analysisM: AnalysisM[A]
-  import analysisM._
+  import analysisM_._
 
   override protected def evalLiteralValue(exp: SchemeValue): A[Val] =
     exp.value match

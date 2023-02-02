@@ -16,9 +16,6 @@ import scala.collection.immutable.*
 trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStore[Expr]:
     inter =>
 
-    /** The implicit flows are used for cyclic write invalidation and cover flows that are formed implicitly, i.e., through conditional branching. */
-    var implicitFlows: List[Set[Addr]] = Nil
-
     override def updateAnalysis(timeout: Timeout.T): Unit =
         if configuration.cyclicValueInvalidation then SCAs = computeSCAs()
         super.updateAnalysis(timeout)
@@ -38,31 +35,103 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     var dataFlowR: Map[Component, Map[Addr, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
     /**
+     *  Caches the implicit flows cut on the component boundary found by every component for other components.
+     *  Doubly indexed to allow easy deletion upon component reanalysis.
+     */
+    var interComponentFlow: Map[Component, Map[Component, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+
+    /**
      * Keeps track of all inferred SCCs of addresses during an incremental update. To avoid confusion with analysis components, we call these Strongly
      * Connected Addresses (SCC containing addresses). For every SCA, keep track of the join of values flowing towards it from outside the SCA.
      */
     var SCAs: Set[SCA] = Set()
 
+    /**
+     * Computes a map of addresses written to all addresses influencing these addresses via explicit data flow or via intra-component implicit flows.
+     * @return Map[W, Set[R + I]]
+     * @note These are together, since the implicit flows are in the monad which is not available here. Hence, the implicit intra-component flows are
+     *       already added to the explicit flows upon write to the store in the semantics.
+     */
+    def explicitAndIntraComponentImplicitFlowsR(): Map[Addr, Set[Addr]] = dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }) // Map[W, Set[R]]
+
+    /**
+     * Applies the inter-component implicit flows transitively. When a component A has implicit flows a* attached and calls a component B, then
+     * the implicit flows a* must also be attached to B. After all, if an implicit flow causes a call of A, then this implicit flow also causes the call to B.
+     *
+     * @return A map containing the set of transitive implicit flows for every component.
+     * @note These flows cannot be kept/computed right away by the intra-component analyses as this would created cycles again (on the level of these flows).
+     */
+    def computeTransitiveInterComponentFlows(): Map[Component, Set[Addr]] =
+        // Compute the transitive inter-component flows. Propagate the cut implicit flows along calls. (The implicit flows to a component must also be added to all components called from it.)
+        val calls = cachedSpawns
+        var transitiveInterComponentFlows: Map[Component, Set[Addr]] =
+            interComponentFlow.values.flatten.foldLeft(Map[Component, Set[Addr]]()) { case (map, (cmp, addr)) =>
+                map + (cmp -> (map.getOrElse(cmp, Set()) ++ addr))
+            }
+        var work = transitiveInterComponentFlows.keySet
+        while work.nonEmpty
+        do
+            val head = work.head
+            work = work - head
+            val impl = transitiveInterComponentFlows.getOrElse(head, Set())
+            calls.getOrElse(head, Set()).foreach { call =>
+                val trans = transitiveInterComponentFlows.getOrElse(call, Set())
+                val newTrans = trans ++ impl
+                if trans != newTrans
+                then
+                    work = work + call
+                    transitiveInterComponentFlows = transitiveInterComponentFlows + (call -> newTrans)
+            }
+        transitiveInterComponentFlows
+
+    /**
+     * Adds the transitive inter-component implicit flows to the writes of all components, and adds this immediately to the explicit and intra-component implicit flows.
+     * @param flowsR The REVERSE explicit and intra-component implicit flows.
+     * @param transitiveFlows The transitive inter-component implicit flows, not reversed.
+     * @return The REVERSE dataflow, containing the explicit and all implicit flows.
+     */
+    def attachTransitiveFlowsToFlowsR(flowsR: Map[Addr, Set[Addr]], transitiveFlows: Map[Component, Set[Addr]]): Map[Addr, Set[Addr]] =
+        transitiveFlows.foldLeft(flowsR) { case (df, (cmp, iFlow)) =>
+            val written = cachedWrites(cmp) // All addresses to which the implicit flows must be added (in reverse).
+            written.foldLeft(df) { case (df, w) => df + (w -> (df(w) ++ iFlow)) }
+        }
+
+    /**
+     * Computes the SCAs in the program based on the explicit and implicit flows.
+     */
     def computeSCAs(): Set[SCA] =
-        Tarjan.scc[Addr](store.keySet, dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }))
+        // Explicit flows + intra-component implicit flows.
+        val flowsR = explicitAndIntraComponentImplicitFlowsR()
+        // Compute the transitive inter-component flows.
+        val transitiveInterComponentFlows = computeTransitiveInterComponentFlows() // TODO: there are now also implicit flows from literal addresses...
+        // Apply the transitive inter-component dataflow to all the writes of components and add this to the explicit flow.
+        val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
+        // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
+        Tarjan.scc[Addr](store.keySet, allFlowsR)
+
+
+    // Instead of computing oldFlowsR again in refiningNeeded, let's just store it...
+    private var oldFlowsR = Map[Addr, Set[Addr]]()
 
     /** Checks whether a SCA needs to be refined. */
-    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
+    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value]): Boolean =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
                 flowsR = flowsR + (write -> (flowsR(write) ++ reads))
             }
         }
-        var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
-        oldDataFlowR.foreach { case (_, wr) =>
-            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
-            }
+        //var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
+        //oldDataFlowR.foreach { case (_, wr) =>
+        //    wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+        //        oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
+        //    }
+        //}
+        val res = oldFlowsR.exists { case (w, rs) =>
+            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom))
         }
-        oldFlowsR.exists { case (w, rs) =>
-            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store(w), oldStore(w))
-        }
+        oldFlowsR = flowsR
+        res
 
     /**
      * Refines a SCA by putting every address to its new incoming value. Computes the values to refine each address of a SCA and then performes the
@@ -72,6 +141,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         sca.foreach { a =>
             // Computation of the new value + remove provenance and data flow that is no longer valid.
             val v = provenance(a).foldLeft(lattice.bottom) { case (acc, (c, v)) =>
+                // Todo: does the test on literal addresses not prune away too much information?? Still doesn't seem to work + heap space errors: && !dataFlowR(c)(a).exists(_.isInstanceOf[LitAddr[_]])
                 if dataFlowR(c)(a).intersect(sca).isEmpty then lattice.join(acc, v)
                 else
                     // Delete the provenance of non-incoming values (i.e., flows within the SCA).
@@ -83,6 +153,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                     dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
                     acc
             }
+            //val old = store.getOrElse(a, lattice.bottom)
+            //if old != v then // No need for a trigger when nothing changes. TODO adding this tests causes unsoundness and errors?
             // Refine the store. TODO remove when v is bottom!
             store += (a -> v)
             // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
@@ -90,9 +162,9 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             trigger(AddrDependency(a))
         }
 
-    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Unit =
+    def updateSCAs(oldStore: Map[Addr, Value]): Unit =
         SCAs = computeSCAs()
-        SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
+        SCAs.foreach { sca => if refiningNeeded(sca, oldStore) then refineSCA(sca) }
 
     trait IncrementalGlobalStoreCYIntraAnalysis extends IncrementalGlobalStoreIntraAnalysis:
         intra =>
@@ -108,7 +180,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         override def writeAddr(addr: Addr, value: Value): Boolean =
             if configuration.cyclicValueInvalidation then
                 // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
-                val dependentAddresses = SmartUnion.sunion(lattice.getAddresses(value), implicitFlows.flatten.toSet)
+                val dependentAddresses = lattice.getAddresses(value) // TODO: add inter-component implicit data flow (cut)
                 // Store the dependencies.
                 val newDependencies = SmartUnion.sunion(dataFlow(addr), dependentAddresses)
                 dataFlow += (addr -> newDependencies)
@@ -117,11 +189,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
 
         override def commit(): Unit =
             val oldStore = inter.store
-            val oldDataFlowR = dataFlowR
             super.commit()
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlow)
-                if version == New then updateSCAs(oldStore, oldDataFlowR)
+                if version == New then updateSCAs(oldStore)
 
     end IncrementalGlobalStoreCYIntraAnalysis
 

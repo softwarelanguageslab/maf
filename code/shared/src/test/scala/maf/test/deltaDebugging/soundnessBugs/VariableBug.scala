@@ -1,5 +1,6 @@
 package maf.test.deltaDebugging.soundnessBugs
 
+import maf.core.*
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.{SchemeModFLocalSensitivity, SchemeSemantics}
 
@@ -9,11 +10,10 @@ trait VariableBug extends SchemeSemantics:
   import maf.core.Monad._
   import maf.core.MonadJoin._
 
-  implicit val analysisM: AnalysisM[A]
-  import analysisM._
+  import analysisM_._
 
-  override protected def evalVariable(nam: String): A[Val] =
+  override protected def evalVariable(vrb: Identifier): A[Val] =
     for
-      adr <- lookupEnv(nam)
+      adr <- lookupEnv(vrb)
       vlu <- lookupSto(adr)
     yield lattice.join(lattice.number(3), lattice.bool(true))

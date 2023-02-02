@@ -112,8 +112,8 @@ trait ConcreteComponentsConversion:
         case b: Behavior      => analysis.lattice.beh(b.removeEnv)
         case v                => throw new Exception(s"Unknown concrete value type: $v")
 
-    protected def toMsg(analysis: Analysis)(m: analysis.Msg): Message[analysis.Value] =
-        Message(analysis.getTag(m), analysis.getArgs(m))
+    protected def toMsg(analysis: Analysis)(m: analysis.Msg): Message[analysis.Value] = ???
+    // TODO: Message(analysis.getTag(m), analysis.getArgs(m))
 
     /**
      * Creates a concrete interpreter for the given program

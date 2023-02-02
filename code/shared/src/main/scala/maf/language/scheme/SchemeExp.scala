@@ -10,6 +10,7 @@ import maf.deltaDebugging.primitiveOpNames.PrimitiveOpNames
 import maf.language.scheme
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show
+import maf.language.racket.{Modules, ProvideDirective, RequireDirective, ResolvedRequire, SelectedProvide}
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
@@ -1110,6 +1111,13 @@ case class CSchemeJoin(tExp: SchemeExp, idn: Identity) extends CSchemeExp:
 
 trait ASchemeExp extends SchemeExp
 
+/** A synthetic Scheme expression that only has an identity and no subexpressions */
+case class ASchemeSynthetic(idn: Identity) extends ASchemeExp:
+    def fv: Set[String] = Set()
+    def label: Label = SYN
+    def subexpressions: List[Expression] = List()
+    override def toString: String = s"<SYN at $idn>"
+
 case class ASchemeActor(
     parameters: List[Identifier],
     selection: SchemeExp,
@@ -1273,6 +1281,58 @@ case class AContractSchemeMessage(tag: String, argumentContracts: List[SchemeExp
 ///////////////////////////////////////////////////////
 // Racket Utilities
 ///////////////////////////////////////////////////////
+
+/**
+ * A Racket module, as a synthetic AST node.
+ *
+ * The RacketLoader generates a Racket module whenever it encounters a `#lang racket` at the beginning of the filter
+ *
+ * @param imports
+ *   a map build by the compiler consisting of identifiers mapped to the modules that there are coming from
+ */
+case class RacketModule(
+    name: Modules.Name,
+    requiresDirectives: List[RequireDirective],
+    providesDirectives: List[ProvideDirective],
+    includes: List[ResolvedRequire],
+    provides: List[SelectedProvide],
+    bdy: SchemeExp,
+    idn: Identity)
+    extends SchemeExp:
+    // The required module identifiers should be visible (and therefore free) within the module,
+    // all other variables should be imported from other modules or defined locally.
+    override def fv: Set[String] = Set() // TODO: requiresDirectives.map(_.moduleName).toSet
+    override def label: Label = MOD
+    override def subexpressions: List[Expression] = List(bdy)
+    override def toString: String = s"(module $bdy)"
+
+case class RacketRequire(clauses: List[SchemeExp], idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = clauses.flatMap(_.fv).toSet
+    def label: Label = REQ
+    override def subexpressions: List[Expression] = List()
+    override def toString: String = s"(require ${clauses.map(_.toString).mkString(" ")})"
+
+case class RacketProvide(clauses: List[SchemeExp], idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = clauses.flatMap(_.fv).toSet
+    def label: Label = PROV
+    override def subexpressions: List[Expression] = List()
+    override def toString: String = s"(provide ${clauses.map(_.toString).mkString(" ")})"
+
+// (module-load module-exp ident)
+// Lookup the given identifier in the given module
+// This is a synthetic syntax element.
+case class RacketModuleLoad(module: SchemeExp, name: Identifier, idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = module.fv
+    def label: Label = RMOD
+    override def subexpressions: List[Expression] = List(module)
+    override def toString(): String = s"(module-load $module $name)"
+
+// (module-expose (original-name exposed-name) ...)
+case class RacketModuleExpose(exposed: Map[String, String], idn: Identity) extends SchemeExp:
+    override def fv: Set[String] = Set()
+    def label: Label = REXP
+    override def subexpressions: List[Expression] = List()
+    override def toString: String = s"(expose ${exposed.map { case (k, v) => s"($k $v)" }.mkString(" ")})"
 
 abstract class MakeStruct extends ContractSchemeExp:
     def fv: Set[String] = Set()

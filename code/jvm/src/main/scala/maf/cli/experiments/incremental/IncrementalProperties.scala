@@ -15,7 +15,7 @@ import maf.util.benchmarks._
 
 import scala.concurrent.duration._
 
-trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] with TableOutput[String]:
+trait IncrementalProperties[E <: Expression] extends IncrementalExperiment[E] with TableOutput[E, String]:
 
     type Analysis = IncrementalModAnalysis[E] with IncrementalGlobalStore[E] with CountIntraAnalyses[E]
 
@@ -108,8 +108,6 @@ trait IncrementalSchemeProperties extends IncrementalProperties[SchemeExp]:
         case PrmAddr(_) => false
         case _          => true
     override def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
-    override def timeout(): Timeout.T = Timeout.start(Duration(10, MINUTES))
-    val configurations: List[IncrementalConfiguration] = allConfigurations
 
 class IncrementalSchemeModFTypeProperties() extends IncrementalSchemeProperties:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalSchemeModFAnalysisTypeLattice(e, config)
@@ -125,24 +123,21 @@ class IncrementalSchemeModConcTypeProperties() extends IncrementalSchemeProperti
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisTypeLattice(e, config)
         with CountIntraAnalyses[SchemeExp]
     val outputFile: String = s"properties/modconc-type.csv"
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+   // override var configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation) TODO reinstate
 
 class IncrementalSchemeModConcCPProperties() extends IncrementalSchemeProperties:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
         with CountIntraAnalyses[SchemeExp]
     val outputFile: String = s"properties/modconc-CP.csv"
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+   // override var configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation) TODO reinstate
 
 object IncrementalSchemeModXProperties:
     def main(args: IncArgs): Unit =
-        if args.typeLattice then
-            if args.curated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated)
-            if args.generated then (new IncrementalSchemeModFTypeProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
-        end if
+        var bench = args.files
+        if args.curated then bench = bench ++ IncrementalSchemeBenchmarkPrograms.sequentialCurated
+        if args.generated then bench = bench ++ IncrementalSchemeBenchmarkPrograms.sequentialGenerated
 
-        if args.cpLattice then
-            if args.curated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialCurated)
-            if args.generated then (new IncrementalSchemeModFCPProperties).execute(IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
-        end if
+        if args.typeLattice then (new IncrementalSchemeModFTypeProperties).execute(bench, args)
+        if args.cpLattice then (new IncrementalSchemeModFCPProperties).execute(bench, args)
     end main
 end IncrementalSchemeModXProperties

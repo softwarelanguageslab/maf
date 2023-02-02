@@ -69,7 +69,8 @@ trait ASchemeSymbolicSemantics extends ASchemeSemantics:
                         _ <- assert(φ(s))
                     yield v
                 })
-                _ <- mkMessage(t.name, vs) >>= send_(`α′`)
+            // TODO: add an actual context here based on the prior context
+            //_ <- mkMessage(t.name, vs) >>= send_(emptyContext)(`α′`)
             yield lattice.nil
 
         case ASchemeBecome(β, as, idn) =>
@@ -132,7 +133,8 @@ trait MonadStack[M[_]: Monad] extends ASchemeSemantics:
     type R
 
     /** The type of the mailbox */
-    type Mailbox <: AbstractMailbox[Msg]
+    type MessageContext
+    type Mailbox <: AbstractMailbox[Msg, MessageContext]
 
     /** Represents a set of lenses for manipulating the state */
     case class State(

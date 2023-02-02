@@ -2,6 +2,7 @@ package maf.language.CScheme
 
 import maf.core.Position._
 import maf.language.scheme._
+import maf.core.Identity
 import maf.language.sexp._
 import maf.language.scheme.primitives.SchemePrelude
 
@@ -18,6 +19,10 @@ object CSchemeParser:
 
     /** Parse a program, add its prelude and undefine it */
     def parseProgram(prg: String, tag: PTag = noTag): SchemeExp = undefine(SchemePrelude.addPrelude(CSchemeParser.parse(prg, tag)))
+
+    /** Parse a program, add its prelude */
+    def parseProgramDefines(prg: String, tag: PTag = noTag): SchemeExp =
+        SchemeBegin(SchemePrelude.addPrelude(CSchemeParser.parse(prg, tag)), Identity.none)
 
     /** Extension to the parser to allow loading definitions from different files. */
     def parseL(
