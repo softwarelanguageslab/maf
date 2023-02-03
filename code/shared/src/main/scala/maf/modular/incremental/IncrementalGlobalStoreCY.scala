@@ -52,7 +52,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * @note These are together, since the implicit flows are in the monad which is not available here. Hence, the implicit intra-component flows are
      *       already added to the explicit flows upon write to the store in the semantics.
      */
-    def explicitAndIntraComponentImplicitFlowsR(): Map[Addr, Set[Addr]] = dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }) // Map[W, Set[R]]
+    def explicitAndIntraComponentImplicitFlowsR(): Map[Addr, Set[Addr]] = // dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }) // Map[W, Set[R]]
+        dataFlowR.foldLeft(Map().withDefaultValue(Set[Addr]())) { case (res, (_, map)) => // Hopefully this is more efficient than what is commented out above.
+            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> SmartUnion.sunion(res(w), rs)) }
+        }
 
     /**
      * Applies the inter-component implicit flows transitively. When a component A has implicit flows a* attached and calls a component B, then
@@ -66,7 +69,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val calls = cachedSpawns
         var transitiveInterComponentFlows: Map[Component, Set[Addr]] =
             interComponentFlow.values.flatten.foldLeft(Map[Component, Set[Addr]]()) { case (map, (cmp, addr)) =>
-                map + (cmp -> (map.getOrElse(cmp, Set()) ++ addr))
+                map + (cmp -> SmartUnion.sunion(map.getOrElse(cmp, Set()), addr))
             }
         var work = transitiveInterComponentFlows.keySet
         while work.nonEmpty
@@ -76,7 +79,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             val impl = transitiveInterComponentFlows.getOrElse(head, Set())
             calls.getOrElse(head, Set()).foreach { call =>
                 val trans = transitiveInterComponentFlows.getOrElse(call, Set())
-                val newTrans = trans ++ impl
+                val newTrans = SmartUnion.sunion(trans, impl)
                 if trans != newTrans
                 then
                     work = work + call
@@ -93,7 +96,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     def attachTransitiveFlowsToFlowsR(flowsR: Map[Addr, Set[Addr]], transitiveFlows: Map[Component, Set[Addr]]): Map[Addr, Set[Addr]] =
         transitiveFlows.foldLeft(flowsR) { case (df, (cmp, iFlow)) =>
             val written = cachedWrites(cmp) // All addresses to which the implicit flows must be added (in reverse).
-            written.foldLeft(df) { case (df, w) => df + (w -> (df(w) ++ iFlow)) }
+            written.foldLeft(df) { case (df, w) => df + (w -> SmartUnion.sunion(df(w), iFlow)) }
         }
 
     /**
@@ -118,7 +121,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                flowsR = flowsR + (write -> (flowsR(write) ++ reads))
+                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
             }
         }
         //var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())

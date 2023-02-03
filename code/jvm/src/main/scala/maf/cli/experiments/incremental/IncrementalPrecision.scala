@@ -74,7 +74,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
-        print(markTask(s"Testing precision: "))
+        print(markStep(s"Testing precision: "))
         val program = parse(file)
         // Initial analysis: analyse + update.
         val init = analysis(program, allOptimisations) // Allow tracking for all optimisations.

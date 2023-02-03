@@ -10,4 +10,5 @@ object ColouredFormatting {
 
     def markHeader(string: String): String = s"${RESET}${CYAN_B}$string${RESET}" // Cyan background.
     def markTask(string: String) = s"${RESET}${BLUE_B}$string${RESET}" // Blue background.
+    def markStep(string: String) = s"${RESET}${BLUE}$string${RESET}" // Blue text.
 }

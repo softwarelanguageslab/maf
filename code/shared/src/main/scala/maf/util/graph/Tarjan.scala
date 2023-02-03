@@ -75,4 +75,4 @@ object Tarjan:
             if ids(node) == low(node) then pop(node, stk)
 
         // Apply the filter, to avoid singleton SCCs being included into the result if there is no self-edge.
-        low.groupBy(_._2).values.map(_.keySet).filter(s => s.size > 1 || (edges.contains(s.head) && edges(s.head).contains(s.head))).toSet
+        low.groupBy(_._2).map(_._2.keySet).filter(s => s.size > 1 || (edges.contains(s.head) && edges(s.head).contains(s.head))).toSet
