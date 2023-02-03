@@ -161,14 +161,6 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
      */
     final override def analyze(): Unit = analyzeWithTimeout(Timeout.none)
 
-    // Exporting an analysis to a file.
-
-    /** Serialises a modular analysis and writes it to a file. */
-    def exportAnalysis(file: String): Unit =
-        val out: ObjectOutputStream = new ObjectOutputStream(new FileOutputStream(file))
-        out.writeObject(this)
-        out.close()
-
     def init() =
         visited = visited + initialComponent
 
@@ -177,12 +169,3 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     def configString(): String = "Modular analysis"
 
 }
-
-object ModAnalysis:
-
-    /** Reads a serialised modular analysis from a file and returns the deserialised object. */
-    def importAnalysis[A <: ModAnalysis[_]](file: String): A =
-        val in: ObjectInputStream = new ObjectInputStream(new FileInputStream(file))
-        val analysis: A = in.readObject().asInstanceOf[A]
-        in.close()
-        analysis
