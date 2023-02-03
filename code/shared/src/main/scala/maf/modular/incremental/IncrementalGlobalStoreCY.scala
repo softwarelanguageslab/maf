@@ -68,11 +68,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         // Compute the transitive inter-component flows. Propagate the cut implicit flows along calls. (The implicit flows to a component must also be added to all components called from it.)
         val calls = cachedSpawns
         var transitiveInterComponentFlows: Map[Component, Set[Addr]] =
-            interComponentFlow.values.flatten.foldLeft(Map[Component, Set[Addr]]()) { case (map, (cmp, addr)) =>
-                map + (cmp -> SmartUnion.sunion(map.getOrElse(cmp, Set()), addr))
+            interComponentFlow.values.foldLeft(Map[Component, Set[Addr]]()) { case (res, m) => // Use a double fold instead of flatten for efficiency?
+                m.foldLeft(res) { case (res, (cmp, addr)) =>
+                    res + (cmp -> SmartUnion.sunion(res.getOrElse(cmp, Set()), addr))
+                }
             }
         var work = transitiveInterComponentFlows.keySet
-        while work.nonEmpty
+        while work.nonEmpty // Can be stratified maybe.
         do
             val head = work.head
             work = work - head
