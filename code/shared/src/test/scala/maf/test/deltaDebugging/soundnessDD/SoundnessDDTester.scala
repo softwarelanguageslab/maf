@@ -67,7 +67,7 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
       None
   }
 
-  /* Subclass responsibility
+  /* Subclass Responsibility
   override def onBenchmark(benchmark: Benchmark): Unit =
     ...
   */
