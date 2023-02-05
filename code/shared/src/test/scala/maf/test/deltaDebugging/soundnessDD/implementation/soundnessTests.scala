@@ -4,13 +4,13 @@ import maf.core.Position
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.{SchemeModFLocal,  SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.soundnessBugs.*
-import maf.test.VariousSequentialBenchmarks
+import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 
-trait SchemeModFLocalSoundnessTests extends DDTester with VariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends DDTester with CertainVariousSequentialBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/work.scm")
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =

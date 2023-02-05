@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.soundnessDD.implementation
 
-import maf.deltaDebugging.gtr.GTR
+import maf.deltaDebugging.gtr.*
 import maf.deltaDebugging.gtr.transformations.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
@@ -12,12 +12,14 @@ object DD:
              soundnessTester: DDTester,
              benchmark: String): Unit =
 
-      val reduced: SchemeExp = GTR.reduce(
+      val reduced: SchemeExp = GTRParallel.reduce(
         program,
         p => {
           soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
             case (Some((failureMsg, evalSteps)), (runTime, analysisTime)) =>
-              maxSteps = evalSteps
+              maxSteps.synchronized {
+                maxSteps = Math.min(evalSteps, maxSteps)
+              }
               p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
             case (None, (runTime, analysisTime)) =>
