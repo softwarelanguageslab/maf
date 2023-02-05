@@ -9,8 +9,8 @@ import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.soundnessBugs.{BeginBug, CallBug, IfBug, LetBug, LetStarBug, LetrecBug, LiteralValueBug, VariableBug}
 import maf.test.{AllSequentialBenchmarks, CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 
-trait SchemeModFLocalSoundnessTests extends TransformingTester:
-  override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
+trait SchemeModFLocalSoundnessTests extends TransformingTester with CertainVariousSequentialBenchmarks:
+  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))

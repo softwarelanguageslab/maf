@@ -11,7 +11,5 @@ object ReplaceByValue extends Transformation with Replacing:
 
   //replace by value under certain circumstances, avoiding time/space overheads
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
-    if tree.size < 125 && node.size > 50 then //small program?
-      addReplacements(allValues())
-    else if node.size > 125 then //big node?
+    if tree.size >= 10 && tree.size < 20 then
       addReplacements(allValues())

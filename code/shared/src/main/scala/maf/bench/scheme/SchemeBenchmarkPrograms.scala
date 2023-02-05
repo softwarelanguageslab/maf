@@ -111,7 +111,8 @@ object SchemeBenchmarkPrograms:
       "scm2java.scm",
       "sym.scm",
       "widen.scm",
-      "mj09.scm"
+      "mj09.scm",
+      "mceval.scm"
     )
     lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
     lazy val sequentialBenchmarks: Set[String] =

@@ -9,12 +9,6 @@ object SaveBaseline:
       List(
         new SchemeModFLocalAdaptiveTests1,
         new SchemeModFLocalAdaptiveTests2,
-        new SchemeModFLocalAdaptiveTests3,
-        new SchemeModFLocalAdaptiveTests4,
-        new SchemeModFLocalAdaptiveTests5,
-        new SchemeModFLocalAdaptiveTests6,
-        new SchemeModFLocalAdaptiveTests7,
-        new SchemeModFLocalAdaptiveTests8,
       ),
       "baselineDataCollector",
       BaselineDD.dataCollector
