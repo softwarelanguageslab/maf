@@ -9,8 +9,6 @@ object SaveCounting:
       List(
         new SchemeModFLocalAdaptiveTests1,
         new SchemeModFLocalAdaptiveTests2,
-        new SchemeModFLocalAdaptiveTests3,
-        new SchemeModFLocalAdaptiveTests4,
       ),
       "countingDataCollector",
       CountingDD.dataCollector

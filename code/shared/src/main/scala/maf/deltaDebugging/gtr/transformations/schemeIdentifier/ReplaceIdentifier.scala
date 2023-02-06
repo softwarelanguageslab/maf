@@ -10,6 +10,6 @@ object ReplaceIdentifier extends Transformation with Replacing:
   def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case _: SchemeVarExp =>
-        if tree.size < 30 then
+        if tree.size < 100 then
           addReplacements(allValues())
       case _ =>
