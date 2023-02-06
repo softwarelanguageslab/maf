@@ -27,5 +27,7 @@ object TransformationManager:
       RemoveLambdaParamWithShallowDrop,
       ReplaceByChild,
       ReplaceCalls,
+      ReplaceIdentifier,
+      ReplaceByValue,
       ReplaceBySimpleValue
     )

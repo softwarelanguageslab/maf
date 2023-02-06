@@ -3,7 +3,6 @@ package maf.test.deltaDebugging.soundnessDD.evaluation
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.evaluation.baseline.SaveBaseline
 import maf.test.deltaDebugging.soundnessDD.evaluation.counting.SaveCounting
-import maf.test.deltaDebugging.soundnessDD.evaluation.parallel.SaveParallel
 import maf.test.deltaDebugging.soundnessDD.evaluation.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
 import maf.util.benchmarks.Statistics
 
@@ -12,7 +11,6 @@ object Evaluate:
     SaveBaseline.save()
     SaveCounting.save()
     SaveTransforming.save()
-    //SaveParallel.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {
