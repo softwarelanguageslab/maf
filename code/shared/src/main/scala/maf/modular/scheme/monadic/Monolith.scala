@@ -1,23 +1,19 @@
 package maf.modular.scheme.monadic
 
-import maf.core.Monad
+import maf.core.*
 import maf.core.Monad.*
+import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.modular.scheme.SchemeDomain
-import maf.modular.scheme.modflocal.*
-import maf.core.BasicStore
-import maf.core.Address
+import maf.core.worklist.FIFOWorkList
 import maf.modular.Dependency
-import maf.core.monad.MonadLift
-import maf.core.monad.MonadUnlift
 import maf.modular.AddrDependency
 import maf.modular.ReturnAddr
-import maf.core.Identifier
-import maf.core.MaybeEq
 import maf.lattice.interfaces.BoolLattice
-import maf.core.worklist.FIFOWorkList
+import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
+import maf.language.scheme.SchemeExp
+import maf.language.scheme.SchemeBegin
 
-/** Adds a ModF interpretation */
-trait EffectT extends SchemeSemantics, StubAnalysisM:
+trait Monolith extends SchemeSemantics:
     this: SchemeDomain with SchemeModFLocalSensitivity =>
 
     //
@@ -57,18 +53,20 @@ trait EffectT extends SchemeSemantics, StubAnalysisM:
         seen: Set[Component] = Set(),
         W: Set[Dependency] = Set(),
         R: Map[Dependency, Set[Component]] = Map(),
-        C: Set[Component] = Set())
+        C: Set[Component] = Set()):
+        def merge(other: Effects): Effects =
+            this.copy(sto = this.sto.extend(other.sto.content.toIterable), W = this.W ++ other.W, R = this.R ++ other.R, C = this.C ++ other.C)
 
     // EffectT monad
 
-    case class EffectT_[M[_], A](runStore: Effects => M[Either[Effects, (Effects, A)]])
+    case class EffectT_[M[_], A](runStore: (Env, Ctx, Effects) => M[Either[Effects, (Effects, A)]])
     type EffectT[M[_]] = [A] =>> EffectT_[M, A]
 
     private def currentCmp[M[_]: Monad]: EffectT[M][Component] =
-        EffectT_(e => Monad[M].unit(Right((e, e.cmp))))
+        EffectT_((_, _, e) => Monad[M].unit(Right((e, e.cmp))))
 
     private def modify[M[_]: Monad](f: Effects => Effects): EffectT[M][Unit] =
-        EffectT_(e => Monad[M].unit(Right((f(e), ()))))
+        EffectT_((_, _, e) => Monad[M].unit(Right((f(e), ()))))
 
     private def spawn[M[_]: Monad](cmp: Component): EffectT[M][Unit] =
         modify(e => e.copy(C = e.C + cmp))
@@ -79,41 +77,31 @@ trait EffectT extends SchemeSemantics, StubAnalysisM:
         modify(e => e.copy(R = e.R + r(e))) >>> get.map(_.sto.lookup(adr).getOrElse(lattice.bottom))
 
     private def write[M[_]: Monad](adr: Address, v: Value): EffectT[M][Unit] =
-        modify(e => e.copy(W = e.W + AddrDependency(adr), sto = e.sto.extend(adr, v)))
+        modify(e =>
+            if e.sto.lookup(adr).getOrElse(lattice.bottom) == v then e
+            else e.copy(W = e.W + AddrDependency(adr), sto = e.sto.extend(adr, v))
+        )
 
     private def get[M[_]: Monad]: EffectT[M][Effects] =
-        EffectT_(e => Monad[M].unit(Right((e, e))))
+        EffectT_((_, _, e) => Monad[M].unit(Right((e, e))))
 
     protected given me[M[_]: Monad]: Monad[EffectT[M]] with
         type A[X] = EffectT[M][X]
-        def unit[X](x: X): A[X] = EffectT_(e => Monad[M].unit(Right((e, x))))
+        def unit[X](x: X): A[X] = EffectT_((_, _, e) => Monad[M].unit(Right((e, x))))
         def flatMap[X, Y](m: EffectT[M][X])(f: X => EffectT[M][Y]): EffectT[M][Y] =
-            EffectT_(e =>
-                m.runStore(e).flatMap {
-                    case Right((e2, a)) => f(a).runStore(e2)
+            EffectT_((env, ctx, e) =>
+                m.runStore(env, ctx, e).flatMap {
+                    case Right((e2, a)) => f(a).runStore(env, ctx, e2)
                     case Left(e2)       => Monad[M].unit(Left(e2))
                 }
             )
         def map[X, Y](m: EffectT[M][X])(f: X => Y): EffectT[M][Y] =
             flatMap(m)(f andThen unit)
 
-    protected given ml[M[_]: Monad]: MonadLift[EffectT_] with
-        def lift[M[_]: Monad, A](m: M[A]): EffectT_[M, A] =
-            EffectT_(e => m.map(v => Right((e, v))))
-
-    protected given ul[M[_]: Monad]: MonadUnlift[EffectT_] with
-        def unlift[M[_]: Monad, A, B](t: EffectT_[M, A])(f: M[A] => EffectT_[M, B]): EffectT_[M, B] =
-            EffectT_(e =>
-                t.runStore(e).flatMap {
-                    case Left(e2)       => Monad[M].unit(Left(e2))
-                    case Right((e2, v)) => f(Monad[M].unit(v)).runStore(e2)
-                }
-            )
-
-    protected given effectTAnl[M[_]](using next: AnalysisM[M]): AnalysisM[EffectT[M]] with
+    protected given effectTAnl[M[_]: Monad]: AnalysisM[EffectT[M]] with
         private type A[X] = EffectT[M][X]
-        private val stub: AnalysisM[EffectT[M]] = stubAnalysisM[EffectT_, M](using ml, ul, next, me)
-        export stub.{addrEq => _, call => _, extendSto => _, lookupSto => _, updateSto => _, *}
+        private val mon: Monad[EffectT[M]] = me
+        export mon.*
 
         /**
          * Reads the context and spawns a new component for <code>lam</code>.
@@ -146,3 +134,32 @@ trait EffectT extends SchemeSemantics, StubAnalysisM:
             def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
                 if a1 == a2 then BoolLattice[B].top else BoolLattice[B].inject(false)
         })
+
+        override def mbottom[X]: A[X] = EffectT_((_, _, e) => Monad[M].unit(Left(e)))
+        override def mjoin[X: Lattice](x: EffectT[M][X], y: EffectT[M][X]): EffectT[M][X] = EffectT_((env, ctx, eff) =>
+            x.runStore(env, ctx, eff)
+                .flatMap(x =>
+                    y.runStore(env, ctx, eff)
+                        .map(y =>
+                            (x, y) match
+                                case (Left(e1), Left(e2)) => Left(e1.merge(e2))
+
+                                case (Right((e1, v1)), Left(e2)) => Right((e1.merge(e2), v1))
+                                case (Left(e1), Right((e2, v)))  => Right((e1.merge(e2), v))
+                                case (Right((e1, v1)), Right((e2, v2))) =>
+                                    Right((e1.merge(e2), Lattice[X].join(v1, v2)))
+                        )
+                )
+        )
+
+        override def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
+            EffectT_((e, ctx, eff) => blk.runStore(f(e), ctx, eff))
+        override def getEnv: A[Env] =
+            EffectT_((e, _, eff) => Monad[M].unit(Right((eff, e))))
+        override def getCtx: A[Ctx] =
+            EffectT_((e, ctx, eff) => Monad[M].unit(Right((eff, ctx))))
+        override def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
+            EffectT_((e, ctx, eff) => blk.runStore(e, f(ctx), eff))
+        override def fail[X](err: Error): EffectT[M][X] = {
+            println(err); mbottom
+        }

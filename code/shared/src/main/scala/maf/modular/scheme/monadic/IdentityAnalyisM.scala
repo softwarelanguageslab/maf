@@ -13,6 +13,8 @@ import maf.core.monad.{MonadLift, MonadUnlift}
 trait IdentityAnalysisM extends SchemeSemantics:
     this: SchemeDomain with SchemeModFLocalSensitivity =>
 
+    type Id[X] = IdentityMonad.Id[X]
+
     private def bottomOfStack[A](method: String): A =
         sys.error(s"bottom of monad transformer stack, no implementation for $method found")
 

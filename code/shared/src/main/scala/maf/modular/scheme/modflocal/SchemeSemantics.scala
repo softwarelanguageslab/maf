@@ -56,7 +56,7 @@ trait SchemeSemantics:
 
     type A[_]
     protected def analysisM: AnalysisM[A]
-    protected final implicit lazy val analysisM_ :  AnalysisM[A] = analysisM
+    implicit final protected lazy val analysisM_ : AnalysisM[A] = analysisM
     import analysisM_._
 
     def eval(exp: SchemeExp): A[Val] = exp match
@@ -116,7 +116,7 @@ trait SchemeSemantics:
             vls <- nontail { evalAll(rhs) }
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-                extendSto(ads.zip(vls)) >>> evalSequence(bdy) 
+                extendSto(ads.zip(vls)) >>> evalSequence(bdy)
             }
         yield res
 
@@ -175,7 +175,7 @@ trait SchemeSemantics:
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
             for
-                _   <- guard(lam.check(agc))
+                _ <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
                 res <- applyClosure(app, lam, ags, fvs)
             yield res
