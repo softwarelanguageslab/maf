@@ -15,9 +15,14 @@ import maf.core.IdentityMonad
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
 import maf.modular.scheme.SchemeDomain
 import maf.core.Identity
+import maf.core.Monad
+import maf.core.IdentityMonad.Id
+import maf.util.TrampolineT
+import maf.util.TrampolineT.TrampolineM
+import maf.util.Trampoline
 
-abstract class ModF(exp: SchemeExp) extends SchemeModFLocalSensitivity, SchemeDomain, Monolith, AnalysisEntry[SchemeExp]:
-    type A[X] = EffectT[IdentityMonad.Id][X]
+abstract class ModF[M[_]: Monad](exp: SchemeExp) extends SchemeModFLocalSensitivity, SchemeDomain, Monolith:
+    type A[X] = EffectT[M][X]
 
     final lazy val initialBds: Iterable[(String, Address, Value)] = primitives.allPrimitives.map { case (name, p) =>
         (name, PrmAddr(name), lattice.primitive(p.name))
@@ -56,6 +61,8 @@ abstract class ModF(exp: SchemeExp) extends SchemeModFLocalSensitivity, SchemeDo
         // reset C and W, update seen and add components to worklist
         result.copy(C = Set(), W = Set(), seen = seen, wl = result.wl.addAll(cmps))
 
+    protected def run[X](m: M[X]): X
+
     given MonadFix_[A, Effects] with
         def init: Effects = Effects(cmp = Main, sto = initialSto, wl = FIFOWorkList.empty.add(Main))
         override def hasChanged(prev: Effects, next: Effects): Boolean =
@@ -66,7 +73,7 @@ abstract class ModF(exp: SchemeExp) extends SchemeModFLocalSensitivity, SchemeDo
             else
                 val next = e.wl.head
                 val result =
-                    eval(body(next)).runStore(env(next), ctx(next), e.copy(cmp = next, wl = e.wl.tail, C = Set(), W = Set())) match
+                    run(eval(body(next)).runStore(env(next), ctx(next), e.copy(cmp = next, wl = e.wl.tail, C = Set(), W = Set()))) match
                         case Left(e2) =>
                             e2
                         case Right((e2, v)) =>
@@ -76,8 +83,14 @@ abstract class ModF(exp: SchemeExp) extends SchemeModFLocalSensitivity, SchemeDo
 
                 prepareNext(result)
 
-class SimpleModFAnalysis(prg: SchemeExp) extends ModF(prg), SchemeModFLocalNoSensitivity, SchemeConstantPropagationDomain {
+class SimpleModFAnalysis(prg: SchemeExp)
+    extends ModF[IdentityMonad.Id](prg),
+      SchemeModFLocalNoSensitivity,
+      SchemeConstantPropagationDomain,
+      AnalysisEntry[SchemeExp] {
     import maf.core.IdentityMonad.given
+
+    override protected def run[X](m: Id[X]): X = m
 
     private var _result: Option[Any] = None
     private var _finished: Boolean = false
@@ -89,4 +102,14 @@ class SimpleModFAnalysis(prg: SchemeExp) extends ModF(prg), SchemeModFLocalNoSen
         val effects = MonadFix.fix[A, Effects, Any]
         _finished = effects.wl.isEmpty
         _result = Some(effects.sto.lookup(ReturnAddr(Main, prg.idn)).getOrElse(lattice.bottom))
+}
+
+class ModFStepper(prg: SchemeExp)
+    extends ModF[TrampolineT.TrampolineM[IdentityMonad.Id]](prg),
+      SchemeModFLocalNoSensitivity,
+      SchemeConstantPropagationDomain {
+
+    override protected def analysisM: AnalysisM[A] = effectTAnl
+    override protected def run[X](m: TrampolineM[Id][X]): X =
+        Trampoline.run(m)
 }
