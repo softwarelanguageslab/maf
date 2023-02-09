@@ -119,24 +119,22 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     private var oldFlowsR = Map[Addr, Set[Addr]]()
 
     /** Checks whether a SCA needs to be refined. */
-    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value]): Boolean =
+    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
+                flowsR = flowsR + (write -> (flowsR(write) ++ reads))
             }
         }
-        //var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
-        //oldDataFlowR.foreach { case (_, wr) =>
-        //    wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-        //        oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
-        //    }
-        //}
-        val res = oldFlowsR.exists { case (w, rs) =>
-            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom))
+        var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
+        oldDataFlowR.foreach { case (_, wr) =>
+            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+                oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
+            }
         }
-        oldFlowsR = flowsR
-        res
+        oldFlowsR.exists { case (w, rs) =>
+            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store(w), oldStore(w))
+        }
 
     /**
      * Refines a SCA by putting every address to its new incoming value. Computes the values to refine each address of a SCA and then performes the
@@ -167,9 +165,9 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             trigger(AddrDependency(a))
         }
 
-    def updateSCAs(oldStore: Map[Addr, Value]): Unit =
+    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Unit =
         SCAs = computeSCAs()
-        SCAs.foreach { sca => if refiningNeeded(sca, oldStore) then refineSCA(sca) }
+        SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
 
     trait IncrementalGlobalStoreCYIntraAnalysis extends IncrementalGlobalStoreIntraAnalysis:
         intra =>
@@ -194,10 +192,11 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
 
         override def commit(): Unit =
             val oldStore = inter.store
+            val oldDataFlowR = dataFlowR
             super.commit()
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlow)
-                if version == New then updateSCAs(oldStore)
+                if version == New then updateSCAs(oldStore, oldDataFlowR)
 
     end IncrementalGlobalStoreCYIntraAnalysis
 

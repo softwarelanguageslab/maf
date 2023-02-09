@@ -15,7 +15,7 @@ import maf.modular.incremental.scheme.IncrementalSchemeAnalysisInstantiations.*
 import maf.modular.incremental.scheme.lattice.*
 import maf.modular.incremental.scheme.modf.IncrementalSchemeModFBigStepSemantics
 import maf.modular.scheme.*
-import maf.modular.worklist.{LIFOWorklistAlgorithm, *}
+import maf.modular.worklist.*
 import maf.util.*
 import maf.util.ColouredFormatting.*
 import maf.util.Writer.Writer
@@ -102,7 +102,8 @@ object IncrementalRun extends App:
 
     val modFbenchmarks: List[String] = List(
       //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
-      "test/changes/scheme/freeze.scm" // Nog niet precies.
+      "test/changes/scheme/reinforcingcycles/implicit-paths.scm"
+     // "test/changes/scheme/freeze.scm" // Nog niet precies.
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
