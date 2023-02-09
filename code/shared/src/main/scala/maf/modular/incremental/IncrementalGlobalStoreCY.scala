@@ -123,13 +123,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                flowsR = flowsR + (write -> (flowsR(write) ++ reads))
+                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
             }
         }
         var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
         oldDataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
+                oldFlowsR = oldFlowsR + (write -> SmartUnion.sunion(oldFlowsR(write), reads))
             }
         }
         oldFlowsR.exists { case (w, rs) =>
