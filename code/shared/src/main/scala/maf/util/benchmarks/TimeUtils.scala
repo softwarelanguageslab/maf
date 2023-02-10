@@ -1,7 +1,9 @@
 package maf.util.benchmarks
 
+import maf.util.ColouredFormatting.markInfo
+
 import java.text.SimpleDateFormat
-import java.util._
+import java.util.*
 
 object Timeout:
     import scala.concurrent.duration.Duration
@@ -33,6 +35,24 @@ object Timer:
 
     @inline
     def timeOnly[A](block: => A): Long = time(block)._1
+
+// Simple timer that can be used to print time intervals.
+object SimpleTimer:
+
+    var time: Long = _
+
+    private def out(time: Long): Unit = println(markInfo(s"${time/1000}ms passed."))
+
+    def start(): Unit = time = System.nanoTime()
+    def tick(): Unit =
+        val now = System.nanoTime()
+        val diff = now - time
+        out(diff)
+        time = System.nanoTime()
+    def stop(): Unit =
+        val now = System.nanoTime()
+        val diff = now - time
+        out(diff)
 
 object Clock:
 
