@@ -39,8 +39,15 @@ object IncrementalRun extends App:
         with IncrementalLogging[SchemeExp]
         with LIFOWorklistAlgorithm[SchemeExp]
         with IncrementalDataFlowVisualisation[SchemeExp] {
-        override def focus(a: Addr): Boolean = a.toString.contains("x@54:20")
-        mode = Mode.Coarse // Mode.Step // Mode.Select
+        override def focus(a: Addr): Boolean =
+            List(
+                "exp@164:22[Some(ε)]",
+                "PtrAddr((__toplevel_cons 'c ()))[None]",
+                "ops@278:24[Some(ε)]",
+                "PtrAddr((car args))[Some(ε)]",
+                "exp@34:13[Some(ε)]"
+            ).exists(s => a.toString.contains(s))
+        mode = Mode.Summary // Mode.Step // Mode.Select
         stepFocus = 1 //13//10//23//119
         override def warn(msg: String): Unit = ()
         override def intraAnalysis(cmp: Component) =
@@ -65,6 +72,13 @@ object IncrementalRun extends App:
             }
         }
         println("Done interpreting.")
+
+    def storeDiff(a: A, b: A): String =
+        (a.store.keySet ++ b.store.keySet).foldLeft("") { case (str, addr) =>
+            val valA = a.store.getOrElse(addr, a.lattice.bottom)
+            val valB = b.store.getOrElse(addr, b.lattice.bottom)
+            if valA != valB then str ++ (addr.toString + "\n" + a.lattice.compare(valA, valB) + "\n") else str
+        }
 
     def checkEqState(a: A, b: A, message: String = ""): Unit =
         (a.store.keySet ++ b.store.keySet).foreach { addr =>
@@ -96,14 +110,22 @@ object IncrementalRun extends App:
             with IncrementalLogging[SchemeExp]
             with IncrementalDataFlowVisualisation[SchemeExp]
             with IncrementalGlobalStoreCY[SchemeExp]:
-        override def focus(a: Addr): Boolean = false //!a.toString.contains("PrmAddr")
+        override def focus(a: Addr): Boolean =
+            List(
+                "exp@164:22[Some(ε)]",
+                "PtrAddr((__toplevel_cons 'c ()))[None]",
+                "ops@278:24[Some(ε)]",
+                "PtrAddr((car args))[Some(ε)]",
+                "exp@34:13[Some(ε)]"
+            ).exists(s => a.toString.contains(s))
+
+        mode = Mode.Summary
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
 
     val modFbenchmarks: List[String] = List(
       //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
-      "test/changes/scheme/reinforcingcycles/implicit-paths.scm"
-     // "test/changes/scheme/freeze.scm" // Nog niet precies.
+       "test/changes/scheme/freeze.scm" // Nog niet precies.
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
@@ -115,19 +137,31 @@ object IncrementalRun extends App:
             val a = new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations)
             val b = new IncrementalSchemeModFAnalysisTypeLattice(text, noOptimisations)
 
-            println(text.prettyString())
+            // println(text.prettyString())
+            import SimpleTimer.*
 
-            println("init")
+            start()
+            println(markStep("init"))
             a.analyzeWithTimeout(newTimeout())
+
+            tick()
+            println(markStep("rean"))
             b.version = New
             b.analyzeWithTimeout(newTimeout())
 
-            println("upd")
-            a.computeSCAs().foreach(s => println(s.mkString(" ")))
+            tick()
+            println(markStep("upd"))
             a.updateAnalysis(newTimeout())
 
-            a.dataFlowToImage("flows.dot")
-            checkEqState(a, b)
+            //tick()
+            //println(markStep("Generating svg file."))
+            //a.dataFlowToImage("flows.dot")
+
+            tick()
+            println(markStep("Comparing analyses"))
+            a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
+            checkEqState(a, b) // Throw exceptions when things don't match.
+            stop()
         } catch {
             case e: Exception =>
                 e.printStackTrace(System.out)

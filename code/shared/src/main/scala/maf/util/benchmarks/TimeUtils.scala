@@ -41,7 +41,7 @@ object SimpleTimer:
 
     var time: Long = _
 
-    private def out(time: Long): Unit = println(markInfo(s"${time/1000}ms passed."))
+    private def out(time: Long): Unit = println(markInfo(s"${time/1000000}ms passed."))
 
     def start(): Unit = time = System.nanoTime()
     def tick(): Unit =
