@@ -12,7 +12,7 @@ object DD:
              soundnessTester: DDTester,
              benchmark: String): Unit =
 
-      val reduced: SchemeExp = GTR.reduce(
+      val reduced: SchemeExp = GTRParallel.reduce(
         program,
         p => {
           soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
