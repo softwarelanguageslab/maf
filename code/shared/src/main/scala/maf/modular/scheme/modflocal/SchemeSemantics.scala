@@ -192,7 +192,7 @@ trait SchemeSemantics:
             }
         }
 
-    private def argBindings(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
+    protected def argBindings(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
         for
             // fixed args
             fxa <- lam.args.zip(ags).mapM((idf, vlu) => allocVar(idf).map((idf.name, _, vlu)))
@@ -215,13 +215,13 @@ trait SchemeSemantics:
             }
         yield fxa ++ vra ++ frv
 
-    private def storeVal(exp: Exp, vlu: Val): A[Val] =
+    protected def storeVal(exp: Exp, vlu: Val): A[Val] =
         for
             adr <- allocPtr(exp)
             _ <- extendSto(adr, vlu)
         yield lattice.pointer(adr)
 
-    private def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
+    protected def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
         storeVal(pai, lattice.cons(car, cdr))
 
     protected def allocLst(els: List[(Exp, Val)]): A[Val] = els match
