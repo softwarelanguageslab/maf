@@ -20,7 +20,7 @@ sealed trait SchemeExp extends Expression:
         List(this)
       else
         this.subexpressions.collect { case s: SchemeExp => s }.flatMap(s => s. levelNodes (level - 1))
-    def deepDropIdentifier(id: Identifier): Option[SchemeExp] = ???
+    def deepDropIdentifier(id: Identifier): Option[SchemeExp] = None
     /** deleteChildren */
     def deleteChildren(fnc: SchemeExp => Boolean): Option[T] = ???
     /** Replace */
@@ -271,7 +271,7 @@ case class SchemeVarArgLambda(
             else s"(${args.mkString(" ")} . $vararg)"
         s"(lambda $a\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
-    override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = ???
+    override def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = None
 
 /** A function call: (f args...) */
 case class SchemeFuncall(
@@ -414,7 +414,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
     def dropBinding(bindingName: String): T
     def dropBodyExp(i: Int): T
 
-    def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = ???
+    def shallowDropIdentifier(id: Identifier): Option[SchemeExp] = None
 
     def shallowDropIdentifier(id: Identifier,
                               factoryMethod: (List[(Identifier, SchemeExp)], List[SchemeExp], Identity) => SchemeLettishExp): Option[SchemeExp] =
