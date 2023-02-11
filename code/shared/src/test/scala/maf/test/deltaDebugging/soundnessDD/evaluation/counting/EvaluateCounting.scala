@@ -8,7 +8,6 @@ object SaveCounting:
     Evaluate.save(
       List(
         new SchemeModFLocalAdaptiveTests1,
-        new SchemeModFLocalAdaptiveTests2,
       ),
       "countingDataCollector",
       CountingDD.dataCollector

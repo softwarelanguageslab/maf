@@ -12,7 +12,7 @@ object Evaluate:
     SaveBaseline.save()
     SaveCounting.save()
     SaveTransforming.save()
-    //SaveParallel.save()
+    SaveParallel.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {

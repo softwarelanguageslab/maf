@@ -7,7 +7,6 @@ object SaveParallel:
     Evaluate.save(
       List(
       new SchemeModFLocalAdaptiveTests1,
-      new SchemeModFLocalAdaptiveTests2,
       ),
       "parallelDataCollector",
       ParallelDD.dataCollector

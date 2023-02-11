@@ -8,7 +8,6 @@ object SaveBaseline:
     Evaluate.save(
       List(
         new SchemeModFLocalAdaptiveTests1,
-        new SchemeModFLocalAdaptiveTests2,
       ),
       "baselineDataCollector",
       BaselineDD.dataCollector

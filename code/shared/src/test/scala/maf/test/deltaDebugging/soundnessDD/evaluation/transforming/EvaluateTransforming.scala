@@ -8,7 +8,6 @@ object SaveTransforming:
     Evaluate.save(
       List(
         new SchemeModFLocalAdaptiveTests1,
-        new SchemeModFLocalAdaptiveTests2,
       ),
       "transformingDataCollector",
       TransformingDD.dataCollector
