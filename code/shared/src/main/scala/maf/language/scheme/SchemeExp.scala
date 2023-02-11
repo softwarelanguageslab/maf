@@ -1084,6 +1084,10 @@ object SchemeSetRef:
 /** A code change in a Scheme program. */
 case class SchemeCodeChange(old: SchemeExp, nw: SchemeExp, idn: Identity) extends ChangeExp[SchemeExp] with SchemeExp:
     override def toString: String = s"(<change> $old $nw)"
+    override def mapLower(f: SchemeExp => SchemeExp): SchemeExp =
+      SchemeCodeChange(old.map(f), nw.map(f), idn)
+    override def replaceLower(node: SchemeExp, replacement: SchemeExp): SchemeExp =
+      SchemeCodeChange(old.replaceThis(node, replacement), nw.replaceThis(node, replacement), idn)
     override def prettyString(indent: Int): String =
         s"(<change>\n${" " * nextIndent(indent) ++ old.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent) ++ nw.prettyString(nextIndent(indent))})"
 
