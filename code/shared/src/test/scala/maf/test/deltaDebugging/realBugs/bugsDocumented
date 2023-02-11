@@ -23,3 +23,10 @@ Real Bug 6:
     Description: == had to be replaced by >
     Link:        https://github.com/softwarelanguageslab/maf/commit/7bdda942d455ac4fa584777183511c02599e5acd
 
+Real Bug 7:
+    Description: many issues with vectors
+    Link:        https://github.com/softwarelanguageslab/maf/commit/1a3c6be35889bdbb79cc44fe1b220e853b304511
+                 https://github.com/softwarelanguageslab/maf/commit/69e2cc83329ebc1c262f26b9bc8654fd5a19e37a
+                 https://github.com/softwarelanguageslab/maf/commit/64904bd198674f8707cd05ad2c80910dfeb74e4f
+                 https://github.com/softwarelanguageslab/maf/commit/80ec9f90face229eee8b455c7c62f92834e2b514
+
