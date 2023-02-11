@@ -1,0 +1,25 @@
+Real Bug 1:
+    Description: car & cdr had been swapped
+    Link:        https://github.com/softwarelanguageslab/maf/commit/6808a1e40a24347b029a33c86330c71be4a84278
+
+Real Bug 2:
+    Description: the order of pair types (T1, T2) got confusing
+    Link:        https://github.com/softwarelanguageslab/maf/commit/55f4038c19d23b9b75c63aa79f2ee2fdd5aa959e#diff-c5bc6f3bbb4656c86951d225352879e77843a59514092b7fd5299d52f4ed3361
+
+Real Bug 3:
+    Desciption: An intermediary, type-preserving method invocation (.view) was forgotten
+    Link:       https://github.com/softwarelanguageslab/maf/commit/65aa49098728f92c6d4d941a6fb3f530cd8d1f7c
+
+Real Bug 4:
+    Description: Small bugs within the implementation of primitives
+    Link:        length primitive: https://github.com/softwarelanguageslab/maf/commit/6accc337aa4d705dbaee1194b58e12fe8e2f0557
+                 string primitive: https://github.com/softwarelanguageslab/maf/commit/daf631eeb29741f0687b2eccfd4afa5f32ab1552
+
+Real Bug 5:
+    Description: Global Store management was slightly off
+    Link:        https://github.com/softwarelanguageslab/maf/commit/999b8baf56ce4ffd757b68dd84c50995f3211ee2
+
+Real Bug 6:
+    Description: == had to be replaced by >
+    Link:        https://github.com/softwarelanguageslab/maf/commit/7bdda942d455ac4fa584777183511c02599e5acd
+
