@@ -6,6 +6,7 @@ import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.test.deltaDebugging.realBugs.*
 import maf.test.deltaDebugging.soundnessBugs.*
 import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
@@ -38,4 +39,3 @@ class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with CallBug
