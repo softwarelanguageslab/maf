@@ -9,10 +9,10 @@ import maf.util.benchmarks.Statistics
 
 object Evaluate:
   def main(args: Array[String]): Unit = {
-    //SaveBaseline.save()
-    //SaveCounting.save()
-    SaveTransforming.save()
     SaveParallel.save()
+    SaveBaseline.save()
+    SaveCounting.save()
+    SaveTransforming.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {

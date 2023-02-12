@@ -26,7 +26,7 @@ object DD:
               false
         },
         identity,
-        TransformationManager.allTransformations
+        TransformationManager.genericTransformations
       )
 
       val parsedAgain = SchemeParser.parse(reduced.prettyString()).head //parse again, to generate file-related information (e.g. bug is at offset 20-25)

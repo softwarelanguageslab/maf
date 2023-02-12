@@ -11,7 +11,7 @@ import maf.test.deltaDebugging.soundnessBugs.*
 import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 
-trait SchemeModFLocalSoundnessTests extends DDTester with VariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends DDTester with CertainVariousSequentialBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/mceval.scm")
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =

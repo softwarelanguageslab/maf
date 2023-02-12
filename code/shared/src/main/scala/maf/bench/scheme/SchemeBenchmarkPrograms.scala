@@ -99,20 +99,12 @@ object SchemeBenchmarkPrograms:
       "Streams.scm", // Uses define-macro.
       "callcc.scm", // call/cc not yet support in concrete interpreter
       "blur.scm",
-      "count.scm",
-      "foo.scm",
       "eta.scm",
-      "four-in-a-row.scm",
-      "infinite-1.scm",
-      "infinite-2.scm",
+      "SICP-compiler.scm",
       "kcfa2.scm",
-      "my-list.scm",
-      "rsa.scm",
-      "scm2java.scm",
       "sym.scm",
       "widen.scm",
-      "mj09.scm",
-      "mceval.scm"
+      "mj09.scm"
     )
     lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
     lazy val sequentialBenchmarks: Set[String] =
