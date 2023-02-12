@@ -7,7 +7,7 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.CertainVariousSequentialBenchmarks
-import maf.test.deltaDebugging.soundnessBugs.*
+import maf.test.deltaDebugging.realBugs.*
 
 trait SchemeModFLocalSoundnessTests extends ParallelTester with CertainVariousSequentialBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
@@ -18,98 +18,61 @@ trait SchemeModFLocalSoundnessTests extends ParallelTester with CertainVariousSe
     SchemeParser.rename(SchemeParser.undefine(transf))
 
 class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
-  def n = 100
-  def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
-  override val bugName: String = "BeginBug"
+  def l = 10
+  def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
+  override val bugName: Benchmark = "RealBug1"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with BeginBug
+      with RealBug1
 
 class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "callBug"
+  override val bugName: Benchmark = "RealBug2"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with CallBug
+      with RealBug2
 
 class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "IfBug"
+  override val bugName: Benchmark = "RealBug3"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with IfBug
+      with RealBug3
 
 class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-
-  override val bugName: Benchmark = "letBug"
+  override val bugName: Benchmark = "RealBug4"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with LetBug
+      with RealBug4
 
 class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "LetrecBug"
+  override val bugName: Benchmark = "RealBug5"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with LetrecBug
-
-class SchemeModFLocalAdaptiveTests6 extends SchemeModFLocalSoundnessTests:
-  def l = 10
-  override val bugName: Benchmark = "LetstarBug"
-  def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  def analysis(prg: SchemeExp) =
-    new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
-      with SchemeModFLocalNoSensitivity
-      with FIFOWorklistAlgorithm[SchemeExp]
-      with SchemeModFLocalAnalysisResults
-      with LetStarBug
-
-class SchemeModFLocalAdaptiveTests7 extends SchemeModFLocalSoundnessTests:
-  def l = 10
-  override val bugName: Benchmark = "LiteralValueBug"
-  def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  def analysis(prg: SchemeExp) =
-    new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
-      with SchemeModFLocalNoSensitivity
-      with FIFOWorklistAlgorithm[SchemeExp]
-      with SchemeModFLocalAnalysisResults
-      with LiteralValueBug
-
-class SchemeModFLocalAdaptiveTests8 extends SchemeModFLocalSoundnessTests:
-  def l = 10
-  override val bugName: Benchmark = "VariableBug"
-  def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  def analysis(prg: SchemeExp) =
-    new SchemeModFLocal(prg)
-      with SchemeConstantPropagationDomain
-      with SchemeModFLocalNoSensitivity
-      with FIFOWorklistAlgorithm[SchemeExp]
-      with SchemeModFLocalAnalysisResults
-      with VariableBug
+      with RealBug5
