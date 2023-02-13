@@ -2,19 +2,18 @@ package maf.deltaDebugging.gtr
 
 import maf.deltaDebugging.gtr.transformations.Transformation
 import maf.language.scheme.SchemeExp
-import maf.core.Expression
+import scala.collection.parallel.CollectionConverters._
 
 import scala.annotation.tailrec
 
-object GTR:
+object GTRParallel:
   @tailrec
   def reduce(tree: SchemeExp, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformations: List[Transformation]): SchemeExp =
     val reducedTree: SchemeExp = BFT(tree, oracle, onOracleHit, transformations)
     if tree.size == reducedTree.size then
-      //println("GTR total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
       reducedTree
     else reduce(reducedTree, oracle, onOracleHit, transformations)
-    
+
   private def BFT(tree: SchemeExp, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformations: List[Transformation]): SchemeExp =
     var reducedTree = tree
     for (lvl <- 0 to reducedTree.height)
@@ -23,10 +22,20 @@ object GTR:
     reducedTree
 
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): SchemeExp =
-    for(node <- tree.levelNodes(lvl))
-      for (candidateTree <- transformation.transform(tree, node))
-        if candidateTree.size < tree.size then
-          if oracle(candidateTree) then
-            onOracleHit(candidateTree)
-            return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation)
+    for (node <- tree.levelNodes(lvl))
+      reduceNode(tree, node, oracle, onOracleHit, transformation) match
+        case Some(tpl) =>
+          if tpl._2 then
+            onOracleHit(tpl._1)
+            return reduceLevelNodes(tpl._1, lvl, oracle, onOracleHit, transformation)
+        case _ =>
     tree
+
+  private def reduceNode(tree: SchemeExp, node: SchemeExp, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): Option[(SchemeExp, Boolean)] =
+    val candidates: List[SchemeExp] = transformation.transform(tree, node).filter(candidate => candidate.size < tree.size).toList
+    candidates.par.foreach(c => {
+      if oracle(c) then
+        return Some(c, true)
+      else None
+    })
+    None

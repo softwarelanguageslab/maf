@@ -36,7 +36,6 @@ trait Replacing:
     SchemeVarArgLambda(None, List(), Identifier(newID(), NoCodeIdentity), List(BodyExp), None, NoCodeIdentity)
 
   def constantLambdas(): List[SchemeVarArgLambda] = List(
-    newConstantLambda(SchemeValue(Value.Integer(0), NoCodeIdentity)),
     newConstantLambda(SchemeValue(Value.Integer(1), NoCodeIdentity)),
     newConstantLambda(SchemeValue(Value.String("S"), NoCodeIdentity)),
     newConstantLambda(SchemeValue(Value.Symbol("S"), NoCodeIdentity)),
@@ -48,8 +47,7 @@ trait Replacing:
   def lambdaValues(): List[SchemeLambdaExp] =
     constantLambdas() ++ callerLambdas()
 
-  def values(): List[SchemeExp] = List(
-    SchemeValue(Value.Integer(0), NoCodeIdentity),
+  val values: List[SchemeExp] = List(
     SchemeValue(Value.Integer(1), NoCodeIdentity),
     SchemeValue(Value.String("S"), NoCodeIdentity),
     SchemeValue(Value.Symbol("S"), NoCodeIdentity),
@@ -59,7 +57,7 @@ trait Replacing:
   )
 
   def allValues(): List[SchemeExp] =
-    values() ++ lambdaValues()
+    values ++ lambdaValues()
 
   def replaceWithAllValues(exp: SchemeExp, toReplace: SchemeExp => Boolean): List[SchemeExp] =
     allValues().map(value => {

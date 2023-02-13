@@ -1,0 +1,22 @@
+Real Bug 1:
+    Description: car & cdr had been swapped
+    Link:        https://github.com/softwarelanguageslab/maf/commit/6808a1e40a24347b029a33c86330c71be4a84278
+
+Real Bug 2:
+    Desciption: A type-preserving method invocation (.view) was forgotten. These cannot be caught by the type checker
+    Link:       https://github.com/softwarelanguageslab/maf/commit/65aa49098728f92c6d4d941a6fb3f530cd8d1f7c
+
+Real Bug 3:
+    Description: Small bugs within the implementation of primitives
+    Link:        length primitive: https://github.com/softwarelanguageslab/maf/commit/6accc337aa4d705dbaee1194b58e12fe8e2f0557
+                 string primitive: https://github.com/softwarelanguageslab/maf/commit/daf631eeb29741f0687b2eccfd4afa5f32ab1552
+
+Real Bug 4:
+    Description: possibly off-by-one errors (e.g. should we use args(0) or args(1), at make-vector which has as first arg an integer)
+    Link:        https://github.com/softwarelanguageslab/maf/commit/1a3c6be35889bdbb79cc44fe1b220e853b304511
+                 https://github.com/softwarelanguageslab/maf/commit/69e2cc83329ebc1c262f26b9bc8654fd5a19e37a
+                 https://github.com/softwarelanguageslab/maf/commit/80ec9f90face229eee8b455c7c62f92834e2b514
+
+Real Bug 5:
+    Description: Global Store management was slightly off
+    Link:        https://github.com/softwarelanguageslab/maf/commit/999b8baf56ce4ffd757b68dd84c50995f3211ee2
