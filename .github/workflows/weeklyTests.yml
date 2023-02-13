@@ -4,14 +4,13 @@ name: Daily MAF tests
 # events but only for the master branch
 on:
   schedule:
-    - cron: '00 22 * * 6' # Executes Saturday night at 23:00 CET or 00:00 CEST (schedule expressed in UTC).
+    - cron: '00 8 * * 6' # Executes Saturday morning at 9 (CET).
 
 jobs:
-  compile:
-    name: Compile MAF
-    runs-on: ubuntu-latest
-    #  needs: activity-check
-    #  if: env.MAF_REPO_ACTIVE == 'true'
+  execute-tests:
+    name: Test MAF
+    runs-on: self-hosted
+    timeout-minutes: 2160 # 36 hours
     steps:
       # Send a notification to Slack.
       - name: Notify start
