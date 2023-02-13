@@ -12,7 +12,7 @@ trait BaselineTester extends SoundnessDDTester {
   val bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound.", SlowTest) {
+    println("Baseline >>> running benchmark: " + benchmark)
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
@@ -23,5 +23,4 @@ trait BaselineTester extends SoundnessDDTester {
             BaselineDD.bugName = bugName
             BaselineDD.reduce(program, this, benchmark)
         case _ =>
-    }
 }

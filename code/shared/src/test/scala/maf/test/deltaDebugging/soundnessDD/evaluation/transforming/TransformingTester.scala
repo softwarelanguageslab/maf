@@ -11,7 +11,7 @@ trait TransformingTester extends SoundnessDDTester {
   val bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound.", SlowTest) {
+    println("Transforming >>> running benchmark: " + benchmark)
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
@@ -22,6 +22,5 @@ trait TransformingTester extends SoundnessDDTester {
             TransformingDD.bugName = bugName
             TransformingDD.reduce(program, this, benchmark)
         case _ =>
-    }
 
 }

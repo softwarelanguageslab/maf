@@ -9,7 +9,7 @@ import maf.util.benchmarks.Statistics
 
 object Evaluate:
   def main(args: Array[String]): Unit = {
-    SaveParallel.save()
+    //SaveParallel.save()
     SaveBaseline.save()
     SaveCounting.save()
     SaveTransforming.save()

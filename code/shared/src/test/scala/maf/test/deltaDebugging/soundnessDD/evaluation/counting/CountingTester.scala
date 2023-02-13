@@ -15,7 +15,7 @@ trait CountingTester extends SoundnessCountingDDTester {
   val bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name is sound.", SlowTest) {
+    println("Counting >>> running benchmark: " + benchmark)
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
@@ -26,5 +26,4 @@ trait CountingTester extends SoundnessCountingDDTester {
             CountingDD.bugName = bugName
             CountingDD.reduce(program, this, benchmark)
         case _ =>
-    }
 }
