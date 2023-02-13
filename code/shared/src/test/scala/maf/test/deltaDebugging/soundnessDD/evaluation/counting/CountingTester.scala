@@ -20,10 +20,10 @@ trait CountingTester extends SoundnessCountingDDTester {
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
       runCompareAndtimeWithMaxSteps(program, benchmark, Long.MaxValue) match
-        case (Some((failureMsg, evalSteps)), _) =>
+        case (Some((failureMsg, evalSteps)), times) =>
           if failureMsg.nonEmpty then
             CountingDD.maxSteps = evalSteps
             CountingDD.bugName = bugName
-            CountingDD.reduce(program, this, benchmark)
+            CountingDD.reduce(program, this, benchmark, times)
         case _ =>
 }

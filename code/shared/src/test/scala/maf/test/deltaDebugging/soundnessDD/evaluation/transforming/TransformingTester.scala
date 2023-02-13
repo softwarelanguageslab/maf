@@ -16,11 +16,11 @@ trait TransformingTester extends SoundnessDDTester {
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
 
-      runAndCompare(program, benchmark) match
-        case Some(failureMsg) =>
+      runCompareAndtime(program, benchmark) match
+        case (Some(failureMsg), times) =>
           if failureMsg.nonEmpty then
             TransformingDD.bugName = bugName
-            TransformingDD.reduce(program, this, benchmark)
+            TransformingDD.reduce(program, this, benchmark, times)
         case _ =>
 
 }

@@ -17,10 +17,10 @@ trait BaselineTester extends SoundnessDDTester {
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)
 
-      runAndCompare(program, benchmark) match
-        case Some(failureMsg) =>
+      runCompareAndtime(program, benchmark) match
+        case (Some(failureMsg), times) =>
           if failureMsg.nonEmpty then
             BaselineDD.bugName = bugName
-            BaselineDD.reduce(program, this, benchmark)
+            BaselineDD.reduce(program, this, benchmark, times)
         case _ =>
 }

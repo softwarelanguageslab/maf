@@ -4,13 +4,18 @@ import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutp
 
 case class ReductionData(benchmark: String,
                          bugName:String,
+                         origCost: (Long, Long),
                          origSize: Int,
                          reducedSize: Int,
+                         reductionPercentage: Double,
                          reductionTime: Long,
                          interpreterTime: Long,
                          analysisTime: Long,
                          interpreterTimes: List[Long],
-                         analysisTimes: List[Long]) extends Serializable
+                         analysisTimes: List[Long],
+                         interpreterPercentage: Double,
+                         analysisPercentage: Double,
+                        ) extends Serializable
 
 object DataCollector:
   def readObject(suffix: String): DataCollector =

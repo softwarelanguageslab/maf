@@ -11,7 +11,8 @@ object TransformingDD:
 
   def reduce(program: SchemeExp,
              soundnessTester: TransformingTester,
-             benchmark: String): Unit =
+             benchmark: String,
+             origCost: (Long, Long)): Unit =
 
     var oracleInvocations = 0
     var runTimes: List[Long] = List()
@@ -39,17 +40,22 @@ object TransformingDD:
     )
 
     val endTime = System.currentTimeMillis()
+    val totalTime = endTime - startTime
 
     val reductionData = ReductionData(
       benchmark = benchmark,
       bugName = bugName,
       origSize = program.size,
+      origCost = origCost,
       reducedSize = reduced.size,
-      reductionTime = endTime - startTime,
+      reductionTime = totalTime,
+      reductionPercentage = 1 - (reduced.size.toDouble / program.size),
       interpreterTime = runTimes.sum,
       analysisTime = analysisTimes.sum,
       interpreterTimes = runTimes,
-      analysisTimes = analysisTimes
+      analysisTimes = analysisTimes,
+      interpreterPercentage = runTimes.sum.toDouble / totalTime,
+      analysisPercentage = analysisTimes.sum.toDouble / totalTime
     )
 
     dataCollector.addReductionData(reductionData)

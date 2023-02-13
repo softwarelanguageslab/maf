@@ -13,10 +13,10 @@ trait ParallelTester extends SoundnessCountingDDTester {
     val content = Reader.loadFile(benchmark)
     val program = parseProgram(content, benchmark)
     runCompareAndtimeWithMaxSteps(program, benchmark, Long.MaxValue) match
-      case (Some((failureMsg, evalSteps)), _) =>
+      case (Some((failureMsg, evalSteps)), times) =>
         if failureMsg.nonEmpty then
           ParallelDD.maxSteps = evalSteps
           ParallelDD.bugName = bugName
-          ParallelDD.reduce(program, this, benchmark)
+          ParallelDD.reduce(program, this, benchmark, times)
       case _ =>
 }
