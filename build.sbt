@@ -18,6 +18,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     //crossScalaVersions ++= Seq("2.13.6", "3.1.0"),
     /** Dependencies */
     libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "2.0.0",
+    libraryDependencies += "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4",
     libraryDependencies += "com.opencsv" % "opencsv" % "5.5.2",
     libraryDependencies += ("com.typesafe.akka" %% "akka-actor-typed" % "2.6.18").cross(CrossVersion.for3Use2_13),
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.10",

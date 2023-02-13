@@ -1,15 +1,15 @@
-package maf.test.deltaDebugging.soundnessDD.evaluation.baseline
+package maf.test.deltaDebugging.soundnessDD.evaluation.parallel
 
-import maf.language.scheme.primitives.SchemePrelude
-import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
-import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.*
-import maf.modular.worklist.FIFOWorklistAlgorithm
-import maf.test.deltaDebugging.realBugs.*
-import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.core.Position
+import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
+import maf.language.scheme.primitives.SchemePrelude
+import maf.modular.scheme.SchemeConstantPropagationDomain
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.test.CertainVariousSequentialBenchmarks
+import maf.test.deltaDebugging.realBugs.*
 
-trait SchemeModFLocalSoundnessTests extends BaselineTester with CertainVariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends ParallelTester with CertainVariousSequentialBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
@@ -76,4 +76,3 @@ class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
       with RealBug5
-
