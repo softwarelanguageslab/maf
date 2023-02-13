@@ -8,10 +8,10 @@ import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisRes
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.realBugs.*
 import maf.test.deltaDebugging.soundnessBugs.*
-import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
+import maf.test.{DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 
-trait SchemeModFLocalSoundnessTests extends DDTester with CertainVariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends DDTester with DDBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/mceval.scm")
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =

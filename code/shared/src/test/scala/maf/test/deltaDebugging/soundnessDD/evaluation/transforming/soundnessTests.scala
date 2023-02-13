@@ -7,9 +7,9 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.{SchemeModFLocal,  SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.realBugs.*
-import maf.test.{AllSequentialBenchmarks, CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
+import maf.test.{AllSequentialBenchmarks, DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 
-trait SchemeModFLocalSoundnessTests extends TransformingTester with CertainVariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends TransformingTester with DDBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))

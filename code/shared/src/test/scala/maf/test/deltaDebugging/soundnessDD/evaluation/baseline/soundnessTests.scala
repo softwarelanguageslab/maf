@@ -6,10 +6,10 @@ import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.realBugs.*
-import maf.test.{CertainVariousSequentialBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
+import maf.test.{DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.core.Position
 
-trait SchemeModFLocalSoundnessTests extends BaselineTester with CertainVariousSequentialBenchmarks:
+trait SchemeModFLocalSoundnessTests extends BaselineTester with DDBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
