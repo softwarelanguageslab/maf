@@ -2,6 +2,9 @@ package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.incremental.*
+import maf.deltaDebugging.gtr.GTR
+import maf.deltaDebugging.gtr.GTR.*
+import maf.deltaDebugging.gtr.transformations.TransformationManager
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
@@ -110,58 +113,143 @@ object IncrementalRun extends App:
             with IncrementalLogging[SchemeExp]
             with IncrementalDataFlowVisualisation[SchemeExp]
             with IncrementalGlobalStoreCY[SchemeExp]:
-        override def focus(a: Addr): Boolean =
-            List(
-                "exp@164:22[Some(ε)]",
-                "PtrAddr((__toplevel_cons 'c ()))[None]",
-                "ops@278:24[Some(ε)]",
-                "PtrAddr((car args))[Some(ε)]",
-                "exp@34:13[Some(ε)]"
-            ).exists(s => a.toString.contains(s))
-
-        mode = Mode.Summary
+        override def focus(a: Addr): Boolean = true
+        mode = Mode.Fine
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
 
+    class IncrementalSchemeModFAnalysisTypeLatticeNoLogging(prg: SchemeExp, var configuration: IncrementalConfiguration)
+        extends BaseModFAnalysisIncremental(prg)
+            with IncrementalSchemeTypeDomain
+            with IncrementalDataFlowVisualisation[SchemeExp]
+            with IncrementalGlobalStoreCY[SchemeExp]:
+
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalVisualIntra
+
+
     val modFbenchmarks: List[String] = List(
       //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
-       "test/changes/scheme/freeze.scm" // Nog niet precies.
+       //"test/changes/scheme/freeze.scm" // Nog niet precies.
+       "test/DEBUG3.scm"
     )
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
+
+    def oracle(e: SchemeExp): Boolean =
+        abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
+            extends ModAnalysis[SchemeExp](prg)
+                with StandardSchemeModFComponents
+                with SchemeModFNoSensitivity
+                with SchemeModFSemanticsM
+                with IncrementalSchemeModFBigStepSemantics
+                with IncrementalSchemeTypeDomain
+                with IncrementalGlobalStoreCY[SchemeExp] {
+            override def warn(msg: String): Unit = ()
+
+            override def intraAnalysis(cmp: Component) =
+                new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
+        }
+
+        val lifo = new BaseModFAnalysisIncremental(e, ci) with LIFOWorklistAlgorithm[SchemeExp]
+        val fifo = new BaseModFAnalysisIncremental(e, ci) with FIFOWorklistAlgorithm[SchemeExp]
+
+        // Initial analysis.
+        lifo.analyzeWithTimeout(newTimeout())
+        assume(lifo.finished, "Initial LIFO analysis timed out.")
+        fifo.analyzeWithTimeout(newTimeout())
+        assume(fifo.finished, "Initial FIFO analysis timed out.")
+
+        checkEqState(lifo, fifo, "Initial analysis is not equal when using LIFO and FIFO.")
+
+        lifo.updateAnalysis(newTimeout())
+        fifo.updateAnalysis(newTimeout())
+        if !lifo.finished then println("LIFO did not finish incremental update.")
+        if !fifo.finished then println("FIFO did not finish incremental update.")
+        if lifo.finished && fifo.finished
+        then
+            storeDiff(lifo, fifo).contains("+-")
+        else
+            println(markWarning("No comparison."))
+            false
+    end oracle
+
+    def reduce(bench: String): SchemeExp =
+        val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+        val log = Logger.numbered()
+        import SimpleTimer.*
+
+        val exp = GTR.reduce(text, oracle, identity, TransformationManager.allTransformations)
+        log.logU(exp.prettyString())
+        exp
+
+    def analyse(bench: String): Unit =
+        val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+        val a = new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations)
+        val b = new IncrementalSchemeModFAnalysisTypeLattice(text, noOptimisations)
+
+        // println(text.prettyString())
+        import SimpleTimer.*
+
+        start()
+        println(markStep("init"))
+        a.analyzeWithTimeout(newTimeout())
+
+        tick()
+        println(markStep("rean"))
+        b.version = New
+        b.analyzeWithTimeout(newTimeout())
+
+        tick()
+        println(markStep("upd"))
+        a.updateAnalysis(newTimeout())
+
+        //tick()
+        //println(markStep("Generating svg file."))
+        //a.dataFlowToImage("flows.dot")
+
+        tick()
+        println(markStep("Comparing analyses"))
+        a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
+        checkEqState(a, b) // Throw exceptions when things don't match.
+        stop()
 
     modFbenchmarks.foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            val a = new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations)
-            val b = new IncrementalSchemeModFAnalysisTypeLattice(text, noOptimisations)
 
-            // println(text.prettyString())
-            import SimpleTimer.*
+            abstract class BaseModFAnalysisIncremental(prg: SchemeExp, var configuration: IncrementalConfiguration)
+                extends ModAnalysis[SchemeExp](prg)
+                    with StandardSchemeModFComponents
+                    with SchemeModFNoSensitivity
+                    with SchemeModFSemanticsM
+                    with IncrementalSchemeModFBigStepSemantics
+                    with IncrementalSchemeTypeDomain
+                    with IncrementalLogging[SchemeExp]
+                    with IncrementalGlobalStoreCY[SchemeExp] {
+                override def warn(msg: String): Unit = ()
 
-            start()
-            println(markStep("init"))
-            a.analyzeWithTimeout(newTimeout())
+                override def focus(a: Addr): Boolean = a.toString == "ret (λ@8:36 [ε])"
 
-            tick()
-            println(markStep("rean"))
-            b.version = New
-            b.analyzeWithTimeout(newTimeout())
+                override def intraAnalysis(cmp: Component) =
+                    new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
+            }
 
-            tick()
-            println(markStep("upd"))
-            a.updateAnalysis(newTimeout())
+            val lifo = new BaseModFAnalysisIncremental(text, ci) with LIFOWorklistAlgorithm[SchemeExp]
+            val fifo = new BaseModFAnalysisIncremental(text, ci) with FIFOWorklistAlgorithm[SchemeExp]
 
-            //tick()
-            //println(markStep("Generating svg file."))
-            //a.dataFlowToImage("flows.dot")
+            // Initial analysis.
+            lifo.analyzeWithTimeout(newTimeout())
+            assume(lifo.finished, "Initial LIFO analysis timed out.")
+            fifo.analyzeWithTimeout(newTimeout())
+            assume(fifo.finished, "Initial FIFO analysis timed out.")
 
-            tick()
-            println(markStep("Comparing analyses"))
-            a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
-            checkEqState(a, b) // Throw exceptions when things don't match.
-            stop()
+            lifo.updateAnalysis(newTimeout())
+            fifo.updateAnalysis(newTimeout())
+            if !lifo.finished then println("LIFO did not finish incremental update.")
+            if !fifo.finished then println("FIFO did not finish incremental update.")
+            println(storeDiff(lifo, fifo))
         } catch {
             case e: Exception =>
                 e.printStackTrace(System.out)

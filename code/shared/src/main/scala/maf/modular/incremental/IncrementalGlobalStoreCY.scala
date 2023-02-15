@@ -7,6 +7,7 @@ import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.modular.scheme.LitAddr
 import maf.modular.scheme.modf.SchemeModFComponent.Main
+import maf.util.ColouredFormatting.*
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.Tarjan

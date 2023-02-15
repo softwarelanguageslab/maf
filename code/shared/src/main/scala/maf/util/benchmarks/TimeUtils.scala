@@ -43,7 +43,9 @@ object SimpleTimer:
 
     private def out(time: Long): Unit = println(markInfo(s"${time/1000000}ms passed."))
 
-    def start(): Unit = time = System.nanoTime()
+    def start(): Unit =
+        println(markInfo("Timer started."))
+        time = System.nanoTime()
     def tick(): Unit =
         val now = System.nanoTime()
         val diff = now - time
@@ -53,6 +55,7 @@ object SimpleTimer:
         val now = System.nanoTime()
         val diff = now - time
         out(diff)
+        println(markInfo("Timer stopped."))
 
 object Clock:
 
