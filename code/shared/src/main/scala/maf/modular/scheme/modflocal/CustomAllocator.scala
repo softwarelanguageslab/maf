@@ -18,6 +18,8 @@ trait CustomAllocator extends SchemeSemantics:
                 map(getCtx)(anal.allocVar(vrb, _))
             override def allocPtr(exp: Exp) =
                 map(getCtx)(anal.allocPtr(exp, _))
+            override def nontail[X](blk: => A[X]): A[X] = 
+                superAnal.nontail(blk)
 
 // an allocator which allocates all variables with the same name to the same address
 trait NameBasedAllocator extends CustomAllocator:
