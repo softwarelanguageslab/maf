@@ -6,6 +6,7 @@ import maf.core.*
 import maf.core.Lattice.*
 import maf.util.Wrapper
 import maf.lattice.interfaces.LatticeWithAddrs
+import maf.language.scheme.SchemeExp
 
 //
 // Abstract GC
@@ -40,15 +41,31 @@ trait AAMGC extends AAMScheme:
         case Ev(_, ρ, _) => refs(ρ)
         case Ko(v) => refs(v)
         case Ap(_, f, a, _) => refs(f) ++ a.flatMap(refs)
+    
+    // 
 
     // optimisation #1: restricting the environment to only free variables
     // this improves abstract GC, as there are less addresses in the root set (i.e., refs(ρ) is smaller)
+
+    private def fv(bdy: List[Exp]): Set[String] =
+        bdy.flatMap(_.fv).toSet
 
     def restrictEnv(ς: State): State = ς.copy(c = restrictEnv(ς.c))
     def restrictEnv(c: Control): Control = c match
         case Ev(e, ρ, t)    => Ev(e, ρ.restrictTo(e.fv), t)
         case _: Ko          => c
         case _: Ap          => c
+    def restrictEnv(f: Frame): Frame = f match
+        case IffK(c, a, ρ, t, aₖ)       => IffK(c, a, ρ.restrictTo(c.fv ++ a.fv), t, aₖ) 
+        case SeqK(r, ρ, t, aₖ)          => SeqK(r, ρ.restrictTo(fv(r)), t, aₖ) 
+        case LetK(l, v, a, b, ρ, t, aₖ) => LetK(l, v, a, b, ρ.restrictTo(fv(l.map(_._2))), t, aₖ)
+        case LtsK(l, v, b, ρ, t, aₖ)    => LtsK(l, v, b, ρ.restrictTo(fv(l.map(_._2) ++ b)), t, aₖ)
+        case LtrK(l, a, b, ρ, t, aₖ)    => LtrK(l, a, b, ρ.restrictTo(fv(l.map(_._2) ++ b)), t, aₖ)
+        case FunK(a, r, ρ, t, aₖ)       => FunK(a, r, ρ.restrictTo(fv(r)), t, aₖ)
+        case ArgK(a, f, v, r, ρ, t, aₖ) => ArgK(a, f, v, r, ρ.restrictTo(fv(r)), t, aₖ)
+    
+    override protected def push(frm: Frame, e: SchemeExp, ρ: Environment[Address], t: Ctx, σ: Sto, σₖ: KSto): Set[State] =
+        super.push(restrictEnv(frm), e, ρ, t, σ, σₖ)
 
     // optimisation #2: GC'ing the store and continuation store
      

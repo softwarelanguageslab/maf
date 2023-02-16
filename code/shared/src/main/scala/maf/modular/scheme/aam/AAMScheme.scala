@@ -75,6 +75,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
 
     sealed trait Frame:
         val aₖ: KAdr
+        val ρ: Env
     case class IffK(c: Exp, a: Exp, ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
     case class SeqK(r: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
     case class LetK(l: List[(Var, Exp)], v: Var, a: List[(Var, Val)], b: List[Exp], ρ: Env, t: Ctx, aₖ: KAdr) extends Frame
@@ -242,7 +243,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
         case (adr, exp) :: rst =>
             push(LtrK(rst, adr, bdy, ρ, t, aₖ), exp, ρ, t, σ, σₖ)
 
-    private def push(frm: Frame, e: Exp, ρ: Env, t: Ctx, σ: Sto, σₖ: KSto) = 
+    protected def push(frm: Frame, e: Exp, ρ: Env, t: Ctx, σ: Sto, σₖ: KSto) = 
         val ak2 = kalloc(e, t)
         Set(State(Ev(e, ρ, t), σ, σₖ.extend(ak2, Set(frm)), ak2))
 

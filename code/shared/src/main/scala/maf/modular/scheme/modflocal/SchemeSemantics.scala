@@ -93,7 +93,7 @@ trait SchemeSemantics:
         case sexp.Value.Symbol(s)    => unit(lattice.symbol(s))
         case sexp.Value.Nil          => unit(lattice.nil)
 
-    protected def evalVariable(vrb: Identifier): A[Val] =
+    protected def evalVariable(vrb: Var): A[Val] =
         for
             adr <- lookupEnv(vrb)
             vlu <- lookupSto(adr)
@@ -110,7 +110,7 @@ trait SchemeSemantics:
             res <- cond(cnd, eval(csq), eval(alt))
         yield res
 
-    protected def evalLet(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
+    protected def evalLet(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
             vls <- nontail { evalAll(rhs) }
@@ -120,7 +120,7 @@ trait SchemeSemantics:
             }
         yield res
 
-    protected def evalLetStar(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] = bds match
+    protected def evalLetStar(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] = bds match
         case Nil => evalSequence(bdy)
         case (vrb, rhs) :: rst =>
             for
@@ -131,7 +131,7 @@ trait SchemeSemantics:
                 }
             yield res
 
-    protected def evalLetrec(bds: List[(Identifier, Exp)], bdy: List[Exp]): A[Val] =
+    protected def evalLetrec(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
             ads <- vrs.mapM(allocVar)
@@ -190,6 +190,7 @@ trait SchemeSemantics:
                     extendSto(stoBds) >>> call(lam)
                 }
             }
+            
         }
 
     private def argBindings(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
