@@ -59,14 +59,14 @@ trait Monolith extends SchemeSemantics:
 
     // EffectT monad
 
-    case class EffectT_[M[_], A](runStore: (Env, Ctx, Effects) => M[Either[Effects, (Effects, A)]])
+    case class EffectT_[M[_], A](runStore: (Env, Ctx, Effects) => M[(Effects, Option[A])])
     type EffectT[M[_]] = [A] =>> EffectT_[M, A]
 
     private def currentCmp[M[_]: Monad]: EffectT[M][Component] =
-        EffectT_((_, _, e) => Monad[M].unit(Right((e, e.cmp))))
+        EffectT_((_, _, e) => Monad[M].unit((e, Some(e.cmp))))
 
     private def modify[M[_]: Monad](f: Effects => Effects): EffectT[M][Unit] =
-        EffectT_((_, _, e) => Monad[M].unit(Right((f(e), ()))))
+        EffectT_((_, _, e) => Monad[M].unit((f(e), Some(()))))
 
     private def spawn[M[_]: Monad](cmp: Component): EffectT[M][Unit] =
         modify(e => e.copy(C = e.C + cmp))
@@ -83,16 +83,16 @@ trait Monolith extends SchemeSemantics:
         )
 
     private def get[M[_]: Monad]: EffectT[M][Effects] =
-        EffectT_((_, _, e) => Monad[M].unit(Right((e, e))))
+        EffectT_((_, _, e) => Monad[M].unit((e, Some(e))))
 
     protected given me[M[_]: Monad]: Monad[EffectT[M]] with
         type A[X] = EffectT[M][X]
-        def unit[X](x: X): A[X] = EffectT_((_, _, e) => Monad[M].unit(Right((e, x))))
+        def unit[X](x: X): A[X] = EffectT_((_, _, e) => Monad[M].unit((e, Some(x))))
         def flatMap[X, Y](m: EffectT[M][X])(f: X => EffectT[M][Y]): EffectT[M][Y] =
             EffectT_((env, ctx, e) =>
                 m.runStore(env, ctx, e).flatMap {
-                    case Right((e2, a)) => f(a).runStore(env, ctx, e2)
-                    case Left(e2)       => Monad[M].unit(Left(e2))
+                    case (e2, Some(a)) => f(a).runStore(env, ctx, e2)
+                    case (e2, None)    => Monad[M].unit((e2, None))
                 }
             )
         def map[X, Y](m: EffectT[M][X])(f: X => Y): EffectT[M][Y] =
@@ -135,19 +135,19 @@ trait Monolith extends SchemeSemantics:
                 if a1 == a2 then BoolLattice[B].top else BoolLattice[B].inject(false)
         })
 
-        override def mbottom[X]: A[X] = EffectT_((_, _, e) => Monad[M].unit(Left(e)))
+        override def mbottom[X]: A[X] = EffectT_((_, _, e) => Monad[M].unit(e, None))
         override def mjoin[X: Lattice](x: EffectT[M][X], y: EffectT[M][X]): EffectT[M][X] = EffectT_((env, ctx, eff) =>
             x.runStore(env, ctx, eff)
                 .flatMap(x =>
                     y.runStore(env, ctx, eff)
                         .map(y =>
-                            (x, y) match
-                                case (Left(e1), Left(e2)) => Left(e1.merge(e2))
-
-                                case (Right((e1, v1)), Left(e2)) => Right((e1.merge(e2), v1))
-                                case (Left(e1), Right((e2, v)))  => Right((e1.merge(e2), v))
-                                case (Right((e1, v1)), Right((e2, v2))) =>
-                                    Right((e1.merge(e2), Lattice[X].join(v1, v2)))
+                            (x._1.merge(y._1),
+                             (x._2, y._2) match
+                                 case (None, None)       => None
+                                 case (Some(x), None)    => Some(x)
+                                 case (None, Some(y))    => Some(y)
+                                 case (Some(x), Some(y)) => Some(Lattice[X].join(x, y))
+                            )
                         )
                 )
         )
@@ -155,9 +155,9 @@ trait Monolith extends SchemeSemantics:
         override def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             EffectT_((e, ctx, eff) => blk.runStore(f(e), ctx, eff))
         override def getEnv: A[Env] =
-            EffectT_((e, _, eff) => Monad[M].unit(Right((eff, e))))
+            EffectT_((e, _, eff) => Monad[M].unit((eff, Some(e))))
         override def getCtx: A[Ctx] =
-            EffectT_((e, ctx, eff) => Monad[M].unit(Right((eff, ctx))))
+            EffectT_((e, ctx, eff) => Monad[M].unit((eff, Some(ctx))))
         override def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
             EffectT_((e, ctx, eff) => blk.runStore(e, f(ctx), eff))
         override def fail[X](err: Error): EffectT[M][X] = {
