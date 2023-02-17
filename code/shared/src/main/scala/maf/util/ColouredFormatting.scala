@@ -7,6 +7,7 @@ object ColouredFormatting {
     def markError(string: String): String = s"${RESET}${RED}$string${RESET}" // Red text.
     def markWarning(string: String): String = s"${RESET}${YELLOW}$string${RESET}" // Yellow text.
     def markOK(string: String): String = s"${RESET}${GREEN}$string${RESET}" // Green text.
+    def markInfo(string: String): String = s"${RESET}${MAGENTA}$string${RESET}" // Magenta text.
 
     def markHeader(string: String): String = s"${RESET}${CYAN_B}$string${RESET}" // Cyan background.
     def markTask(string: String) = s"${RESET}${BLUE_B}$string${RESET}" // Blue background.

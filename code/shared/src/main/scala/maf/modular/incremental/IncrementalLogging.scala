@@ -254,7 +254,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
             super.doWriteIncremental()
 
         override def commit(): Unit =
-            if mode == Summary || mode == Coarse || stepSelect() then logger.log("COMI")
+            if mode == Coarse || stepSelect() then logger.log("COMI")
             super.commit()
             insertTable(Right(component))
 

@@ -130,8 +130,6 @@ trait IncrementalModFCPWLIndependenceTests extends IncrementalModXWLIndependence
     def randAnalysis(b: SchemeExp): IncrementalAnalysis = new BaseModFAnalysisIncremental(b, allOptimisations) with RandomWorklistAlgorithm[SchemeExp]
 end IncrementalModFCPWLIndependenceTests
 
-class IncrementalModFCPWLIndependenceTestsWithWI extends IncrementalModFCPWLIndependenceTests:
-    override def configurations: List[IncrementalConfiguration] = super.configurations.filter(_.writeInvalidation)
-
-class IncrementalModFCPWLIndependenceTestsWithoutWI extends IncrementalModFCPWLIndependenceTests:
-    override def configurations: List[IncrementalConfiguration] = super.configurations.filterNot(_.writeInvalidation)
+// TODO: restore once CY is implemented!
+//class IncrementalModFCPWLIndependenceTestsWithWI extends IncrementalModFCPWLIndependenceTests:
+//   override def configurations: List[IncrementalConfiguration] = super.configurations.filter(_.writeInvalidation)
