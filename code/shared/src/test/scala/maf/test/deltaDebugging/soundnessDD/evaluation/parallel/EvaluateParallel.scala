@@ -15,10 +15,3 @@ object SaveParallel:
       "parallelDataCollector",
       ParallelDD.dataCollector
     )
-
-object ReadAndAnalyzeParallel:
-  def main(args: Array[String]): Unit = {
-    Evaluate.readAndAnalyzeData(
-      "parallelDataCollector"
-    )
-  }

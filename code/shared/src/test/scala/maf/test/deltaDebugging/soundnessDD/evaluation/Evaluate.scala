@@ -20,61 +20,108 @@ object Evaluate:
     dataCollector.writeTo(dataCollectorString)
   }
 
-  def readAndAnalyzeData(dataCollectorString: String): Unit = {
-    val dataCollector: DataCollector = DataCollector.readObject(dataCollectorString)
+  def RQ1(baselineData: List[ReductionData], transformingData: List[ReductionData]): Unit =
+    println("RQ1")
+    def createRow(data: List[ReductionData]): Unit =
+      val originalSizes = data.map(r => r.origSize.toDouble)
+      val avgOriginalSize = Statistics.mean(originalSizes)
+      val stdOriginalSize = Statistics.stddev(originalSizes)
 
-    def computeMedians(data: List[ReductionData]): List[Double] =
-      List(
-        Statistics.mean(data.map(r => r.origSize)).floor,
-        Statistics.mean(data.map(r => r.reducedSize)).floor,
-        Statistics.mean(data.map(r => r.reductionTime / Math.max(r.origCost._2 + r.origCost._1, 1))).floor,
-        Statistics.mean(data.map(r => r.reductionTime)),
-        Statistics.mean(data.map(r => r.interpreterTime)),
-        Statistics.mean(data.map(r => r.interpreterTimes.size)).floor,
-        Statistics.mean(data.map(r => r.reductionPercentage)),
-        Statistics.mean(data.map(r => r.interpreterPercentage)),
-        Statistics.mean(data.map(r => r.analysisPercentage)),
-      )
+      val reducedSizes = data.map(r => r.reducedSize.toDouble)
+      val avgReducedSize = Statistics.mean(reducedSizes)
+      val stdReducedSize = Statistics.stddev(reducedSizes)
 
-    def analyseData(bugName: Option[String], data: List[ReductionData]): Unit =
-      val averages = computeMedians(data)
-      val avgOriginalSize = averages(0)
-      val avgReducedSize = averages(1)
-      val avgRelRedTime = averages(2)
-      val avgRedTime = averages(3)
-      val avgInterpreterTime = averages(4)
-      val avgNumberOfOracleInvocations = averages(5)
-      val avgReductionPercentage = averages(6)
-      val avgInterpreterTimePercentage = averages(7)
-      val avgAnalysisTimePercentage = averages(8)
+      val reductionPercentages = data.map(r => r.reductionPercentage)
+      val avgReductionPercentage = Statistics.mean(reductionPercentages)
+      val stdReductionPercentage = Statistics.stddev(reductionPercentages)
 
-      if bugName.isEmpty then
-        println(">>>>> analysis of all data <<<<<")
-      else println(">>>>> analysis bug: " + bugName + " <<<<<")
+      println("number of programs reduced: " + originalSizes.size)
+      println("avg original size: " + avgOriginalSize + " +-" + stdOriginalSize)
+      println("avg reduced size: " + avgReducedSize + " +- " + stdReducedSize)
+      println("avg reduction percetange: " + avgReductionPercentage + " +- " + stdReductionPercentage)
 
-      println("number of programs reduced: " + data.length)
-      println("avg original size: " + avgOriginalSize)
-      println("avg reduced size:  " + avgReducedSize)
-      println("avg reduction time: "+ avgRedTime)
-      println("avg interpreter time: " + avgInterpreterTime)
-      println("avg relative time cost: " + avgRelRedTime)
-      println("avg # of oracle invocations: " + avgNumberOfOracleInvocations)
-      println("##################################################")
+      println("########")
+      reductionPercentages.foreach(s => println(s))
+      println("########")
 
-      println("avg reduction percentage: " + avgReductionPercentage)
-      println("avg interpreter time percentage: " + avgInterpreterTimePercentage)
-      println("avg analysis time percentage: " + avgAnalysisTimePercentage)
+    createRow(baselineData)
+    println("--------------------")
+    createRow(transformingData)
+    println("--------------------")
 
-    def analyseIndividualBugs(): Unit =
-      val grouped = dataCollector.reductionData.groupBy(r => r.bugName)
-      grouped.keySet.foreach(bugName => {
-        val data = grouped(bugName)
-        val medianSize = Statistics.median(data.map(r => r.origSize.toDouble))
-        analyseData(Some(bugName), data)
-      })
+  def RQ2(baselineData: List[ReductionData], transformingData: List[ReductionData]): Unit =
+    println("RQ2")
+    def createRow(data: List[ReductionData]): Unit =
+      val reductionTimes = data.map(r => r.reductionTime)
+      val avgReductionTime = Statistics.mean(reductionTimes.map(_.toDouble))
+      val stdReductionTime = Statistics.stddev(reductionTimes.map(_.toDouble))
 
-    analyseData(None, dataCollector.reductionData)
+      val oracleInvocations = data.map(r => r.interpreterTimes.size)
+      val avgOracleInvocations = Statistics.mean(oracleInvocations.map(_.toDouble))
+      val stdOracleInvocations = Statistics.stddev(oracleInvocations.map(_.toDouble))
 
-    println(dataCollector.reductionData.map(r => r.reducedSize))
+      println("avg reduction time: " + avgReductionTime + " +- " + stdReductionTime)
+      println("avg number of oracle invocations: " + avgOracleInvocations + " +- " + stdOracleInvocations)
+      println("#########")
+
+    createRow(baselineData)
+    println("--------------------")
+    createRow(transformingData)
+    println("--------------------")
+
+    val baselineReductionTimes = baselineData.map(r => r.reductionTime)
+    val transformingReductionTimes = transformingData.map(r => r.reductionTime)
+    val relativeSpeedRatios = transformingReductionTimes.zip(baselineReductionTimes).map(tpl => tpl._1.toDouble / tpl._2.toDouble)
+    relativeSpeedRatios.foreach(println)
+
+  def RQ3(baselineData: List[ReductionData],
+          transformingData: List[ReductionData],
+          countingData: List[ReductionData]): Unit =
+    println("RQ3")
+
+    def createRow(data: List[ReductionData]): Unit =
+      val reductionTimes = data.map(r => r.reductionTime)
+      val avgReductionTime = Statistics.mean(reductionTimes.map(_.toDouble))
+      val stdReductionTime = Statistics.stddev(reductionTimes.map(_.toDouble))
+
+      val oracleInvocations = data.map(r => r.interpreterTimes.size)
+      val avgOracleInvocations = Statistics.mean(oracleInvocations.map(_.toDouble))
+      val stdOracleInvocations = Statistics.stddev(oracleInvocations.map(_.toDouble))
+
+      val interpreterTimes = data.map(r => r.interpreterTime)
+      val avgInterpreterTime = Statistics.mean(interpreterTimes.map(_.toDouble))
+      val stdInterpreterTime = Statistics.stddev(interpreterTimes.map(_.toDouble))
+
+      val reductionPercentages = data.map(r => r.reductionPercentage)
+      val avgReductionPercentage = Statistics.mean(reductionPercentages)
+      val stdReductionPercentage = Statistics.stddev(reductionPercentages)
+
+      println("avg reduction time: " + avgReductionTime + " +- " + stdReductionTime)
+      println("avg number of oracle invocations: " + avgOracleInvocations + " +- " + stdOracleInvocations)
+      println("avg time spent in the interpreter: " + avgInterpreterTime + " +- " + stdInterpreterTime)
+      println("avg reduction percentage: " + avgReductionPercentage + " +- " + stdReductionPercentage)
+
+    createRow(baselineData)
+    println("--------------------")
+    createRow(transformingData)
+    println("--------------------")
+    createRow(countingData)
+    println("--------------------")
+
+    val transformingReductionTimes = transformingData.map(r => r.reductionTime)
+    val countingReductionTimes = countingData.map(r => r.reductionTime)
+    val relativeSpeedRatios = transformingReductionTimes.zip(countingReductionTimes).map(tpl => tpl._1.toDouble / tpl._2.toDouble)
+    relativeSpeedRatios.foreach(println)
+
+object ReaderAndAnalyzeData {
+  def main(args: Array[String]): Unit = {
+    val baselineDataCollector: DataCollector = DataCollector.readObject("baselineDataCollector")
+    val transformingDataCollector: DataCollector = DataCollector.readObject("transformingDataCollector")
+    val countingDataCollector: DataCollector = DataCollector.readObject("countingDataCollector")
+
+    //Evaluate.RQ1(baselineDataCollector.reductionData, transformingDataCollector.reductionData)
+    //Evaluate.RQ2(baselineDataCollector.reductionData, transformingDataCollector.reductionData)
+    Evaluate.RQ3(baselineDataCollector.reductionData, transformingDataCollector.reductionData, countingDataCollector.reductionData)
   }
+}
 
