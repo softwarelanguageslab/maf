@@ -40,7 +40,8 @@ object Repl:
       "aam" -> "AAM-style analysis",
       "ci" -> "context-insensitive analysis",
       "actor" -> "default analysis for actors",
-      "mirror" -> "actor analysis with mirrors"
+      "mirror" -> "actor analysis with mirrors",
+      "modfMonad" -> "default modf analysis with state as case class"
     )
 
     private val parserHelp: Map[String, String] = Map(

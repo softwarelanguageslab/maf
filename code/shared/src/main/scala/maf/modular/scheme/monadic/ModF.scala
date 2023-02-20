@@ -74,9 +74,9 @@ abstract class ModF[M[_]: Monad](exp: SchemeExp) extends SchemeModFLocalSensitiv
                 val next = e.wl.head
                 val result =
                     run(eval(body(next)).runStore(env(next), ctx(next), e.copy(cmp = next, wl = e.wl.tail, C = Set(), W = Set()))) match
-                        case Left(e2) =>
+                        case (e2, None) =>
                             e2
-                        case Right((e2, v)) =>
+                        case (e2, Some(v)) =>
                             val ret = ReturnAddr(next, expr(next).idn)
                             if lattice.subsumes(e2.sto.lookup(ret).getOrElse(lattice.bottom), v) then e2
                             else e2.copy(W = e.W + AddrDependency(ret), sto = e2.sto.extend(ret, v))
