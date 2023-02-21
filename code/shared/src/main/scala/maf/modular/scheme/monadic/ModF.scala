@@ -4,6 +4,7 @@ import maf.language.scheme.*
 import maf.modular.AnalysisEntry
 import maf.core.BasicStore
 import maf.core.worklist.FIFOWorkList
+import maf.core.Monad.*
 import maf.modular.AddrDependency
 import maf.modular.ReturnAddr
 import maf.core.{Address, Environment}
@@ -22,7 +23,7 @@ import maf.util.TrampolineT.TrampolineM
 import maf.util.Trampoline
 
 abstract class ModF[M[_]: Monad](exp: SchemeExp) extends SchemeModFLocalSensitivity, SchemeDomain, Monolith:
-    type A[X] = EffectT[M][X]
+    type A[X] = SuspendM[X]
 
     final lazy val initialBds: Iterable[(String, Address, Value)] = primitives.allPrimitives.map { case (name, p) =>
         (name, PrmAddr(name), lattice.primitive(p.name))
@@ -61,19 +62,27 @@ abstract class ModF[M[_]: Monad](exp: SchemeExp) extends SchemeModFLocalSensitiv
         // reset C and W, update seen and add components to worklist
         result.copy(C = Set(), W = Set(), seen = seen, wl = result.wl.addAll(cmps))
 
-    protected def run[X](m: M[X]): X
+    // a suspendable monad instance
+    final protected val suspendable: Suspend = new Suspend { type State = Effects }
 
-    given MonadFix_[A, Effects] with
-        def init: Effects = Effects(cmp = Main, sto = initialSto, wl = FIFOWorkList.empty.add(Main))
-        override def hasChanged(prev: Effects, next: Effects): Boolean =
+    override def eval(exp: SchemeExp): SuspendM[Val] = exp match
+        case _ =>  
+          suspend(exp) >>> super.eval(exp)
+
+    given MonadFix_[suspendable.Suspend, Effects] with
+        type M[X] = suspendable.Suspend[X]
+        import suspendable.suspendMonad.*
+        def init: M[Effects] = unit(Effects(cmp = Main, sto = initialSto, wl = FIFOWorkList.empty.add(Main)))
+        override def hasChanged(prev: Effects, next: Effects): M[Boolean] =
             // the algorithm completes when the worklist is empty
-            next.wl.nonEmpty
-        def step(e: Effects): Effects =
-            if e.wl.isEmpty then e
+            unit(next.wl.nonEmpty)
+        def step(e: Effects): M[Effects] =
+            println(e.wl)
+            if e.wl.isEmpty then unit(e)
             else
                 val next = e.wl.head
                 val result =
-                    run(eval(body(next)).runStore(env(next), ctx(next), e.copy(cmp = next, wl = e.wl.tail, C = Set(), W = Set()))) match
+                    SuspendM.run(eval(body(next)))(env(next), ctx(next), e.copy(cmp = next, wl = e.wl.tail, C = Set(), W = Set())) match
                         case (e2, None) =>
                             e2
                         case (e2, Some(v)) =>
@@ -81,35 +90,23 @@ abstract class ModF[M[_]: Monad](exp: SchemeExp) extends SchemeModFLocalSensitiv
                             if lattice.subsumes(e2.sto.lookup(ret).getOrElse(lattice.bottom), v) then e2
                             else e2.copy(W = e.W + AddrDependency(ret), sto = e2.sto.extend(ret, v))
 
-                prepareNext(result)
+                unit(prepareNext(result))
 
 class SimpleModFAnalysis(prg: SchemeExp)
     extends ModF[IdentityMonad.Id](prg),
       SchemeModFLocalNoSensitivity,
       SchemeConstantPropagationDomain,
       AnalysisEntry[SchemeExp] {
-    import maf.core.IdentityMonad.given
-
-    override protected def run[X](m: Id[X]): X = m
 
     private var _result: Option[Any] = None
     private var _finished: Boolean = false
     override def result: Option[Any] = _result
-    override protected def analysisM: AnalysisM[A] = effectTAnl
+    override protected def analysisM: AnalysisM[A] = suspendAnalysisM
     override def finished: Boolean = _finished
     override def printResult: Unit = if finished then println(result.get)
     override def analyzeWithTimeout(timeout: T): Unit =
-        val effects = MonadFix.fix[A, Effects, Any]
+        val effects = MonadFix.fix[suspendable.Suspend, Effects, Any].run
         _finished = effects.wl.isEmpty
         _result = Some(effects.sto.lookup(ReturnAddr(Main, prg.idn)).getOrElse(lattice.bottom))
 }
 
-class ModFStepper(prg: SchemeExp)
-    extends ModF[TrampolineT.TrampolineM[IdentityMonad.Id]](prg),
-      SchemeModFLocalNoSensitivity,
-      SchemeConstantPropagationDomain {
-
-    override protected def analysisM: AnalysisM[A] = effectTAnl
-    override protected def run[X](m: TrampolineM[Id][X]): X =
-        Trampoline.run(m)
-}
