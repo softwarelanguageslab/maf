@@ -10,9 +10,9 @@ import maf.modular.incremental.ProgramVersionExtracter.*
 import maf.modular.incremental.scheme.lattice.IncrementalSchemeTypeDomain
 import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
-import maf.modular.worklist.*
+import maf.modular.worklist.{FIFOWorklistAlgorithm, *}
 import maf.util.Reader
-import maf.util.benchmarks.{Timer}
+import maf.util.benchmarks.Timer
 
 import scala.concurrent.duration.*
 
@@ -20,9 +20,9 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeWorklistAlgorithms extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A): A =
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A, worklist: String): A =
         val a = analysis(bench)
-        print(s"Analysis of $bench ")
+        print(s"Analysis of $bench with heuristic $worklist")
         try {
             val time = Timer.timeOnly {
                 a.analyze()
@@ -39,7 +39,7 @@ object AnalyzeWorklistAlgorithms extends App:
 
     val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/R5RS/scp1")().toList
 
-    def newStandardAnalysis(text: String) =
+    def FIFOanalysis(text: String) =
         val program = SchemeParser.parseProgram(text)
         new SimpleSchemeModFAnalysis(program)
           with SchemeModFNoSensitivity
@@ -50,6 +50,25 @@ object AnalyzeWorklistAlgorithms extends App:
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
+    def LIFOanalysis(text: String) =
+        val program = SchemeParser.parseProgram(text)
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with LIFOWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+
+    val analyses = List((FIFOanalysis, "FIFOWorklistAlgorithm"), (LIFOanalysis, "LIFOWorklistAlgorithm"))
+
+
     bench.foreach({ b =>
-        val a = runAnalysis(b, program => newStandardAnalysis(program))
+        analyses.foreach((analysis, worklistName) =>
+        runAnalysis(b, program => analysis(program),worklistName))
     })
+
+
+
