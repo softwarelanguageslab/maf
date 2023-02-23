@@ -12,7 +12,7 @@ import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
 import maf.modular.worklist.*
 import maf.util.Reader
-import maf.util.benchmarks.{Timeout, Timer}
+import maf.util.benchmarks.{Timer}
 
 import scala.concurrent.duration.*
 
@@ -20,12 +20,12 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeWorklistAlgorithms extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A, timeout: () => Timeout.T): A =
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A): A =
         val a = analysis(bench)
         print(s"Analysis of $bench ")
         try {
             val time = Timer.timeOnly {
-                a.analyzeWithTimeout(timeout())
+                a.analyze()
             }
             println(s"terminated in ${time / 1000000} ms.")
         } catch {
@@ -51,5 +51,5 @@ object AnalyzeWorklistAlgorithms extends App:
         }
 
     bench.foreach({ b =>
-        val a = runAnalysis(b, program => newStandardAnalysis(program), () => Timeout.start(Duration(1, MINUTES)))
+        val a = runAnalysis(b, program => newStandardAnalysis(program))
     })
