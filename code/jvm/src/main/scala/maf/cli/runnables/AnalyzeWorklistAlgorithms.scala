@@ -20,15 +20,15 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeWorklistAlgorithms extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: SchemeExp, analysis: SchemeExp => A, worklist: String): Long =
-        val a = analysis(bench)
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: (String, SchemeExp), analysis: SchemeExp => A, worklist: String): Long =
+        val a = analysis(bench._2)
         var time: Long = -1
-        println(s"Analysis of $bench with heuristic $worklist")
+        //println(s"Analysis of $bench._1 with heuristic $worklist")
         try {
             time = Timer.timeOnly {
                 a.analyze()
             }
-            println(s"terminated in ${time / 1000000} ms.")
+            //println(s"terminated in ${time / 1000000} ms.")
         } catch {
             case t: Throwable =>
                 println(s"raised exception.")
@@ -38,7 +38,15 @@ object AnalyzeWorklistAlgorithms extends App:
         }
         time
 
-    val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/R5RS/icp")().toList
+    def randomAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with RandomWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
 
     def FIFOanalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
@@ -60,18 +68,149 @@ object AnalyzeWorklistAlgorithms extends App:
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
-    val analyses = List((FIFOanalysis, "FIFOWorklistAlgorithm"), (LIFOanalysis, "LIFOWorklistAlgorithm"))
+    def callDepthAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def leastVisitedAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with LeastVisitedFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def mostVisitedAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with MostVisitedFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def deepExpressionFirstAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with DeepExpressionsFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def shallowExpressionsFirstAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def mostDependenciesFirstAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with MostDependenciesFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def leastDependenciesFirstAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with LeastDependenciesFirstWorklistAlgorithm[SchemeExp] {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def biggerEnvironmentFirstAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with BiggerEnvironmentFirstWorklistAlgorithm.ModF {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    def smallerEnvironmentFirstAnalysis(program: SchemeExp) =
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeModFNoSensitivity
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with SmallerEnvironmentFirstWorklistAlgorithm.ModF {
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+
+    val analyses = List(
+        (randomAnalysis, "RandomWorklistAlgorithm"),
+        (FIFOanalysis, "FIFOWorklistAlgorithm"),
+        (LIFOanalysis, "LIFOWorklistAlgorithm"),
+        (callDepthAnalysis, "CallDepthFirstWorklistAlgorithm"),
+        (leastVisitedAnalysis, "LeastVisitedFirstWorklistAlgorithm"),
+        (mostVisitedAnalysis, "MostVisitedFirstWorklistAlgorithm"),
+        (deepExpressionFirstAnalysis, "DeepExpressionsFirstWorklistAlgorithm"),
+        (shallowExpressionsFirstAnalysis, "ShallowExpressionsFirstWorklistAlgorithm"),
+        (leastDependenciesFirstAnalysis, "MostDependenciesFirstWorklistAlgorithm"),
+        (mostDependenciesFirstAnalysis, "LeastDependenciesFirstWorklistAlgorithm"),
+        (biggerEnvironmentFirstAnalysis, "BiggerEnvironmentFirstWorklistAlgorithm"),
+        (smallerEnvironmentFirstAnalysis, "SmallerEnvironmentFirstWorklistAlgorithm"))
+
+    val bench: Map[String, String] = List(
+        ("test/R5RS/scp1-compressed/all.scm", "scp"),
+        ("test/R5RS/gambit/scheme.scm", "scheme"),
+        ("test/R5RS/icp/icp_7_eceval.scm", "eceval"),
+        ("test/R5RS/gambit/sboyer.scm", "sboyer"),
+        ("test/R5RS/gambit/peval.scm", "peval"),
+        ("test/R5RS/icp/icp_1c_multiple-dwelling.scm", "multiple-dwelling"),
+        ("test/R5RS/icp/icp_1c_ontleed.scm", "decompose"),
+        ("test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", "dynamic"),
+        ("test/R5RS/icp/icp_1c_prime-sum-pair.scm", "prime-sum-pair"),
+        ("test/R5RS/icp/icp_1c_ambeval.scm", "ambeval"),
+        ("test/R5RS/WeiChenRompf2019/meta-circ.scm", "meta-circ"),
+        ("test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", "boyer"),
+        ("test/R5RS/gambit/nboyer.scm", "nboyer"),
+        ("test/R5RS/various/SICP-compiler.scm", "SICP-compiler"),
+        ("test/R5RS/icp/icp_8_compiler.scm", "compiler"),
+        ("test/R5RS/ad/all.scm", "ad"),
+        ("test/R5RS/icp/icp_3_leval.scm", "leval"),
+        ("test/R5RS/icp/icp_2_aeval.scm", "aeval"),
+        ("test/R5RS/WeiChenRompf2019/earley.sch", "earley"),
+        ("test/R5RS/WeiChenRompf2019/toplas98/graphs.scm", "graphs"),
+        ("test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm", "nbody"),
+        ("test/R5RS/gambit/matrix.scm", "matrix"),
+        ("test/R5RS/gambit/browse.scm", "browse"),
+        ("test/R5RS/icp/icp_5_regsim.scm", "regsim"),
+    ).toMap
+
+
+
     val warmup = 3
     val numIterations = 10
-
     bench.foreach({ b =>
-        val program = SchemeParser.parseProgram(b) // doing parsing only once
+        val program = SchemeParser.parseProgram(b._1) // doing parsing only once
         analyses.foreach((analysis, worklistName) => {
             val results = (1 to (warmup + numIterations)).map(_ =>
-                runAnalysis(program, program => analysis(program), worklistName)
+                runAnalysis((b._2, program), program => analysis(program), worklistName)
             )
             val avgTime = results.sum / numIterations
-            println(s"Average time for $worklistName on $b: ${avgTime / 1000000} ms.")
+            println(s"Average time for $worklistName on ${b._2}: ${avgTime / 1000000} ms.")
             println()
             println()
         })
