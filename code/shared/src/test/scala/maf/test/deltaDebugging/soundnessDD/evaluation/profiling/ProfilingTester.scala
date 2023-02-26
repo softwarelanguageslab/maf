@@ -23,15 +23,11 @@ trait ProfilingTester extends SoundnessDDTester:
   }
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    property(s"Analysis of $benchmark using $name has ran.", SlowTest) {
-      // load the benchmark program
-      val content = Reader.loadFile(benchmark)
-      val program = parseProgram(content, benchmark)
+    val content = Reader.loadFile(benchmark)
+    val program = parseProgram(content, benchmark)
 
-      profilingRunAndCompare(program, benchmark) match
-        case Some((failureMsg, initAnalysisResults)) =>
-          if failureMsg.nonEmpty then
-            WithProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
-            //WithoutProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
-        case None =>
-    }
+    profilingRunAndCompare(program, benchmark) match
+      case Some((failureMsg, initAnalysisResults)) =>
+        if failureMsg.nonEmpty then
+          WithProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
+      case None =>

@@ -4,13 +4,11 @@ import maf.util.benchmarks.Statistics
 
 object SaveData:
   def main(args: Array[String]): Unit = {
-    org.scalatest.run(new EvalProfilingTestSuiteA)
+    val tests = List(new EvalProfilingTestSuiteA)
+    tests.foreach(t => t.benchmarks.foreach(benchmark => t.onBenchmark(benchmark)))
 
     val withProfilingDataCollector = WithProfilingDD.dataCollector
-    //val withoutProfilingDataCollector = WithoutProfilingDD.dataCollector
-
     withProfilingDataCollector.writeTo("withProfilingDataCollector")
-    //withoutProfilingDataCollector.writeTo("withoutProfilingDataCollector")
   }
 
 object ReadAndAnalyzeData:
