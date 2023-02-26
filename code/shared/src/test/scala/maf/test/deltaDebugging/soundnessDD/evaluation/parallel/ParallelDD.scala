@@ -17,36 +17,40 @@ object ParallelDD:
              origCost: (Long, Long)): Unit =
 
     var oracleInvocations = 0
-    var runTimes: List[Long] = List()
-    var analysisTimes: List[Long] = List()
+    var runTimes: List[(Long, Int)] = List()
+    var analysisTimes: List[(Long, Int)] = List()
 
     val startTime = System.currentTimeMillis()
 
     val reduced = GTRParallel.reduce(
       program,
       p => {
-        oracleInvocations.synchronized {
-          oracleInvocations += 1
-        }
+        val candidateSize = p.size
         soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
           case (Some((failureMsg, evalSteps)), (runTime, analysisTime)) =>
             runTimes.synchronized {
-              runTimes = runTimes.::(runTime) //collect
+              runTimes = runTimes.::((runTime, candidateSize)) //collect
             }
             analysisTimes.synchronized {
-              analysisTimes = analysisTimes.::(analysisTime) //collect
+              analysisTimes = analysisTimes.::((analysisTime, candidateSize)) //collect
             }
             maxSteps.synchronized {
               maxSteps = Math.min(evalSteps, maxSteps)
+            }
+            oracleInvocations.synchronized {
+              oracleInvocations += 1
             }
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
           case (None, (runTime, analysisTime)) =>
             runTimes.synchronized {
-              runTimes = runTimes.::(runTime)
+              runTimes = runTimes.::((runTime, candidateSize))
             }
             analysisTimes.synchronized {
-              analysisTimes = analysisTimes.::(analysisTime)
+              analysisTimes = analysisTimes.::((analysisTime, candidateSize))
+            }
+            oracleInvocations.synchronized {
+              oracleInvocations += 1
             }
             false
       },
@@ -65,12 +69,12 @@ object ParallelDD:
       reducedSize = reduced.size,
       reductionTime = totalTime,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),
-      interpreterTime = runTimes.sum,
-      analysisTime = analysisTimes.sum,
+      interpreterTime = runTimes.map(_._1).sum,
+      analysisTime = analysisTimes.map(_._1).sum,
       interpreterTimes = runTimes,
       analysisTimes = analysisTimes,
-      interpreterPercentage = runTimes.sum.toDouble / totalTime,
-      analysisPercentage = analysisTimes.sum.toDouble / totalTime
+      interpreterPercentage = runTimes.map(_._1).sum.toDouble / totalTime,
+      analysisPercentage = analysisTimes.map(_._1).sum.toDouble / totalTime
     )
 
     dataCollector.addReductionData(reductionData)

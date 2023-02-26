@@ -24,18 +24,23 @@ object GTRParallel:
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): SchemeExp =
     for (node <- tree.levelNodes(lvl))
       reduceNode(tree, node, oracle, onOracleHit, transformation) match
-        case Some(tpl) =>
-          if tpl._2 then
-            onOracleHit(tpl._1)
-            return reduceLevelNodes(tpl._1, lvl, oracle, onOracleHit, transformation)
+        case Some(candidate) =>
+          onOracleHit(candidate)
+          return reduceLevelNodes(candidate, lvl, oracle, onOracleHit, transformation)
         case _ =>
     tree
 
-  private def reduceNode(tree: SchemeExp, node: SchemeExp, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): Option[(SchemeExp, Boolean)] =
+  private def reduceNode(tree: SchemeExp, node: SchemeExp, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): Option[SchemeExp] =
     val candidates: List[SchemeExp] = transformation.transform(tree, node).filter(candidate => candidate.size < tree.size).toList
-    candidates.par.foreach(c => {
-      if oracle(c) then
-        return Some(c, true)
-      else None
-    })
-    None
+    if candidates.exists(c => c.size > 500) then
+      candidates.par.foreach(c => {
+        if oracle(c) then
+          return Some(c)
+      })
+      None
+    else
+      candidates.foreach(c => {
+        if oracle(c) then
+          return Some(c)
+      })
+      None

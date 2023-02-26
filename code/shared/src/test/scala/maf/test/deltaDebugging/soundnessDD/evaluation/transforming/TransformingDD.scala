@@ -15,8 +15,8 @@ object TransformingDD:
              origCost: (Long, Long)): Unit =
 
     var oracleInvocations = 0
-    var runTimes: List[Long] = List()
-    var analysisTimes: List[Long] = List()
+    var runTimes: List[(Long, Int)] = List()
+    var analysisTimes: List[(Long, Int)] = List()
 
     val startTime = System.currentTimeMillis()
 
@@ -24,15 +24,16 @@ object TransformingDD:
       program,
       p => {
         oracleInvocations += 1
+        val candidateSize = p.size
         soundnessTester.runCompareAndtime(p, benchmark) match
           case (Some(failureMsg), (runTime, analysisTime)) =>
-            runTimes = runTimes.::(runTime)
-            analysisTimes = analysisTimes.::(analysisTime)
+            runTimes = runTimes.::((runTime, candidateSize))
+            analysisTimes = analysisTimes.::((analysisTime, candidateSize))
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
           case (None, (runTime, analysisTime)) =>
-            runTimes = runTimes.::(runTime)
-            analysisTimes = analysisTimes.::(analysisTime)
+            runTimes = runTimes.::((runTime, candidateSize))
+            analysisTimes = analysisTimes.::((analysisTime, candidateSize))
             false
       },
       identity,
@@ -50,12 +51,12 @@ object TransformingDD:
       reducedSize = reduced.size,
       reductionTime = totalTime,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),
-      interpreterTime = runTimes.sum,
-      analysisTime = analysisTimes.sum,
+      interpreterTime = runTimes.map(_._1).sum,
+      analysisTime = analysisTimes.map(_._1).sum,
       interpreterTimes = runTimes,
       analysisTimes = analysisTimes,
-      interpreterPercentage = runTimes.sum.toDouble / totalTime,
-      analysisPercentage = analysisTimes.sum.toDouble / totalTime
+      interpreterPercentage = runTimes.map(_._1).sum.toDouble / totalTime,
+      analysisPercentage = analysisTimes.map(_._1).sum.toDouble / totalTime
     )
 
     dataCollector.addReductionData(reductionData)

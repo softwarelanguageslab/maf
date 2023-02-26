@@ -2,17 +2,17 @@ package maf.test.deltaDebugging.soundnessDD.evaluation
 
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.evaluation.baseline.SaveBaseline
-import maf.test.deltaDebugging.soundnessDD.evaluation.counting.SaveCounting
+import maf.test.deltaDebugging.soundnessDD.evaluation.counting.{CountingDD, SaveCounting}
 import maf.test.deltaDebugging.soundnessDD.evaluation.parallel.SaveParallel
 import maf.test.deltaDebugging.soundnessDD.evaluation.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
 import maf.util.benchmarks.Statistics
 
 object Evaluate:
   def main(args: Array[String]): Unit = {
-    //SaveParallel.save()
-    SaveBaseline.save()
-    SaveCounting.save()
-    SaveTransforming.save()
+    //SaveBaseline.save()
+    //SaveCounting.save()
+    //SaveTransforming.save()
+    SaveParallel.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {
@@ -113,15 +113,73 @@ object Evaluate:
     val relativeSpeedRatios = transformingReductionTimes.zip(countingReductionTimes).map(tpl => tpl._1.toDouble / tpl._2.toDouble)
     relativeSpeedRatios.foreach(println)
 
+
+  def RQ4(countingData: List[ReductionData],
+          parallelData: List[ReductionData]): Unit =
+    println("RQ4")
+
+    def createRowTable1(data: List[ReductionData]): Unit =
+      val reductionTimes = data.map(r => r.reductionTime)
+      val avgReductionTime = Statistics.mean(reductionTimes.map(_.toDouble))
+      val stdReductionTime = Statistics.stddev(reductionTimes.map(_.toDouble))
+
+      val analysisTimes = data.map(r => r.analysisTime)
+      val avgAnalysisTime = Statistics.mean(analysisTimes.map(_.toDouble))
+      val stdAnalysisTime = Statistics.stddev(analysisTimes.map(_.toDouble))
+
+      val interpreterTimes = data.map(r => r.interpreterTime)
+      val avgInterpreterTime = Statistics.mean(interpreterTimes.map(_.toDouble))
+      val stdInterpreterTime = Statistics.stddev(interpreterTimes.map(_.toDouble))
+
+      println("avg reduction time: " + avgReductionTime + " +- " + stdReductionTime)
+      println("avg time spent in the interpreter: " + avgInterpreterTime + " +- " + stdInterpreterTime)
+      println("avg time spent in the analyser: " + avgAnalysisTime + " +- " + stdAnalysisTime)
+
+
+    def createRowTable2(data: List[ReductionData]): Unit =
+      val reductionTimes = data.map(r => r.reductionTime)
+      val avgReductionTime = Statistics.mean(reductionTimes.map(_.toDouble))
+      val stdReductionTime = Statistics.stddev(reductionTimes.map(_.toDouble))
+
+      val oracleInvocations = data.map(r => r.interpreterTimes.size)
+      val avgOracleInvocations = Statistics.mean(oracleInvocations.map(_.toDouble))
+      val stdOracleInvocations = Statistics.stddev(oracleInvocations.map(_.toDouble))
+
+      val reductionPercentages = data.map(r => r.reductionPercentage)
+      val avgReductionPercentage = Statistics.mean(reductionPercentages)
+      val stdReductionPercentage = Statistics.stddev(reductionPercentages)
+
+      println("avg reduction time: " + avgReductionTime + " +- " + stdReductionTime)
+      println("avg number of oracle invocations: " + avgOracleInvocations + " +- " + stdOracleInvocations)
+      println("avg reduction percentage: " + avgReductionPercentage + " +- " + stdReductionPercentage)
+
+    createRowTable1(countingData)
+    println("------------------------------------------------------")
+
+    createRowTable2(countingData)
+    println("------------------------------------------------------")
+    createRowTable2(parallelData)
+    println("------------------------------------------------------")
+    val ratios = parallelData.zip(countingData).map(tpl => tpl._1.reductionTime.toDouble / tpl._2.reductionTime)
+    ratios.foreach(println)
+    println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    println("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    val zippedAnalysisCosts = countingData.flatMap(d => d.analysisTimes.map(tpl => (tpl._1, tpl._2.toDouble / d.origSize)))
+    val zippedInterpreterCosts = countingData.flatMap(d => d.interpreterTimes.map(tpl => (tpl._1, tpl._2.toDouble / d.origSize)))
+    val zippedOracleCosts = zippedAnalysisCosts.zip(zippedInterpreterCosts).map(tpl => (tpl._1._1 + tpl._2._1, tpl._2._2))
+    zippedOracleCosts.foreach(tpl => println(tpl._2 + "\t" + tpl._1))
+
 object ReaderAndAnalyzeData {
   def main(args: Array[String]): Unit = {
     val baselineDataCollector: DataCollector = DataCollector.readObject("baselineDataCollector")
     val transformingDataCollector: DataCollector = DataCollector.readObject("transformingDataCollector")
     val countingDataCollector: DataCollector = DataCollector.readObject("countingDataCollector")
+    val parallelDataCollector: DataCollector = DataCollector.readObject("parallelDataCollector")
 
     //Evaluate.RQ1(baselineDataCollector.reductionData, transformingDataCollector.reductionData)
     //Evaluate.RQ2(baselineDataCollector.reductionData, transformingDataCollector.reductionData)
-    Evaluate.RQ3(baselineDataCollector.reductionData, transformingDataCollector.reductionData, countingDataCollector.reductionData)
+    //Evaluate.RQ3(baselineDataCollector.reductionData, transformingDataCollector.reductionData, countingDataCollector.reductionData)
+    Evaluate.RQ4(countingDataCollector.reductionData, parallelDataCollector.reductionData)
   }
 }
 
