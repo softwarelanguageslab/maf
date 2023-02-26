@@ -7,10 +7,10 @@ object SaveData:
     org.scalatest.run(new EvalProfilingTestSuiteA)
 
     val withProfilingDataCollector = WithProfilingDD.dataCollector
-    val withoutProfilingDataCollector = WithoutProfilingDD.dataCollector
+    //val withoutProfilingDataCollector = WithoutProfilingDD.dataCollector
 
     withProfilingDataCollector.writeTo("withProfilingDataCollector")
-    withoutProfilingDataCollector.writeTo("withoutProfilingDataCollector")
+    //withoutProfilingDataCollector.writeTo("withoutProfilingDataCollector")
   }
 
 object ReadAndAnalyzeData:

@@ -32,6 +32,6 @@ trait ProfilingTester extends SoundnessDDTester:
         case Some((failureMsg, initAnalysisResults)) =>
           if failureMsg.nonEmpty then
             WithProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
-            WithoutProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
+            //WithoutProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
         case None =>
     }
