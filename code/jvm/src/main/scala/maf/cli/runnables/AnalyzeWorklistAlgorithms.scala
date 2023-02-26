@@ -20,7 +20,7 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeWorklistAlgorithms extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A, worklist: String): Long =
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: SchemeExp, analysis: SchemeExp => A, worklist: String): Long =
         val a = analysis(bench)
         var time: Long = -1
         println(s"Analysis of $bench with heuristic $worklist")
@@ -40,8 +40,7 @@ object AnalyzeWorklistAlgorithms extends App:
 
     val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/R5RS/icp")().toList
 
-    def FIFOanalysis(text: String) =
-        val program = SchemeParser.parseProgram(text)
+    def FIFOanalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
           with SchemeModFNoSensitivity
           with SchemeConstantPropagationDomain
@@ -51,8 +50,7 @@ object AnalyzeWorklistAlgorithms extends App:
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
-    def LIFOanalysis(text: String) =
-        val program = SchemeParser.parseProgram(text)
+    def LIFOanalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
           with SchemeModFNoSensitivity
           with SchemeConstantPropagationDomain
@@ -67,9 +65,10 @@ object AnalyzeWorklistAlgorithms extends App:
     val numIterations = 10
 
     bench.foreach({ b =>
+        val program = SchemeParser.parseProgram(b) // doing parsing only once
         analyses.foreach((analysis, worklistName) => {
             val results = (1 to (warmup + numIterations)).map(_ =>
-                runAnalysis(b, program => analysis(program), worklistName)
+                runAnalysis(program, program => analysis(program), worklistName)
             )
             val avgTime = results.sum / numIterations
             println(s"Average time for $worklistName on $b: ${avgTime / 1000000} ms.")
