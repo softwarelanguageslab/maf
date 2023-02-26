@@ -20,11 +20,12 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeWorklistAlgorithms extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A, worklist: String): A =
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: String => A, worklist: String): Long =
         val a = analysis(bench)
-        print(s"Analysis of $bench with heuristic $worklist")
+        var time: Long = -1
+        println(s"Analysis of $bench with heuristic $worklist")
         try {
-            val time = Timer.timeOnly {
+            time = Timer.timeOnly {
                 a.analyze()
             }
             println(s"terminated in ${time / 1000000} ms.")
@@ -35,9 +36,9 @@ object AnalyzeWorklistAlgorithms extends App:
                 t.printStackTrace()
                 System.err.flush()
         }
-        a
+        time
 
-    val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/R5RS/scp1")().toList
+    val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/R5RS/icp")().toList
 
     def FIFOanalysis(text: String) =
         val program = SchemeParser.parseProgram(text)
@@ -61,13 +62,20 @@ object AnalyzeWorklistAlgorithms extends App:
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
-
     val analyses = List((FIFOanalysis, "FIFOWorklistAlgorithm"), (LIFOanalysis, "LIFOWorklistAlgorithm"))
-
+    val warmup = 3
+    val numIterations = 10
 
     bench.foreach({ b =>
-        analyses.foreach((analysis, worklistName) =>
-        runAnalysis(b, program => analysis(program),worklistName))
+        analyses.foreach((analysis, worklistName) => {
+            val results = (1 to (warmup + numIterations)).map(_ =>
+                runAnalysis(b, program => analysis(program), worklistName)
+            )
+            val avgTime = results.sum / numIterations
+            println(s"Average time for $worklistName on $b: ${avgTime / 1000000} ms.")
+            println()
+            println()
+        })
     })
 
 
