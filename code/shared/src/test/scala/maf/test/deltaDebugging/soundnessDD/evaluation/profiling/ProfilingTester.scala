@@ -7,7 +7,6 @@ import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
-
 trait ProfilingTester extends SoundnessDDTester:
 
   def profilingRunAndCompare(program: SchemeExp, benchmark: Benchmark): Option[(String, Array[(String, Int)])] = {
@@ -23,6 +22,7 @@ trait ProfilingTester extends SoundnessDDTester:
   }
 
   override def onBenchmark(benchmark: Benchmark): Unit =
+    println("Profiling >>> running benchmark: " + benchmark)
     val content = Reader.loadFile(benchmark)
     val program = parseProgram(content, benchmark)
 

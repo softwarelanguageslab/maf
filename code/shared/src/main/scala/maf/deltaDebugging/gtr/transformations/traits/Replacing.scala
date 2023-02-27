@@ -59,11 +59,6 @@ trait Replacing:
   def allValues(): List[SchemeExp] =
     values ++ lambdaValues()
 
-  def replaceWithAllValues(exp: SchemeExp, toReplace: SchemeExp => Boolean): List[SchemeExp] =
-    allValues().map(value => {
-      replaceWithValue(exp, toReplace, value)
-    })
-    
   private def replaceWithValue(exp: SchemeExp, toReplace: SchemeExp => Boolean, value: SchemeExp): SchemeExp =
     exp.map(subExp => {
       if toReplace(subExp) then
@@ -72,6 +67,11 @@ trait Replacing:
             s.copy(vararg = Identifier(newID(), NoCodeIdentity))
           case _ => value
       else subExp
+    })  
+
+  def replaceWithAllValues(exp: SchemeExp, toReplace: SchemeExp => Boolean): List[SchemeExp] =
+    allValues().map(value => {
+      replaceWithValue(exp, toReplace, value)
     })
 
   def replaceIdWithAllValues(exp: SchemeExp, id: Identifier): List[SchemeExp] =

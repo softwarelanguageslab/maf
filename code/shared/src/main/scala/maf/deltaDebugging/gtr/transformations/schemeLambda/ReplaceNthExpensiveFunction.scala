@@ -8,7 +8,7 @@ import maf.language.scheme.*
 
 class ReplaceNthExpensiveFunction(arr: Array[(String, Int)], n: Int) extends Transformation with Replacing:
   override val name: String = "ReplaceNthExpensiveFunction"
-  private val nthExpensive = arr(n)
+  private val nthExpensiveName: String = arr(n)._1
 
   override protected def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
@@ -18,13 +18,13 @@ class ReplaceNthExpensiveFunction(arr: Array[(String, Int)], n: Int) extends Tra
         })
 
         for (lambdaBinding <- lambdaBindings)
-          if lambdaBinding._1.name equals nthExpensive._1 then
+          if lambdaBinding._1.name equals nthExpensiveName then
             val newLet = lettishExp.dropBinding(lambdaBinding._1.name)
             val newTree = tree.replace(lettishExp, newLet)
             addTrees(replaceCallWithAllValues(newTree, lambdaBinding._1))
 
       case defExp@SchemeDefineVariable(name, _: SchemeLambdaExp, _) =>
-        if name.name equals nthExpensive._1 then
+        if name.name equals nthExpensiveName then
           val newTree = tree.deleteChildren(child => child eq defExp) //removes the definition
           newTree match
             case Some(newTree) =>

@@ -25,8 +25,8 @@ object WithProfilingDD:
 
     val reductionStartTime = System.currentTimeMillis()
     
-    def reduceWithProfiling(profiling: Array[(String, Int)]): Unit =
-      for (i <- profiling.indices)
+    def reduceWithProfiling(profiling: Array[(String, Int)], range: Int): Unit =
+      for (i <- 0 to range)
         GTR.reduce(
           reduced,
           p => {
@@ -46,13 +46,14 @@ object WithProfilingDD:
             soundnessTester.profilingRunAndCompare(newReduction, benchmark) match
               case Some((_, newReductionProfiled)) =>
                 reduced = newReduction
-                return reduceWithProfiling(newReductionProfiled)
+                return reduceWithProfiling(newReductionProfiled, range - 1)
               case _ =>
           },
           List(ReplaceNthExpensiveFunction(profiling, i))
         )
-    
-    reduceWithProfiling(initAnalysisProfiling)
+
+    if initAnalysisProfiling.length > 5 then
+      reduceWithProfiling(initAnalysisProfiling, 3)
 
     val reductionEndTime = System.currentTimeMillis()
     val reductionTime = reductionEndTime - reductionStartTime

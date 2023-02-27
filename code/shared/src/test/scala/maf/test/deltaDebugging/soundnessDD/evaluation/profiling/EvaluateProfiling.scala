@@ -14,7 +14,6 @@ object SaveData:
 object ReadAndAnalyzeData:
   def main(args: Array[String]): Unit = {
     val withProfilingDataCollector = ProfilingDataCollector.readObject("withProfilingDataCollector")
-    val withoutProfilingDataCollector = ProfilingDataCollector.readObject("withoutProfilingDataCollector")
 
     def evaluateDataCollector(collector: ProfilingDataCollector): Unit = {
       val data = collector.data
@@ -77,21 +76,10 @@ object ReadAndAnalyzeData:
 
     val medianProgramSize = Statistics.median(withProfilingDataCollector.data.map(r => r.programSize))
     val largeWithProfiling = withProfilingDataCollector.filter(medianProgramSize.toInt)
-    val largeWithoutProfiling = withoutProfilingDataCollector.filter(medianProgramSize.toInt)
 
-    println(">>>>> results WITHOUT profiling <<<<< ")
-    evaluateDataCollector(withoutProfilingDataCollector)
-    println("")
-    println("####################################")
-    println("")
     println(">>>>> results WITH profiling <<<<< ")
     evaluateDataCollector(withProfilingDataCollector)
-
-    println(">>>>> results LARGE WITHOUT profiling <<<<< ")
-    evaluateDataCollector(largeWithoutProfiling)
-    println("")
-    println("####################################")
-    println("")
+    
     println(">>>>> results LARGE WITH profiling <<<<< ")
     evaluateDataCollector(largeWithProfiling)
   }
