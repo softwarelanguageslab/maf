@@ -6,6 +6,7 @@ import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.modular.scheme.SchemeConstantPropagationDomain
 import maf.modular.scheme.modflocal.*
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.test.deltaDebugging.realBugs.*
 import maf.test.{AllBenchmarks, AllSequentialBenchmarks, DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.soundnessBugs.*
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
@@ -17,7 +18,7 @@ trait SchemeModFLocalSoundnessTests extends ProfilingTester with DDBenchmarks:
     val transf = SchemeMutableVarBoxer.transform(prelud)
     SchemeParser.rename(SchemeParser.undefine(transf))
 
-class EvalProfilingTestSuiteA extends SchemeModFLocalSoundnessTests:
+class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
   def analysis(prg: SchemeExp) =
@@ -26,9 +27,9 @@ class EvalProfilingTestSuiteA extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with BeginBug
+      with RealBug1
 
-class EvalProfilingTestSuiteB extends SchemeModFLocalSoundnessTests:
+class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
   def analysis(prg: SchemeExp) =
@@ -37,9 +38,9 @@ class EvalProfilingTestSuiteB extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with CallBug
+      with RealBug2
 
-class EvalProfilingTestSuiteC extends SchemeModFLocalSoundnessTests:
+class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
   def analysis(prg: SchemeExp) =
@@ -48,4 +49,26 @@ class EvalProfilingTestSuiteC extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with LetBug
+      with RealBug3
+
+class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
+  def n = 100
+  def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  def analysis(prg: SchemeExp) =
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
+      with SchemeModFLocalNoSensitivity
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with SchemeModFLocalAnalysisResults
+      with RealBug4
+
+class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
+  def n = 100
+  def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  def analysis(prg: SchemeExp) =
+    new SchemeModFLocal(prg)
+      with SchemeConstantPropagationDomain
+      with SchemeModFLocalNoSensitivity
+      with FIFOWorklistAlgorithm[SchemeExp]
+      with SchemeModFLocalAnalysisResults
+      with RealBug5

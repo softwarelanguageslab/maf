@@ -3,11 +3,11 @@ package maf.test.deltaDebugging.soundnessDD.evaluation.profiling
 import maf.language.scheme.SchemeExp
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.test.SlowTest
-import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
+import maf.test.deltaDebugging.soundnessDD.{SoundnessCountingDDTester, SoundnessDDTester}
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
-trait ProfilingTester extends SoundnessDDTester:
+trait ProfilingTester extends SoundnessCountingDDTester:
 
   def profilingRunAndCompare(program: SchemeExp, benchmark: Benchmark): Option[(String, Array[(String, Int)])] = {
     try
@@ -29,5 +29,5 @@ trait ProfilingTester extends SoundnessDDTester:
     profilingRunAndCompare(program, benchmark) match
       case Some((failureMsg, initAnalysisResults)) =>
         if failureMsg.nonEmpty then
-          WithProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
+          ProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
       case None =>

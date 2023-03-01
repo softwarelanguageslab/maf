@@ -1,16 +1,19 @@
 package maf.test.deltaDebugging.soundnessDD.evaluation.profiling
 
 import maf.deltaDebugging.gtr.GTR
+import maf.deltaDebugging.gtr.transformations.TransformationManager
 import maf.deltaDebugging.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.deltaDebugging.soundnessDD.evaluation.profiling.*
-import maf.test.deltaDebugging.soundnessDD.evaluation.CountLambdaBindings
+import maf.test.deltaDebugging.soundnessDD.evaluation.*
 import org.scalatest.Assertions.fail
 
 import java.io.{BufferedWriter, File, FileWriter}
 
-object WithProfilingDD:
-  val dataCollector = new ProfilingDataCollector
+object ProfilingDD:
+  val dataCollector = new DataCollector
+  var bugName = "noneYet"
+  var maxSteps: Long = Long.MaxValue
 
   def reduce(program: SchemeExp,
              soundnessTester: ProfilingTester,
@@ -18,9 +21,6 @@ object WithProfilingDD:
              initAnalysisProfiling: Array[(String, Int)]): Unit =
     var reduced = program
 
-    var oracleTimes: List[(Long, Int)] = List()
-    var analysisSteps: List[(Int, Int)] = List()
-    var oracleHits = 0
     var oracleCount = 0
 
     val reductionStartTime = System.currentTimeMillis()
@@ -32,17 +32,12 @@ object WithProfilingDD:
           p => {
             val startTime = System.currentTimeMillis()
             soundnessTester.profilingRunAndCompare(p, benchmark) match
-              case Some((failureMsg, runAnalysisSteps)) =>
+              case Some((failureMsg, _)) =>
                 oracleCount += 1
-                val endTime = System.currentTimeMillis()
-                oracleTimes = oracleTimes.::((endTime - startTime, oracleHits))
-                analysisSteps = analysisSteps.::((runAnalysisSteps.map(_._2).sum, oracleHits))
-                p.findUndefinedVariables().isEmpty &&
-                  failureMsg.nonEmpty
+                p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
               case None => false
           },
           newReduction => {
-            oracleHits += 1
             soundnessTester.profilingRunAndCompare(newReduction, benchmark) match
               case Some((_, newReductionProfiled)) =>
                 reduced = newReduction
@@ -55,19 +50,37 @@ object WithProfilingDD:
     if initAnalysisProfiling.length > 5 then
       reduceWithProfiling(initAnalysisProfiling, 3)
 
+    reduced = GTR.reduce(
+      reduced,
+      p => {
+        soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
+          case (Some((failureMsg, evalSteps)), _) =>
+            oracleCount += 1
+            maxSteps = evalSteps
+            p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
+          case _ => false
+      },
+      identity,
+      TransformationManager.genericTransformations
+    )
+
     val reductionEndTime = System.currentTimeMillis()
     val reductionTime = reductionEndTime - reductionStartTime
 
     val dataPoint: ReductionData = ReductionData(
-      candidateFunctionCount = initAnalysisProfiling.length,
-      totalFunctionCount = CountLambdaBindings.count(program),
-      oracleCount = oracleCount,
-      programSize = program.size,
+      benchmark = benchmark,
+      bugName = bugName,
+      origCost = (-1, -1),
+      origSize = program.size,
       reducedSize = reduced.size,
-      OracleHits = oracleHits,
+      reductionPercentage = 1 - (reduced.size.toDouble / program.size),
       reductionTime = reductionTime,
-      oracleTimes = oracleTimes,
-      analysisSteps = analysisSteps,
+      interpreterTime = -1,
+      analysisTime = -1,
+      interpreterTimes = (1 to oracleCount).toList.map(n => (n, n)), //just an ad-hoc way to encode number of oracle invocations as interpreter times
+      analysisTimes = (1 to oracleCount).toList.map(n => (n, n)),
+      interpreterPercentage = -1,
+      analysisPercentage = -1
     )
 
     dataCollector.addReductionData(dataPoint)
