@@ -29,6 +29,7 @@ class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
+      with BeginBug
 
 class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
   def l = 10

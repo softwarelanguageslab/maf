@@ -20,6 +20,7 @@ object Evaluate:
     dataCollector.writeTo(dataCollectorString)
   }
 
+  /*
   def RQ1(baselineData: List[ReductionData], transformingData: List[ReductionData]): Unit =
     println("RQ1")
     def createRow(data: List[ReductionData]): Unit =
@@ -168,6 +169,62 @@ object Evaluate:
     val zippedInterpreterCosts = countingData.flatMap(d => d.interpreterTimes.map(tpl => (tpl._1, tpl._2.toDouble / d.origSize)))
     val zippedOracleCosts = zippedAnalysisCosts.zip(zippedInterpreterCosts).map(tpl => (tpl._1._1 + tpl._2._1, tpl._2._2))
     zippedOracleCosts.foreach(tpl => println(tpl._2 + "\t" + tpl._1))
+  */
+
+  def RQ1(baselineData: List[ReductionData],
+          transformingData: List[ReductionData],
+          countingData: List[ReductionData],
+          parallelData: List[ReductionData]): Unit =
+
+    def createRow(data: List[ReductionData]): Unit =
+      val reductionPercentages = data.map(r => r.reductionPercentage)
+      val avgReductionPercentage = Statistics.median(reductionPercentages)
+      val stdReductionPercentage = Statistics.stddev(reductionPercentages)
+
+      println("median reduction %: " + avgReductionPercentage + " +- " + stdReductionPercentage)
+
+    createRow(baselineData)
+    createRow(transformingData)
+    createRow(countingData)
+    createRow(parallelData)
+
+  def RQ2(baselineData: List[ReductionData],
+          transformingData: List[ReductionData],
+          countingData: List[ReductionData],
+          parallelData: List[ReductionData]): Unit =
+    def createRow(data: List[(ReductionData, ReductionData)]): Unit =
+      val oracleRatio = data.map(tpl => tpl._1.interpreterTimes.size.toDouble / tpl._2.interpreterTimes.size)
+      val avgOracleRatio = Statistics.median(oracleRatio)
+      val stdOracleRatio = Statistics.stddev(oracleRatio)
+
+      val reductionTimeRatio = data.map(tpl => tpl._1.reductionTime.toDouble / tpl._2.reductionTime)
+      val avgReductionTimeRatio = Statistics.median(reductionTimeRatio)
+      val stdReductionTimeRatio = Statistics.stddev(reductionTimeRatio)
+
+      println("median oracle ratio: "+ avgOracleRatio + " +- " + stdOracleRatio)
+      println("median reduction time ratio: " + avgReductionTimeRatio + " +- " + stdReductionTimeRatio)
+      println("")
+
+    def createBoxplot(data: List[(ReductionData, ReductionData)]): Unit =
+      println("boxplot...")
+      val reductionTimeRatio = data.map(tpl => tpl._1.reductionTime.toDouble / tpl._2.reductionTime)
+      reductionTimeRatio.foreach(println)
+
+    def createScatterPlot(): Unit =
+      val zippedAnalysisCosts = countingData.flatMap(d => d.analysisTimes.map(tpl => (tpl._1, tpl._2.toDouble / d.origSize)))
+      val zippedInterpreterCosts = countingData.flatMap(d => d.interpreterTimes.map(tpl => (tpl._1, tpl._2.toDouble / d.origSize)))
+      val zippedOracleCosts = zippedAnalysisCosts.zip(zippedInterpreterCosts).map(tpl => (tpl._1._1 + tpl._2._1, tpl._2._2))
+      zippedOracleCosts.foreach(tpl => println(tpl._2 + "\t" + tpl._1))
+
+    createRow(baselineData.zip(baselineData))
+    createRow(transformingData.zip(baselineData))
+    createRow(countingData.zip(baselineData))
+    createRow(parallelData.zip(baselineData))
+
+    createBoxplot(transformingData.zip(baselineData))
+    createBoxplot(transformingData.zip(countingData))
+    createBoxplot(countingData.zip(parallelData))
+
 
 object ReaderAndAnalyzeData {
   def main(args: Array[String]): Unit = {
@@ -176,10 +233,19 @@ object ReaderAndAnalyzeData {
     val countingDataCollector: DataCollector = DataCollector.readObject("countingDataCollector")
     val parallelDataCollector: DataCollector = DataCollector.readObject("parallelDataCollector")
 
-    //Evaluate.RQ1(baselineDataCollector.reductionData, transformingDataCollector.reductionData)
-    //Evaluate.RQ2(baselineDataCollector.reductionData, transformingDataCollector.reductionData)
-    //Evaluate.RQ3(baselineDataCollector.reductionData, transformingDataCollector.reductionData, countingDataCollector.reductionData)
-    Evaluate.RQ4(countingDataCollector.reductionData, parallelDataCollector.reductionData)
+    Evaluate.RQ1(
+      baselineDataCollector.reductionData,
+      transformingDataCollector.reductionData,
+      countingDataCollector.reductionData,
+      parallelDataCollector.reductionData
+    )
+    /*
+    Evaluate.RQ2(
+      baselineDataCollector.reductionData,
+      transformingDataCollector.reductionData,
+      countingDataCollector.reductionData,
+      parallelDataCollector.reductionData
+    )*/
   }
 }
 
