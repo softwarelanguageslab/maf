@@ -22,7 +22,6 @@ object TransformationManager:
       LetIdentifierShallowDrop,
       RemoveCalls,
       RemoveCallsAndReplaceByBody,
-      RemoveLambdaParamByReplacement,
       RemoveLambdaParamWithDeepDrop,
       RemoveLambdaParamWithShallowDrop,
       ReplaceByChild,

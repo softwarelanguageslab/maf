@@ -10,10 +10,10 @@ import maf.util.benchmarks.Statistics
 
 object Evaluate:
   def main(args: Array[String]): Unit = {
-    //SaveBaseline.save()
-    //SaveCounting.save()
-    //SaveTransforming.save()
-    //SaveParallel.save()
+    SaveBaseline.save()
+    SaveCounting.save()
+    SaveTransforming.save()
+    SaveParallel.save()
     SaveProfiling.save()
   }
 
@@ -234,20 +234,21 @@ object ReaderAndAnalyzeData {
     val transformingDataCollector: DataCollector = DataCollector.readObject("transformingDataCollector")
     val countingDataCollector: DataCollector = DataCollector.readObject("countingDataCollector")
     val parallelDataCollector: DataCollector = DataCollector.readObject("parallelDataCollector")
-
+    val profilingDataCollector: DataCollector = DataCollector.readObject("profilingDataCollector")
+    
     Evaluate.RQ1(
       baselineDataCollector.reductionData,
       transformingDataCollector.reductionData,
       countingDataCollector.reductionData,
       parallelDataCollector.reductionData
     )
-    /*
+
     Evaluate.RQ2(
       baselineDataCollector.reductionData,
       transformingDataCollector.reductionData,
       countingDataCollector.reductionData,
       parallelDataCollector.reductionData
-    )*/
+    )
   }
 }
 

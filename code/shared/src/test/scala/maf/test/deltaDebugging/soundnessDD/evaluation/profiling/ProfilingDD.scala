@@ -20,7 +20,6 @@ object ProfilingDD:
              benchmark: String,
              initAnalysisProfiling: Array[(String, Int)]): Unit =
     var reduced = program
-
     var oracleCount = 0
 
     val reductionStartTime = System.currentTimeMillis()
@@ -47,7 +46,7 @@ object ProfilingDD:
           List(ReplaceNthExpensiveFunction(profiling, i))
         )
 
-    if initAnalysisProfiling.length > 5 then
+    if initAnalysisProfiling.length >= 5 then
       reduceWithProfiling(initAnalysisProfiling, 3)
 
     reduced = GTR.reduce(
@@ -61,7 +60,7 @@ object ProfilingDD:
           case _ => false
       },
       identity,
-      TransformationManager.genericTransformations
+      TransformationManager.allTransformations
     )
 
     val reductionEndTime = System.currentTimeMillis()
