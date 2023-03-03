@@ -46,7 +46,9 @@ object GTR:
                 val maybeRemoved = remover(candidateTree)
                 maybeRemoved match
                   case Some(removed) =>
-                    return reduceLevelNodes(removed, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
+                    if oracle(removed) then
+                      return reduceLevelNodes(removed, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
+                    else return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
                   case _ => return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
               case _ => return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
     tree

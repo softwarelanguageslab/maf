@@ -82,6 +82,8 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
     runWithMaxStepsAndIdentifyDeadCode(program, benchmark, Long.MaxValue) match
       case (Some((failureMsg, calledLambdas, evalSteps)), _) =>
         if failureMsg.nonEmpty then
+          DeadCodeDD.maxSteps = evalSteps
+          DeadCodeDD.bugName = bugName
 
           val maybeRemoved = program.deleteChildren(exp => {
             exp match
@@ -92,21 +94,16 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
 
           maybeRemoved match
             case Some(removed) =>
-              program = removed
-              /*
               val (maybeFailed, _) = runWithMaxStepsAndIdentifyDeadCode(removed, benchmark, evalSteps)
               maybeFailed match
                 case Some(tpl) =>
                   if tpl._1.nonEmpty then
-                    println("ok")
-                    program = removed
-                  else println("not always true!")
+                    DeadCodeDD.reduce(program, removed, this, benchmark)
+                    return
                 case _ =>
-              */
             case _ =>
 
-          DeadCodeDD.maxSteps = evalSteps
-          DeadCodeDD.bugName = bugName
-          DeadCodeDD.reduce(program, this, benchmark)
+
+          DeadCodeDD.reduce(program, program, this, benchmark)
       case _ =>
 }

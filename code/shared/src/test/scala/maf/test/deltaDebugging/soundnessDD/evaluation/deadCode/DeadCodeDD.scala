@@ -10,7 +10,8 @@ object DeadCodeDD:
   var bugName = "noneYet"
   var maxSteps: Long = Long.MaxValue
 
-  def reduce(program: SchemeExp,
+  def reduce(startProgram: SchemeExp,
+             program: SchemeExp,
              soundnessTester: DeadCodeTester,
              benchmark: String): Unit =
 
@@ -36,14 +37,7 @@ object DeadCodeDD:
       },
       identity,
       TransformationManager.allTransformations,
-      Some(candidate => {
-        candidate.deleteChildren(exp => {
-          exp match
-            case lambda: SchemeLambda =>
-              !topCalledLambdas.contains(lambda.hashCode())
-            case _ => false
-        })
-      })
+      None
     )
 
     val endTime = System.currentTimeMillis()
@@ -52,10 +46,10 @@ object DeadCodeDD:
     val reductionData = ReductionData(
       benchmark = benchmark,
       bugName = bugName,
-      origSize = program.size,
+      origSize = startProgram.size,
       reducedSize = reduced.size,
       reductionTime = totalReductionTime,
-      reductionPercentage = 1 - (reduced.size.toDouble / program.size),
+      reductionPercentage = 1 - (reduced.size.toDouble / startProgram.size),
       oracleTreeSizes = oracleTreeSizes
     )
 
