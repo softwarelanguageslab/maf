@@ -2,7 +2,7 @@ package maf.test.deltaDebugging.soundnessDD.evaluation.deadCode
 
 import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.transformations.TransformationManager
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.{SchemeExp, SchemeLambda}
 import maf.test.deltaDebugging.soundnessDD.evaluation.*
 
 object DeadCodeDD:
@@ -18,22 +18,32 @@ object DeadCodeDD:
     var oracleTreeSizes: List[Int] = List()
 
     val startTime = System.currentTimeMillis()
+    var topCalledLambdas: Set[Int] = Set()
 
     val reduced = GTR.reduce(
       program,
       p => {
         oracleInvocations += 1
         oracleTreeSizes = oracleTreeSizes.::(p.size)
-        soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
-          case (Some((failureMsg, evalSteps)), _) =>
+        soundnessTester.runWithMaxStepsAndIdentifyDeadCode(p, benchmark, maxSteps) match
+          case (Some((failureMsg, calledLambdas, evalSteps)), _) =>
             maxSteps = evalSteps
+            topCalledLambdas = calledLambdas
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
           case (None, (runTime, analysisTime)) =>
             false
       },
       identity,
-      TransformationManager.allTransformations
+      TransformationManager.allTransformations,
+      Some(candidate => {
+        candidate.deleteChildren(exp => {
+          exp match
+            case lambda: SchemeLambda =>
+              !topCalledLambdas.contains(lambda.hashCode())
+            case _ => false
+        })
+      })
     )
 
     val endTime = System.currentTimeMillis()

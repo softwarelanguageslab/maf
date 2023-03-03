@@ -3,6 +3,7 @@ package maf.test.deltaDebugging.soundnessDD.evaluation
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.evaluation.baseline.SaveBaseline
 import maf.test.deltaDebugging.soundnessDD.evaluation.counting.{CountingDD, SaveCounting}
+import maf.test.deltaDebugging.soundnessDD.evaluation.deadCode.SaveDeadCode
 import maf.test.deltaDebugging.soundnessDD.evaluation.parallel.SaveParallel
 import maf.test.deltaDebugging.soundnessDD.evaluation.profiling.SaveProfiling
 import maf.test.deltaDebugging.soundnessDD.evaluation.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
@@ -10,11 +11,12 @@ import maf.util.benchmarks.Statistics
 
 object Evaluate:
   def main(args: Array[String]): Unit = {
-    SaveBaseline.save()
-    SaveCounting.save()
-    SaveTransforming.save()
-    SaveParallel.save()
-    SaveProfiling.save()
+    //SaveBaseline.save()
+    //SaveCounting.save()
+    //SaveTransforming.save()
+    //SaveParallel.save()
+    //SaveProfiling.save()
+    SaveDeadCode.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {
@@ -67,9 +69,9 @@ object Evaluate:
     createRow(countingData.zip(baselineData))
     createRow(parallelData.zip(baselineData))
 
-    createBoxplot(transformingData.zip(baselineData))
-    createBoxplot(transformingData.zip(countingData))
-    createBoxplot(countingData.zip(parallelData))
+    //createBoxplot(transformingData.zip(baselineData))
+    //createBoxplot(transformingData.zip(countingData))
+    //createBoxplot(countingData.zip(parallelData))
 
 
 object ReaderAndAnalyzeData {
@@ -79,19 +81,20 @@ object ReaderAndAnalyzeData {
     val countingDataCollector: DataCollector = DataCollector.readObject("countingDataCollector")
     val parallelDataCollector: DataCollector = DataCollector.readObject("parallelDataCollector")
     val profilingDataCollector: DataCollector = DataCollector.readObject("profilingDataCollector")
+    val deadCodeDataCollector: DataCollector = DataCollector.readObject("deadCodeDataCollector")
 
     Evaluate.RQ1(
       baselineDataCollector.reductionData,
       transformingDataCollector.reductionData,
       countingDataCollector.reductionData,
-      parallelDataCollector.reductionData
+      deadCodeDataCollector.reductionData
     )
 
     Evaluate.RQ2(
       baselineDataCollector.reductionData,
       transformingDataCollector.reductionData,
       countingDataCollector.reductionData,
-      parallelDataCollector.reductionData
+      deadCodeDataCollector.reductionData
     )
   }
 }

@@ -30,7 +30,7 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
     (idnResults, interpreter.getEvalSteps(), calledLambdas)
 
   def runWithMaxStepsAndIdentifyDeadCode(program: SchemeExp, benchmark: Benchmark, maxSteps: Long):
-  (Option[(Benchmark, Set[Int], Long)], (Long, Long)) =
+  (Option[(String, Set[Int], Long)], (Long, Long)) =
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0
     var evalEndTime: Long = 0
@@ -77,13 +77,11 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
     println("DeadCode >>> running benchmark: " + benchmark)
     // load the benchmark program
     val content = Reader.loadFile(benchmark)
-    val program = parseProgram(content, benchmark)
+    var program = parseProgram(content, benchmark)
 
     runWithMaxStepsAndIdentifyDeadCode(program, benchmark, Long.MaxValue) match
       case (Some((failureMsg, calledLambdas, evalSteps)), _) =>
         if failureMsg.nonEmpty then
-          println("called lambdas: " + calledLambdas)
-          println("pre: " + program.prettyString())
 
           val maybeRemoved = program.deleteChildren(exp => {
             exp match
@@ -93,8 +91,18 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
           })
 
           maybeRemoved match
-            case Some(tree) =>
-              println("post: " + tree.prettyString())
+            case Some(removed) =>
+              program = removed
+              /*
+              val (maybeFailed, _) = runWithMaxStepsAndIdentifyDeadCode(removed, benchmark, evalSteps)
+              maybeFailed match
+                case Some(tpl) =>
+                  if tpl._1.nonEmpty then
+                    println("ok")
+                    program = removed
+                  else println("not always true!")
+                case _ =>
+              */
             case _ =>
 
           DeadCodeDD.maxSteps = evalSteps

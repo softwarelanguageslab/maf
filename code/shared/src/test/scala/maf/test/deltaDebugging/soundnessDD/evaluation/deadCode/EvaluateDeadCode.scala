@@ -1,9 +1,8 @@
-package maf.test.deltaDebugging.soundnessDD.evaluation.transforming
+package maf.test.deltaDebugging.soundnessDD.evaluation.deadCode
 
 import maf.test.deltaDebugging.soundnessDD.evaluation.Evaluate
-import maf.util.benchmarks.Statistics
 
-object SaveTransforming:
+object SaveDeadCode:
   def save(): Unit = {
     Evaluate.save(
       List(
@@ -13,7 +12,7 @@ object SaveTransforming:
         new SchemeModFLocalAdaptiveTests4,
         new SchemeModFLocalAdaptiveTests5
       ),
-      "transformingDataCollector",
-      TransformingDD.dataCollector
+      "deadCodeDataCollector",
+      DeadCodeDD.dataCollector
     )
   }

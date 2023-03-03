@@ -107,7 +107,7 @@ object SchemeBenchmarkPrograms:
       "example.scm",
       "fact.scm",
       "fib.scm",
-      "foo.scm",
+      "SICP-compiler.scm",
       "inc.scm",
       "kcfa2.scm",
       "lambda-update.scm",

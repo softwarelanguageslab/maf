@@ -221,6 +221,7 @@ class SchemeInterpreter(
                        ): Value =
         setStore(initialSto)
         maxEvalSteps = maxSteps
+        evalSteps = 0
         eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result
 
     /** Evaluate and identify the lambdas which have been called */
@@ -230,9 +231,11 @@ class SchemeInterpreter(
                                      maxSteps: Long,
                                      version: Version = New
                                    ): (Value, Set[Int]) =
-        setStore(initialSto)
         calledLambdas = Set()
+
+        setStore(initialSto)
         maxEvalSteps = maxSteps
+        evalSteps = 0
         (eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result, calledLambdas)
 
     def eval(
@@ -242,7 +245,8 @@ class SchemeInterpreter(
         version: Version,
       ): TailRec[Value] =
         evalSteps += 1
-        if (evalSteps - buffer) > maxEvalSteps then throw new TimeoutException()
+        if (evalSteps - buffer) > maxEvalSteps then
+            throw new TimeoutException()
         if timeout.reached then throw new TimeoutException()
         e match
             case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))

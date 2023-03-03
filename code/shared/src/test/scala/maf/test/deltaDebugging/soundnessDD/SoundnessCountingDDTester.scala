@@ -8,13 +8,6 @@ import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.benchmarks.Timer
 
 trait SoundnessCountingDDTester extends SoundnessDDTester:
-  protected def runInterpreterWithMaxSteps(
-                                            i: SchemeInterpreter,
-                                            p: SchemeExp,
-                                            maxSteps: Long,
-                                          ): Value =
-    i.runWithMaxSteps(p, maxSteps) // If there are code changes in the file, runs the "new" version by default (ensures compatibility with files containing changes).
-
   def evalProgramWithMaxSteps(program: SchemeExp, benchmark: Benchmark, maxSteps: Long): (Map[Identity, Set[Value]], Long) =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
@@ -22,7 +15,7 @@ trait SoundnessCountingDDTester extends SoundnessDDTester:
     val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
     val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
     for _ <- 1 to times do
-      val (ellapsed, _) = Timer.time(runInterpreterWithMaxSteps(interpreter, program, maxSteps))
+      val (ellapsed, _) = Timer.time(interpreter.runWithMaxSteps(program, maxSteps))
       SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)
     (idnResults, interpreter.getEvalSteps())
 
