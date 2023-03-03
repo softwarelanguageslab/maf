@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.evaluation.deadCode
 
 import maf.core.{Identity, IdentityWithData, NoCodeIdentity, NoCodeIdentityDebug, SimpleIdentity}
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.{SchemeExp, SchemeLambda}
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
 import maf.test.SlowTest
@@ -14,8 +14,23 @@ import maf.util.benchmarks.Timer
 trait DeadCodeTester extends SoundnessCountingDDTester {
   val bugName: String
 
+  def evalProgram(program: SchemeExp, benchmark: Benchmark, maxSteps: Long): (Map[Identity, Set[Value]], Long, Set[Int]) =
+    var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
+    val timeout = concreteTimeout(benchmark)
+    val times = concreteRuns(benchmark)
+    val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
+    val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
+    var calledLambdas: Set[Int] = Set()
+    for _ <- 1 to times do
+      val (ellapsed, _) = Timer.time({
+        val tpl = interpreter.runAndIdentifyCalledLambdas(program, maxSteps)
+        calledLambdas = calledLambdas.union(tpl._2)
+      })
+      SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)
+    (idnResults, interpreter.getEvalSteps(), calledLambdas)
+
   def runWithMaxStepsAndIdentifyDeadCode(program: SchemeExp, benchmark: Benchmark, maxSteps: Long):
-  (Option[(Benchmark, Map[Identity, Set[Value]], Long)], (Long, Long)) =
+  (Option[(Benchmark, Set[Int], Long)], (Long, Long)) =
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0
     var evalEndTime: Long = 0
@@ -29,10 +44,12 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
     var concreteResults: Option[Map[Identity, Set[Value]]] = None
     var evalSteps: Long = 0
     var anl: Option[Analysis] = None
+    var calledLambdas: Option[Set[Int]] = None
 
     try
       evalStartTime = System.currentTimeMillis()
-      val tpl = evalProgramWithMaxSteps(program, benchmark, maxSteps)
+      val tpl = evalProgram(program, benchmark, maxSteps)
+      calledLambdas = Some(tpl._3)
       concreteResults = Some(tpl._1)
       evalSteps = tpl._2
       evalEndTime = System.currentTimeMillis()
@@ -54,7 +71,7 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
 
     if excThrown then
       (None, (evalRunTime, analysisRuntime))
-    else (Some((compareResults(anl.get, concreteResults.get), concreteResults.get, evalSteps)), (evalRunTime, analysisRuntime))
+    else (Some((compareResults(anl.get, concreteResults.get), calledLambdas.get, evalSteps)), (evalRunTime, analysisRuntime))
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("DeadCode >>> running benchmark: " + benchmark)
@@ -63,22 +80,21 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
     val program = parseProgram(content, benchmark)
 
     runWithMaxStepsAndIdentifyDeadCode(program, benchmark, Long.MaxValue) match
-      case (Some((failureMsg, concreteResults, evalSteps)), _) =>
+      case (Some((failureMsg, calledLambdas, evalSteps)), _) =>
         if failureMsg.nonEmpty then
-          val deadCodeRemoved = program.deleteChildren(exp => {
-            val isEvaluated = concreteResults.keySet.exists(idn => {
-              idn match
-                case SimpleIdentity(pos) =>
-                  pos.col == exp.idn.pos.col && pos.line == exp.idn.pos.line
-                case _ => false
-            })
-            !isEvaluated
+          println("called lambdas: " + calledLambdas)
+          println("pre: " + program.prettyString())
+
+          val maybeRemoved = program.deleteChildren(exp => {
+            exp match
+              case lambda: SchemeLambda =>
+                !calledLambdas.contains(lambda.hashCode())
+              case _ => false
           })
 
-          println("pre: " + program.size)
-
-          deadCodeRemoved match
-            case Some(s) => println("post: " + s.size)
+          maybeRemoved match
+            case Some(tree) =>
+              println("post: " + tree.prettyString())
             case _ =>
 
           DeadCodeDD.maxSteps = evalSteps

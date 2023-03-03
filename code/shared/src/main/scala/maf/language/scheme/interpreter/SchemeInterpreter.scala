@@ -208,6 +208,7 @@ class SchemeInterpreter(
             case v =>
                 signalException(ValueNotApplicable(v, idn))
 
+    /** Evaluate with a Bound on Evaluation Steps */
     private var evalSteps: Long = 0
     def getEvalSteps(): Long = evalSteps
     var maxEvalSteps: Long = Long.MaxValue //the maximum number of eval steps before a TimeoutException
@@ -221,6 +222,18 @@ class SchemeInterpreter(
         setStore(initialSto)
         maxEvalSteps = maxSteps
         eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result
+
+    /** Evaluate and identify the lambdas which have been called */
+    private var calledLambdas: Set[Int] = Set()
+    def runAndIdentifyCalledLambdas(
+                                     program: SchemeExp,
+                                     maxSteps: Long,
+                                     version: Version = New
+                                   ): (Value, Set[Int]) =
+        setStore(initialSto)
+        calledLambdas = Set()
+        maxEvalSteps = maxSteps
+        (eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result, calledLambdas)
 
     def eval(
         e: SchemeExp,
@@ -238,8 +251,8 @@ class SchemeInterpreter(
                     fv <- tailcall(eval(f, env, timeout, version))
                     res <- fv match
                         case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
+                            calledLambdas = calledLambdas + lambda.hashCode()
                             if argsNames.length != args.length then
-
                                 signalException(
                                   ArityError(pos2.pos, argsNames.length, args.length)
                                 )
