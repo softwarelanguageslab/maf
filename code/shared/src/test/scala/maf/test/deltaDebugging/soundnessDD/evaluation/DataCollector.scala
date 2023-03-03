@@ -4,7 +4,6 @@ import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutp
 
 case class ReductionData(benchmark: String,
                          bugName:String,
-                         origCost: (Long, Long),
                          origSize: Int,
                          reducedSize: Int,
                          reductionPercentage: Double,

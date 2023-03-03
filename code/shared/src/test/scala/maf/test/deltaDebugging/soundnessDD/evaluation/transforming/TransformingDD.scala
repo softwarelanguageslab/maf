@@ -11,8 +11,7 @@ object TransformingDD:
 
   def reduce(program: SchemeExp,
              soundnessTester: TransformingTester,
-             benchmark: String,
-             origCost: (Long, Long)): Unit =
+             benchmark: String): Unit =
 
     var oracleInvocations = 0
     var runTimes: List[(Long, Int)] = List()
@@ -47,7 +46,6 @@ object TransformingDD:
       benchmark = benchmark,
       bugName = bugName,
       origSize = program.size,
-      origCost = origCost,
       reducedSize = reduced.size,
       reductionTime = totalTime,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),

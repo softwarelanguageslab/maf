@@ -69,7 +69,6 @@ object ProfilingDD:
     val dataPoint: ReductionData = ReductionData(
       benchmark = benchmark,
       bugName = bugName,
-      origCost = (-1, -1),
       origSize = program.size,
       reducedSize = reduced.size,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),

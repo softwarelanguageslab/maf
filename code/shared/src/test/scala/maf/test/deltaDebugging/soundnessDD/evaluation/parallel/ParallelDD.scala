@@ -13,8 +13,7 @@ object ParallelDD:
 
   def reduce(program: SchemeExp,
              soundnessTester: ParallelTester,
-             benchmark: String,
-             origCost: (Long, Long)): Unit =
+             benchmark: String): Unit =
 
     var oracleInvocations = 0
     var runTimes: List[(Long, Int)] = List()
@@ -64,7 +63,6 @@ object ParallelDD:
     val reductionData = ReductionData(
       benchmark = benchmark,
       bugName = bugName,
-      origCost = origCost,
       origSize = program.size,
       reducedSize = reduced.size,
       reductionTime = totalTime,
