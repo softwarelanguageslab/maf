@@ -14,8 +14,7 @@ object BaselineDD:
              benchmark: String): Unit =
 
     var oracleInvocations = 0
-    var runTimes: List[(Long, Int)] = List()
-    var analysisTimes: List[(Long, Int)] = List()
+    var oracleTreeSizes: List[Int] = List()
 
     val startTime = System.currentTimeMillis()
 
@@ -23,16 +22,12 @@ object BaselineDD:
       program,
       p => {
         oracleInvocations += 1
-        val candidateSize = p.size
+        oracleTreeSizes = oracleTreeSizes.::(p.size)
         soundnessTester.runCompareAndtime(p, benchmark) match
           case (Some(failureMsg), (runTime, analysisTime)) =>
-            runTimes = runTimes.::((runTime, candidateSize))
-            analysisTimes = analysisTimes.::((analysisTime, candidateSize))
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
           case (None, (runTime, analysisTime)) =>
-            runTimes = runTimes.::((runTime, candidateSize))
-            analysisTimes = analysisTimes.::((analysisTime, candidateSize))
             false
       },
       identity,
@@ -49,12 +44,7 @@ object BaselineDD:
       reducedSize = reduced.size,
       reductionTime = totalReductionTime,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),
-      interpreterTime = runTimes.map(_._1).sum,
-      analysisTime = analysisTimes.map(_._1).sum,
-      interpreterTimes = runTimes,
-      analysisTimes = analysisTimes,
-      interpreterPercentage = runTimes.map(_._1).sum.toDouble / totalReductionTime,
-      analysisPercentage = analysisTimes.map(_._1).sum.toDouble / totalReductionTime
+      oracleTreeSizes = oracleTreeSizes
     )
 
     dataCollector.addReductionData(reductionData)

@@ -11,7 +11,7 @@ import org.scalatest.Assertions.fail
 import java.io.{BufferedWriter, File, FileWriter}
 
 object ProfilingDD:
-  val dataCollector = new DataCollector
+  var dataCollector = new DataCollector
   var bugName = "noneYet"
   var maxSteps: Long = Long.MaxValue
 
@@ -19,20 +19,22 @@ object ProfilingDD:
              soundnessTester: ProfilingTester,
              benchmark: String,
              initAnalysisProfiling: Array[(String, Int)]): Unit =
-    var reduced = program
-    var oracleCount = 0
 
-    val reductionStartTime = System.currentTimeMillis()
-    
+    var oracleInvocations = 0
+    var reduced = program
+    var oracleTreeSizes: List[Int] = List()
+
+    val startTime = System.currentTimeMillis()
+
     def reduceWithProfiling(profiling: Array[(String, Int)], range: Int): Unit =
       for (i <- 0 to range)
         GTR.reduce(
           reduced,
           p => {
-            val startTime = System.currentTimeMillis()
+            oracleTreeSizes = oracleTreeSizes.::(p.size)
             soundnessTester.profilingRunAndCompare(p, benchmark) match
               case Some((failureMsg, _)) =>
-                oracleCount += 1
+                oracleInvocations += 1
                 p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
               case None => false
           },
@@ -50,35 +52,33 @@ object ProfilingDD:
       reduceWithProfiling(initAnalysisProfiling, 3)
 
     reduced = GTR.reduce(
-      reduced,
+      program,
       p => {
+        oracleInvocations += 1
+        oracleTreeSizes = oracleTreeSizes.::(p.size)
         soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
-          case (Some((failureMsg, evalSteps)), _) =>
-            oracleCount += 1
+          case (Some((failureMsg, evalSteps)), (runTime, analysisTime)) =>
             maxSteps = evalSteps
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
-          case _ => false
+
+          case (None, (runTime, analysisTime)) =>
+            false
       },
       identity,
       TransformationManager.allTransformations
     )
 
-    val reductionEndTime = System.currentTimeMillis()
-    val reductionTime = reductionEndTime - reductionStartTime
+    val endTime = System.currentTimeMillis()
+    val totalReductionTime = endTime - startTime
 
-    val dataPoint: ReductionData = ReductionData(
+    val reductionData = ReductionData(
       benchmark = benchmark,
       bugName = bugName,
       origSize = program.size,
       reducedSize = reduced.size,
+      reductionTime = totalReductionTime,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),
-      reductionTime = reductionTime,
-      interpreterTime = -1,
-      analysisTime = -1,
-      interpreterTimes = (1 to oracleCount).toList.map(n => (n, n)), //just an ad-hoc way to encode number of oracle invocations as interpreter times
-      analysisTimes = (1 to oracleCount).toList.map(n => (n, n)),
-      interpreterPercentage = -1,
-      analysisPercentage = -1
+      oracleTreeSizes
     )
 
-    dataCollector.addReductionData(dataPoint)
+    dataCollector.addReductionData(reductionData)

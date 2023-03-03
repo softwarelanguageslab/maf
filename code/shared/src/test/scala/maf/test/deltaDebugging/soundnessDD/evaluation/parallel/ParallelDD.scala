@@ -16,8 +16,7 @@ object ParallelDD:
              benchmark: String): Unit =
 
     var oracleInvocations = 0
-    var runTimes: List[(Long, Int)] = List()
-    var analysisTimes: List[(Long, Int)] = List()
+    var oracleTreeSizes: List[Int] = List()
 
     val startTime = System.currentTimeMillis()
 
@@ -26,12 +25,9 @@ object ParallelDD:
       p => {
         val candidateSize = p.size
         soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
-          case (Some((failureMsg, evalSteps)), (runTime, analysisTime)) =>
-            runTimes.synchronized {
-              runTimes = runTimes.::((runTime, candidateSize)) //collect
-            }
-            analysisTimes.synchronized {
-              analysisTimes = analysisTimes.::((analysisTime, candidateSize)) //collect
+          case (Some((failureMsg, evalSteps)), _) =>
+            oracleTreeSizes.synchronized {
+              oracleTreeSizes = oracleTreeSizes.::(p.size)
             }
             maxSteps.synchronized {
               maxSteps = Math.min(evalSteps, maxSteps)
@@ -41,12 +37,9 @@ object ParallelDD:
             }
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
-          case (None, (runTime, analysisTime)) =>
-            runTimes.synchronized {
-              runTimes = runTimes.::((runTime, candidateSize))
-            }
-            analysisTimes.synchronized {
-              analysisTimes = analysisTimes.::((analysisTime, candidateSize))
+          case (None, _) =>
+            oracleTreeSizes.synchronized {
+              oracleTreeSizes = oracleTreeSizes.::(p.size)
             }
             oracleInvocations.synchronized {
               oracleInvocations += 1
@@ -67,12 +60,7 @@ object ParallelDD:
       reducedSize = reduced.size,
       reductionTime = totalTime,
       reductionPercentage = 1 - (reduced.size.toDouble / program.size),
-      interpreterTime = runTimes.map(_._1).sum,
-      analysisTime = analysisTimes.map(_._1).sum,
-      interpreterTimes = runTimes,
-      analysisTimes = analysisTimes,
-      interpreterPercentage = runTimes.map(_._1).sum.toDouble / totalTime,
-      analysisPercentage = analysisTimes.map(_._1).sum.toDouble / totalTime
+      oracleTreeSizes = oracleTreeSizes
     )
 
     dataCollector.addReductionData(reductionData)

@@ -8,12 +8,7 @@ case class ReductionData(benchmark: String,
                          reducedSize: Int,
                          reductionPercentage: Double,
                          reductionTime: Long,
-                         interpreterTime: Long,
-                         analysisTime: Long,
-                         interpreterTimes: List[(Long, Int)],
-                         analysisTimes: List[(Long, Int)],
-                         interpreterPercentage: Double,
-                         analysisPercentage: Double,
+                         oracleTreeSizes: List[Int]
                         ) extends Serializable
 
 object DataCollector:
