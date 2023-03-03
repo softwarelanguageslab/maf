@@ -7,4 +7,4 @@ trait RealBug1 extends SchemeSemantics:
   this: SchemeDomain with SchemeModFLocalSensitivity =>
   
   override def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
-    storeVal(pai, lattice.cons(car, car))
+    storeVal(pai, lattice.cons(cdr, cdr))
