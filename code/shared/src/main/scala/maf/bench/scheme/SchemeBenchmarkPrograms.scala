@@ -118,7 +118,6 @@ object SchemeBenchmarkPrograms:
       "nested-defines.scm",
       "procedure.scm",
       "rotate.scm",
-      "SICP-compiler.scm",
       "splitargs.scm",
       "sq.scm",
       "string.scm",
