@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.soundnessDD.evaluation.deadCode
 
-import maf.core.Identity
+import maf.core.{Identity, IdentityWithData, NoCodeIdentity, NoCodeIdentityDebug, SimpleIdentity}
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
@@ -66,8 +66,21 @@ trait DeadCodeTester extends SoundnessCountingDDTester {
       case (Some((failureMsg, concreteResults, evalSteps)), _) =>
         if failureMsg.nonEmpty then
           val deadCodeRemoved = program.deleteChildren(exp => {
-            !concreteResults.keySet.contains(exp.idn) /** Does not work as expected */
+            val isEvaluated = concreteResults.keySet.exists(idn => {
+              idn match
+                case SimpleIdentity(pos) =>
+                  pos.col == exp.idn.pos.col && pos.line == exp.idn.pos.line
+                case _ => false
+            })
+            !isEvaluated
           })
+
+          println("pre: " + program.size)
+
+          deadCodeRemoved match
+            case Some(s) => println("post: " + s.size)
+            case _ =>
+
           DeadCodeDD.maxSteps = evalSteps
           DeadCodeDD.bugName = bugName
           DeadCodeDD.reduce(program, this, benchmark)
