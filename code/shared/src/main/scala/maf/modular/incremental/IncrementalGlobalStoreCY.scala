@@ -115,10 +115,6 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         Tarjan.scc[Addr](store.keySet, allFlowsR)
 
-
-    // Instead of computing oldFlowsR again in refiningNeeded, let's just store it...
-    private var oldFlowsR = Map[Addr, Set[Addr]]()
-
     /** Checks whether a SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
@@ -152,9 +148,11 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                     provenance += (a -> (provenance(a) - c))
                     // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
                     // REMARK: check reason + impact
-                    cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
+                    cachedWrites = cachedWrites + (c -> (cachedWrites(c) - a))
+                    //cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
                     // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
-                    dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
+                    dataFlowR = dataFlowR + (c -> (dataFlowR(c) + (a -> dataFlowR(c)(a).diff(sca))))
+                    //dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
                     acc
             }
             //val old = store.getOrElse(a, lattice.bottom)
@@ -194,10 +192,12 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         override def commit(): Unit =
             val oldStore = inter.store
             val oldDataFlowR = dataFlowR
-            super.commit()
+            //super.commit()
+            // Todo: is CY more efficient before or after WI? Or should it work at the same time?
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlow)
                 if version == New then updateSCAs(oldStore, oldDataFlowR)
+            super.commit()
 
     end IncrementalGlobalStoreCYIntraAnalysis
 

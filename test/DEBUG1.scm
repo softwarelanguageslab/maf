@@ -1,3 +1,4 @@
+; key not found: λ@363:18 [ε] (IncrementalGlobalStoreCY.scala:149)
 (letrec ((list? (lambda (l)
                   (let ((__or_res (if (pair? l) (list? (cdr l)) #f)))
                     (if __or_res __or_res (null? l)))))
@@ -363,10 +364,6 @@
                                  (define-variable! 'true true initial-env)
                                  (define-variable! 'false false initial-env)
                                  initial-env)))
-          (primitive-procedure? (lambda (proc)
-                                  (tagged-list? proc 'primitive)))
-          (primitive-implementation (lambda (proc)
-                                      (cadr proc)))
           (primitive-procedures (list
                                   (list 'car car)
                                   (list 'cdr cdr)
@@ -384,5 +381,45 @@
           (primitive-procedure-names (lambda ()
                                        (map car primitive-procedures)))
           (primitive-procedure-objects (lambda ()
-                                         (map (lambda (proc) (list 'primitive (cadr proc))) primitive-procedures))))
+                                         (map (lambda (proc) (list 'primitive (cadr proc))) primitive-procedures)))
+          (the-global-environment (setup-environment))
+          (input (__toplevel_cons
+                   (__toplevel_cons 'define (__toplevel_cons 'a (__toplevel_cons 2 ())))
+                   (__toplevel_cons
+                     (__toplevel_cons 'define (__toplevel_cons 'b (__toplevel_cons 3 ())))
+                     (__toplevel_cons
+                       (__toplevel_cons 'define (__toplevel_cons 'c (__toplevel_cons 4 ())))
+                       (__toplevel_cons
+                         (__toplevel_cons 'freeze (__toplevel_cons 'a ()))
+                         (__toplevel_cons
+                           (__toplevel_cons 'freeze (__toplevel_cons 'c ()))
+                           (__toplevel_cons
+                             (__toplevel_cons
+                               'define
+                               (__toplevel_cons
+                                 (__toplevel_cons 'set-fn! (__toplevel_cons 'x (__toplevel_cons 'y ())))
+                                 (__toplevel_cons
+                                   (__toplevel_cons 'define (__toplevel_cons 'a (__toplevel_cons 0 ())))
+                                   (__toplevel_cons
+                                     (__toplevel_cons 'set! (__toplevel_cons 'a (__toplevel_cons 'x ())))
+                                     (__toplevel_cons
+                                       (__toplevel_cons 'set! (__toplevel_cons 'b (__toplevel_cons 'y ())))
+                                       (__toplevel_cons
+                                         (__toplevel_cons 'list (__toplevel_cons 'a (__toplevel_cons 'b (__toplevel_cons 'c ()))))
+                                         ()))))))
+                             (__toplevel_cons
+                               (__toplevel_cons 'set-fn! (__toplevel_cons 0 (__toplevel_cons 1 ())))
+                               (__toplevel_cons
+                                 (__toplevel_cons
+                                   'begin
+                                   (__toplevel_cons
+                                     (__toplevel_cons 'freeze (__toplevel_cons 'b ()))
+                                     (__toplevel_cons (__toplevel_cons 'set-fn! (__toplevel_cons 5 (__toplevel_cons 6 ()))) ())))
+                                 ())))))))))
+          (_0 (for-each
+                (lambda (in)
+                  (let ((output (eval in the-global-environment)))
+                    (announce-output output-prompt)
+                    (user-print output)))
+                input)))
   _0)

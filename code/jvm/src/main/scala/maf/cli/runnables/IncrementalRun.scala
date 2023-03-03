@@ -113,6 +113,7 @@ object IncrementalRun extends App:
             with IncrementalLogging[SchemeExp]
             with IncrementalDataFlowVisualisation[SchemeExp]
             with IncrementalGlobalStoreCY[SchemeExp]:
+        stepFocus = 52
         override def focus(a: Addr): Boolean = List("env@35:33[Some(ε)]",
             "env@39:40[Some(ε)]",
             "exp@11:29[Some(ε)]",
@@ -155,10 +156,10 @@ object IncrementalRun extends App:
     val modFbenchmarks: List[String] = List(
       //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
       // "test/changes/scheme/freeze.scm" // Nog niet precies.
-       "test/DEBUG2.scm"
+       "test/DEBUG1.scm"
     )
 
-    def newTimeout(): Timeout.T = Timeout.start(Duration(20, MINUTES))
+    def newTimeout(): Timeout.T = Timeout.start(Duration(60, SECONDS))
 
     def reduce(text: SchemeExp, oracle: SchemeExp => Boolean): SchemeExp =
         val log = Logger.raw("reduced-program")
@@ -212,7 +213,7 @@ object IncrementalRun extends App:
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            analyse(text, false)
+            analyse(text, false, true)
            // reduce(text, (text: SchemeExp) => !analyse(text, false, false))
         } catch {
             case e: Exception =>

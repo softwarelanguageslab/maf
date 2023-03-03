@@ -4,6 +4,7 @@ import maf.core.Expression
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.*
+import maf.util.ColouredFormatting.*
 import maf.util.Logger
 import maf.util.Logger.*
 import maf.util.benchmarks.*
@@ -36,6 +37,9 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
     var mode: Mode = Fine
     var stepFocus: Int = -1 // to set when Step Mode is used
 
+    def enable(): Unit = logger.enable()
+    def disable(): Unit = logger.disable()
+
     private def select(addr: Addr): Boolean = mode == Select && focus(addr)
     private def stepSelect(): Boolean = mode == Step && step == stepFocus
 
@@ -53,7 +57,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
-      |RSCA  Indicates a given SCA is refined.
+      |RSCA  Indicates (an address in) a SCA is refined. The number indicates the number of SCA refinement.
       |TRIG  Indicates the given dependency has been triggered.
       |WRIT  Address write, including the address, value written and value now residing in the store.
       |
@@ -75,7 +79,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
                     if focus(addr) then {
                         val v = store.getOrElse(addr, lattice.bottom)
                         val p = provenance(addr).map({ case (c, v) => s"${crop(v.toString)} ($c)" }).mkString("; ")
-                        table = table.add(stepString, s"σ(${crop(addr.toString)}", crop(v.toString)).add(stepString, s"P(${crop(addr.toString)}", p)
+                        table = table.add(stepString, s"σ(${crop(addr.toString)})", crop(v.toString)).add(stepString, s"P(${crop(addr.toString)}", p)
                     }
                 )
                 dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }).foreach { case (addr, valueSources) =>
@@ -196,22 +200,29 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         if (mode != Summary && (mode != Step || stepSelect())) && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
+    private var rSCAcount = 0
     override def refineSCA(sca: SCA): Unit =
+        rSCAcount = rSCAcount + 1
+        println(rSCAcount)
         var values: Map[Addr, Value] = Map()
-        if mode != Summary && (mode != Step || stepSelect()) then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
+        if mode != Step || stepSelect() then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
         super.refineSCA(sca)
-        if mode != Summary && (mode != Step || stepSelect()) then
-            logger.log(s"RSCA ${sca.map(a => s"$a (${values(a)} -> ${store.getOrElse(a, lattice.bottom)})").mkString("{", ", ", "}")}")
+        if mode != Step || stepSelect() then
+            sca.toList.sortBy(_.toString).map(a => s"$a (${values(a)} -> ${store.getOrElse(a, lattice.bottom)})").foreach(u => logger.log(s"RSCA ($rSCAcount) $u"))
 
     trait IncrementalLoggingIntra extends IncrementalGlobalStoreCYIntraAnalysis:
         intra =>
 
         // Analysis of a component.
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            if rSCAcount >= 10
+            then
+                logger.logU(s"RSCA count = 2, aborting analysis before step $step")
+                throw new Exception("Aborting analysis!")
             if mode != Summary && (mode != Step || stepSelect()) then logger.logU("") // Adds a newline to the log.
             if version == Old then intraC += 1 else intraCU += 1
             repeats = repeats + (component -> (repeats(component) + 1))
-            if mode != Summary && (mode != Step || stepSelect()) then
+            if mode != Step || stepSelect() then
                 logger.log(s"ANLY $component (analysis step $step, analysis # of this component: ${repeats(component)})")
             if configuration.cyclicValueInvalidation && (mode == Fine || stepSelect()) then
                 logger.log(s"RSAD Resetting addressDependencies for $component.")

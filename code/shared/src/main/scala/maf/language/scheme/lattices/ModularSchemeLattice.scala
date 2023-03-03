@@ -270,7 +270,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def ord = 9
         def typeName = "PNTR"
         val tpy = PointerT
-        override def toString: String = ptrs.mkString("Pointers{", ", ", "}")
+        override def toString: String =
+            if ptrs.size > 3
+            then s"{${ptrs.size} pointers}"
+            else ptrs.mkString("Pointers{", ", ", "}")
 
     case class Cons(car: L, cdr: L) extends Value:
         def ord = 10
