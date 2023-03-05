@@ -37,7 +37,14 @@ object DeadCodeDD:
       },
       identity,
       TransformationManager.allTransformations,
-      None
+      Some(candidateTree => {
+        candidateTree.deleteChildren(exp => {
+          exp match
+            case lambda: SchemeLambda =>
+              !topCalledLambdas.contains(lambda.hashCode())
+            case _ => false
+        })
+      })
     )
 
     val endTime = System.currentTimeMillis()
