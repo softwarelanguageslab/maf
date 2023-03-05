@@ -6,7 +6,7 @@ import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
 import maf.test.SlowTest
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
-import maf.test.deltaDebugging.soundnessDD.evaluation.counting.CountingDD
+import maf.test.deltaDebugging.soundnessDD.variants.counting.CountingDD
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timer
