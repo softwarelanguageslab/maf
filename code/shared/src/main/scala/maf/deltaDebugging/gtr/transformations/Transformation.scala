@@ -18,20 +18,6 @@ abstract class Transformation:
   def addReplacements(rs: List[SchemeExp]): Unit =
     rs.foreach(addReplacement)
 
-  /** transformIdx returns the nth transformation */
-  def transformIdx(tree: SchemeExp, node: SchemeExp, idx: Int): Option[SchemeExp] =
-    require(tree.contains(node))
-    trees = List()
-    replacements = List()
-
-    transformAndAdd(tree, node) //should fill trees and replacements
-
-    val transformations = (trees ++ replacements.map(r => tree.replace(node, r)))
-                          .filterNot(newTree => tree eql newTree) //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
-
-    try Some(transformations(idx))
-    catch case _: Throwable => None
-
   /** transform returns all transformations */
   def transform(tree: SchemeExp, node: SchemeExp): Iterator[SchemeExp] =
     require(tree.contains(node))
