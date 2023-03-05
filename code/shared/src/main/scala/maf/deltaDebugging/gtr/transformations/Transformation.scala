@@ -26,12 +26,14 @@ abstract class Transformation:
 
     transformAndAdd(tree, node) //should fill trees and replacements
 
-    val iter = (trees ++ replacements.map(r => tree.replace(node, r)))
-      .filterNot(newTree => tree eql newTree).iterator //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
+    val suggestions = (trees ++ replacements.map(r => tree.replace(node, r)))
+      .filterNot(newTree => tree eql newTree) //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
+
+    suggestedCount += suggestions.length
 
     trees = List()
     replacements = List()
-    iter
+    suggestions.iterator
 
   /** transformAndAdd is a subclass responsibility */
   protected def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit
@@ -41,3 +43,6 @@ abstract class Transformation:
   def getHits: Int = hits
   def hit(): Unit =
     hits += 1
+
+  private var suggestedCount: Int = 0
+  def getSuggestedCount: Int = suggestedCount
