@@ -6,7 +6,8 @@ case class RandomWorkList[X](set: Set[X]) extends WorkList[X]:
     def nonEmpty: Boolean = set.nonEmpty
     def head: X = set.head
     def tail: RandomWorkList[X] = RandomWorkList(set.tail)
-    def add(x: X): RandomWorkList[X] = RandomWorkList(set + x)
+    def add(x: X): RandomWorkList[X] =
+        RandomWorkList(set + x)
     def addAll(xs: Iterable[X]): RandomWorkList[X] = xs.foldLeft(this)((acc, elm) => acc.add(elm))
     def map[Y](f: X => Y): RandomWorkList[Y] = RandomWorkList(set.map(f))
     def toList: List[X] = set.toList

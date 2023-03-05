@@ -14,6 +14,7 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     // adding elements to the worklist
     var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
     protected var reAnalysisMap: Map[Component, Int] = Map()
+
     def getReAnalysisMap(): Map[String, Int] =
         val array: Array[(String, Array[(Component, Int)])] =
             reAnalysisMap.toArray.groupBy(tpl => tpl._1.toString.split(" ").asInstanceOf[Array[String]].head).toArray
@@ -38,7 +39,11 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
         // do the intra-analysis
         // intraCount = intraCount + 1
         val intra = intraAnalysis(current)
+        val timeBefore: Double = timeout.time
         intra.analyzeWithTimeout(timeout)
+        val timeTaken: Double = timeout.time - timeBefore
+        val currentTime: Double = timeMap.getOrElse(current.toString, 0.0)
+        timeMap = timeMap + (current.toString -> (currentTime + timeTaken))
         if timeout.reached then
             // analysis timed out => we need to add it to the worklist again
             addToWorkList(current)
@@ -94,12 +99,16 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
         val current = pop()
         // do the intra-analysis
         val intra = intraAnalysis(current)
+        val timeBefore: Double = timeout.time
         intra.analyzeWithTimeout(timeout)
+        val timeTaken: Double = timeout.time - timeBefore
+        val currentTime: Double = timeMap.getOrElse(current.toString, 0.0)
+        timeMap = timeMap + (current.toString -> (currentTime + timeTaken))
         if timeout.reached then
-            // analysis timed out => we need to add it to the worklist again
+        // analysis timed out => we need to add it to the worklist again
             addToWorkList(current)
         else
-            // analysis finished properly => commit its changes to the global analysis state
+        // analysis finished properly => commit its changes to the global analysis state
             intra.commit()
 
     // step until worklist is empty or timeout is reached

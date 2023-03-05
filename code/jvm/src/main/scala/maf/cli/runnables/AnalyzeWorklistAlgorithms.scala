@@ -12,7 +12,7 @@ import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
 import maf.modular.worklist.{FIFOWorklistAlgorithm, *}
 import maf.util.Reader
-import maf.util.benchmarks.Timer
+import maf.util.benchmarks.{Timeout, Timer}
 
 import scala.concurrent.duration.*
 
@@ -20,7 +20,7 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeWorklistAlgorithms extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: (String, SchemeExp), analysis: SchemeExp => A, worklist: String): Long =
+    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: (String, SchemeExp), analysis: SchemeExp => A, worklist: String): (Map[String, Double], Long) =
         val a = analysis(bench._2)
         var time: Long = -1
         //println(s"Analysis of $bench._1 with heuristic $worklist")
@@ -36,124 +36,136 @@ object AnalyzeWorklistAlgorithms extends App:
                 t.printStackTrace()
                 System.err.flush()
         }
-        time
+        (a.timeMap, time)
 
     def randomAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
+          with SchemeModFKCallSiteSensitivity
           with RandomWorklistAlgorithm[SchemeExp] {
+            val k = 2
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def FIFOanalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with FIFOWorklistAlgorithm[SchemeExp] {
+            val k = 2
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def LIFOanalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with LIFOWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def callDepthAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with CallDepthFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def leastVisitedAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with LeastVisitedFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def mostVisitedAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with MostVisitedFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def deepExpressionFirstAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with DeepExpressionsFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def shallowExpressionsFirstAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def mostDependenciesFirstAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with MostDependenciesFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def leastDependenciesFirstAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with LeastDependenciesFirstWorklistAlgorithm[SchemeExp] {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def biggerEnvironmentFirstAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with BiggerEnvironmentFirstWorklistAlgorithm.ModF {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
     def smallerEnvironmentFirstAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
-          with SchemeModFNoSensitivity
+          with SchemeModFKCallSiteSensitivity
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
           with SmallerEnvironmentFirstWorklistAlgorithm.ModF {
+            val k = 0
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
@@ -204,13 +216,14 @@ object AnalyzeWorklistAlgorithms extends App:
     val warmup = 3
     val numIterations = 10
     bench.foreach({ b =>
-        val program = SchemeParser.parseProgram(b._1) // doing parsing only once
+        val program = SchemeParser.parseProgram(Reader.loadFile(b._1)) // doing parsing only once
         analyses.foreach((analysis, worklistName) => {
             val results = (1 to (warmup + numIterations)).map(_ =>
-                runAnalysis((b._2, program), program => analysis(program), worklistName)
+                val result = runAnalysis((b._2, program), program => analysis(program), worklistName)
+                result._2
             )
-            val avgTime = results.sum / numIterations
-            println(s"Average time for $worklistName on ${b._2}: ${avgTime / 1000000} ms.")
+            val avgTime = results.drop(warmup).sum / numIterations.toDouble
+            println(s"Average time for $worklistName on ${b._2}: ${avgTime / 1000000.0} ms.")
             println()
             println()
         })

@@ -63,6 +63,8 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     def initialComponent: Component
     def expr(cmp: Component): Expr
 
+    var timeMap: Map[String, Double] = Map()
+
     // some form of "worklist" is required to keep track of which components need to be (re-)analyzed
     // this method is responsible for adding a given component to that worklist
     def addToWorkList(cmp: Component): Unit
