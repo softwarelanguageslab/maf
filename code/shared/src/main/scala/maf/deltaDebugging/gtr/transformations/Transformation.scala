@@ -39,5 +39,5 @@ abstract class Transformation:
   val name: String
   private var hits: Int = 0
   def getHits: Int = hits
-  def hit(tree: SchemeExp, idx: Int): Unit =
+  def hit(): Unit =
     hits += 1

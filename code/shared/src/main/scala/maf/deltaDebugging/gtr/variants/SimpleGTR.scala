@@ -27,7 +27,6 @@ object SimpleGTR:
       for((candidateTree, candidateIdx) <- transformation.transform(tree, node).zipWithIndex)
         if candidateTree.size <= tree.size then
           if oracle(candidateTree) then
-            transformation.hit(candidateTree, candidateIdx)
             return reduceLevelNodes(candidateTree, lvl, oracle, transformation, nodeIdx)
 
     tree

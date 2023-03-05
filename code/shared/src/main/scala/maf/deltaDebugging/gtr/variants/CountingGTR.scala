@@ -33,7 +33,6 @@ object CountingGTR:
         if candidateTree.size <= tree.size then
           if oracle(candidateTree) then
             OracleHits += 1
-            transformation.hit(candidateTree, candidateIdx)
             if OracleHits == max then
               return candidateTree
             else return reduceLevelNodes(candidateTree, lvl, oracle, transformation)
