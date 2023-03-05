@@ -38,6 +38,34 @@ object AnalyzeWorklistAlgorithms extends App:
         }
         (a.timeMap, time)
 
+    /*def createAnalysis(program: SchemeExp)(worklistAlgorithm: WorklistAlgorithm[SchemeExp]): SimpleSchemeModFAnalysis = {
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with SchemeModFKCallSiteSensitivity
+          with worklistAlgorithm {
+            val k = 2
+
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+    }
+
+    def createAnalysis[A <: WorklistAlgorithm[SchemeExp]](program: SchemeExp)(worklistAlgorithm: A): SimpleSchemeModFAnalysis = {
+        new SimpleSchemeModFAnalysis(program)
+          with SchemeConstantPropagationDomain
+          with DependencyTracking[SchemeExp]
+          with SchemeModFKCallSiteSensitivity
+          with A {
+            val k = 2
+
+            override def intraAnalysis(cmp: SchemeModFComponent) =
+                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
+        }
+    }*/
+
+
+
     def randomAnalysis(program: SchemeExp) =
         new SimpleSchemeModFAnalysis(program)
           with SchemeConstantPropagationDomain
