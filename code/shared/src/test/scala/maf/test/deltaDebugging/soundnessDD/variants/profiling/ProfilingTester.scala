@@ -3,11 +3,11 @@ package maf.test.deltaDebugging.soundnessDD.variants.profiling
 import maf.language.scheme.SchemeExp
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.test.SlowTest
-import maf.test.deltaDebugging.soundnessDD.{SoundnessCountingDDTester, SoundnessDDTester}
+import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
-trait ProfilingTester extends SoundnessCountingDDTester:
+trait ProfilingTester extends SoundnessDDTester:
 
   def profilingRunAndCompare(program: SchemeExp, benchmark: Benchmark): Option[(String, Array[(String, Int)])] = {
     try

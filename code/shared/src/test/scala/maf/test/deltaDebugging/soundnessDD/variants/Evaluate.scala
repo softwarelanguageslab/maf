@@ -11,23 +11,26 @@ import maf.util.benchmarks.Statistics
 
 object Evaluate:
   def main(args: Array[String]): Unit = {
-    //SaveBaseline.save()
-    //SaveCounting.save()
-    //SaveTransforming.save()
-    //SaveParallel.save()
-    //SaveProfiling.save()
+    SaveBaseline.save()
+    SaveTransforming.save()
+    SaveCounting.save()
+    SaveParallel.save()
+    SaveProfiling.save()
     SaveDeadCode.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {
-    tests.foreach(t => t.benchmarks.foreach(t.benchmarks(_)))
+    println("writing to disk")
     dataCollector.writeTo(dataCollectorString)
   }
 
   def RQ1(baselineData: List[ReductionData],
           transformingData: List[ReductionData],
           countingData: List[ReductionData],
-          parallelData: List[ReductionData]): Unit =
+          parallelData: List[ReductionData],
+          profilingData: List[ReductionData],
+          deadCodeData: List[ReductionData]
+         ): Unit =
 
     def createRow(data: List[ReductionData]): Unit =
       val reductionPercentages = data.map(r => r.reductionPercentage)
@@ -36,15 +39,20 @@ object Evaluate:
 
       println("median reduction %: " + avgReductionPercentage + " +- " + stdReductionPercentage)
 
+    println("RQ1")
     createRow(baselineData)
     createRow(transformingData)
     createRow(countingData)
     createRow(parallelData)
+    createRow(profilingData)
+    createRow(deadCodeData)
 
   def RQ2(baselineData: List[ReductionData],
           transformingData: List[ReductionData],
           countingData: List[ReductionData],
-          parallelData: List[ReductionData]): Unit =
+          parallelData: List[ReductionData],
+          profilingData: List[ReductionData],
+          deadCodeData: List[ReductionData]): Unit =
 
     def createRow(data: List[(ReductionData, ReductionData)]): Unit =
       val oracleRatio = data.map(tpl => tpl._1.oracleTreeSizes.size.toDouble / tpl._2.oracleTreeSizes.size)
@@ -64,10 +72,13 @@ object Evaluate:
       val reductionTimeRatio = data.map(tpl => tpl._1.reductionTime.toDouble / tpl._2.reductionTime)
       reductionTimeRatio.foreach(println)
 
+    println("RQ2")
     createRow(baselineData.zip(baselineData))
     createRow(transformingData.zip(baselineData))
     createRow(countingData.zip(baselineData))
     createRow(parallelData.zip(baselineData))
+    createRow(profilingData.zip(baselineData))
+    createRow(deadCodeData.zip(baselineData))
 
     //createBoxplot(transformingData.zip(baselineData))
     //createBoxplot(transformingData.zip(countingData))
@@ -87,6 +98,8 @@ object ReaderAndAnalyzeData {
       baselineDataCollector.reductionData,
       transformingDataCollector.reductionData,
       countingDataCollector.reductionData,
+      parallelDataCollector.reductionData,
+      profilingDataCollector.reductionData,
       deadCodeDataCollector.reductionData
     )
 
@@ -94,6 +107,8 @@ object ReaderAndAnalyzeData {
       baselineDataCollector.reductionData,
       transformingDataCollector.reductionData,
       countingDataCollector.reductionData,
+      parallelDataCollector.reductionData,
+      profilingDataCollector.reductionData,
       deadCodeDataCollector.reductionData
     )
   }

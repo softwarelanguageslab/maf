@@ -35,7 +35,6 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
     }
     ""
   
-
   def evalProgram(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
@@ -105,8 +104,3 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
       (None, (evalRunTime, analysisRuntime))
     else (Some(compareResults(anl.get, concreteResults.get)), (evalRunTime, analysisRuntime))
   }
-
-  /* Subclass Responsibility
-  override def onBenchmark(benchmark: Benchmark): Unit =
-    ...
-  */

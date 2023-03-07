@@ -13,7 +13,6 @@ import java.io.{BufferedWriter, File, FileWriter}
 object ProfilingDD:
   var dataCollector = new DataCollector
   var bugName = "noneYet"
-  var maxSteps: Long = Long.MaxValue
 
   def reduce(program: SchemeExp,
              soundnessTester: ProfilingTester,
@@ -56,12 +55,11 @@ object ProfilingDD:
       p => {
         oracleInvocations += 1
         oracleTreeSizes = oracleTreeSizes.::(p.size)
-        soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
-          case (Some((failureMsg, evalSteps)), (runTime, analysisTime)) =>
-            maxSteps = evalSteps
+        soundnessTester.runCompareAndtime(p, benchmark) match
+          case (Some(failureMsg), _) =>
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
-          case (None, (runTime, analysisTime)) =>
+          case (None, _) =>
             false
       },
       identity,

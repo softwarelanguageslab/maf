@@ -22,7 +22,8 @@ case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpr
  */
 class SchemeInterpreter(
     cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
-    val io: IO = new EmptyIO())
+    val io: IO = new EmptyIO()
+                       )
     extends BaseSchemeInterpreter[TailRec[ConcreteValues.Value]]
     with ConcreteSchemePrimitives:
 
@@ -209,6 +210,7 @@ class SchemeInterpreter(
                 signalException(ValueNotApplicable(v, idn))
 
     /** Evaluate with a Bound on Evaluation Steps */
+    /*
     private var evalSteps: Long = 0
     def getEvalSteps(): Long = evalSteps
     var maxEvalSteps: Long = Long.MaxValue //the maximum number of eval steps before a TimeoutException
@@ -223,8 +225,10 @@ class SchemeInterpreter(
         maxEvalSteps = maxSteps
         evalSteps = 0
         eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result
+    */
 
     /** Evaluate and identify the lambdas which have been called */
+    /*
     private var calledLambdas: Set[Int] = Set()
     def runAndIdentifyCalledLambdas(
                                      program: SchemeExp,
@@ -234,9 +238,8 @@ class SchemeInterpreter(
         calledLambdas = Set()
 
         setStore(initialSto)
-        maxEvalSteps = maxSteps
-        evalSteps = 0
         (eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result, calledLambdas)
+    */
 
     def eval(
         e: SchemeExp,
@@ -244,9 +247,11 @@ class SchemeInterpreter(
         timeout: Timeout.T,
         version: Version,
       ): TailRec[Value] =
+        /*
         evalSteps += 1
         if (evalSteps - buffer) > maxEvalSteps then
             throw new TimeoutException()
+        */
         if timeout.reached then throw new TimeoutException()
         e match
             case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))
@@ -255,7 +260,7 @@ class SchemeInterpreter(
                     fv <- tailcall(eval(f, env, timeout, version))
                     res <- fv match
                         case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
-                            calledLambdas = calledLambdas + lambda.hashCode()
+                            //calledLambdas = calledLambdas + lambda.hashCode()
                             if argsNames.length != args.length then
                                 signalException(
                                   ArityError(pos2.pos, argsNames.length, args.length)

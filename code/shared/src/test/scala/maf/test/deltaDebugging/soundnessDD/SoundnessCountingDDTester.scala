@@ -3,19 +3,22 @@ package maf.test.deltaDebugging.soundnessDD
 import maf.core.Identity
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
-import maf.language.scheme.interpreter.{ConcreteValues, FileIO, SchemeInterpreter}
+import maf.language.scheme.interpreter.{ConcreteValues, CountingSchemeInterpreter, FileIO, IO, SchemeInterpreter}
 import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.benchmarks.Timer
 
 trait SoundnessCountingDDTester extends SoundnessDDTester:
+  override def createInterpreter(addResult: (Identity, Value) => Unit, io: IO, benchmark: Benchmark): CountingSchemeInterpreter =
+    new CountingSchemeInterpreter(addResult, io)
+
   def evalProgramWithMaxSteps(program: SchemeExp, benchmark: Benchmark, maxSteps: Long): (Map[Identity, Set[Value]], Long) =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
-    val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
+    val interpreter: CountingSchemeInterpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
     for _ <- 1 to times do
-      val (ellapsed, _) = Timer.time(interpreter.runWithMaxSteps(program, maxSteps))
+      val (ellapsed, _) = Timer.time(interpreter.runWithMaxSteps(program, timeout, maxSteps))
       SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)
     (idnResults, interpreter.getEvalSteps())
 

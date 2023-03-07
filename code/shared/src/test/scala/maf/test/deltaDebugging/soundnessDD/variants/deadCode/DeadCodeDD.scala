@@ -8,7 +8,6 @@ import maf.test.deltaDebugging.soundnessDD.variants.*
 object DeadCodeDD:
   var dataCollector = new DataCollector
   var bugName = "noneYet"
-  var maxSteps: Long = Long.MaxValue
 
   def reduce(startProgram: SchemeExp,
              program: SchemeExp,
@@ -26,9 +25,8 @@ object DeadCodeDD:
       p => {
         oracleInvocations += 1
         oracleTreeSizes = oracleTreeSizes.::(p.size)
-        soundnessTester.runWithMaxStepsAndIdentifyDeadCode(p, benchmark, maxSteps) match
-          case (Some((failureMsg, calledLambdas, evalSteps)), _) =>
-            maxSteps = evalSteps
+        soundnessTester.runAndIdentifyDeadCode(p, benchmark) match
+          case (Some((failureMsg, calledLambdas)), _) =>
             topCalledLambdas = calledLambdas
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 

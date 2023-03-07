@@ -1,17 +1,16 @@
-package maf.test.deltaDebugging.soundnessDD.variants.parallel
+package maf.test.deltaDebugging.soundnessDD.variants.fitness
 
-import maf.deltaDebugging.gtr.{GTR, GTRParallel}
+import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.transformations.TransformationManager
 import maf.language.scheme.SchemeExp
-import maf.test.deltaDebugging.soundnessDD.variants.counting.CountingTester
-import maf.test.deltaDebugging.soundnessDD.variants.{DataCollector, ReductionData}
+import maf.test.deltaDebugging.soundnessDD.variants.*
 
-object ParallelDD:
+object FitnessDD:
   var dataCollector = new DataCollector
   var bugName = "noneYet"
 
   def reduce(program: SchemeExp,
-             soundnessTester: ParallelTester,
+             soundnessTester: FitnessTester,
              benchmark: String): Unit =
 
     var oracleInvocations = 0
@@ -19,31 +18,20 @@ object ParallelDD:
 
     val startTime = System.currentTimeMillis()
 
-    val reduced = GTRParallel.reduce(
+    val reduced = GTR.reduce(
       program,
       p => {
-        val candidateSize = p.size
+        oracleInvocations += 1
+        oracleTreeSizes = oracleTreeSizes.::(p.size)
         soundnessTester.runCompareAndtime(p, benchmark) match
           case (Some(failureMsg), _) =>
-            oracleTreeSizes.synchronized {
-              oracleTreeSizes = oracleTreeSizes.::(candidateSize)
-            }
-            oracleInvocations.synchronized {
-              oracleInvocations += 1
-            }
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
           case (None, _) =>
-            oracleTreeSizes.synchronized {
-              oracleTreeSizes = oracleTreeSizes.::(candidateSize)
-            }
-            oracleInvocations.synchronized {
-              oracleInvocations += 1
-            }
             false
       },
       identity,
-      TransformationManager.allTransformations
+      TransformationManager.allTransformations /** Uses all Transformations! */
     )
 
     val endTime = System.currentTimeMillis()
