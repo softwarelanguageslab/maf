@@ -11,7 +11,7 @@ trait FitnessTester extends SoundnessDDTester {
   val bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    println("Transforming >>> running benchmark: " + benchmark)
+    println("Fitness >>> running benchmark: " + benchmark)
       // load the benchmark program
       val content = Reader.loadFile(benchmark)
       val program = parseProgram(content, benchmark)

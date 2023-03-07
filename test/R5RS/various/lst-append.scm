@@ -6,16 +6,6 @@
         (else (cons (+ (car l1) (car l2))
                     (rec-sum-lists (cdr l1) (cdr l2))))))
 
-(define (iter-sum-lists l1 l2)
-  (define (iter lst1 lst2 res)
-    (cond ((and (null? lst1) (null? lst2)) (reverse res))
-          ((null? lst1) (iter lst1 (cdr lst2) (cons (car lst2) res)))
-          ((null? lst2) (iter (cdr lst1) lst2 (cons (car lst1) res)))
-          (else (iter (cdr lst1)
-                      (cdr lst2)
-                      (cons (+ (car lst1) (car lst2)) res)))))
-  (iter l1 l2 '()))
-
 (define (rec-merge-n lst1 lst2 n)
   (define (geef-n+rest lst n)
     (cond ((or (= 0 n) (null? lst)) (cons '() lst))
@@ -36,5 +26,4 @@
            (append (append n-lst1-first n-lst2-first)
                    (rec-merge-n n-lst1-rest n-lst2-rest n))))))
 
-(iter-sum-lists '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21) '(5000 6000 70000))
 (rec-merge-n '(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22) '(23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38) 2)

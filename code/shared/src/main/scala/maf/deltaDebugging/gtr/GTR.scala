@@ -41,6 +41,7 @@ object GTR:
         if candidateTree.size < tree.size then
           if oracle(candidateTree) then
             onOracleHit(candidateTree)
+            transformation.hit()
             deadCodeRemover match
               case Some(remover) =>
                 val maybeRemoved = remover(candidateTree)

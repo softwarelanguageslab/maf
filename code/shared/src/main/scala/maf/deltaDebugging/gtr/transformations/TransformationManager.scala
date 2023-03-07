@@ -16,17 +16,17 @@ object TransformationManager:
 
   val allTransformations: List[Transformation] =
     List(
-      DeleteChildSimple,
       IfToBegin,
-      LetIdentifierDeepDrop,
-      LetIdentifierShallowDrop,
-      RemoveCalls,
-      RemoveCallsAndReplaceByBody,
-      RemoveLambdaParamWithDeepDrop,
       RemoveLambdaParamWithShallowDrop,
+      LetIdentifierShallowDrop,
       ReplaceByChild,
-      ReplaceCalls,
-      ReplaceBySimpleValue,
+      RemoveLambdaParamWithDeepDrop,
+      LetIdentifierDeepDrop,
+      RemoveCallsAndReplaceByBody,
+      DeleteChildSimple,
       ReplaceIdentifier,
-      ReplaceByValue
+      ReplaceBySimpleValue,
+      ReplaceByValue,
+      ReplaceCalls,
+      RemoveCalls
     )

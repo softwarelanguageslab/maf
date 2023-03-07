@@ -5,6 +5,8 @@ import maf.deltaDebugging.gtr.transformations.TransformationManager
 import maf.language.scheme.SchemeExp
 import maf.test.deltaDebugging.soundnessDD.variants.*
 
+import scala.util.Random
+
 object FitnessDD:
   var dataCollector = new DataCollector
   var bugName = "noneYet"
@@ -31,7 +33,7 @@ object FitnessDD:
             false
       },
       identity,
-      TransformationManager.allTransformations /** Uses all Transformations! */
+      Random.shuffle(TransformationManager.allTransformations)
     )
 
     val endTime = System.currentTimeMillis()

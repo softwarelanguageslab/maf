@@ -4,6 +4,7 @@ import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.variants.baseline.SaveBaseline
 import maf.test.deltaDebugging.soundnessDD.variants.counting.{CountingDD, SaveCounting}
 import maf.test.deltaDebugging.soundnessDD.variants.deadCode.SaveDeadCode
+import maf.test.deltaDebugging.soundnessDD.variants.fitness.SaveFitness
 import maf.test.deltaDebugging.soundnessDD.variants.parallel.SaveParallel
 import maf.test.deltaDebugging.soundnessDD.variants.profiling.SaveProfiling
 import maf.test.deltaDebugging.soundnessDD.variants.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
@@ -12,11 +13,12 @@ import maf.util.benchmarks.Statistics
 object Evaluate:
   def main(args: Array[String]): Unit = {
     SaveBaseline.save()
+    SaveFitness.save()
     SaveTransforming.save()
-    SaveCounting.save()
-    SaveParallel.save()
-    SaveProfiling.save()
-    SaveDeadCode.save()
+    //SaveCounting.save()
+    //SaveParallel.save()
+    //SaveProfiling.save()
+    //SaveDeadCode.save()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {
@@ -29,7 +31,8 @@ object Evaluate:
           countingData: List[ReductionData],
           parallelData: List[ReductionData],
           profilingData: List[ReductionData],
-          deadCodeData: List[ReductionData]
+          deadCodeData: List[ReductionData],
+          randomData: List[ReductionData] //random-order transformations
          ): Unit =
 
     def createRow(data: List[ReductionData]): Unit =
@@ -52,7 +55,8 @@ object Evaluate:
           countingData: List[ReductionData],
           parallelData: List[ReductionData],
           profilingData: List[ReductionData],
-          deadCodeData: List[ReductionData]): Unit =
+          deadCodeData: List[ReductionData],
+          randomData: List[ReductionData]): Unit =
 
     def createRow(data: List[(ReductionData, ReductionData)]): Unit =
       val oracleRatio = data.map(tpl => tpl._1.oracleTreeSizes.size.toDouble / tpl._2.oracleTreeSizes.size)
@@ -79,6 +83,7 @@ object Evaluate:
     createRow(parallelData.zip(baselineData))
     createRow(profilingData.zip(baselineData))
     createRow(deadCodeData.zip(baselineData))
+    createRow(randomData.zip(baselineData))
 
     //createBoxplot(transformingData.zip(baselineData))
     //createBoxplot(transformingData.zip(countingData))
@@ -93,6 +98,7 @@ object ReaderAndAnalyzeData {
     val parallelDataCollector: DataCollector = DataCollector.readObject("parallelDataCollector")
     val profilingDataCollector: DataCollector = DataCollector.readObject("profilingDataCollector")
     val deadCodeDataCollector: DataCollector = DataCollector.readObject("deadCodeDataCollector")
+    val randomDatacollector: DataCollector = DataCollector.readObject("randomDataCollector")
 
     Evaluate.RQ1(
       baselineDataCollector.reductionData,
@@ -100,7 +106,8 @@ object ReaderAndAnalyzeData {
       countingDataCollector.reductionData,
       parallelDataCollector.reductionData,
       profilingDataCollector.reductionData,
-      deadCodeDataCollector.reductionData
+      deadCodeDataCollector.reductionData,
+      randomDatacollector.reductionData
     )
 
     Evaluate.RQ2(
@@ -109,7 +116,8 @@ object ReaderAndAnalyzeData {
       countingDataCollector.reductionData,
       parallelDataCollector.reductionData,
       profilingDataCollector.reductionData,
-      deadCodeDataCollector.reductionData
+      deadCodeDataCollector.reductionData,
+      randomDatacollector.reductionData
     )
   }
 }
