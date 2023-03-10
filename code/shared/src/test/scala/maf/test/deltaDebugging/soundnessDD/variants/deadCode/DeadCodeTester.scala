@@ -12,7 +12,7 @@ import maf.util.Reader
 import maf.util.benchmarks.Timer
 
 trait DeadCodeTester extends SoundnessDDTester {
-  val bugName: String
+  def bugName: String
 
   override def createInterpreter(addResult: (Identity, Value) => Unit, io: IO, benchmark: Benchmark): DeadCodeSchemeInterpreter =
     new DeadCodeSchemeInterpreter(addResult, io)

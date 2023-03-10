@@ -12,7 +12,7 @@ import maf.util.Reader
 import maf.util.benchmarks.Timer
 
 trait CountingTester extends SoundnessCountingDDTester {
-  val bugName: String
+  def bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("Counting >>> running benchmark: " + benchmark)

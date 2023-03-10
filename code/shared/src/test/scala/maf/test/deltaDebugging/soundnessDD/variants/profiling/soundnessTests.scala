@@ -21,6 +21,7 @@ trait SchemeModFLocalSoundnessTests extends ProfilingTester with DDBenchmarks:
 class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  override def bugName = "RealBug1"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -32,6 +33,7 @@ class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  override def bugName = "RealBug2"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -43,6 +45,7 @@ class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  override def bugName = "RealBug3"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -54,6 +57,7 @@ class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  override def bugName = "RealBug4"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -65,6 +69,7 @@ class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
   def n = 100
   def name = s"MODF LOCAL w/ ASW -- policy A (n = $n)"
+  override def bugName = "RealBug5"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain

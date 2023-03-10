@@ -8,6 +8,7 @@ import maf.util.Reader
 import maf.util.benchmarks.{Timeout, Timer}
 
 trait ProfilingTester extends SoundnessDDTester:
+  def bugName: String
 
   def profilingRunAndCompare(program: SchemeExp, benchmark: Benchmark): Option[(String, Array[(String, Int)])] = {
     try
@@ -29,5 +30,6 @@ trait ProfilingTester extends SoundnessDDTester:
     profilingRunAndCompare(program, benchmark) match
       case Some((failureMsg, initAnalysisResults)) =>
         if failureMsg.nonEmpty then
+          ProfilingDD.bugName = bugName
           ProfilingDD.reduce(program, this, benchmark, initAnalysisResults)
       case None =>

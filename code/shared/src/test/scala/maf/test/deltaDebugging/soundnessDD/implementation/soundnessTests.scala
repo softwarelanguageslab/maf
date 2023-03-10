@@ -12,7 +12,7 @@ import maf.test.{DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenc
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 
 trait SchemeModFLocalSoundnessTests extends DDTester with DDBenchmarks:
-  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/mceval.scm")
+  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/scm2c.scm")
 
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
@@ -29,7 +29,7 @@ class SchemeModFLocalAdaptiveTestsA extends SchemeModFLocalSoundnessTests:
       with SchemeModFLocalNoSensitivity
       with FIFOWorklistAlgorithm[SchemeExp]
       with SchemeModFLocalAnalysisResults
-      with RealBug1
+      with RealBug2
 
 class SchemeModFLocalAdaptiveTestsB extends SchemeModFLocalSoundnessTests:
   def l = 10

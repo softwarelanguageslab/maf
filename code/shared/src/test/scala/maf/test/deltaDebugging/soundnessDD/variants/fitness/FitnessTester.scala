@@ -8,7 +8,7 @@ import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.util.Reader
 
 trait FitnessTester extends SoundnessDDTester {
-  val bugName: String
+  def bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("Fitness >>> running benchmark: " + benchmark)

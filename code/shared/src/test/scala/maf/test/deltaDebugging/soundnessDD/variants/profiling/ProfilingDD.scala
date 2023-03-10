@@ -47,7 +47,7 @@ object ProfilingDD:
           List(ReplaceNthExpensiveFunction(profiling, i))
         )
 
-    if initAnalysisProfiling.length >= 5 then
+    if initAnalysisProfiling.length >= 10 then
       reduceWithProfiling(initAnalysisProfiling, 3)
 
     reduced = GTR.reduce(

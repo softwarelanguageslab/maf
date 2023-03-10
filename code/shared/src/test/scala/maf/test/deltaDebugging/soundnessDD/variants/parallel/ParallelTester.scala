@@ -5,7 +5,7 @@ import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.util.Reader
 
 trait ParallelTester extends SoundnessDDTester {
-  val bugName: String
+  def bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("Parallel >>> running benchmark: " + benchmark)

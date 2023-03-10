@@ -20,7 +20,7 @@ trait SchemeModFLocalSoundnessTests extends BaselineTester with DDBenchmarks:
 class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "RealBug1"
+  override def bugName: String = "RealBug1"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -32,7 +32,7 @@ class SchemeModFLocalAdaptiveTests1 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "RealBug2"
+  override def bugName: String = "RealBug2"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -44,7 +44,7 @@ class SchemeModFLocalAdaptiveTests2 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "RealBug3"
+  override def bugName: String = "RealBug3"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -56,7 +56,7 @@ class SchemeModFLocalAdaptiveTests3 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "RealBug4"
+  override def bugName: String = "RealBug4"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain
@@ -68,7 +68,7 @@ class SchemeModFLocalAdaptiveTests4 extends SchemeModFLocalSoundnessTests:
 class SchemeModFLocalAdaptiveTests5 extends SchemeModFLocalSoundnessTests:
   def l = 10
   def name = s"MODF LOCAL w/ ASW -- policy B (l = $l)"
-  override val bugName: Benchmark = "RealBug5"
+  override def bugName: String = "RealBug5"
   def analysis(prg: SchemeExp) =
     new SchemeModFLocal(prg)
       with SchemeConstantPropagationDomain

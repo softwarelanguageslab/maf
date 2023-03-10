@@ -9,7 +9,7 @@ import maf.util.Reader
 
 trait BaselineTester extends SoundnessDDTester {
   
-  val bugName: String
+  def bugName: String
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("Baseline >>> running benchmark: " + benchmark)
