@@ -32,7 +32,7 @@ object GTRParallel:
 
   private def reduceNode(tree: SchemeExp, node: SchemeExp, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): Option[SchemeExp] =
     val candidates: List[SchemeExp] = transformation.transform(tree, node).filter(candidate => candidate.size < tree.size).toList
-    if tree.height >= 10 then
+    if tree.height >= 10 && candidates.length >= 3 then
       candidates.par.find(c => {
         oracle(c)
       })

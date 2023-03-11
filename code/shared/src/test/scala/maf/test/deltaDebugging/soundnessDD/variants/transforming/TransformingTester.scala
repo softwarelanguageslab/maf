@@ -12,15 +12,15 @@ trait TransformingTester extends SoundnessDDTester {
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("Transforming >>> running benchmark: " + benchmark)
-      // load the benchmark program
-      val content = Reader.loadFile(benchmark)
-      val program = parseProgram(content, benchmark)
+    // load the benchmark program
+    val content = Reader.loadFile(benchmark)
+    val program = parseProgram(content, benchmark)
 
-      runCompareAndtime(program, benchmark) match
-        case (Some(failureMsg), _) =>
-          if failureMsg.nonEmpty then
-            TransformingDD.bugName = bugName
-            TransformingDD.reduce(program, this, benchmark)
-        case _ =>
+    runCompareAndtime(program, benchmark) match
+      case (Some(failureMsg), _) =>
+        if failureMsg.nonEmpty then
+          TransformingDD.bugName = bugName
+          TransformingDD.reduce(program, this, benchmark)
+      case _ =>
 
 }
