@@ -38,165 +38,40 @@ object AnalyzeWorklistAlgorithms extends App:
         }
         (a.timeMap, time)
 
-    /*def createAnalysis(program: SchemeExp)(worklistAlgorithm: WorklistAlgorithm[SchemeExp]): SimpleSchemeModFAnalysis = {
-        new SimpleSchemeModFAnalysis(program)
+
+
+    abstract class BasicAnalysis(program: SchemeExp) extends SimpleSchemeModFAnalysis(program)
           with SchemeConstantPropagationDomain
           with DependencyTracking[SchemeExp]
-          with SchemeModFKCallSiteSensitivity
-          with worklistAlgorithm {
-            val k = 2
-
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
-    }
-
-    def createAnalysis[A <: WorklistAlgorithm[SchemeExp]](program: SchemeExp)(worklistAlgorithm: A): SimpleSchemeModFAnalysis = {
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with SchemeModFKCallSiteSensitivity
-          with A {
-            val k = 2
-
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
-    }*/
-
-
-
-    def randomAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with SchemeModFKCallSiteSensitivity
-          with RandomWorklistAlgorithm[SchemeExp] {
+          with SchemeModFKCallSiteSensitivity {
             val k = 2
             override def intraAnalysis(cmp: SchemeModFComponent) =
                 new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
         }
 
-    def FIFOanalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with FIFOWorklistAlgorithm[SchemeExp] {
-            val k = 2
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def randomAnalysis (program: SchemeExp) = new BasicAnalysis(program) with RandomWorklistAlgorithm[SchemeExp]
+    
+    def FIFOanalysis(program: SchemeExp) = new BasicAnalysis(program) with FIFOWorklistAlgorithm[SchemeExp]
 
-    def LIFOanalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with LIFOWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def LIFOanalysis(program: SchemeExp) = new BasicAnalysis(program) with LIFOWorklistAlgorithm[SchemeExp]
 
-    def callDepthAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with CallDepthFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def callDepthAnalysis(program: SchemeExp) = new BasicAnalysis(program) with CallDepthFirstWorklistAlgorithm[SchemeExp]
 
-    def leastVisitedAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with LeastVisitedFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def leastVisitedAnalysis(program: SchemeExp) = new BasicAnalysis(program) with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
 
-    def mostVisitedAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with MostVisitedFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def mostVisitedAnalysis(program: SchemeExp) = new BasicAnalysis(program) with MostVisitedFirstWorklistAlgorithm[SchemeExp]
 
-    def deepExpressionFirstAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with DeepExpressionsFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def deepExpressionFirstAnalysis(program: SchemeExp) = new BasicAnalysis(program) with DeepExpressionsFirstWorklistAlgorithm[SchemeExp]
 
-    def shallowExpressionsFirstAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def shallowExpressionsFirstAnalysis(program: SchemeExp) = new BasicAnalysis(program) with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp]
 
-    def mostDependenciesFirstAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with MostDependenciesFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def mostDependenciesFirstAnalysis(program: SchemeExp) = new BasicAnalysis(program) with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
 
-    def leastDependenciesFirstAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with LeastDependenciesFirstWorklistAlgorithm[SchemeExp] {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def leastDependenciesFirstAnalysis(program: SchemeExp) = new BasicAnalysis(program) with LeastDependenciesFirstWorklistAlgorithm[SchemeExp]
 
-    def biggerEnvironmentFirstAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with BiggerEnvironmentFirstWorklistAlgorithm.ModF {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def biggerEnvironmentFirstAnalysis(program: SchemeExp) = new BasicAnalysis(program) with BiggerEnvironmentFirstWorklistAlgorithm.ModF
 
-    def smallerEnvironmentFirstAnalysis(program: SchemeExp) =
-        new SimpleSchemeModFAnalysis(program)
-          with SchemeModFKCallSiteSensitivity
-          with SchemeConstantPropagationDomain
-          with DependencyTracking[SchemeExp]
-          with SmallerEnvironmentFirstWorklistAlgorithm.ModF {
-            val k = 0
-            override def intraAnalysis(cmp: SchemeModFComponent) =
-                new IntraAnalysis(cmp) with BigStepModFIntra with DependencyTrackingIntra
-        }
+    def smallerEnvironmentFirstAnalysis(program: SchemeExp) = new BasicAnalysis(program) with SmallerEnvironmentFirstWorklistAlgorithm.ModF
 
     val analyses = List(
         (randomAnalysis, "RandomWorklistAlgorithm"),
