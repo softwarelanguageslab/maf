@@ -1,0 +1,221 @@
+; Changes:
+; * removed: 2
+; * added: 1
+; * swaps: 0
+; * negated predicates: 0
+; * swapped branches: 2
+; * calls to id fun: 1
+(letrec ((result ())
+         (display2 (lambda (i)
+                     (set! result (cons i result))))
+         (newline2 (lambda ()
+                     (set! result (cons 'newline result))))
+         (VUBOrganigram (__toplevel_cons
+                          'VUB
+                          (__toplevel_cons
+                             (__toplevel_cons
+                                'academisch
+                                (__toplevel_cons
+                                   (__toplevel_cons 'rectoraat ())
+                                   (__toplevel_cons
+                                      (__toplevel_cons
+                                         'faculteiten
+                                         (__toplevel_cons
+                                            (__toplevel_cons
+                                               'rechten
+                                               (__toplevel_cons
+                                                  (__toplevel_cons
+                                                     'bachelor
+                                                     (__toplevel_cons
+                                                        (__toplevel_cons 'ba-rechten ())
+                                                        (__toplevel_cons (__toplevel_cons 'ba-criminologie ()) ())))
+                                                  (__toplevel_cons
+                                                     (__toplevel_cons
+                                                        'master
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons 'ma-rechten ())
+                                                           (__toplevel_cons (__toplevel_cons 'ma-criminologie ()) ())))
+                                                     ())))
+                                            (__toplevel_cons
+                                               (__toplevel_cons 'economie ())
+                                               (__toplevel_cons
+                                                  (__toplevel_cons
+                                                     'wetenschappen
+                                                     (__toplevel_cons
+                                                        (__toplevel_cons
+                                                           'bachelor
+                                                           (__toplevel_cons
+                                                              (__toplevel_cons 'ba-wiskunde ())
+                                                              (__toplevel_cons (__toplevel_cons 'ba-fysica ()) (__toplevel_cons (__toplevel_cons 'ba-cw ()) ()))))
+                                                        (__toplevel_cons
+                                                           (__toplevel_cons
+                                                              'master
+                                                              (__toplevel_cons
+                                                                 (__toplevel_cons 'ma-wiskunde ())
+                                                                 (__toplevel_cons (__toplevel_cons 'ma-fysica ()) (__toplevel_cons (__toplevel_cons 'ma-cw ()) ()))))
+                                                           ())))
+                                                  ()))))
+                                      ())))
+                             (__toplevel_cons
+                                (__toplevel_cons
+                                   'administratief
+                                   (__toplevel_cons
+                                      (__toplevel_cons 'personeel ())
+                                      (__toplevel_cons (__toplevel_cons 'financien ()) ())))
+                                ()))))
+         (display-n (lambda (n d)
+                      (if (> n 0)
+                         (begin
+                            (display2 d)
+                            (<change>
+                               (display-n (- n 1) d)
+                               ((lambda (x) x) (display-n (- n 1) d))))
+                         #f)))
+         (print-lijn (lambda (aantalblanco tekst)
+                       (<change>
+                          (display-n aantalblanco " ")
+                          ())
+                       (display2 tekst)
+                       (newline2)))
+         (label (lambda (organigram)
+                  (car organigram)))
+         (takken (lambda (organigram)
+                   (cdr organigram)))
+         (organigram-member-in (lambda (een-label organigrammen)
+                                 (if (null? organigrammen)
+                                    (<change>
+                                       #f
+                                       (let ((__or_res (organigram-member een-label (car organigrammen))))
+                                          (if __or_res
+                                             __or_res
+                                             (organigram-member-in een-label (cdr organigrammen)))))
+                                    (<change>
+                                       (let ((__or_res (organigram-member een-label (car organigrammen))))
+                                          (if __or_res
+                                             __or_res
+                                             (organigram-member-in een-label (cdr organigrammen))))
+                                       #f))))
+         (organigram-member (lambda (een-label organigram)
+                              (if (eq? een-label (label organigram))
+                                 (<change>
+                                    organigram
+                                    (organigram-member-in een-label (takken organigram)))
+                                 (<change>
+                                    (organigram-member-in een-label (takken organigram))
+                                    organigram))))
+         (print (lambda (organigram)
+                  (letrec ((print (lambda (diepte organigram)
+                                    (<change>
+                                       (print-lijn diepte (label organigram))
+                                       ())
+                                    (for-each (lambda (organigram) (print (+ diepte 1) organigram)) (takken organigram)))))
+                     (<change>
+                        ()
+                        (display print))
+                     (print 0 organigram))))
+         (print-vanaf (lambda (organigram label)
+                        (let ((res (organigram-member label organigram)))
+                           (if res (print res) #f)))))
+   (print-vanaf VUBOrganigram 'rechten)
+   (letrec ((print-tot (lambda (organigram niveau)
+                         (letrec ((print-tot (lambda (organigram niveau max-niveau)
+                                               (if (<= niveau max-niveau)
+                                                  (begin
+                                                     (print-lijn niveau (label organigram))
+                                                     (for-each (lambda (organigram) (print-tot organigram (+ niveau 1) max-niveau)) (takken organigram)))
+                                                  #f))))
+                            (print-tot organigram 0 niveau)))))
+      (print-tot VUBOrganigram 2)
+      (equal?
+         result
+         (__toplevel_cons
+            'newline
+            (__toplevel_cons
+               'financien
+               (__toplevel_cons
+                  " "
+                  (__toplevel_cons
+                     " "
+                     (__toplevel_cons
+                        'newline
+                        (__toplevel_cons
+                           'personeel
+                           (__toplevel_cons
+                              " "
+                              (__toplevel_cons
+                                 " "
+                                 (__toplevel_cons
+                                    'newline
+                                    (__toplevel_cons
+                                       'administratief
+                                       (__toplevel_cons
+                                          " "
+                                          (__toplevel_cons
+                                             'newline
+                                             (__toplevel_cons
+                                                'faculteiten
+                                                (__toplevel_cons
+                                                   " "
+                                                   (__toplevel_cons
+                                                      " "
+                                                      (__toplevel_cons
+                                                         'newline
+                                                         (__toplevel_cons
+                                                            'rectoraat
+                                                            (__toplevel_cons
+                                                               " "
+                                                               (__toplevel_cons
+                                                                  " "
+                                                                  (__toplevel_cons
+                                                                     'newline
+                                                                     (__toplevel_cons
+                                                                        'academisch
+                                                                        (__toplevel_cons
+                                                                           " "
+                                                                           (__toplevel_cons
+                                                                              'newline
+                                                                              (__toplevel_cons
+                                                                                 'VUB
+                                                                                 (__toplevel_cons
+                                                                                    'newline
+                                                                                    (__toplevel_cons
+                                                                                       'ma-criminologie
+                                                                                       (__toplevel_cons
+                                                                                          " "
+                                                                                          (__toplevel_cons
+                                                                                             " "
+                                                                                             (__toplevel_cons
+                                                                                                'newline
+                                                                                                (__toplevel_cons
+                                                                                                   'ma-rechten
+                                                                                                   (__toplevel_cons
+                                                                                                      " "
+                                                                                                      (__toplevel_cons
+                                                                                                         " "
+                                                                                                         (__toplevel_cons
+                                                                                                            'newline
+                                                                                                            (__toplevel_cons
+                                                                                                               'master
+                                                                                                               (__toplevel_cons
+                                                                                                                  " "
+                                                                                                                  (__toplevel_cons
+                                                                                                                     'newline
+                                                                                                                     (__toplevel_cons
+                                                                                                                        'ba-criminologie
+                                                                                                                        (__toplevel_cons
+                                                                                                                           " "
+                                                                                                                           (__toplevel_cons
+                                                                                                                              " "
+                                                                                                                              (__toplevel_cons
+                                                                                                                                 'newline
+                                                                                                                                 (__toplevel_cons
+                                                                                                                                    'ba-rechten
+                                                                                                                                    (__toplevel_cons
+                                                                                                                                       " "
+                                                                                                                                       (__toplevel_cons
+                                                                                                                                          " "
+                                                                                                                                          (__toplevel_cons
+                                                                                                                                             'newline
+                                                                                                                                             (__toplevel_cons
+                                                                                                                                                'bachelor
+                                                                                                                                                (__toplevel_cons " " (__toplevel_cons 'newline (__toplevel_cons 'rechten ())))))))))))))))))))))))))))))))))))))))))))))))))))

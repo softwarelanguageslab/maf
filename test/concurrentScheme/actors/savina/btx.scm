@@ -1,0 +1,61 @@
+(define NumAccounts (+ 2 (int-top)))
+(define NumBankings (int-top))
+(define InitialBalance (int-top))
+
+(define (build-vector n f)
+  (letrec ((v (make-vector n (f 0)))
+           (loop (lambda (i)
+                   (if (< i n)
+                       (begin
+                         (vector-set! v i (f i))
+                         (loop (+ i 1)))
+                       v))))
+    (loop 1)))
+(define (vector-foreach f v)
+  (letrec ((loop (lambda (i)
+                   (if (< i (vector-length v))
+                       (begin
+                         (f (vector-ref v i))
+                         (loop (+ i 1)))
+                       'done))))
+    (loop 0)))
+
+(define teller
+  (actor "teller" (accounts num-completed-bankings)
+           (start ()
+                  (letrec ((loop (lambda (i)
+                                   (if (= i NumBankings)
+                                       #t
+                                       (let* ((source-id (inexact->exact (floor (* (/ (random NumAccounts) 10) 8))))
+                                              (loop-id  (random (- NumAccounts source-id)))
+                                              (dest-id (+ source-id (if (= loop-id 0) 1 loop-id)))
+                                              (source (vector-ref accounts source-id))
+                                              (dest (vector-ref accounts dest-id))
+                                              (amount (random 1000)))
+                                         (send source credit amount a/self dest)
+                                         (loop (+ i 1)))))))
+                    (loop 0)
+                    (become teller accounts num-completed-bankings)))
+           (reply ()
+                  (if (= (+ num-completed-bankings 1) NumBankings)
+                      (begin
+                        (vector-foreach (lambda (a) (send a stop)) accounts)
+                        (terminate))
+                      (become teller accounts (+ num-completed-bankings 1))))))
+
+(define account
+  (actor "account" (id balance)
+           (debit (amount creditor)
+                  (send creditor reply)
+                  (become account id (+ balance amount)))
+           (credit (amount sender recipient)
+                   (send recipient debit amount sender)
+                   ; (send master reply) ; modelled as an ask in Savina, here we let the debit operation send the reply (might not be safe?)
+                   (become account id (- balance amount)))
+           (stop ()
+                 (terminate))))
+
+(define master (create teller
+                         (build-vector NumAccounts (lambda (i) (create account i InitialBalance)))
+                         0))
+(send master start)
