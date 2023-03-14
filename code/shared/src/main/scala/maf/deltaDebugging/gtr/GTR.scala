@@ -39,6 +39,7 @@ object GTR:
     for(node <- tree.levelNodes(lvl))
       for (candidateTree <- transformation.transform(tree, node))
         if candidateTree.size < tree.size then
+          transformation.invoke()
           if oracle(candidateTree) then
             onOracleHit(candidateTree)
             transformation.hit()

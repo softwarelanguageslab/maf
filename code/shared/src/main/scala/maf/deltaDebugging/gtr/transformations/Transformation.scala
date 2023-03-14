@@ -29,8 +29,6 @@ abstract class Transformation:
     val suggestions = (trees ++ replacements.map(r => tree.replace(node, r)))
       .filterNot(newTree => tree eql newTree) //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
 
-    suggestedCount += suggestions.length
-
     trees = List()
     replacements = List()
     suggestions.iterator
@@ -44,5 +42,7 @@ abstract class Transformation:
   def hit(): Unit =
     hits += 1
 
-  private var suggestedCount: Int = 0
-  def getSuggestedCount: Int = suggestedCount
+  private var invocations: Int = 0
+  def getInvocations: Int = invocations
+  def invoke(): Unit =
+    invocations += 1

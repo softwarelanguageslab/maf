@@ -34,13 +34,16 @@ object Evaluate:
     DeadCodeDD.dataCollector = new DataCollector
 
     for(i <- List(1))
-      SaveFitness.save()
       SaveCounting.save()
+      SaveFitness.save()
+      SaveTransforming.save()
+      /*
       SaveParallel.save()
       SaveProfiling.save()
       SaveDeadCode.save()
       SaveBaseline.save()
-      SaveTransforming.save()
+      */
+
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {

@@ -8,7 +8,7 @@ import maf.util.benchmarks.Statistics
 object SaveFitness:
   def save(): Unit = {
     TransformationManager.allTransformations.foreach(t => {
-      println("pre " + t.name + ": " + (t.getHits, t.getSuggestedCount))
+      println("pre " + t.name + ": " + (t.getHits, t.getInvocations))
     })
 
     Evaluate.save(
@@ -24,6 +24,6 @@ object SaveFitness:
     )
 
     TransformationManager.allTransformations.foreach(t => {
-      println("post " + t.name + ": " + (t.getHits, t.getSuggestedCount))
+      println("post " + t.name + ": " + (t.getHits, t.getInvocations))
     })
   }
