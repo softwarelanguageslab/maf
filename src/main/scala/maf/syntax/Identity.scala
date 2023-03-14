@@ -32,6 +32,17 @@ enum Identity:
     */
   case TreePositional(parent: Identity.Positional, depth: Int, nchild: Int)
 
+  /** Returns true if the the identity is equal to `None` */
+  def isEmpty: Boolean = this match
+    case None => true
+    case _    => false
+
+  /** Returns true if the identity contains a tag that is equal to `tag` */
+  def hasTag(tag: PTag): Boolean = this match
+    case Positional(pos, tag)         => tag.contains(tag)
+    case TreePositional(parent, _, _) => parent.hasTag(tag)
+    case _                            => false
+
 object Identity:
   /** Alias for the `None` case */
   def none: Identity = Identity.None
