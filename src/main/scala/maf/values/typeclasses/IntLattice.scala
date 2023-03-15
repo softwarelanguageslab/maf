@@ -1,6 +1,8 @@
 package maf.values
 package typeclasses
 
+import cats.extensions.*
+
 /** A lattice for integers */
 trait IntLattice[I] extends Lattice[I] { self =>
   def inject(n: BigInt): I
@@ -10,7 +12,7 @@ trait IntLattice[I] extends Lattice[I] { self =>
   def plus(n1: I, n2: I): I
   def minus(n1: I, n2: I): I
   def times(n1: I, n2: I): I
-  def quotient(n1: I, n2: I): I
+  def quotient[M[_]: MonadError[Error]](n1: I, n2: I): M[I]
   def div[R: RealLattice](n1: I, n2: I): R
   def expt(n1: I, n2: I): I
   def modulo(n1: I, n2: I): I
