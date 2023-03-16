@@ -10,31 +10,69 @@ import typeclasses.*
 import syntax.*
 import maf.util.*
 
-/** Constant propagation lattice */
+/** An implementation of a (rather standard) constant propagation domain. It
+  * implements all the lattice typeclasses from `maf.values.typeclasses`.
+  *
+  * The domain consists of three values:
+  *   - Bottom: the smallest element of the lattice, it is subsumed by any other
+  *     value
+  *   - Constant(x): denotes a constant value `x`
+  *   - Top: denotes a non-constant value
+  *
+  * All operations are expressed using this lattice for simplicity. This means
+  * that a `string-ref` operations is only supported for CP string values, and
+  * CP int values, and no combination of other values.
+  */
 object ConstantPropagation:
-
+  /** All elements of the lattice are of type L
+    *
+    * @note
+    *   The type parameter is covariant such that if Top <: L[Nothing] the
+    *   following is true: L[Nothing] <: L[A] for any A
+    */
   sealed trait L[+A]
 
+  /** The non-constant value */
   case object Top extends L[Nothing]
 
+  /** A constant value */
   case class Constant[A](x: A) extends L[A]
 
+  /** The value is unknown */
   case object Bottom extends L[Nothing]
 
-  given [A]: CanEqual[L[A], L[A]] = CanEqual.derived
+  //
+  // Extensions for convience
+  //
 
+  /** Converts a CP boolean to a boolean of the given abstract domain
+    *
+    * @tparam B
+    *   resulting abstract value type
+    */
   extension (b: L[Boolean])
     def toB[B: BoolLattice]: B = b match
       case Top         => BoolLattice[B].top
       case Bottom      => BoolLattice[B].bottom
       case Constant(b) => BoolLattice[B].inject(b)
 
+  /** Converts a CP integer to an integer of the given abstract domain
+    *
+    * @tparam I
+    *   resulting abstract value type
+    */
   extension (i: L[Int])
     def toI[I: IntLattice]: I = i match
       case Top         => IntLattice[I].top
       case Bottom      => IntLattice[I].bottom
       case Constant(n) => IntLattice[I].inject(n)
 
+  /** Map a function `f` over the value contained within `v`.
+    *
+    * @note
+    *   If any of the elements is `Bottom` the result of the computation is also
+    *   `Bottom`
+    */
   extension [A](v: (L[A], L[A]))
     def mapN[B](f: (A, A) => B): L[B] = v match
       case (_, Bottom)                => Bottom
@@ -43,30 +81,21 @@ object ConstantPropagation:
       case (_, Top)                   => Top
       case (Constant(a), Constant(b)) => Constant(f(a, b))
 
+  /** Map a function `f` over the value contained within `v` */
   extension [A](v: L[A])
     def map[B](f: A => B): L[B] = v match
       case Bottom      => Bottom
       case Top         => Top
       case Constant(a) => Constant(f(a))
 
-  given Monad[L] with
-    def flatMap[A, B](fa: L[A])(f: (A) => L[B]): L[B] = fa match
-      case Bottom      => Bottom
-      case Top         => Top
-      case Constant(a) => f(a)
+  import Errors.*
 
-    def pure[A](x: A): L[A] =
-      Constant(x)
-
-    @tailrec
-    def tailRecM[A, B](a: A)(f: A => L[Either[A, B]]): L[B] = f(
-      a
-    ) match
-      case Bottom                => Bottom
-      case Top                   => Top
-      case Constant(Left(nextA)) => tailRecM(nextA)(f) // continue the recursion
-      case Constant(Right(b))    => Constant(b) // recursion done
-
+  /** Provides base lattice operations for any constantly propagated value
+    *
+    * @param typeName
+    *   the name of the type contained within the value, used for printing
+    *   purposes.
+    */
   abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]]:
     def show(x: L[A]): String = x match
       case Top         => typeName
@@ -120,12 +149,6 @@ object ConstantPropagation:
   type R = L[Double]
   type C = L[Char]
   type Sym = L[String]
-
-  private def raiseError[M[_]: MonadError[Error], A](msg: String): M[A] =
-    ApplicativeError[M, Error].raiseError(StringError(msg))
-
-  private def raiseError[M[_]: MonadError[Error], A](e: Error): M[A] =
-    ApplicativeError[M, Error].raiseError(e)
 
   object L:
     implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool")
