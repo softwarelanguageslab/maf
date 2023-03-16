@@ -25,8 +25,12 @@ trait CharLattice[C, I: IntLattice, Sym: SymbolLattice, S: StringLattice_[
   def charLtCI[B: BoolLattice](c1: C, c2: C): B
 
 object CharLattice:
-  def apply[I: IntLattice, Sym: SymbolLattice, S: StringLattice_[
+  def apply[C: CharLattice_[
+    I,
+    Sym,
+    S
+  ], I: IntLattice, Sym: SymbolLattice, S: StringLattice_[
     I,
     C,
     Sym
-  ], C: CharLattice_[I, Sym, S]]: CharLattice[C, I, Sym, S] = summon
+  ]]: CharLattice[C, I, Sym, S] = summon

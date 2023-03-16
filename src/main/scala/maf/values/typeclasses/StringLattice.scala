@@ -2,6 +2,7 @@ package maf.values
 package typeclasses
 
 import cats.extensions.*
+import maf.util.*
 
 case object NotANumberString extends Error
 
@@ -18,13 +19,13 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
   def inject(s: String): S
   def length(s: S): I
   def append(s1: S, s2: S): S
-  def substring[M[_]: MonadError[Error]](
+  def substring[M[_]: MonadError[Error]: MonadJoin](
       s: S,
       from: I,
       to: I
   ): M[S]
-  def ref[M[_]: MonadError[Error]](s: S, i: I): M[C]
-  def set[M[_]: MonadError[Error]](
+  def ref[M[_]: MonadError[Error]: MonadJoin](s: S, i: I): M[C]
+  def set[M[_]: MonadError[Error]: MonadJoin](
       s: S,
       i: I,
       c: C
@@ -32,11 +33,11 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
 
   def lt[B: BoolLattice](s1: S, s2: S): B
   def toSymbol(s: S): Sym
-  def toNumber[M[_]: MonadError[Error]](s: S): M[I]
+  def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S): M[I]
   def makeString(length: I, char: C): S
 
 object StringLattice:
-  def apply[I: IntLattice, C: CharLattice_[I, Sym, S], Sym: SymbolLattice, S](
+  def apply[S, I: IntLattice, C: CharLattice_[I, Sym, S], Sym: SymbolLattice](
       using StringLattice[S, I, C, Sym]
   ): StringLattice[S, I, C, Sym] =
     summon

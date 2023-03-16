@@ -6,6 +6,13 @@ import cats.data.*
 import cats.*
 import cats.syntax.all._
 
+/** `Show` implementations for common lattice values */
+object LatticeShow:
+  // Not implicit because it would conflict with stringShow.
+  val symShow: Show[String] = new Show[String] {
+    def show(s: String): String = s"'$s"
+  }
+
 /** Error raised when trying to construct the top element of a lattice which
   * doesn't have one
   */

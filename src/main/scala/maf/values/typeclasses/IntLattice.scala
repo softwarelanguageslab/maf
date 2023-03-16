@@ -1,6 +1,7 @@
 package maf.values
 package typeclasses
 
+import maf.util.Error
 import cats.extensions.*
 
 /** A lattice for integers */
@@ -12,11 +13,22 @@ trait IntLattice[I] extends Lattice[I] { self =>
   def plus(n1: I, n2: I): I
   def minus(n1: I, n2: I): I
   def times(n1: I, n2: I): I
-  def quotient[M[_]: MonadError[Error]](n1: I, n2: I): M[I]
-  def div[R: RealLattice](n1: I, n2: I): R
+  def quotient[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
+  def isZero[B: BoolLattice](v: I): B =
+    eql(v, inject(0))
+
+  def div[M[_], R](
+      n1: I,
+      n2: I
+  )(using
+      e1: cats.MonadError[M, Error],
+      e2: maf.values.typeclasses.MonadJoin[M],
+      e3: maf.values.typeclasses.RealLattice[R]
+  ): M[R]
+
   def expt(n1: I, n2: I): I
-  def modulo(n1: I, n2: I): I
-  def remainder(n1: I, n2: I): I
+  def modulo[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
+  def remainder[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
   def lt[B: BoolLattice](n1: I, n2: I): B
   def valuesBetween(n1: I, n2: I): Set[I]
   def toString[C: CharLattice_[I, Sym, S], S: StringLattice_[

@@ -8,7 +8,7 @@ trait SymbolLattice[Sym] extends Lattice[Sym]:
     I,
     C,
     Sym
-  ], Sym: SymbolLattice](n: Sym): S
+  ]](n: Sym): S
 
 object SymbolLattice:
   def apply[Sym: SymbolLattice]: SymbolLattice[Sym] = implicitly
