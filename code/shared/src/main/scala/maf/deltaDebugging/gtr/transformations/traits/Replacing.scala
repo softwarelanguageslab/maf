@@ -132,6 +132,8 @@ object Replacing:
     value match
       case ConcreteValues.Value.Str(str) =>
         Some(SchemeValue(Value.String(str), NoCodeIdentity))
+      case ConcreteValues.Value.Pointer(_) =>
+        Some(SchemeValue(Value.String("a"), NoCodeIdentity))
       case ConcreteValues.Value.Integer(n) =>
         Some(SchemeValue(Value.Integer(n), NoCodeIdentity))
       case ConcreteValues.Value.Real(r) =>

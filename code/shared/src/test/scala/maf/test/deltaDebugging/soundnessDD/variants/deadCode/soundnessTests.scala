@@ -10,7 +10,7 @@ import maf.test.{AllSequentialBenchmarks, DDBenchmarks, RandomSequentialBenchmar
 import maf.test.deltaDebugging.realBugs.*
 
 trait SchemeModFLocalSoundnessTests extends DeadCodeTester with DDBenchmarks:
-  override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/deadCodeTest.scm")
+  //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/deadCodeTest2.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
     val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))

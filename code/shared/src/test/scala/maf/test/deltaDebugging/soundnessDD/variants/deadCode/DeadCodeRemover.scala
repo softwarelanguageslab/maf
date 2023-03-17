@@ -7,7 +7,13 @@ import maf.core.*
 import maf.deltaDebugging.gtr.transformations.traits.Replacing
 
 object DeadCodeRemover:
-  def remove(program: SchemeExp, dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]]): Option[SchemeExp] =
+  type Benchmark = String
+
+  def remove(program: SchemeExp,
+             dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]],
+             deadCodeTester: DeadCodeTester,
+             benchmark: Benchmark
+            ): SchemeExp =
 
     var deadLambdas: List[SchemeLambda] = List()
 
@@ -19,16 +25,29 @@ object DeadCodeRemover:
         case _ =>
     })
 
-    if deadLambdas.nonEmpty then
-      removeDeadLambdas(program, deadLambdas)
-    else
-      killLambda(program, dynAnalysis)
+    for (deadLambda <- deadLambdas)
+      val result = removeDeadLambda(program, deadLambda, deadCodeTester, benchmark)
+      if result.nonEmpty then
+        return remove(result.get._1, result.get._2, deadCodeTester, benchmark)
 
-  def removeDeadLambdas(program: SchemeExp, deadLambdas: List[SchemeLambda]): Option[SchemeExp] =
+    for (lambdaToKill <- dynAnalysis.keySet)
+      val callsAndReturnValues = dynAnalysis(lambdaToKill)
+      val result = killCall(program, lambdaToKill, callsAndReturnValues, deadCodeTester, benchmark)
+      if result.nonEmpty then
+        return remove(result.get._1, result.get._2, deadCodeTester, benchmark)
+
+    program
+
+  def removeDeadLambda(program: SchemeExp,
+                       deadLambda: SchemeLambda,
+                       deadCodeTester: DeadCodeTester,
+                       benchmark: Benchmark):
+    Option[(SchemeExp, Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]])] =
+
     val maybeRemoved = program.deleteChildren(exp => {
       exp match
         case lambda: SchemeLambda =>
-          deadLambdas.exists(dead => dead eq lambda)
+          lambda eq deadLambda
         case _ => false
     })
 
@@ -43,40 +62,40 @@ object DeadCodeRemover:
               else exp
             case _ => exp
         })
-        Some(cleanedUp)
+
+        val oracleResults = deadCodeTester.runAndIdentifyDeadCode(cleanedUp, benchmark)
+        oracleResults match
+          case (Some(tpl), _) =>
+            if tpl._1.nonEmpty then
+              Some((cleanedUp, tpl._2))
+            else None
+          case _ =>
+            None
       case _ =>
         None
 
-  def killLambda(program: SchemeExp, dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]]): Option[SchemeExp] =
-    if dynAnalysis.keySet.isEmpty then
+  def killCall(program: SchemeExp,
+               lambdaToKill: SchemeLambda,
+               callsAndReturnValues: Set[(SchemeFuncall, ConcreteValues.Value)],
+               deadCodeTester: DeadCodeTester,
+               benchmark: Benchmark):
+    Option[(SchemeExp, Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]])] =
+      for((call, returnValue) <- callsAndReturnValues)
+        val callRemoved =
+          program.map(exp => exp match
+            case c: SchemeFuncall =>
+              if c eql call then
+                Replacing.valueToExp(returnValue) match
+                  case Some(value) => value
+                  case _ => SchemeValue(Value.Boolean(false), NoCodeIdentity)
+              else exp
+            case _ => exp)
+
+        val oracleResults = deadCodeTester.runAndIdentifyDeadCode(callRemoved, benchmark)
+        oracleResults match
+          case (Some(tpl), _) =>
+            if tpl._1.nonEmpty then
+              return Some(callRemoved, tpl._2)
+            else None
+          case _ => None
       None
-    else
-      val lambdaToKill = dynAnalysis.keySet.head
-      val callsAndReturnValues = dynAnalysis(lambdaToKill)
-      val maybeRemoved = program.deleteChildren(exp => {
-        exp eq lambdaToKill
-      })
-
-      maybeRemoved match
-        case Some(removed) =>
-          val cleanedUp =
-            removed.map(exp => exp match
-              case call: SchemeFuncall =>
-                val called = callsAndReturnValues.find(tpl => tpl._1 eq call)
-                if called.nonEmpty then
-                  Replacing.valueToExp(called.get._2) match
-                    case Some(value) => value
-                    case _ => exp
-                else exp
-              case _ => exp
-            )
-          Some(cleanedUp)
-        case _ =>
-          None
-
-
-
-
-
-
-

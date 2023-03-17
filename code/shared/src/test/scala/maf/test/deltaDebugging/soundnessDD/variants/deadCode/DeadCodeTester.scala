@@ -79,28 +79,16 @@ trait DeadCodeTester extends SoundnessDDTester {
     println("DeadCode >>> running benchmark: " + benchmark)
     // load the benchmark program
     val content = Reader.loadFile(benchmark)
-    var program = parseProgram(content, benchmark)
+    val program = parseProgram(content, benchmark)
 
     runAndIdentifyDeadCode(program, benchmark) match
       case (Some((failureMsg, dynAnalysis)), _) =>
         if failureMsg.nonEmpty then
           DeadCodeDD.bugName = bugName
 
-          val maybeRemoved = DeadCodeRemover.remove(program, dynAnalysis)
-
-          maybeRemoved match
-            case Some(removed) =>
-              val (maybeFailed, _) = runAndIdentifyDeadCode(removed, benchmark)
-              println(program.prettyString())
-              println(removed.prettyString())
-              maybeFailed match
-                case Some(tpl) =>
-                  if tpl._1.nonEmpty then
-                    DeadCodeDD.reduce(program, removed, this, benchmark)
-                    return
-                case _ =>
-            case _ =>
-
-          DeadCodeDD.reduce(program, program, this, benchmark)
+          val postLambdaKills = DeadCodeRemover.remove(program, dynAnalysis, this, benchmark)
+          println("pre: " + program.size)
+          println("post: " + postLambdaKills.size)
+          DeadCodeDD.reduce(program, postLambdaKills, this, benchmark)
       case _ =>
 }
