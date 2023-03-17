@@ -1,9 +1,10 @@
 package maf.test.deltaDebugging.soundnessDD.variants.deadCode
 
 import maf.core.{Identity, IdentityWithData, NoCodeIdentity, NoCodeIdentityDebug, SimpleIdentity}
-import maf.language.scheme.{SchemeExp, SchemeLambda}
+import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeLambda, SchemeValue, SchemeVar}
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, DeadCodeSchemeInterpreter, FileIO, IO, SchemeInterpreter}
+import maf.language.sexp
 import maf.test.SlowTest
 import maf.test.deltaDebugging.soundnessDD.variants.baseline.BaselineDD
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
@@ -17,23 +18,23 @@ trait DeadCodeTester extends SoundnessDDTester {
   override def createInterpreter(addResult: (Identity, Value) => Unit, io: IO, benchmark: Benchmark): DeadCodeSchemeInterpreter =
     new DeadCodeSchemeInterpreter(addResult, io)
 
-  def evalProgramAndIdentifyDeadCode(program: SchemeExp, benchmark: Benchmark): (Map[Identity, Set[Value]], Set[Int]) =
+  def evalProgramAndIdentifyDeadCode(program: SchemeExp, benchmark: Benchmark): (Map[Identity, Set[Value]], Map[SchemeLambda, Set[(SchemeFuncall, Value)]]) =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
     val interpreter: DeadCodeSchemeInterpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
-    var calledLambdas: Set[Int] = Set()
+    var dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, Value)]] = Map()
     for _ <- 1 to times do
       val (ellapsed, _) = Timer.time({
         val tpl = interpreter.runAndIdentifyCalledLambdas(program, timeout)
-        calledLambdas = calledLambdas.union(tpl._2)
+        dynAnalysis = tpl._2
       })
       SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)
-    (idnResults, calledLambdas)
+    (idnResults, dynAnalysis)
 
   def runAndIdentifyDeadCode(program: SchemeExp, benchmark: Benchmark):
-  (Option[(String, Set[Int])], (Long, Long)) =
+  (Option[(String, Map[SchemeLambda, Set[(SchemeFuncall, Value)]])], (Long, Long)) =
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0
     var evalEndTime: Long = 0
@@ -46,7 +47,7 @@ trait DeadCodeTester extends SoundnessDDTester {
 
     var concreteResults: Option[Map[Identity, Set[Value]]] = None
     var anl: Option[Analysis] = None
-    var calledLambdas: Option[Set[Int]] = None
+    var calledLambdas: Option[Map[SchemeLambda, Set[(SchemeFuncall, Value)]]] = None
 
     try
       evalStartTime = System.currentTimeMillis()
@@ -81,20 +82,17 @@ trait DeadCodeTester extends SoundnessDDTester {
     var program = parseProgram(content, benchmark)
 
     runAndIdentifyDeadCode(program, benchmark) match
-      case (Some((failureMsg, calledLambdas)), _) =>
+      case (Some((failureMsg, dynAnalysis)), _) =>
         if failureMsg.nonEmpty then
           DeadCodeDD.bugName = bugName
 
-          val maybeRemoved = program.deleteChildren(exp => {
-            exp match
-              case lambda: SchemeLambda =>
-                !calledLambdas.contains(lambda.hashCode())
-              case _ => false
-          })
+          val maybeRemoved = DeadCodeRemover.remove(program, dynAnalysis)
 
           maybeRemoved match
             case Some(removed) =>
               val (maybeFailed, _) = runAndIdentifyDeadCode(removed, benchmark)
+              println(program.prettyString())
+              println(removed.prettyString())
               maybeFailed match
                 case Some(tpl) =>
                   if tpl._1.nonEmpty then

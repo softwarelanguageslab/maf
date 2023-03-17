@@ -128,7 +128,7 @@ object Replacing:
         case _ => false
     })
 
-  private def valueToExp(value: ConcreteValues.Value): Option[SchemeExp] =
+  def valueToExp(value: ConcreteValues.Value): Option[SchemeExp] =
     value match
       case ConcreteValues.Value.Str(str) =>
         Some(SchemeValue(Value.String(str), NoCodeIdentity))

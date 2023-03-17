@@ -18,7 +18,7 @@ object DeadCodeDD:
     var oracleTreeSizes: List[Int] = List()
 
     val startTime = System.currentTimeMillis()
-    var topCalledLambdas: Set[Int] = Set()
+    //var topCalledLambdas: Set[Int] = Set()
 
     val reduced = GTR.reduce(
       program,
@@ -27,7 +27,7 @@ object DeadCodeDD:
         oracleTreeSizes = oracleTreeSizes.::(p.size)
         soundnessTester.runAndIdentifyDeadCode(p, benchmark) match
           case (Some((failureMsg, calledLambdas)), _) =>
-            topCalledLambdas = calledLambdas
+            //topCalledLambdas = calledLambdas
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty
 
           case (None, (runTime, analysisTime)) =>
@@ -35,6 +35,7 @@ object DeadCodeDD:
       },
       identity,
       TransformationManager.allTransformations,
+      /*
       Some(candidateTree => {
         candidateTree.deleteChildren(exp => {
           exp match
@@ -43,6 +44,7 @@ object DeadCodeDD:
             case _ => false
         })
       })
+      */
     )
 
     val endTime = System.currentTimeMillis()

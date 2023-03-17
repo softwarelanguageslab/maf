@@ -19,19 +19,20 @@ class DeadCodeSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (
   import ConcreteValues._
   import scala.util.control.TailCalls._
 
-  private var calledLambdas: Set[Int] = Set()
+  private var calls: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]] = Map()
   def runAndIdentifyCalledLambdas(
                                    program: SchemeExp,
                                    timeout: Timeout.T,
                                    version: Version = New
-                                 ): (Value, Set[Int]) =
-    calledLambdas = Set()
+                                 ): (Value, Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]]) =
+    calls = Map()
     setStore(initialSto)
-    (eval(program, initialEnv, timeout, version).result, calledLambdas)
+    (eval(program, initialEnv, timeout, version).result, calls)
 
 
   override def eval(e: SchemeExp, env: Env, timeout: Timeout.T, version: Version): TailRec[Value] =
     if timeout.reached then throw new TimeoutException()
+    var caughtLambda: Option[SchemeLambda] = None
     e match
       case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))
       case call@SchemeFuncall(f, args, idn) =>
@@ -39,7 +40,7 @@ class DeadCodeSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (
           fv <- tailcall(eval(f, env, timeout, version))
           res <- fv match
             case Value.Clo(lambda@SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
-              calledLambdas = calledLambdas + lambda.hashCode()
+              caughtLambda = Some(lambda)
               if argsNames.length != args.length then
                 signalException(
                   ArityError(pos2.pos, argsNames.length, args.length)
@@ -76,7 +77,13 @@ class DeadCodeSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (
                 yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
             case v =>
               signalException(ValueNotApplicable(v, idn))
-        yield res
+        yield {
+          caughtLambda match
+            case Some(lambda) =>
+              calls = calls + (lambda -> calls.getOrElse(lambda, Set()).union(Set((call, res))))
+            case _ =>
+          res
+        }
       case SchemeIf(cond, cons, alt, _) =>
         for
           condv <- eval(cond, env, timeout, version)
