@@ -12,7 +12,7 @@ import typeclasses.*
   * integer number are added together, the result is a real number.
   *
   * The recommended representation of values in this lattice is an `HMap` which
-  * bundles several lattices together into a spare product lattice which has
+  * bundles several lattices together into a sparse product lattice which has
   * both efficient time and space characteristcs.
   */
 trait SchemeLattice[L]
@@ -22,6 +22,9 @@ trait SchemeLattice[L]
       RealLattice[L],
       SymbolLattice[L],
       CharLattice[L, L, L, L]:
+
+  // TODO: closures
+  // TODO: primitives
 
   // prevent name clashes between RealLattice and IntLattice
   override def isZero[B: BoolLattice](v: L): B =

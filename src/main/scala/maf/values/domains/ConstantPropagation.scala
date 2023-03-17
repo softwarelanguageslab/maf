@@ -41,6 +41,14 @@ object ConstantPropagation:
   /** The value is unknown */
   case object Bottom extends L[Nothing]
 
+  /** Typeclass implementation of `Galois` */
+  given [A]: Galois[A, L[A]] with
+    def inject(a: A): L[A] = Constant(a)
+    def extract(a: L[A]): Option[Set[A]] = a match
+      case Top         => None
+      case Bottom      => Some(Set())
+      case Constant(v) => Some(Set(v))
+
   //
   // Extensions for convience
   //
@@ -75,10 +83,8 @@ object ConstantPropagation:
     */
   extension [A](v: (L[A], L[A]))
     def mapN[B](f: (A, A) => B): L[B] = v match
-      case (_, Bottom)                => Bottom
-      case (Bottom, _)                => Bottom
-      case (Top, _)                   => Top
-      case (_, Top)                   => Top
+      case (_, Bottom) | (Bottom, _)  => Bottom
+      case (Top, _) | (_, Top)        => Top
       case (Constant(a), Constant(b)) => Constant(f(a, b))
 
   /** Map a function `f` over the value contained within `v` */
