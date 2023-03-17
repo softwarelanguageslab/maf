@@ -5,7 +5,7 @@ import maf.deltaDebugging.gtr.transformations.traits.Replacing
 import maf.core.Identifier
 import maf.language.scheme.*
 
-object RemoveCalls extends Transformation with Replacing:
+object RemoveCalls extends Transformation:
   override val name: String = "RemoveCalls"
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
     def removeIdCalls(id: Identifier, newTree: SchemeExp): Unit =
@@ -17,7 +17,7 @@ object RemoveCalls extends Transformation with Replacing:
 
       applsRemoved match
         case Some(callsRemovedTree) =>
-          val trees = replaceCallWithAllValues(callsRemovedTree, id) //this removes any non-call references to the lambda
+          val trees = Replacing.replaceCallWithAllValues(callsRemovedTree, id) //this removes any non-call references to the lambda
           addTrees(trees)
         case _ =>
 

@@ -4,12 +4,12 @@ import maf.deltaDebugging.gtr.transformations.Transformation
 import maf.deltaDebugging.gtr.transformations.traits.Replacing
 import maf.language.scheme.{SchemeExp, SchemeVarExp}
 
-object ReplaceIdentifier extends Transformation with Replacing:
+object ReplaceIdentifier extends Transformation:
   override val name: String = "ReplaceIdentifier"
 
   def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
       case _: SchemeVarExp =>
         if tree.size < 100 then
-          addReplacements(allValues())
+          addReplacements(Replacing.allValues(node))
       case _ =>

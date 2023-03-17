@@ -7,6 +7,7 @@ import maf.test.deltaDebugging.soundnessDD.variants.deadCode.{DeadCodeDD, SaveDe
 import maf.test.deltaDebugging.soundnessDD.variants.fitness.{FitnessDD, SaveFitness}
 import maf.test.deltaDebugging.soundnessDD.variants.parallel.{ParallelDD, SaveParallel}
 import maf.test.deltaDebugging.soundnessDD.variants.profiling.{ProfilingDD, SaveProfiling}
+import maf.test.deltaDebugging.soundnessDD.variants.smartReplacement.SaveSmartReplacement
 import maf.test.deltaDebugging.soundnessDD.variants.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
 import maf.util.benchmarks.Statistics
 
@@ -34,9 +35,10 @@ object Evaluate:
     DeadCodeDD.dataCollector = new DataCollector
 
     for(i <- List(1))
-      SaveCounting.save()
-      SaveFitness.save()
-      SaveTransforming.save()
+      //SaveCounting.save()
+      //SaveFitness.save()
+      //SaveTransforming.save()
+      SaveSmartReplacement.save()
       /*
       SaveParallel.save()
       SaveProfiling.save()
@@ -57,7 +59,8 @@ object Evaluate:
           parallelData: List[ReductionData],
           profilingData: List[ReductionData],
           deadCodeData: List[ReductionData],
-          randomData: List[ReductionData] //random-order transformations
+          randomData: List[ReductionData], //random-order transformations
+          smartReplacementData: List[ReductionData]
          ): Unit =
 
     def createRow(data: List[ReductionData]): Unit =
@@ -91,7 +94,8 @@ object Evaluate:
           parallelData: List[ReductionData],
           profilingData: List[ReductionData],
           deadCodeData: List[ReductionData],
-          randomData: List[ReductionData]): Unit =
+          randomData: List[ReductionData],
+          smartReplacementData: List[ReductionData]): Unit =
 
     /*
     def createRow(data: List[(ReductionData, ReductionData)], rowName: String): Unit =
@@ -145,6 +149,7 @@ object Evaluate:
     createRow(profilingData, "profiling")
     createRow(deadCodeData, "deadcode")
     createRow(parallelData, "parallel")
+    createRow(smartReplacementData, "smart replacement")
 
     createBoxplot(randomData.zip(transformingData), "/Users/turgut/Desktop/cs5/thesis/evaluations/data/OrderedVsRandom/ratio.txt")
     createBoxplot(transformingData.zip(baselineData), "/Users/turgut/Desktop/cs5/thesis/evaluations/data/SSDDVsLADD/ratio.txt")
@@ -164,6 +169,7 @@ object ReaderAndAnalyzeData {
     val profilingDataCollector: DataCollector = DataCollector.readObject("profilingDataCollector")
     val deadCodeDataCollector: DataCollector = DataCollector.readObject("deadCodeDataCollector")
     val randomDatacollector: DataCollector = DataCollector.readObject("randomDataCollector")
+    val smartReplacementDataCollector: DataCollector = DataCollector.readObject("smartReplacementDataCollector")
 
 
     Evaluate.RQ1(
@@ -173,7 +179,8 @@ object ReaderAndAnalyzeData {
       parallelDataCollector.reductionData,
       profilingDataCollector.reductionData,
       deadCodeDataCollector.reductionData,
-      randomDatacollector.reductionData
+      randomDatacollector.reductionData,
+      smartReplacementDataCollector.reductionData
     )
 
 
@@ -184,7 +191,8 @@ object ReaderAndAnalyzeData {
       parallelDataCollector.reductionData,
       profilingDataCollector.reductionData,
       deadCodeDataCollector.reductionData,
-      randomDatacollector.reductionData
+      randomDatacollector.reductionData,
+      smartReplacementDataCollector.reductionData
     )
   }
 }

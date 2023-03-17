@@ -5,7 +5,7 @@ import maf.deltaDebugging.gtr.transformations.traits.Replacing
 import maf.core.{Identifier, NoCodeIdentity}
 import maf.language.scheme.*
 
-object RemoveCallsAndReplaceByBody extends Transformation with Replacing:
+object RemoveCallsAndReplaceByBody extends Transformation:
   override val name: String = "RemoveCallsAndReplaceByBody"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {

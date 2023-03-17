@@ -4,6 +4,8 @@ import maf.core.Identity
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO}
+import maf.modular.{AnalysisResults, ModAnalysis}
+import maf.modular.scheme.SchemeDomain
 import maf.test.SlowTest
 import maf.test.deltaDebugging.soundnessDD.implementation.DD
 import maf.test.modular.scheme.SchemeSoundnessTests
@@ -62,6 +64,18 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
       val anl = runAnalysis(program, benchmark)
       // check if the analysis results soundly (over-)approximate the concrete results
       Some(compareResults(anl, concreteResults))
+    catch case exc: Throwable =>
+      None
+  }
+
+  def runAndCompare_(program: SchemeExp, benchmark: Benchmark): Option[(String, Map[Identity, Any])] = {
+    try
+      val concreteResults = evalProgram(program, benchmark)
+      // analyze the program using a ModF analysis
+      val anl = runAnalysis(program, benchmark)
+      // check if the analysis results soundly (over-)approximate the concrete results
+      val analysisResults: Map[Identity, Any] = anl.resultsPerIdn
+      Some((compareResults(anl, concreteResults), analysisResults))
     catch case exc: Throwable =>
       None
   }

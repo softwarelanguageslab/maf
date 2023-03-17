@@ -1,6 +1,6 @@
 package maf.deltaDebugging.gtr.transformations
 
-import maf.language.scheme.SchemeExp
+import maf.language.scheme.{SchemeExp, SchemeParser}
 
 abstract class Transformation:
   var trees: List[SchemeExp] = List()
@@ -26,8 +26,9 @@ abstract class Transformation:
 
     transformAndAdd(tree, node) //should fill trees and replacements
 
-    val suggestions = (trees ++ replacements.map(r => tree.replace(node, r)))
+    var suggestions = (trees ++ replacements.map(r => tree.replace(node, r)))
       .filterNot(newTree => tree eql newTree) //if a transformation suggest a tree that is eql to the current tree, discard that suggestions
+    suggestions = suggestions.map(s => SchemeParser.parse(s.prettyString()).head)
 
     trees = List()
     replacements = List()

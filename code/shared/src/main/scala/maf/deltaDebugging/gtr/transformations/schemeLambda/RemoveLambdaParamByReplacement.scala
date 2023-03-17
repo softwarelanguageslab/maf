@@ -5,7 +5,7 @@ import maf.deltaDebugging.gtr.transformations.traits.{CallReducing, Replacing}
 import maf.core.Identifier
 import maf.language.scheme.*
 
-object RemoveLambdaParamByReplacement extends Transformation with CallReducing with Replacing:
+object RemoveLambdaParamByReplacement extends Transformation with CallReducing:
   override val name: String = "RemoveLambdaParamByReplacement"
 
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit = {
@@ -16,7 +16,7 @@ object RemoveLambdaParamByReplacement extends Transformation with CallReducing w
           case varargLambda: SchemeVarArgLambda => varargLambda.copy(args = varargLambda.args.filterNot(a => a.name equals arg.name))
           case lambda: SchemeLambda => lambda.copy(args = lambda.args.filterNot(a => a.name equals arg.name))
 
-        val argReplacedLambdas = replaceIdWithAllValues(paramDropped, arg) //replace arg (e.g. x) with all kinds of values (e.g. 1, "s", 's, ...)
+        val argReplacedLambdas = Replacing.replaceIdWithAllValues(paramDropped, arg) //replace arg (e.g. x) with all kinds of values (e.g. 1, "s", 's, ...)
 
         for (argReplaced <- argReplacedLambdas)
           val lambdaReplaced = tree.replace(lambda, argReplaced)

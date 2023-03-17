@@ -6,10 +6,10 @@ import maf.core.Identifier
 import maf.language.scheme.*
 import maf.language.sexp.Value
 
-object ReplaceByValue extends Transformation with Replacing:
+object ReplaceByValue extends Transformation:
   override val name: String = "ReplaceByValue"
 
   //replace by value under certain circumstances, avoiding time/space overheads
   override def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     if tree.size >= 30 && tree.size < 50 then
-      addReplacements(allValues())
+      addReplacements(Replacing.allValues(node))
