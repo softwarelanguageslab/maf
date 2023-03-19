@@ -89,7 +89,3 @@ object Lattice:
   def foldMapL[X, L: Lattice](xs: Iterable[X], f: X => L): L =
     if xs.isEmpty then Lattice[L].bottom
     else Lattice[L].join(f(xs.head), foldMapL(xs.tail, f))
-
-// TODO: move this to somewhere else
-trait MaybeEq[A]:
-  def apply[B: BoolLattice](a1: A, a2: A): B

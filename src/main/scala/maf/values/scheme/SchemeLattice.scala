@@ -1,6 +1,7 @@
 package maf.values
 package scheme
 
+import maf.util.*
 import typeclasses.*
 
 /** Represents a lattice that supports all Scheme operations, that is: a
@@ -25,6 +26,15 @@ trait SchemeLattice[L]
 
   // TODO: closures
   // TODO: primitives
+
+  /** Inject the nil value in the abstract domain */
+  def nil: L
+
+  /** Inject a pair in the abstract domain */
+  def cons(car: L, cdr: L): L
+
+  /** Inject a address as a pointer in the abstract domain */
+  def ptr(adr: Address): L
 
   // prevent name clashes between RealLattice and IntLattice
   override def isZero[B: BoolLattice](v: L): B =

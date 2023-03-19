@@ -1,6 +1,7 @@
 package maf.util
 
 import maf.syntax.*
+import maf.values.typeclasses.*
 
 /** An address */
 trait Address extends SmartHash:
@@ -17,3 +18,7 @@ trait Address extends SmartHash:
     * program location (e.g., pre-allocated addresses for primitives)
     */
   def idn: Identity
+
+/** Decide about equality between addresses. */
+trait MaybeEq[A]:
+  def apply[B: BoolLattice](a1: A, a2: A): B

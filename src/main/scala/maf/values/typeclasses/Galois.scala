@@ -27,6 +27,14 @@ object Galois:
   def inject[C, A](v: C)(using galois: Galois[C, A]): A =
     galois.inject(v)
 
+  //
+  // Trivial Galois implementations
+  //
+
+  given Galois[Unit, Unit] with
+    def inject(c: Unit): Unit = ()
+    def extract(a: Unit): Option[Set[Unit]] = Some(Set(()))
+
 /** Convience type alias that curries the concrete and abstract type, used for
   * context bounds
   */

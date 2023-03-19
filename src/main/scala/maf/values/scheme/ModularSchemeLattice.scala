@@ -23,8 +23,25 @@ class ModularSchemeDomain[
   val StringT = LatKey.T[String, S]("string")
   val CharT = LatKey.T[Char, C]("char")
   val SymT = LatKey.T[String, Sym]("symbol")
+  val NilT = LatKey.T[Unit, Unit]("null")
 
   given lattice: SchemeLattice[Val] with SparseProductLattice[LatKey] with {
+    //
+    // Scheme specific operations
+    //
+
+    /** Inject the nil value in the abstract domain */
+    def nil: Val = inject(NilT, ())
+
+    /** Inject a pair in the abstract domain */
+    def cons(car: Val, cdr: Val): Val = ???
+
+    /** Inject a address as a pointer in the abstract domain */
+    def ptr(adr: Address): Val = ???
+
+    //
+    // Core lattice operations
+    //
     override def remainder[M[_$4]: MonadError[Error]: MonadJoin](
         n1: Val,
         n2: Val
@@ -42,11 +59,6 @@ class ModularSchemeDomain[
       Sym
     ], Sym: SymbolLattice](n: Val): C = ???
 
-    override def atan(n: Val): Val = ???
-
-    override def asin[M[_$2]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
-      ???
-
     override def charEq[B: BoolLattice](c1: Val, c2: Val): B = ???
 
     override def charLt[B: BoolLattice](c1: Val, c2: Val): B = ???
@@ -59,6 +71,11 @@ class ModularSchemeDomain[
     override def isTrue(b: Val): Boolean = ???
 
     override def ceiling(n: Val): Val = ???
+
+    override def atan(n: Val): Val = ???
+
+    override def asin[M[_$2]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
+      ???
 
     override def modulo[M[_$3]: MonadError[Error]: MonadJoin](
         n1: Val,
