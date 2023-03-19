@@ -17,8 +17,8 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
     extends Lattice[S]:
 
   def injectString(s: String): S
-  def length(s: S): I
-  def append(s1: S, s2: S): S
+  def length[M[_]: MonadError[Error]: MonadJoin](s: S): M[I]
+  def append[M[_]: MonadError[Error]: MonadJoin](s1: S, s2: S): M[S]
   def substring[M[_]: MonadError[Error]: MonadJoin](
       s: S,
       from: I,
@@ -31,10 +31,10 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
       c: C
   ): M[S]
 
-  def lt[B: BoolLattice](s1: S, s2: S): B
-  def toSymbol(s: S): Sym
+  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](s1: S, s2: S): M[B]
+  def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym]
   def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S): M[I]
-  def makeString(length: I, char: C): S
+  def makeString[M[_]: MonadError[Error]: MonadJoin](length: I, char: C): M[S]
 
 object StringLattice:
   def apply[S, I: IntLattice, C: CharLattice_[I, Sym, S], Sym: SymbolLattice](

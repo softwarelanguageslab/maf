@@ -177,29 +177,34 @@ object ConstantPropagation:
     implicit val stringCP: StringLattice[S, I, C, Sym] =
       new BaseInstance[String]("Str") with StringLattice[S, I, C, Sym] {
         def injectString(x: String): S = Constant(x)
-        def length(s: S): I = s match
+        def length[M[_]: MonadError[Error]: MonadJoin](s: S): M[I] = (s match
           case Top         => IntLattice[I].top
           case Constant(s) => IntLattice[I].inject(s.length)
           case Bottom      => IntLattice[I].bottom
-        def append(s1: S, s2: S): S = (s1, s2) match
-          case (Bottom, _) | (_, Bottom)  => Bottom
-          case (Top, _) | (_, Top)        => Top
-          case (Constant(x), Constant(y)) => Constant(x ++ y)
+        ).pure
+        def append[M[_]: MonadError[Error]: MonadJoin](s1: S, s2: S): M[S] =
+          ((s1, s2) match
+            case (Bottom, _) | (_, Bottom)  => Bottom
+            case (Top, _) | (_, Top)        => Top
+            case (Constant(x), Constant(y)) => Constant(x ++ y)
+          ).pure
 
-        def makeString(
+        def makeString[M[_]: MonadError[Error]: MonadJoin](
             length: I,
             char: C
-        ): S = (length, char) match
-          case (Bottom, _) => stringCP.bottom
+        ): M[S] = ((length, char) match
+          case (Bottom, _) => stringCP.bottom.pure
           case (_, bot) if bot == charCP.bottom =>
-            stringCP.bottom
-          case (Top, _) => stringCP.top
+            stringCP.bottom.pure
+          case (Top, _) => stringCP.top.pure
           case (Constant(n), _) =>
             val c = charCP.toString(char)
             1.to(NumOps.bigIntToInt(n))
-              .foldLeft(stringCP.injectString(""))((s, _) =>
+              .toList
+              .foldM[M, S](stringCP.injectString(""))((s, _) =>
                 stringCP.append(s, c)
               )
+        )
 
         def substring[M[_]: MonadError[Error]: MonadJoin](
             s: S,
@@ -259,14 +264,20 @@ object ConstantPropagation:
                 Constant(str.updated(idx.toInt, chr)).pure
               // If neither the index or character are constant, don't even bother
               case _ => Top.pure
-        def lt[B2: BoolLattice](s1: S, s2: S): B2 = (s1, s2) match
+        def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+            s1: S,
+            s2: S
+        ): M[B2] = ((s1, s2) match
           case (Bottom, _) | (_, Bottom)  => BoolLattice[B2].bottom
           case (Top, _) | (_, Top)        => BoolLattice[B2].top
           case (Constant(x), Constant(y)) => BoolLattice[B2].inject(x < y)
-        def toSymbol(s: S): Sym = s match
-          case Bottom      => SymbolLattice[Sym].bottom
-          case Top         => SymbolLattice[Sym].top
-          case Constant(x) => SymbolLattice[Sym].injectSymbol(x)
+        ).pure
+        def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym] =
+          (s match
+            case Bottom      => SymbolLattice[Sym].bottom
+            case Top         => SymbolLattice[Sym].top
+            case Constant(x) => SymbolLattice[Sym].injectSymbol(x)
+          ).pure
 
         def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S) =
           s match
@@ -286,18 +297,25 @@ object ConstantPropagation:
       with IntLattice[I] {
       def inject(x: BigInt): I = Constant(x)
 
-      def toReal[R2: RealLattice](n: I): R2 = n match
+      def toReal[M[_]: MonadError[Error]: MonadJoin, R2: RealLattice](
+          n: I
+      ): M[R2] = (n match
         case Top         => RealLattice[R2].top
         case Constant(x) => RealLattice[R2].inject(x.toDouble)
         case Bottom      => RealLattice[R2].bottom
+      ).pure
 
-      def random(n: I): I = n match
+      def random[M[_]: MonadError[Error]: MonadJoin](n: I): M[I] = (n match
         case Bottom => Bottom
         case _      => Top
+      ).pure
 
-      def plus(n1: I, n2: I): I = (n1, n2) mapN { _ + _ }
-      def minus(n1: I, n2: I): I = (n1, n2) mapN { _ - _ }
-      def times(n1: I, n2: I): I = (n1, n2) mapN { _ * _ }
+      def plus[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I] =
+        ((n1, n2) mapN { _ + _ }).pure
+      def minus[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I] =
+        (n1, n2).mapN { _ - _ }.pure
+      def times[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I] =
+        (n1, n2).mapN { _ * _ }.pure
 
       override def div[M[_]: MonadError[Error]: MonadJoin, R2: RealLattice](
           n1: I,
@@ -316,8 +334,11 @@ object ConstantPropagation:
             .pure
         case _ => RealLattice[R2].bottom.pure
 
-      def expt(n1: I, n2: I): I =
-        (n1, n2) mapN ((n1, n2) => Math.pow(n1.toDouble, n2.toDouble).toInt)
+      def expt[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I] =
+        ((n1, n2) mapN ((n1, n2) =>
+          Math.pow(n1.toDouble, n2.toDouble).toInt
+        ): I)
+          .pure[M]
 
       override def quotient[M[_]: MonadError[Error]: MonadJoin](
           n1: I,
@@ -339,8 +360,11 @@ object ConstantPropagation:
           raiseError("remainder: second argument is 0")
         } /* else */ { ((n1, n2) mapN MathOps.remainder).pure }
 
-      def lt[B2: BoolLattice](n1: I, n2: I): B2 =
-        ((n1, n2) mapN (_ < _)).toB[B2]
+      def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+          n1: I,
+          n2: I
+      ): M[B2] =
+        ((n1, n2) mapN (_ < _)).toB[B2].pure
 
       def valuesBetween(n1: I, n2: I): Set[I] = (n1, n2) match
         case (Top, _)                   => Set(Top)
@@ -372,61 +396,84 @@ object ConstantPropagation:
     implicit val realCP: RealLattice[R] = new BaseInstance[Double]("Real")
       with RealLattice[R] {
       def inject(x: Double) = Constant(x)
-      def toInt[I2: IntLattice](n: R): I2 = n match
-        case Top         => IntLattice[I2].top
-        case Constant(x) => IntLattice[I2].inject(x.toInt)
-        case Bottom      => IntLattice[I2].bottom
-      def ceiling(n: R): R = n map (_.ceil)
-      def floor(n: R): R = n map (_.floor)
-      def round(n: R): R = n map (_.round)
-      def random(n: R): R = n match
-        case Constant(_) => Top
-        case _           => n
+      def toInt[M[_]: MonadError[Error]: MonadJoin, I2: IntLattice](
+          n: R
+      ): M[I2] =
+        (n match
+          case Top         => IntLattice[I2].top
+          case Constant(x) => IntLattice[I2].inject(x.toInt)
+          case Bottom      => IntLattice[I2].bottom
+        ).pure
+      def ceiling[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n map (_.ceil)).pure
+      def floor[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n map (_.floor)).pure
+      def round[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n map (_.round): R).pure
+      def random[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n match
+          case Constant(_) => Top
+          case _           => n
+        ).pure
+
       def log[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
         MonadJoin[M].cond((n map (_ <= 0)).toB[B]) {
           raiseError("log of negative number")
         } /* else */ { (n map scala.math.log).pure }
 
-      def sin(n: R): R = n match
-        case Constant(x) => Constant(scala.math.sin(x))
-        case _           => n
+      def sin[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n match
+          case Constant(x) => Constant(scala.math.sin(x))
+          case _           => n
+        ).pure
       def asin[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
         MonadJoin[M].cond(n map (i => -1 <= i && i <= 1)) {
           (n map scala.math.asin).pure
         } /* else */ { raiseError("asin input must be in range of -1 and 1") }
-      def cos(n: R): R = n match
-        case Constant(x) => Constant(scala.math.cos(x))
-        case _           => n
+      def cos[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n match
+          case Constant(x) => Constant(scala.math.cos(x))
+          case _           => n
+        ).pure
       def acos[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
         MonadJoin[M].cond(n map (i => -1 <= i && i <= 1)) {
           (n map scala.math.acos).pure
         } /* else */ { raiseError("acos input must be in range of -1 and 1") }
 
-      def tan(n: R): R =
-        n match // TODO: use MayFail here for when x out of bounds
+      def tan[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
+        (n match
           case Constant(x) =>
             scala.math.tan(x) match
-              case Double.NaN => Bottom
-              case n          => Constant(n)
-          case _ => n
-      def atan(n: R): R = n match
+              case Double.NaN => raiseError("tan: out of bounds")
+              case n          => Constant(n).pure
+          case _ => n.pure
+        )
+      def atan[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] = (n match
         case Constant(x) => Constant(scala.math.atan(x))
         case _           => n
+      ).pure
       def sqrt[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
-        MonadJoin[M].cond(lt(n, inject(0))) {
+        MonadJoin[M].condM(lt(n, inject(0))) {
           raiseError("sqrt input must be positive")
-        } /* else */ { (n map Math.sqrt).pure }
-      def plus(n1: R, n2: R): R = (n1, n2) mapN { _ + _ }
-      def minus(n1: R, n2: R): R = (n1, n2) mapN { _ - _ }
-      def times(n1: R, n2: R): R = (n1, n2) mapN { _ * _ }
+        } /* else */ { (n.map(Math.sqrt).pure) }
+      def plus[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R] =
+        (n1, n2).mapN { _ + _ }.pure
+      def minus[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R] =
+        (n1, n2).mapN { _ - _ }.pure
+      def times[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R] =
+        (n1, n2).mapN { _ * _ }.pure
       def div[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R] =
         MonadJoin[M].cond(isZero(n2)) {
           raiseError("division by zero")
         } /* else */ { ((n1, n2) mapN (_ / _)).pure }
 
-      def expt(n1: R, n2: R): R = (n1, n2) mapN Math.pow
-      def lt[B2: BoolLattice](n1: R, n2: R): B2 =
-        ((n1, n2) mapN (_ < _)).toB[B2]
+      def expt[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R] =
+        (n1, n2).mapN(Math.pow).pure
+      def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+          n1: R,
+          n2: R
+      ): M[B2] =
+        ((n1, n2) mapN (_ < _)).toB[B2].pure
 
       def toString[I: IntLattice, C: CharLattice_[I, Sym, S], S: StringLattice_[
         I,
@@ -441,20 +488,36 @@ object ConstantPropagation:
     implicit val charCP: CharLattice[C, I, Sym, S] =
       new BaseInstance[Char]("Char") with CharLattice[C, I, Sym, S] {
         def inject(x: Char) = Constant(x)
-        def downCase(c: C): C = c map (_.toLower)
-        def upCase(c: C): C = c map (_.toUpper)
+        def downCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C] =
+          c.map(_.toLower).pure
+        def upCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C] =
+          c.map(_.toUpper).pure
         def toString(c: C): S = c map (_.toString)
-        def toInt[I2: IntLattice](c: C): I2 = (c map (_.toInt)).toI[I2]
-        def isLower[B2: BoolLattice](c: C): B2 = (c map (_.isLower)).toB[B2]
-        def isUpper[B2: BoolLattice](c: C): B2 = (c map (_.isUpper)).toB[B2]
-        override def charEq[B2: BoolLattice](c1: C, c2: C): B2 =
-          ((c1, c2) mapN (_ == _)).toB[B2]
-        override def charLt[B2: BoolLattice](c1: C, c2: C): B2 =
-          ((c1, c2) mapN (_ < _)).toB[B2]
-        override def charEqCI[B2: BoolLattice](c1: C, c2: C): B2 =
-          ((c1, c2) mapN (_.toUpper == _.toUpper)).toB[B2]
-        override def charLtCI[B2: BoolLattice](c1: C, c2: C): B2 =
-          ((c1, c2) mapN { _.toUpper < _.toUpper }).toB[B2]
+        def toInt[M[_]: MonadError[Error]: MonadJoin, I2: IntLattice](
+            c: C
+        ): M[I2] = (c map (_.toInt)).toI[I2].pure
+        def isLower[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+            c: C
+        ): M[B2] = (c map (_.isLower)).toB[B2].pure
+        def isUpper[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+            c: C
+        ): M[B2] = (c map (_.isUpper)).toB[B2].pure
+        override def charEq[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+          ((c1, c2) mapN (_ == _)).toB[B2].pure
+        override def charLt[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+          ((c1, c2) mapN (_ < _)).toB[B2].pure
+        override def charEqCI[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+          ((c1, c2) mapN (_.toUpper == _.toUpper)).toB[B2].pure
+        override def charLtCI[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+          ((c1, c2) mapN { _.toUpper < _.toUpper }).toB[B2].pure
       }
 
     implicit val symCP: SymbolLattice[Sym] =

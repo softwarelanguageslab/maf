@@ -1,6 +1,9 @@
 package maf.values
 package typeclasses
 
+import maf.util.Error
+import cats.extensions.*
+
 type CharLattice_[I, Sym, S] = [C] =>> CharLattice[C, I, Sym, S]
 
 /** A lattice for characters */
@@ -10,19 +13,31 @@ trait CharLattice[C, I: IntLattice, Sym: SymbolLattice, S: StringLattice_[
   Sym
 ]] extends Lattice[C]:
   def inject(c: Char): C
-  def downCase(c: C): C
-  def upCase(c: C): C
-  def toInt[I: IntLattice](c: C): I
+  def downCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C]
+  def upCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C]
+  def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice](c: C): M[I]
   def toString(c: C): S
 
-  def isLower[B: BoolLattice](c: C): B
-  def isUpper[B: BoolLattice](c: C): B
+  def isLower[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](c: C): M[B]
+  def isUpper[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](c: C): M[B]
 
-  def charEq[B: BoolLattice](c1: C, c2: C): B
-  def charLt[B: BoolLattice](c1: C, c2: C): B
+  def charEq[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+      c1: C,
+      c2: C
+  ): M[B]
+  def charLt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+      c1: C,
+      c2: C
+  ): M[B]
 
-  def charEqCI[B: BoolLattice](c1: C, c2: C): B
-  def charLtCI[B: BoolLattice](c1: C, c2: C): B
+  def charEqCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+      c1: C,
+      c2: C
+  ): M[B]
+  def charLtCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+      c1: C,
+      c2: C
+  ): M[B]
 
 object CharLattice:
   def apply[C: CharLattice_[

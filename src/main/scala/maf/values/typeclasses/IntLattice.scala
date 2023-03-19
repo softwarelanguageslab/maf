@@ -8,11 +8,11 @@ import cats.extensions.*
 trait IntLattice[I] extends Lattice[I] { self =>
   def inject(n: BigInt): I
 
-  def toReal[R: RealLattice](n: I): R
-  def random(n: I): I
-  def plus(n1: I, n2: I): I
-  def minus(n1: I, n2: I): I
-  def times(n1: I, n2: I): I
+  def toReal[M[_]: MonadError[Error]: MonadJoin, R: RealLattice](n: I): M[R]
+  def random[M[_]: MonadError[Error]: MonadJoin](n: I): M[I]
+  def plus[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
+  def minus[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
+  def times[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
   def quotient[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
   def isZero[B: BoolLattice](v: I): B =
     eql(v, inject(0))
@@ -26,10 +26,10 @@ trait IntLattice[I] extends Lattice[I] { self =>
       e3: maf.values.typeclasses.RealLattice[R]
   ): M[R]
 
-  def expt(n1: I, n2: I): I
+  def expt[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
   def modulo[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
   def remainder[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I]
-  def lt[B: BoolLattice](n1: I, n2: I): B
+  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](n1: I, n2: I): M[B]
   def valuesBetween(n1: I, n2: I): Set[I]
   def toString[C: CharLattice_[I, Sym, S], S: StringLattice_[
     I,

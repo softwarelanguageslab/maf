@@ -70,7 +70,7 @@ trait SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
         )(using ev)
     }
 
-  def subsumes(x: HMap[K], y: HMap[K]): Boolean =
+  def subsumes(x: HMap[K], y: => HMap[K]): Boolean =
     // ∀k ∈ domain(x) ∪ domain(y):  y(k) ⊑ x(k)
     (x.keysWithEvidence ++ y.keysWithEvidence).forall { case (key, ev) =>
       key.lat.subsumes(

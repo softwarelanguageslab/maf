@@ -47,11 +47,15 @@ class ModularSchemeDomain[
         n2: Val
     ): M[Val] = ???
 
-    override def isUpper[B: BoolLattice](c: Val): B = ???
+    override def isUpper[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        c: Val
+    ): M[B] = ???
 
-    override def length(s: Val): Val = ???
+    override def length[M[_]: MonadError[Error]: MonadJoin](s: Val): M[Val] =
+      ???
 
-    override def upCase(c: Val): Val = ???
+    override def upCase[M[_]: MonadError[Error]: MonadJoin](c: Val): M[Val] =
+      ???
 
     def toChar[C: CharLattice_[Val, Sym, S], S: StringLattice_[
       Val,
@@ -59,9 +63,15 @@ class ModularSchemeDomain[
       Sym
     ], Sym: SymbolLattice](n: Val): C = ???
 
-    override def charEq[B: BoolLattice](c1: Val, c2: Val): B = ???
+    override def charEq[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        c1: Val,
+        c2: Val
+    ): M[B] = ???
 
-    override def charLt[B: BoolLattice](c1: Val, c2: Val): B = ???
+    override def charLt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        c1: Val,
+        c2: Val
+    ): M[B] = ???
 
     override def ref[M[_$2]: MonadError[Error]: MonadJoin](
         s: Val,
@@ -70,9 +80,10 @@ class ModularSchemeDomain[
 
     override def isTrue(b: Val): Boolean = ???
 
-    override def ceiling(n: Val): Val = ???
+    override def ceiling[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
+      ???
 
-    override def atan(n: Val): Val = ???
+    override def atan[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
     override def asin[M[_$2]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
       ???
@@ -82,19 +93,25 @@ class ModularSchemeDomain[
         n2: Val
     ): M[Val] = ???
 
-    override def tan(n: Val): Val = ???
+    override def tan[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
-    override def cos(n: Val): Val = ???
+    override def cos[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
-    override def charEqCI[B: BoolLattice](c1: Val, c2: Val): B = ???
+    override def charEqCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        c1: Val,
+        c2: Val
+    ): M[B] = ???
 
-    override def toSymbol(s: Val): Val = ???
+    override def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: Val): M[Val] =
+      ???
 
-    override def downCase(c: Val): Val = ???
+    override def downCase[M[_]: MonadError[Error]: MonadJoin](c: Val): M[Val] =
+      ???
 
     override def valuesBetween(n1: Val, n2: Val): Set[Val] = ???
 
-    override def random(n: Val): Val = ???
+    override def random[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
+      ???
 
     override def set[M[_$3]: MonadError[Error]: MonadJoin](
         s: Val,
@@ -102,19 +119,28 @@ class ModularSchemeDomain[
         c: Val
     ): M[Val] = ???
 
-    override def plus(n1: Val, n2: Val): Val = ???
+    override def plus[M[_]: MonadError[Error]: MonadJoin](
+        n1: Val,
+        n2: Val
+    ): M[Val] = ???
 
-    override def charLtCI[B: BoolLattice](c1: Val, c2: Val): B = ???
+    override def charLtCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        c1: Val,
+        c2: Val
+    ): M[B] = ???
 
-    override def floor(n: Val): Val = ???
+    override def floor[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
     override def not(b: Val): Val = ???
 
-    override def isLower[B: BoolLattice](c: Val): B = ???
+    override def isLower[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        c: Val
+    ): M[B] = ???
 
-    override def append(s1: Val, s2: Val): Val = ???
-
-    override def subsumes(x: Val, y: => Val): Boolean = ???
+    override def append[M[_]: MonadError[Error]: MonadJoin](
+        s1: Val,
+        s2: Val
+    ): M[Val] = ???
 
     override def substring[M[_$1]: MonadError[Error]: MonadJoin](
         s: Val,
@@ -124,9 +150,14 @@ class ModularSchemeDomain[
 
     override def join(x: Val, y: => Val): Val = ???
 
-    override def toReal[R: RealLattice](n: Val): R = ???
+    override def toReal[M[_]: MonadError[Error]: MonadJoin, R: RealLattice](
+        n: Val
+    ): M[R] = ???
 
-    override def makeString(length: Val, char: Val): Val = ???
+    override def makeString[M[_]: MonadError[Error]: MonadJoin](
+        length: Val,
+        char: Val
+    ): M[Val] = ???
 
     override def log[M[_$1]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
@@ -141,13 +172,22 @@ class ModularSchemeDomain[
         e3: RealLattice[R]
     ): M[R] = ???
 
-    override def times(n1: Val, n2: Val): Val = ???
+    override def times[M[_]: MonadError[Error]: MonadJoin](
+        n1: Val,
+        n2: Val
+    ): M[Val] = ???
 
-    override def minus(n1: Val, n2: Val): Val = ???
+    override def minus[M[_]: MonadError[Error]: MonadJoin](
+        n1: Val,
+        n2: Val
+    ): M[Val] = ???
 
-    override def lt[B: BoolLattice](n1: Val, n2: Val): B = ???
+    override def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+        n1: Val,
+        n2: Val
+    ): M[B] = ???
 
-    override def sin(n: Val): Val = ???
+    override def sin[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
     override def toString(c: Val): Val = ???
 
@@ -169,7 +209,9 @@ class ModularSchemeDomain[
       Sym
     ], Sym: SymbolLattice](n: Val): S = ???
 
-    override def toInt[I: IntLattice](n: Val): I = ???
+    override def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice](
+        n: Val
+    ): M[I] = ???
 
     override def acos[M[_$3]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
       ???
@@ -190,9 +232,12 @@ class ModularSchemeDomain[
     override def sqrt[M[_$4]: MonadError[Error]: MonadJoin](n: Val): M[Val] =
       ???
 
-    override def round(n: Val): Val = ???
+    override def round[M[_]: MonadError[Error]: MonadJoin](n: Val): M[Val] = ???
 
-    override def expt(n1: Val, n2: Val): Val = ???
+    override def expt[M[_]: MonadError[Error]: MonadJoin](
+        n1: Val,
+        n2: Val
+    ): M[Val] = ???
 
     //
     // Injection
@@ -206,6 +251,17 @@ class ModularSchemeDomain[
     override def inject(n: BigInt): Val = inject(IntT, n)
 
   }
+
+  //
+  // Injection
+  //
+
+  // override def inject(c: Char): Val = inject(CharT, c)
+  // override def injectSymbol(sym: String): Val = inject(SymT, sym)
+  // override def injectString(str: String): Val = inject(StringT, str)
+  // override def inject(n: Double): Val = inject(RealT, n)
+  // override def inject(b: Boolean): Val = inject(BoolT, b)
+  // override def inject(n: BigInt): Val = inject(IntT, n)
 
 //
 // Frequently used domains

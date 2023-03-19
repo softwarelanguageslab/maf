@@ -7,27 +7,27 @@ import maf.util.Error
 /** A lattice for reals (i.e., floating point numbers) */
 trait RealLattice[R] extends Lattice[R] { self =>
   def inject(n: Double): R
-  def toInt[I: IntLattice](n: R): I
-  def ceiling(n: R): R
-  def floor(n: R): R
-  def round(n: R): R
-  def isZero[B: BoolLattice](v: R): B =
+  def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice](n: R): M[I]
+  def ceiling[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
+  def floor[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
+  def round[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
+  def isZero[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](v: R): B =
     eql(v, inject(0))
   def log[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
-  def random(n: R): R
-  def sin(n: R): R
+  def random[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
+  def sin[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def asin[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
-  def cos(n: R): R
+  def cos[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def acos[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
-  def tan(n: R): R
-  def atan(n: R): R
+  def tan[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
+  def atan[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def sqrt[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
-  def plus(n1: R, n2: R): R
-  def minus(n1: R, n2: R): R
-  def times(n1: R, n2: R): R
+  def plus[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
+  def minus[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
+  def times[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
   def div[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
-  def expt(n1: R, n2: R): R
-  def lt[B: BoolLattice](n1: R, n2: R): B
+  def expt[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
+  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](n1: R, n2: R): M[B]
   def toString[I: IntLattice, C: CharLattice_[I, Sym, S], S: StringLattice_[
     I,
     C,
