@@ -3,7 +3,7 @@ package typeclasses
 
 /** A maf.lattice for symbols */
 trait SymbolLattice[Sym] extends Lattice[Sym]:
-  def inject(sym: String): Sym
+  def injectSymbol(sym: String): Sym
   def toString[I: IntLattice, C: CharLattice_[I, Sym, S], S: StringLattice_[
     I,
     C,

@@ -19,3 +19,15 @@ trait Galois[C, A]:
     * corresponds to the `gamma` function in a Galois connection
     */
   def extract(a: A): Option[Set[C]]
+
+object Galois:
+  /** Injects a concrete value into the abstract domain using the Galois
+    * connection in context
+    */
+  def inject[C, A](v: C)(using galois: Galois[C, A]): A =
+    galois.inject(v)
+
+/** Convience type alias that curries the concrete and abstract type, used for
+  * context bounds
+  */
+type GaloisFrom[C] = [A] =>> Galois[C, A]

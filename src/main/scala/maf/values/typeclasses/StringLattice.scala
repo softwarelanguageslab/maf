@@ -16,7 +16,7 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
 ], Sym: SymbolLattice]
     extends Lattice[S]:
 
-  def inject(s: String): S
+  def injectString(s: String): S
   def length(s: S): I
   def append(s1: S, s2: S): S
   def substring[M[_]: MonadError[Error]: MonadJoin](

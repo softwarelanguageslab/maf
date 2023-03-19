@@ -176,7 +176,7 @@ object ConstantPropagation:
 
     implicit val stringCP: StringLattice[S, I, C, Sym] =
       new BaseInstance[String]("Str") with StringLattice[S, I, C, Sym] {
-        def inject(x: String): S = Constant(x)
+        def injectString(x: String): S = Constant(x)
         def length(s: S): I = s match
           case Top         => IntLattice[I].top
           case Constant(s) => IntLattice[I].inject(s.length)
@@ -197,7 +197,9 @@ object ConstantPropagation:
           case (Constant(n), _) =>
             val c = charCP.toString(char)
             1.to(NumOps.bigIntToInt(n))
-              .foldLeft(stringCP.inject(""))((s, _) => stringCP.append(s, c))
+              .foldLeft(stringCP.injectString(""))((s, _) =>
+                stringCP.append(s, c)
+              )
 
         def substring[M[_]: MonadError[Error]: MonadJoin](
             s: S,
@@ -224,7 +226,7 @@ object ConstantPropagation:
                             IntLattice[I]
                               .eql[B](to, IntLattice[I].inject(to2))
                           ) =>
-                        inject(s.substring(from2, to2).nn)
+                        injectString(s.substring(from2, to2).nn)
                     }))
               })
               .flatten)
@@ -264,7 +266,7 @@ object ConstantPropagation:
         def toSymbol(s: S): Sym = s match
           case Bottom      => SymbolLattice[Sym].bottom
           case Top         => SymbolLattice[Sym].top
-          case Constant(x) => SymbolLattice[Sym].inject(x)
+          case Constant(x) => SymbolLattice[Sym].injectSymbol(x)
 
         def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S) =
           s match
@@ -352,7 +354,7 @@ object ConstantPropagation:
         Sym
       ], Sym: SymbolLattice](n: I): S = n match
         case Top         => StringLattice[S, I, C, Sym].top
-        case Constant(x) => StringLattice[S, I, C, Sym].inject(x.toString)
+        case Constant(x) => StringLattice[S, I, C, Sym].injectString(x.toString)
         case Bottom      => StringLattice[S, I, C, Sym].bottom
       def toChar[C: CharLattice_[I, Sym, S], S: StringLattice_[
         I,
@@ -432,7 +434,7 @@ object ConstantPropagation:
         Sym
       ], Sym: SymbolLattice](n: R): S = n match
         case Top         => StringLattice[S, I, C, Sym].top
-        case Constant(x) => StringLattice[S, I, C, Sym].inject(x.toString)
+        case Constant(x) => StringLattice[S, I, C, Sym].injectString(x.toString)
         case Bottom      => StringLattice[S, I, C, Sym].bottom
     }
 
@@ -458,7 +460,7 @@ object ConstantPropagation:
     implicit val symCP: SymbolLattice[Sym] =
       new BaseInstance[String]("Symbol")(LatticeShow.symShow)
         with SymbolLattice[Sym] {
-        def inject(x: String) = Constant(x)
+        def injectSymbol(x: String) = Constant(x)
         def toString[I: IntLattice, C: CharLattice_[
           I,
           Sym,
@@ -469,6 +471,6 @@ object ConstantPropagation:
           Sym
         ]](s: Sym): S = s match
           case Top         => StringLattice[S, I, C, Sym].top
-          case Constant(x) => StringLattice[S, I, C, Sym].inject(x)
+          case Constant(x) => StringLattice[S, I, C, Sym].injectString(x)
           case Bottom      => StringLattice[S, I, C, Sym].bottom
       }

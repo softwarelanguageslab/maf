@@ -21,6 +21,9 @@ trait LatKey:
   /** Support for primitive lattice operations on the abstract types */
   def lat: Lattice[Abstract]
 
+  /** A human-readable name for the type, to be used for printing */
+  val name: String
+
 object LatKey:
   /** Auxilary alias for a lattice key, can be used to fill in the abstract type
     * members using type parameters
@@ -30,22 +33,24 @@ object LatKey:
   /** Convience constructor for a LatKey given a lattice for the abstract value
     * and a galois connection between the abstract and concrete value
     */
-  def T[C, A: Lattice](using Galois[C, A]): LatKey =
+  def T[C, A: Lattice](nam: String)(using Galois[C, A]): LatKey.Aux[C, A] =
     new LatKey:
       type Concrete = C
       type Abstract = A
       val galois = summon
       val lat = summon
+      val name = nam
 
   /** Any mapping between a LatKey and its corresponding abstract value is a
     * valid mapping. This given provides evidence of this fact automatically.
     */
-  given [C, A]: Mapping[LatKey.Aux[C, A], A] = Mapping.derived
+  given allowedMapping[K <: LatKey.Aux[C, A], C, A]: Mapping[K, A] =
+    Mapping.derived
 
 /** A product lattice represented as an `HMap` to limit memory usuage when its
   * contents are sparse.
   */
-abstract class SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
+trait SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
 
   def bottom: HMap[K] = HMap.empty
   override def isBottom(x: HMap[K]): Boolean = x.isEmpty
@@ -74,4 +79,18 @@ abstract class SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
       )
     }
 
+  def inject(tpy: K, v: tpy.Concrete): HMap[K] =
+    HMap.empty.put(tpy, tpy.galois.inject(v))(using LatKey.allowedMapping)
+
   def eql[B: BoolLattice](x: HMap[K], y: HMap[K]): B = ???
+
+  //
+  // Show
+  //
+
+  override def show(t: HMap[K]): String =
+    t.keysWithEvidence
+      .map { case (key, ev) =>
+        key.lat.show(t.get(key)(using ev).getOrElse(key.lat.bottom))
+      }
+      .mkString("{", ",", "}")
