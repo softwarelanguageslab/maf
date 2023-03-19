@@ -40,6 +40,9 @@ object LatticeTest:
       (a, b) mapN ((a, b) => Lattice[X].join(a, b))
   }
 
+  given [A: Lattice, E]: Conversion[Either[E, A], A] =
+    _.getOrElse(Lattice[A].bottom)
+
 abstract class LatticeTest[L: Lattice](gen: LatticeGenerator[L])
     extends LatticeSpecification:
 
@@ -136,6 +139,8 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
 ], Sym: SymbolLattice, I: IntLattice](
     gen: LatticeGenerator[S]
 ) extends LatticeTest[S](gen):
+
+  import LatticeTest.given
   val stringLaws: Properties =
     newProperties("String") { p =>
       implicit val arb = gen.anyArb
@@ -143,7 +148,8 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
       import lat._
 
       /** Length preserves bottom */
-      p.property("length(⊥) = ⊥") = length(bottom) == IntLattice[I].bottom
+      p.property("length(⊥) = ⊥") =
+        length(bottom).getOrElse(IntLattice[I].bottom) == IntLattice[I].bottom
 
       /** Length is monotone */
       p.property("∀ a, b: a ⊑ b ⇒ length(a) ⊑ length(b)") = forAll { (b: S) =>
@@ -159,12 +165,13 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
       p.property("∀ a: inject(a.size) ⊑ length(inject(a))") =
         forAll((a: String) =>
           IntLattice[I]
-            .subsumes(length(inject(a)), IntLattice[I].inject(a.size))
+            .subsumes(length(injectString(a)), IntLattice[I].inject(a.size))
         )
 
       /** Append preservesf bottom */
       p.property("∀ a: append(a, ⊥) = ⊥ = append(⊥, a)") = forAll((a: S) =>
-        append(bottom, a) == bottom && append(a, bottom) == bottom
+        append(bottom, a).getOrElse(bottom) == bottom && append(a, bottom)
+          .getOrElse(bottom) == bottom
       )
 
       /** Append is monotone */
@@ -185,14 +192,18 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
       /** Append is sound */
       p.property("∀ a, b: append(inject(a), inject(b)) ⊑ inject(a ++ b)") =
         forAll((a: String, b: String) =>
-          subsumes(append(inject(a), inject(b)), inject(a ++ b))
+          subsumes(
+            append(injectString(a), injectString(b)),
+            injectString(a ++ b)
+          )
         )
 
       /** Append is associative */
       p.property(
         "∀ a, b, c: append(append(a, b), c) == append(a, append(b, c))"
       ) = forAll((a: S, b: S, c: S) =>
-        append(append(a, b), c) == append(a, append(b, c))
+        append(append(a, b).getOrElse(bottom), c)
+          .getOrElse(bottom) == append(a, append(b, c)).getOrElse(bottom)
       )
 
       p
@@ -219,14 +230,16 @@ abstract class IntLatticeTest[
       import lat._
 
       /** Conversion to real preserves bottom */
-      p.property("toReal(⊥) = ⊥") = toReal[R](bottom) == RealLattice[R].bottom
+      p.property("toReal(⊥) = ⊥") = toReal[Lat, R](bottom).getOrElse(
+        RealLattice[R].bottom
+      ) == RealLattice[R].bottom
 
       /** Conversion to real is monotone */
       p.property("∀ a, b: a ⊑ b ⇒ toReal(a) ⊑ toR(b)") = forAll { (b: I) =>
         forAll(gen.le(b)) { (a: I) =>
           conditional(
             subsumes(b, a),
-            RealLattice[R].subsumes(toReal[R](b), toReal[R](a))
+            RealLattice[R].subsumes(toReal[Lat, R](b), toReal[Lat, R](a))
           )
         }
       }
@@ -235,11 +248,14 @@ abstract class IntLatticeTest[
       p.property("∀ a: inject(a.toDouble) ⊑ toReal(inject(a))") =
         forAll((a: Int) =>
           RealLattice[R]
-            .subsumes(toReal[R](inject(a)), RealLattice[R].inject(a.toDouble))
+            .subsumes(
+              toReal[Lat, R](inject(a)),
+              RealLattice[R].inject(a.toDouble)
+            )
         )
 
       /** Random preserves bottom */
-      p.property("random(⊥) = ⊥") = random(bottom) == bottom
+      p.property("random(⊥) = ⊥") = random(bottom).getOrElse(bottom) == bottom
 
       /** Random is sound */
       p.property("∀ a: inject(a.random) ⊑ random(inject(a))") =
@@ -255,8 +271,10 @@ abstract class IntLatticeTest[
       }
 
       /** Addition preserves bottom */
-      p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
-        forAll((a: I) => plus(a, bottom) == bottom && plus(bottom, a) == bottom)
+      p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") = forAll((a: I) =>
+        plus(a, bottom).getOrElse(bottom) == bottom && plus(bottom, a)
+          .getOrElse(bottom) == bottom
+      )
 
       /** Addition is monotone */
       p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll {
@@ -274,15 +292,22 @@ abstract class IntLatticeTest[
 
       /** Addition is associative */
       p.property("∀ a, b, c: plus(a, plus(b, c)) == plus(plus(a, b), c)") =
-        forAll((a: I, b: I, c: I) => plus(a, plus(b, c)) == plus(plus(a, b), c))
+        forAll((a: I, b: I, c: I) =>
+          plus(a, plus(b, c).getOrElse(bottom)).getOrElse(bottom) == plus(
+            plus(a, b),
+            c
+          ).getOrElse(bottom)
+        )
 
       /** Addition is commutative */
-      p.property("∀ a, b: plus(a, b) == plus(b, a)") =
-        forAll((a: I, b: I) => plus(a, b) == plus(b, a))
+      p.property("∀ a, b: plus(a, b) == plus(b, a)") = forAll((a: I, b: I) =>
+        plus(a, b).getOrElse(bottom) == plus(b, a).getOrElse(bottom)
+      )
 
       /** Subtraction preserves bottom */
       p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") = forAll((a: I) =>
-        minus(a, bottom) == bottom && minus(bottom, a) == bottom
+        minus(a, bottom).getOrElse(bottom) == bottom && minus(bottom, a)
+          .getOrElse(bottom) == bottom
       )
 
       /** Subtraction is monotone */
@@ -301,11 +326,17 @@ abstract class IntLatticeTest[
 
       /** Subtraction is anticommutative */
       p.property("∀ a, b: minus(a, b) == minus(inject(0), minus(b, a))") =
-        forAll((a: I, b: I) => minus(a, b) == minus(inject(0), minus(b, a)))
+        forAll((a: I, b: I) =>
+          minus(a, b).getOrElse(bottom) == minus(inject(0), minus(b, a))
+            .getOrElse(bottom)
+        )
 
       /** Addition preserves bottom */
       p.property("times(a, ⊥) = ⊥ = times(⊥, a)") = forAll((a: I) =>
-        times(a, bottom) == bottom && times(bottom, a) == bottom
+        times(a, bottom).getOrElse(bottom) == bottom && times(
+          bottom,
+          a
+        ).getOrElse(bottom) == bottom
       )
 
       /** Addition is monotone */
@@ -325,7 +356,8 @@ abstract class IntLatticeTest[
       /** Addition is associative */
       p.property("∀ a, b, c: times(a, times(b, c)) == times(times(a, b), c)") =
         forAll((a: I, b: I, c: I) =>
-          times(a, times(b, c)) == times(times(a, b), c)
+          times(a, times(b, c)).getOrElse(bottom) == times(times(a, b), c)
+            .getOrElse(bottom)
         )
 
       /** Addition is commutative */
@@ -445,10 +477,12 @@ abstract class IntLatticeTest[
 
       /** Less-than operation preserves bottom */
       p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") = forAll((a: I) =>
-        lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](
+        lt[Lat, B](a, bottom).getOrElse(BoolLattice[B].bottom) == BoolLattice[
+          B
+        ].bottom && lt[Lat, B](
           bottom,
           a
-        ) == BoolLattice[B].bottom
+        ).getOrElse(BoolLattice[B].bottom) == BoolLattice[B].bottom
       )
 
       /** Less-than operation is monotone */
@@ -457,7 +491,7 @@ abstract class IntLatticeTest[
           forAll(gen.le(c)) { (b: I) =>
             conditional(
               subsumes(b, c),
-              BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b))
+              BoolLattice[B].subsumes(lt[Lat, B](a, c), lt[Lat, B](a, b))
             )
           }
       }
@@ -466,7 +500,10 @@ abstract class IntLatticeTest[
       p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
         forAll((a: BigInt, b: BigInt) =>
           BoolLattice[B]
-            .subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b))
+            .subsumes(
+              lt[Lat, B](inject(a), inject(b)),
+              BoolLattice[B].inject(a < b)
+            )
         )
 
       /** To-string operation preserves bottom */
@@ -490,7 +527,7 @@ abstract class IntLatticeTest[
         forAll((a: BigInt) =>
           StringLattice[S, I, C, Sym].subsumes(
             lat.toString(inject(a)),
-            StringLattice[S, I, C, Sym].inject(a.toString)
+            StringLattice[S, I, C, Sym].injectString(a.toString)
           )
         )
 
@@ -508,7 +545,7 @@ abstract class RealLatticeTest[
 ](gen: LatticeGenerator[R])
     extends LatticeTest[R](gen):
   import cats.instances.*
-  import LatticeTest.given
+  import LatticeTest.{Lat, given}
   val realLaws: Properties =
     newProperties("Real") { p =>
       implicit val arb = gen.anyArb
@@ -516,14 +553,16 @@ abstract class RealLatticeTest[
       import lat._
 
       /** Integer conversion preserves bottom */
-      p.property("toInt(⊥) = ⊥") = toInt[I](bottom) == IntLattice[I].bottom
+      p.property("toInt(⊥) = ⊥") = toInt[Lat, I](bottom).getOrElse(
+        IntLattice[I].bottom
+      ) == IntLattice[I].bottom
 
       /** Integer conversion is monotone */
       p.property("∀ a, b: a ⊑ b ⇒ toInt(a) ⊑ toInt(b)") = forAll { (b: R) =>
         forAll(gen.le(b)) { (a: R) =>
           conditional(
             subsumes(b, a),
-            IntLattice[I].subsumes(toInt[I](b), toInt[I](a))
+            IntLattice[I].subsumes(toInt[Lat, I](b), toInt[Lat, I](a))
           )
         }
       }
@@ -531,11 +570,11 @@ abstract class RealLatticeTest[
       /** Integer conversion is sound */
       p.property("∀ a: a.toInt ⊑ toInt(inject(a))") = forAll((a: Double) =>
         IntLattice[I]
-          .subsumes(toInt[I](inject(a)), IntLattice[I].inject(a.toInt))
+          .subsumes(toInt[Lat, I](inject(a)), IntLattice[I].inject(a.toInt))
       )
 
       /** Ceiling preserves bottom */
-      p.property("ceiling(⊥) = ⊥") = ceiling(bottom) == bottom
+      p.property("ceiling(⊥) = ⊥") = ceiling(bottom).getOrElse(bottom) == bottom
 
       /** Ceiling is monotone */
       p.property("∀ a, b: a ⊑ b ⇒ ceiling(a) ⊑ ceiling(b)") = forAll { (b: R) =>
@@ -567,7 +606,7 @@ abstract class RealLatticeTest[
       )
 
       /** Random preserves bottom */
-      p.property("random(⊥) = ⊥") = random(bottom) == bottom
+      p.property("random(⊥) = ⊥") = random(bottom).getOrElse(bottom) == bottom
 
       /** Random is sound */
       p.property("∀ a: inject(a.random) ⊑ random(inject(a))") =
@@ -583,8 +622,10 @@ abstract class RealLatticeTest[
       }
 
       /** Addition preserves bottom */
-      p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") =
-        forAll((a: R) => plus(a, bottom) == bottom && plus(bottom, a) == bottom)
+      p.property("plus(a, ⊥) = ⊥ = plus(⊥, a)") = forAll((a: R) =>
+        plus(a, bottom).getOrElse(bottom) == bottom && plus(bottom, a)
+          .getOrElse(bottom) == bottom
+      )
 
       /** Addition is monotone */
       p.property("∀ a, b, c: b ⊑ c ⇒ plus(a, b) ⊑ plus(a, c)") = forAll {
@@ -603,7 +644,10 @@ abstract class RealLatticeTest[
 
       /** Subtraction preserves bottom */
       p.property("minus(a, ⊥) = ⊥ = minus(⊥, a)") = forAll((a: R) =>
-        minus(a, bottom) == bottom && minus(bottom, a) == bottom
+        minus(a, bottom).getOrElse(bottom) == bottom && minus(
+          bottom,
+          a
+        ).getOrElse(bottom) == bottom
       )
 
       /** Subtraction is monotone */
@@ -623,7 +667,8 @@ abstract class RealLatticeTest[
 
       /** Multiplication preserves bottom */
       p.property("times(a, ⊥) = ⊥ = times(⊥, a)") = forAll((a: R) =>
-        times(a, bottom) == bottom && times(bottom, a) == bottom
+        times(a, bottom).getOrElse(bottom) == bottom && times(bottom, a)
+          .getOrElse(bottom) == bottom
       )
 
       /** Multiplication is monotone */
@@ -674,10 +719,14 @@ abstract class RealLatticeTest[
 
       /** Less-than operation preserves bottom */
       p.property("lt(a, ⊥) = ⊥ = lt(⊥, a)") = forAll((a: R) =>
-        lt[B](a, bottom) == BoolLattice[B].bottom && lt[B](
+        lt[Lat, B](a, bottom)
+          .getOrElse(BoolLattice[B].bottom) == BoolLattice[B].bottom && lt[
+          Lat,
+          B
+        ](
           bottom,
           a
-        ) == BoolLattice[B].bottom
+        ).getOrElse(BoolLattice[B].bottom) == BoolLattice[B].bottom
       )
 
       /** Less-than operation is monotone */
@@ -686,7 +735,7 @@ abstract class RealLatticeTest[
           forAll(gen.le(c)) { (b: R) =>
             conditional(
               subsumes(b, c),
-              BoolLattice[B].subsumes(lt[B](a, c), lt[B](a, b))
+              BoolLattice[B].subsumes(lt[Lat, B](a, c), lt[Lat, B](a, b))
             )
           }
       }
@@ -695,7 +744,10 @@ abstract class RealLatticeTest[
       p.property("∀ a, b ≠ 0: inject(a < b) ⊑ lt(inject(a), inject(b))") =
         forAll((a: Double, b: Double) =>
           BoolLattice[B]
-            .subsumes(lt[B](inject(a), inject(b)), BoolLattice[B].inject(a < b))
+            .subsumes(
+              lt[Lat, B](inject(a), inject(b)),
+              BoolLattice[B].inject(a < b)
+            )
         )
 
       /** To-string operation preserves bottom */
@@ -722,7 +774,7 @@ abstract class RealLatticeTest[
         forAll((a: Double) =>
           StringLattice[S, I, C, Sym].subsumes(
             lat.toString[I, C, S, Sym](inject(a)),
-            StringLattice[S, I, C, Sym].inject(a.toString)
+            StringLattice[S, I, C, Sym].injectString(a.toString)
           )
         )
       p
