@@ -18,7 +18,6 @@ object KillLambdaDD:
     var oracleTreeSizes: List[Int] = List()
 
     val startTime = System.currentTimeMillis()
-    //var topCalledLambdas: Set[Int] = Set()
 
     val reduced = GTR.reduce(
       program,
@@ -35,16 +34,6 @@ object KillLambdaDD:
       },
       identity,
       TransformationManager.allTransformations,
-      /*
-      Some(candidateTree => {
-        candidateTree.deleteChildren(exp => {
-          exp match
-            case lambda: SchemeLambda =>
-              !topCalledLambdas.contains(lambda.hashCode())
-            case _ => false
-        })
-      })
-      */
     )
 
     val endTime = System.currentTimeMillis()

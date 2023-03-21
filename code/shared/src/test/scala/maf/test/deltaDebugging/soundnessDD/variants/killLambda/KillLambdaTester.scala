@@ -37,7 +37,7 @@ trait KillLambdaTester extends SoundnessDDTester {
   def runAndFindLambdas(program: SchemeExp, benchmark: Benchmark):
   (Option[(String,
     Map[SchemeLambda, Set[(SchemeFuncall, Value)]],
-    Array[(String, Int)]
+    Array[((Int, Int), Int)]
     )], (Long, Long)) =
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0
@@ -96,6 +96,6 @@ trait KillLambdaTester extends SoundnessDDTester {
           val postLambdaKills = LambdaKiller.killLambdas(program, dynAnalysis, staticProfiling, this, benchmark)
           println("pre: " + program.size)
           println("post: " + postLambdaKills.size)
-          //DeadCodeDD.reduce(program, postLambdaKills, this, benchmark)
+          KillLambdaDD.reduce(program, postLambdaKills, this, benchmark)
       case _ =>
 }

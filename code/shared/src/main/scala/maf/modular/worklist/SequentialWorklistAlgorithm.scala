@@ -14,16 +14,19 @@ trait SequentialWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     // adding elements to the worklist
     var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
     protected var reAnalysisMap: Map[Component, Int] = Map()
-    def getReAnalysisMap(): Map[String, Int] =
+    def getReAnalysisMap(): Map[(Int, Int), Int] =
         val array: Array[(String, Array[(Component, Int)])] =
             reAnalysisMap.toArray.groupBy(tpl => tpl._1.toString.split(" ").asInstanceOf[Array[String]].head).toArray
         var stringsAndNumbers: Map[String, Int] = array.map(tpl => (tpl._1, tpl._2.map(_._2).sum)).toMap
         stringsAndNumbers = stringsAndNumbers.filterNot(tpl => tpl._1 equals "main")
         stringsAndNumbers.map(tpl => {
+            val splitted: Array[String] = tpl._1.split(":").asInstanceOf[Array[String]]
+            val row = splitted(splitted.length - 2).toInt
+            val col = splitted.last.toInt
             val string = tpl._1
             val parsed: Array[String] = string.split(Array('@'))
             val name = parsed.head
-            (name, tpl._2)
+            ((row, col), tpl._2)
         })
     def addToWorkList(cmp: Component) = workList = workList.add(cmp)
     def finished: Boolean = workList.isEmpty
