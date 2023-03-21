@@ -2,6 +2,7 @@ package maf
 package analysis
 package primitives
 
+import interpreter.*
 import syntax.*
 import syntax.scheme.*
 import util.*
@@ -81,11 +82,9 @@ trait SchemePrimM[M[_]: Monad: MonadError[Error], A <: Address, V]
   def allocList(exs: List[SchemeExp], vlus: List[V])(using
       lat: SchemeLattice[V]
   ): M[V] =
-    exs.zip(vlus).foldM[M, V](lat.nil) { case (rest, (ex, vlu)) =>
-      allocVal(ex, lat.cons(vlu, rest)).map(lat.ptr)
+    exs.zip(vlus).foldM[M, V](SchemeNil) { case (rest, (ex, vlu)) =>
+      allocVal(ex, lat.cons(vlu, rest)).map(adr => SchemePtr(adr))
     }
-  // def lookupSto(a: A): M[V] = // stop when the lookup of the store is bottom
-  //    flatMap(lookupSto(a))(inject)
   // exotic -- not so important if not implemented yet
   // def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] =
   //  throw new Exception("Not supported")

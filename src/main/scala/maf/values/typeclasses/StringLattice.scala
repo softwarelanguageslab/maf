@@ -15,8 +15,6 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
   S
 ], Sym: SymbolLattice]
     extends Lattice[S]:
-
-  def injectString(s: String): S
   def length[M[_]: MonadError[Error]: MonadJoin](s: S): M[I]
   def append[M[_]: MonadError[Error]: MonadJoin](s1: S, s2: S): M[S]
   def substring[M[_]: MonadError[Error]: MonadJoin](
@@ -31,7 +29,9 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
       c: C
   ): M[S]
 
-  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](s1: S, s2: S): M[B]
+  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](s1: S, s2: S): M[B]
   def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym]
   def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S): M[I]
   def makeString[M[_]: MonadError[Error]: MonadJoin](length: I, char: C): M[S]

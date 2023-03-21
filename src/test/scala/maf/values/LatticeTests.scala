@@ -3,6 +3,7 @@ package values
 
 import typeclasses.*
 import domains.*
+import Galois.inject
 
 import org.scalacheck.Prop.{forAll, propBoolean}
 import org.scalacheck._
@@ -95,8 +96,9 @@ abstract class LatticeTest[L: Lattice](gen: LatticeGenerator[L])
     }
   checkAll(laws)
 
-abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B])
-    extends LatticeTest[B](gen):
+abstract class BoolLatticeTest[B: BoolLattice: GaloisFrom[Boolean]](
+    gen: LatticeGenerator[B]
+) extends LatticeTest[B](gen):
   val boolLaws: Properties =
     newProperties("Bool") { p =>
       newProperties("BoolLattice") { p =>
@@ -105,8 +107,9 @@ abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B])
         import lat._
 
         /** Inject preserves truthiness */
-        p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") =
-          isTrue(inject(true)) && isFalse(inject(false))
+        p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = isTrue(
+          Galois.inject[Boolean, B](true)
+        ) && isFalse(Galois.inject[Boolean, B](false))
 
         /** Top is both true and false */
         p.property("isTrue(⊤) ∧ isFalse(⊤)") = isTrue(top) && isFalse(top)
@@ -132,11 +135,13 @@ abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B])
     }
   checkAll(boolLaws)
 
-abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
+abstract class StringLatticeTest[S: StringLattice_[I, C, Sym]: GaloisFrom[
+  String
+], C: CharLattice_[
   I,
   Sym,
   S
-], Sym: SymbolLattice, I: IntLattice](
+], Sym: SymbolLattice, I: IntLattice: GaloisFrom[BigInt]](
     gen: LatticeGenerator[S]
 ) extends LatticeTest[S](gen):
 
@@ -165,7 +170,10 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
       p.property("∀ a: inject(a.size) ⊑ length(inject(a))") =
         forAll((a: String) =>
           IntLattice[I]
-            .subsumes(length(injectString(a)), IntLattice[I].inject(a.size))
+            .subsumes(
+              length(Galois.inject[String, S](a)),
+              Galois.inject[BigInt, I](a.size)
+            )
         )
 
       /** Append preservesf bottom */
@@ -193,8 +201,8 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
       p.property("∀ a, b: append(inject(a), inject(b)) ⊑ inject(a ++ b)") =
         forAll((a: String, b: String) =>
           subsumes(
-            append(injectString(a), injectString(b)),
-            injectString(a ++ b)
+            append(Galois.inject[String, S](a), Galois.inject[String, S](b)),
+            Galois.inject[String, S](a ++ b)
           )
         )
 
@@ -211,12 +219,12 @@ abstract class StringLatticeTest[S: StringLattice_[I, C, Sym], C: CharLattice_[
   checkAll(stringLaws)
 
 abstract class IntLatticeTest[
-    I: IntLattice,
-    B: BoolLattice,
-    R: RealLattice,
+    I: IntLattice: GaloisFrom[BigInt],
+    B: BoolLattice: GaloisFrom[Boolean],
+    R: RealLattice: GaloisFrom[Double],
     Sym: SymbolLattice,
     C: CharLattice_[I, Sym, S],
-    S: StringLattice_[I, C, Sym]
+    S: StringLattice_[I, C, Sym]: GaloisFrom[String]
 ](gen: LatticeGenerator[I])
     extends LatticeTest[I](gen):
 
@@ -249,8 +257,8 @@ abstract class IntLatticeTest[
         forAll((a: Int) =>
           RealLattice[R]
             .subsumes(
-              toReal[Lat, R](inject(a)),
-              RealLattice[R].inject(a.toDouble)
+              toReal[Lat, R](Galois.inject[BigInt, I](a)),
+              Galois.inject[Double, R](a.toDouble)
             )
         )
 
@@ -260,7 +268,10 @@ abstract class IntLatticeTest[
       /** Random is sound */
       p.property("∀ a: inject(a.random) ⊑ random(inject(a))") =
         forAll((a: Int) =>
-          subsumes(random(inject(a)), inject(MathOps.random(a)))
+          subsumes(
+            random(Galois.inject[BigInt, I](a)),
+            Galois.inject[BigInt, I](MathOps.random(a))
+          )
         )
 
       /** Random is monotone */
@@ -287,7 +298,10 @@ abstract class IntLatticeTest[
       /** Addition is sound */
       p.property("∀ a, b: inject(a + b) ⊑ plus(inject(a), inject(b))") =
         forAll((a: BigInt, b: BigInt) =>
-          subsumes(plus(inject(a), inject(b)), inject(a + b))
+          subsumes(
+            plus(Galois.inject(a), Galois.inject(b)),
+            Galois.inject(a + b)
+          )
         )
 
       /** Addition is associative */
@@ -327,7 +341,7 @@ abstract class IntLatticeTest[
       /** Subtraction is anticommutative */
       p.property("∀ a, b: minus(a, b) == minus(inject(0), minus(b, a))") =
         forAll((a: I, b: I) =>
-          minus(a, b).getOrElse(bottom) == minus(inject(0), minus(b, a))
+          minus(a, b).getOrElse(bottom) == minus(inject(BigInt(0)), minus(b, a))
             .getOrElse(bottom)
         )
 
@@ -367,7 +381,7 @@ abstract class IntLatticeTest[
       /** Quotient preserves bottom */
       p.property("div(a, ⊥) = ⊥ = div(⊥, a)") = forAll((a: I) =>
         quotient[Lat](a, bottom).getOrElse(bottom) == bottom && conditional(
-          !subsumes(a, inject(0)),
+          !subsumes(a, inject(BigInt(0))),
           quotient(bottom, a).getOrElse(bottom) == bottom
         )
       )
@@ -377,9 +391,9 @@ abstract class IntLatticeTest[
         (a: I, c: I) =>
           forAll(gen.le(c)) { (b: I) =>
             conditional(
-              subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(
+              subsumes(c, b) && !subsumes(b, inject(BigInt(0))) && !subsumes(
                 c,
-                inject(0)
+                inject(BigInt(0))
               ),
               subsumes(
                 quotient(a, c).getOrElse(bottom),
@@ -404,7 +418,7 @@ abstract class IntLatticeTest[
       /** Modulo preserves bottom */
       p.property("modulo(a, ⊥) = ⊥ = modulo(⊥, a)") = forAll((a: I) =>
         modulo(a, bottom).getOrElse(bottom) == bottom && conditional(
-          !subsumes(a, inject(0)),
+          !subsumes(a, inject(BigInt(0))),
           modulo(bottom, a).getOrElse(bottom) == bottom
         )
       )
@@ -414,9 +428,9 @@ abstract class IntLatticeTest[
         (a: I, c: I) =>
           forAll(gen.le(c)) { (b: I) =>
             conditional(
-              subsumes(c, b) && !subsumes(c, inject(0)) && !subsumes(
+              subsumes(c, b) && !subsumes(c, inject(BigInt(0))) && !subsumes(
                 b,
-                inject(0)
+                inject(BigInt(0))
               ),
               subsumes(
                 modulo(a, c).getOrElse(bottom),
@@ -441,7 +455,7 @@ abstract class IntLatticeTest[
       /** Remainder preserves bottom */
       p.property("rem(a, ⊥) = ⊥ = rem(⊥, a) (if a ≠ 0)") = forAll((a: I) =>
         remainder(a, bottom).getOrElse(bottom) == bottom && conditional(
-          !subsumes(a, inject(0)),
+          !subsumes(a, inject(BigInt(0))),
           remainder(bottom, a).getOrElse(bottom) == bottom
         )
       )
@@ -451,9 +465,9 @@ abstract class IntLatticeTest[
         (a: I, c: I) =>
           forAll(gen.le(c)) { (b: I) =>
             conditional(
-              subsumes(c, b) && !subsumes(c, inject(0)) && !subsumes(
+              subsumes(c, b) && !subsumes(c, inject(BigInt(0))) && !subsumes(
                 b,
-                inject(0)
+                inject[BigInt, I](0)
               ),
               subsumes(
                 remainder(a, c).getOrElse(bottom),
@@ -502,7 +516,7 @@ abstract class IntLatticeTest[
           BoolLattice[B]
             .subsumes(
               lt[Lat, B](inject(a), inject(b)),
-              BoolLattice[B].inject(a < b)
+              inject(a < b)
             )
         )
 
@@ -526,8 +540,8 @@ abstract class IntLatticeTest[
       p.property("∀ a, b: inject(toString(a)) ⊑ toString(inject(a))") =
         forAll((a: BigInt) =>
           StringLattice[S, I, C, Sym].subsumes(
-            lat.toString(inject(a)),
-            StringLattice[S, I, C, Sym].injectString(a.toString)
+            lat.toString(inject[BigInt, I](a)),
+            inject[String, S](a.toString)
           )
         )
 
@@ -536,12 +550,12 @@ abstract class IntLatticeTest[
   checkAll(intLaws)
 
 abstract class RealLatticeTest[
-    R: RealLattice,
-    B: BoolLattice,
-    I: IntLattice,
-    C: CharLattice_[I, Sym, S],
+    R: RealLattice: GaloisFrom[Double],
+    B: BoolLattice: GaloisFrom[Boolean],
+    I: IntLattice: GaloisFrom[BigInt],
+    C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice,
-    S: StringLattice_[I, C, Sym]
+    S: StringLattice_[I, C, Sym]: GaloisFrom[String]
 ](gen: LatticeGenerator[R])
     extends LatticeTest[R](gen):
   import cats.instances.*
@@ -570,7 +584,7 @@ abstract class RealLatticeTest[
       /** Integer conversion is sound */
       p.property("∀ a: a.toInt ⊑ toInt(inject(a))") = forAll((a: Double) =>
         IntLattice[I]
-          .subsumes(toInt[Lat, I](inject(a)), IntLattice[I].inject(a.toInt))
+          .subsumes(toInt[Lat, I](inject(a)), inject[BigInt, I](a.toInt))
       )
 
       /** Ceiling preserves bottom */
@@ -689,7 +703,7 @@ abstract class RealLatticeTest[
       /** Division preserves bottom */
       p.property("div(a, ⊥) = ⊥ = div(⊥, a)") = forAll((a: R) =>
         div(a, bottom).getOrElse(bottom) == bottom && conditional(
-          !subsumes(a, inject(0)),
+          !subsumes(a, inject(0: Double)),
           div(bottom, a).getOrElse(bottom) == bottom
         )
       )
@@ -699,9 +713,9 @@ abstract class RealLatticeTest[
         (a: R, c: R) =>
           forAll(gen.le(c)) { (b: R) =>
             conditional(
-              subsumes(c, b) && !subsumes(b, inject(0)) && !subsumes(
+              subsumes(c, b) && !subsumes(b, inject[Double, R](0)) && !subsumes(
                 c,
-                inject(0)
+                inject[Double, R](0)
               ),
               subsumes(div(a, c).getOrElse(bottom), div(a, b).getOrElse(bottom))
             )
@@ -746,7 +760,7 @@ abstract class RealLatticeTest[
           BoolLattice[B]
             .subsumes(
               lt[Lat, B](inject(a), inject(b)),
-              BoolLattice[B].inject(a < b)
+              inject(a < b)
             )
         )
 
@@ -774,7 +788,7 @@ abstract class RealLatticeTest[
         forAll((a: Double) =>
           StringLattice[S, I, C, Sym].subsumes(
             lat.toString[I, C, S, Sym](inject(a)),
-            StringLattice[S, I, C, Sym].injectString(a.toString)
+            inject(a.toString)
           )
         )
       p

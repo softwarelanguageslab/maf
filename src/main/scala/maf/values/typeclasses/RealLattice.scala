@@ -6,13 +6,18 @@ import maf.util.Error
 
 /** A lattice for reals (i.e., floating point numbers) */
 trait RealLattice[R] extends Lattice[R] { self =>
-  def inject(n: Double): R
-  def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice](n: R): M[I]
+  def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice: GaloisFrom[
+    BigInt
+  ]](n: R): M[I]
   def ceiling[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def floor[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def round[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
-  def isZero[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](v: R): B =
-    eql(v, inject(0))
+  def isZero[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](v: R)(using
+      Galois[Double, R]
+  ): B =
+    eql(v, Galois.inject[Double, R](0))
   def log[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def random[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
   def sin[M[_]: MonadError[Error]: MonadJoin](n: R): M[R]
@@ -27,12 +32,14 @@ trait RealLattice[R] extends Lattice[R] { self =>
   def times[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
   def div[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
   def expt[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R]
-  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](n1: R, n2: R): M[B]
+  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](n1: R, n2: R): M[B]
   def toString[I: IntLattice, C: CharLattice_[I, Sym, S], S: StringLattice_[
     I,
     C,
     Sym
-  ], Sym: SymbolLattice](n: R): S
+  ]: GaloisFrom[String], Sym: SymbolLattice](n: R): S
 }
 
 object RealLattice:

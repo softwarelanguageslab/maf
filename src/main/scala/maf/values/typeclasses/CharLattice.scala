@@ -12,29 +12,42 @@ trait CharLattice[C, I: IntLattice, Sym: SymbolLattice, S: StringLattice_[
   C,
   Sym
 ]] extends Lattice[C]:
-  def inject(c: Char): C
   def downCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C]
   def upCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C]
-  def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice](c: C): M[I]
+  def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice: GaloisFrom[
+    BigInt
+  ]](c: C): M[I]
   def toString(c: C): S
 
-  def isLower[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](c: C): M[B]
-  def isUpper[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](c: C): M[B]
+  def isLower[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](c: C): M[B]
+  def isUpper[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](c: C): M[B]
 
-  def charEq[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+  def charEq[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](
       c1: C,
       c2: C
   ): M[B]
-  def charLt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+  def charLt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](
       c1: C,
       c2: C
   ): M[B]
 
-  def charEqCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+  def charEqCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](
       c1: C,
       c2: C
   ): M[B]
-  def charLtCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice](
+  def charLtCI[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](
       c1: C,
       c2: C
   ): M[B]

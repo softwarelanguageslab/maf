@@ -18,12 +18,13 @@ object Generators:
   val char: Gen[Char] = Gen.choose(0.toChar, 255.toChar)
   val sym: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
 
-class BooleanGenerator[B: BoolLattice] extends LatticeGenerator[B]:
+class BooleanGenerator[B: BoolLattice: GaloisFrom[Boolean]]
+    extends LatticeGenerator[B]:
 
   /** ConcreteBool is a finite lattice with four elements */
   val bot = BoolLattice[B].bottom
-  val t = BoolLattice[B].inject(true)
-  val f = BoolLattice[B].inject(false)
+  val t: B = Galois.inject(true)
+  val f: B = Galois.inject(false)
   val top = BoolLattice[B].top
 
   def any = Gen.oneOf(bot, t, f, top)

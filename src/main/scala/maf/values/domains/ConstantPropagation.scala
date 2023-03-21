@@ -59,10 +59,10 @@ object ConstantPropagation:
     *   resulting abstract value type
     */
   extension (b: L[Boolean])
-    def toB[B: BoolLattice]: B = b match
+    def toB[B: BoolLattice: GaloisFrom[Boolean]]: B = b match
       case Top         => BoolLattice[B].top
       case Bottom      => BoolLattice[B].bottom
-      case Constant(b) => BoolLattice[B].inject(b)
+      case Constant(b) => Galois.inject(b)
 
   /** Converts a CP integer to an integer of the given abstract domain
     *
@@ -70,10 +70,10 @@ object ConstantPropagation:
     *   resulting abstract value type
     */
   extension (i: L[Int])
-    def toI[I: IntLattice]: I = i match
+    def toI[I: IntLattice: GaloisFrom[BigInt]]: I = i match
       case Top         => IntLattice[I].top
       case Bottom      => IntLattice[I].bottom
-      case Constant(n) => IntLattice[I].inject(n)
+      case Constant(n) => Galois.inject(BigInt(n))
 
   /** Map a function `f` over the value contained within `v`.
     *
@@ -141,13 +141,14 @@ object ConstantPropagation:
           case Top         => false
           case Constant(_) => false
           case Bottom      => true
-    def eql[B2: BoolLattice](n1: L[A], n2: L[A]): B2 = (n1, n2) match
-      case (Top, Top)                 => BoolLattice[B2].top
-      case (Top, Constant(_))         => BoolLattice[B2].top
-      case (Constant(_), Top)         => BoolLattice[B2].top
-      case (Constant(x), Constant(y)) => BoolLattice[B2].inject(x == y)
-      case (Bottom, _)                => BoolLattice[B2].bottom
-      case (_, Bottom)                => BoolLattice[B2].bottom
+    def eql[B2: BoolLattice: GaloisFrom[Boolean]](n1: L[A], n2: L[A]): B2 =
+      (n1, n2) match
+        case (Top, Top)                 => BoolLattice[B2].top
+        case (Top, Constant(_))         => BoolLattice[B2].top
+        case (Constant(_), Top)         => BoolLattice[B2].top
+        case (Constant(x), Constant(y)) => Galois.inject[Boolean, B2](x == y)
+        case (Bottom, _)                => BoolLattice[B2].bottom
+        case (_, Bottom)                => BoolLattice[B2].bottom
 
   type B = L[Boolean]
   type S = L[String]
@@ -179,7 +180,7 @@ object ConstantPropagation:
         def injectString(x: String): S = Constant(x)
         def length[M[_]: MonadError[Error]: MonadJoin](s: S): M[I] = (s match
           case Top         => IntLattice[I].top
-          case Constant(s) => IntLattice[I].inject(s.length)
+          case Constant(s) => Galois.inject[BigInt, I](s.length)
           case Bottom      => IntLattice[I].bottom
         ).pure
         def append[M[_]: MonadError[Error]: MonadJoin](s1: S, s2: S): M[S] =
@@ -201,9 +202,7 @@ object ConstantPropagation:
             val c = charCP.toString(char)
             1.to(NumOps.bigIntToInt(n))
               .toList
-              .foldM[M, S](stringCP.injectString(""))((s, _) =>
-                stringCP.append(s, c)
-              )
+              .foldM[M, S](Galois.inject(""))((s, _) => stringCP.append(s, c))
         )
 
         def substring[M[_]: MonadError[Error]: MonadJoin](
@@ -221,7 +220,8 @@ object ConstantPropagation:
               .collect({
                 case from2
                     if BoolLattice[B].isTrue(
-                      IntLattice[I].eql[B](from, IntLattice[I].inject(from2))
+                      IntLattice[I]
+                        .eql[B](from, Galois.inject[BigInt, I](from2))
                     ) =>
                   (from2
                     .to(s.size)
@@ -229,7 +229,7 @@ object ConstantPropagation:
                       case to2
                           if BoolLattice[B].isTrue(
                             IntLattice[I]
-                              .eql[B](to, IntLattice[I].inject(to2))
+                              .eql[B](to, Galois.inject[BigInt, I](to2))
                           ) =>
                         injectString(s.substring(from2, to2).nn)
                     }))
@@ -246,7 +246,7 @@ object ConstantPropagation:
               case Top =>
                 charCP.top.pure || raiseError("string-ref: index out of bounds")
               case Constant(i) if i < x.length && i >= 0 =>
-                charCP.inject(x(NumOps.bigIntToInt(i))).pure
+                Galois.inject(x(NumOps.bigIntToInt(i))).pure
               case _ => raiseError("string-ref: index ouf of bounds")
 
         def set[M[_]: MonadError[Error]: MonadJoin](
@@ -264,19 +264,21 @@ object ConstantPropagation:
                 Constant(str.updated(idx.toInt, chr)).pure
               // If neither the index or character are constant, don't even bother
               case _ => Top.pure
-        def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+        def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice: GaloisFrom[
+          Boolean
+        ]](
             s1: S,
             s2: S
         ): M[B2] = ((s1, s2) match
           case (Bottom, _) | (_, Bottom)  => BoolLattice[B2].bottom
           case (Top, _) | (_, Top)        => BoolLattice[B2].top
-          case (Constant(x), Constant(y)) => BoolLattice[B2].inject(x < y)
+          case (Constant(x), Constant(y)) => Galois.inject[Boolean, B2](x < y)
         ).pure
         def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym] =
           (s match
             case Bottom      => SymbolLattice[Sym].bottom
             case Top         => SymbolLattice[Sym].top
-            case Constant(x) => SymbolLattice[Sym].injectSymbol(x)
+            case Constant(x) => Galois.inject(x)
           ).pure
 
         def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S) =
@@ -284,7 +286,7 @@ object ConstantPropagation:
             case Bottom => IntLattice[I].bottom.pure
             case Constant(str) =>
               Errors.liftFromOption[M](
-                NumOps.bigIntFromString(str).map(IntLattice[I].inject),
+                NumOps.bigIntFromString(str).map(Galois.inject[BigInt, I]),
                 NotANumberString
               )
             case Top =>
@@ -297,11 +299,13 @@ object ConstantPropagation:
       with IntLattice[I] {
       def inject(x: BigInt): I = Constant(x)
 
-      def toReal[M[_]: MonadError[Error]: MonadJoin, R2: RealLattice](
+      def toReal[M[_]: MonadError[
+        Error
+      ]: MonadJoin, R2: RealLattice: GaloisFrom[Double]](
           n: I
       ): M[R2] = (n match
         case Top         => RealLattice[R2].top
-        case Constant(x) => RealLattice[R2].inject(x.toDouble)
+        case Constant(x) => Galois.inject[Double, R2](x.toDouble)
         case Bottom      => RealLattice[R2].bottom
       ).pure
 
@@ -317,9 +321,13 @@ object ConstantPropagation:
       def times[M[_]: MonadError[Error]: MonadJoin](n1: I, n2: I): M[I] =
         (n1, n2).mapN { _ * _ }.pure
 
-      override def div[M[_]: MonadError[Error]: MonadJoin, R2: RealLattice](
+      def div[M[_], R2: GaloisFrom[Double]](
           n1: I,
           n2: I
+      )(using
+          e1: cats.MonadError[M, Error],
+          e2: maf.values.typeclasses.MonadJoin[M],
+          e3: maf.values.typeclasses.RealLattice[R2]
       ): M[R2] = (n1, n2) match
         case (_, Top) =>
           RealLattice[R2].top.pure || raiseError("div: division by zero")
@@ -327,8 +335,8 @@ object ConstantPropagation:
         case (_, Constant(0)) =>
           raiseError("div: division by zero")
         case (Constant(x), Constant(y)) if y != 0 =>
-          RealLattice[R2]
-            .inject(
+          Galois
+            .inject[Double, R2](
               NumOps.bigIntToDouble(x) / NumOps.bigIntToDouble(y)
             )
             .pure
@@ -360,7 +368,9 @@ object ConstantPropagation:
           raiseError("remainder: second argument is 0")
         } /* else */ { ((n1, n2) mapN MathOps.remainder).pure }
 
-      def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+      def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice: GaloisFrom[
+        Boolean
+      ]](
           n1: I,
           n2: I
       ): M[B2] =
@@ -376,18 +386,21 @@ object ConstantPropagation:
         I,
         C,
         Sym
-      ], Sym: SymbolLattice](n: I): S = n match
-        case Top         => StringLattice[S, I, C, Sym].top
-        case Constant(x) => StringLattice[S, I, C, Sym].injectString(x.toString)
-        case Bottom      => StringLattice[S, I, C, Sym].bottom
-      def toChar[C: CharLattice_[I, Sym, S], S: StringLattice_[
+      ]: GaloisFrom[String], Sym: SymbolLattice](n: I): S =
+        n match
+          case Top         => StringLattice[S, I, C, Sym].top
+          case Constant(x) => Galois.inject[String, S](x.toString)
+          case Bottom      => StringLattice[S, I, C, Sym].bottom
+      def toChar[C: CharLattice_[I, Sym, S]: GaloisFrom[
+        Char
+      ], S: StringLattice_[
         I,
         C,
         Sym
       ], Sym: SymbolLattice](n: I): C = n match
         case Top => CharLattice[C, I, Sym, S].top
         case Constant(x) =>
-          CharLattice[C, I, Sym, S].inject(
+          Galois.inject[Char, C](
             NumOps.bigIntToInt(x).asInstanceOf[Char]
           )
         case Bottom => CharLattice[C, I, Sym, S].bottom
@@ -396,12 +409,14 @@ object ConstantPropagation:
     implicit val realCP: RealLattice[R] = new BaseInstance[Double]("Real")
       with RealLattice[R] {
       def inject(x: Double) = Constant(x)
-      def toInt[M[_]: MonadError[Error]: MonadJoin, I2: IntLattice](
+      def toInt[M[_]: MonadError[Error]: MonadJoin, I2: IntLattice: GaloisFrom[
+        BigInt
+      ]](
           n: R
       ): M[I2] =
         (n match
           case Top         => IntLattice[I2].top
-          case Constant(x) => IntLattice[I2].inject(x.toInt)
+          case Constant(x) => Galois.inject[BigInt, I2](x.toInt)
           case Bottom      => IntLattice[I2].bottom
         ).pure
       def ceiling[M[_]: MonadError[Error]: MonadJoin](n: R): M[R] =
@@ -469,7 +484,9 @@ object ConstantPropagation:
 
       def expt[M[_]: MonadError[Error]: MonadJoin](n1: R, n2: R): M[R] =
         (n1, n2).mapN(Math.pow).pure
-      def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+      def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice: GaloisFrom[
+        Boolean
+      ]](
           n1: R,
           n2: R
       ): M[B2] =
@@ -479,9 +496,9 @@ object ConstantPropagation:
         I,
         C,
         Sym
-      ], Sym: SymbolLattice](n: R): S = n match
+      ]: GaloisFrom[String], Sym: SymbolLattice](n: R): S = n match
         case Top         => StringLattice[S, I, C, Sym].top
-        case Constant(x) => StringLattice[S, I, C, Sym].injectString(x.toString)
+        case Constant(x) => Galois.inject[String, S](x.toString)
         case Bottom      => StringLattice[S, I, C, Sym].bottom
     }
 
@@ -493,30 +510,48 @@ object ConstantPropagation:
         def upCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C] =
           c.map(_.toUpper).pure
         def toString(c: C): S = c map (_.toString)
-        def toInt[M[_]: MonadError[Error]: MonadJoin, I2: IntLattice](
+        def toInt[M[_]: MonadError[
+          Error
+        ]: MonadJoin, I2: IntLattice: GaloisFrom[BigInt]](
             c: C
         ): M[I2] = (c map (_.toInt)).toI[I2].pure
-        def isLower[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+        def isLower[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[Boolean]](
             c: C
         ): M[B2] = (c map (_.isLower)).toB[B2].pure
-        def isUpper[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice](
+        def isUpper[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[Boolean]](
             c: C
         ): M[B2] = (c map (_.isUpper)).toB[B2].pure
         override def charEq[M[_]: MonadError[
           Error
-        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[Boolean]](
+            c1: C,
+            c2: C
+        ): M[B2] =
           ((c1, c2) mapN (_ == _)).toB[B2].pure
         override def charLt[M[_]: MonadError[
           Error
-        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[Boolean]](
+            c1: C,
+            c2: C
+        ): M[B2] =
           ((c1, c2) mapN (_ < _)).toB[B2].pure
         override def charEqCI[M[_]: MonadError[
           Error
-        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[Boolean]](
+            c1: C,
+            c2: C
+        ): M[B2] =
           ((c1, c2) mapN (_.toUpper == _.toUpper)).toB[B2].pure
         override def charLtCI[M[_]: MonadError[
           Error
-        ]: MonadJoin, B2: BoolLattice](c1: C, c2: C): M[B2] =
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[Boolean]](
+            c1: C,
+            c2: C
+        ): M[B2] =
           ((c1, c2) mapN { _.toUpper < _.toUpper }).toB[B2].pure
       }
 
@@ -532,8 +567,8 @@ object ConstantPropagation:
           I,
           C,
           Sym
-        ]](s: Sym): S = s match
+        ]: GaloisFrom[String]](s: Sym): S = s match
           case Top         => StringLattice[S, I, C, Sym].top
-          case Constant(x) => StringLattice[S, I, C, Sym].injectString(x)
+          case Constant(x) => Galois.inject[String, S](x)
           case Bottom      => StringLattice[S, I, C, Sym].bottom
       }

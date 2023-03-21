@@ -1,6 +1,6 @@
 package maf.values
 
-import maf.values.typeclasses.BoolLattice
+import maf.values.typeclasses.{BoolLattice, Galois, GaloisFrom}
 import maf.util.*
 import cats.data.*
 import cats.*
@@ -48,7 +48,7 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
   def subsumes(x: L, y: => L): Boolean
 
   /** Equality check, returning an abstract result */
-  def eql[B: BoolLattice](x: L, y: L): B
+  def eql[B: BoolLattice: GaloisFrom[Boolean]](x: L, y: L): B
 
   /** For PartialOrdering[L]: a lattice has a partial order, defined by
     * subsumes...
@@ -73,7 +73,7 @@ object Lattice:
     def bottom: Set[A] = Set.empty
     def join(x: Set[A], y: => Set[A]): Set[A] = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
-    def eql[B: BoolLattice](x: Set[A], y: Set[A]) = ???
+    def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Set[A], y: Set[A]) = ???
     def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
 
   implicit def setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
@@ -84,7 +84,8 @@ object Lattice:
     def bottom = ()
     def join(x: Unit, y: => Unit): Unit = ()
     def subsumes(x: Unit, y: => Unit): Boolean = true
-    def eql[B: BoolLattice](x: Unit, y: Unit): B = BoolLattice[B].inject(true)
+    def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Unit, y: Unit): B =
+      Galois.inject[Boolean, B](true)
 
   def foldMapL[X, L: Lattice](xs: Iterable[X], f: X => L): L =
     if xs.isEmpty then Lattice[L].bottom

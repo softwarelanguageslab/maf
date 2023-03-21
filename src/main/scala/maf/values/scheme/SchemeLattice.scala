@@ -1,6 +1,7 @@
 package maf.values
 package scheme
 
+import maf.interpreter.ConcreteSchemeValue
 import maf.util.*
 import typeclasses.*
 
@@ -22,20 +23,21 @@ trait SchemeLattice[L]
       BoolLattice[L],
       RealLattice[L],
       SymbolLattice[L],
-      CharLattice[L, L, L, L]:
+      CharLattice[L, L, L, L],
+      Galois[ConcreteSchemeValue, L]:
 
   // TODO: closures
   // TODO: primitives
 
-  /** Inject the nil value in the abstract domain */
-  def nil: L
-
-  /** Inject a pair in the abstract domain */
   def cons(car: L, cdr: L): L
 
-  /** Inject a address as a pointer in the abstract domain */
-  def ptr(adr: Address): L
+  /** A valid Scheme lattice should provide a Galois connection between concrete
+    * and abstract values
+    */
+  given galois: Galois[ConcreteSchemeValue, L]
 
   // prevent name clashes between RealLattice and IntLattice
-  override def isZero[B: BoolLattice](v: L): B =
-    eql(v, inject(0))
+  override def isZero[B: BoolLattice: GaloisFrom[Boolean]](v: L)(using
+      Galois[BigInt, L]
+  ): B =
+    eql(v, Galois.inject[ConcreteSchemeValue, L](0))
