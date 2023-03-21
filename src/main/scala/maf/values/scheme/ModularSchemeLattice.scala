@@ -15,7 +15,7 @@ class ModularSchemeDomain[
     S: StringLattice_[I, C, Sym]: GaloisFrom[String],
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice: GaloisFrom[String]
-]:
+] extends SchemeDomain:
   type Val = HMap[LatKey]
 
   val IntT = LatKey.T[BigInt, I]("integer")
@@ -25,6 +25,12 @@ class ModularSchemeDomain[
   val CharT = LatKey.T[Char, C]("char")
   val SymT = LatKey.T[String, Sym]("symbol")
   val NilT = LatKey.T[Unit, Unit]("null")
+
+  given lattice: SchemeLattice[Val]
+    with SparseProductLattice[LatKey]
+    with {
+      //
+    }
 
   //
   // Injection
