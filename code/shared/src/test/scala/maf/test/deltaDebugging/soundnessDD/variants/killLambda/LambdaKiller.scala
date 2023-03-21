@@ -14,7 +14,7 @@ object LambdaKiller:
   def killLambdas(program: SchemeExp,
                   dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]],
                   staticProfiling: Array[(String, Int)],
-                  deadCodeTester: DeadCodeTester,
+                  deadCodeTester: KillLambdaTester,
                   benchmark: Benchmark
             ): SchemeExp =
 
@@ -41,7 +41,7 @@ object LambdaKiller:
   def killLambda(program: SchemeExp,
                  lambdaToKill: SchemeLambda,
                  callsAndReturnValues: Set[(SchemeFuncall, ConcreteValues.Value)],
-                 deadCodeTester: DeadCodeTester,
+                 deadCodeTester: KillLambdaTester,
                  benchmark: Benchmark):
     Option[(SchemeExp, Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]])] =
 

@@ -9,7 +9,7 @@ import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.{AllSequentialBenchmarks, DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
 import maf.test.deltaDebugging.realBugs.*
 
-trait SchemeModFLocalSoundnessTests extends DeadCodeTester with DDBenchmarks:
+trait SchemeModFLocalSoundnessTests extends KillLambdaTester with DDBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/my-test.scm")
   override def parseProgram(txt: String, benchmark: String): SchemeExp =
     val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))

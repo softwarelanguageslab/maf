@@ -3,10 +3,9 @@ package maf.test.deltaDebugging.soundnessDD.variants
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.variants.baseline.{BaselineDD, SaveBaseline}
 import maf.test.deltaDebugging.soundnessDD.variants.counting.{CountingDD, SaveCounting}
-import maf.test.deltaDebugging.soundnessDD.variants.killLambda.{DeadCodeDD, SaveDeadCode}
+import maf.test.deltaDebugging.soundnessDD.variants.killLambda.{KillLambdaDD, SaveDeadCode}
 import maf.test.deltaDebugging.soundnessDD.variants.fitness.{FitnessDD, SaveFitness}
 import maf.test.deltaDebugging.soundnessDD.variants.parallel.{ParallelDD, SaveParallel}
-import maf.test.deltaDebugging.soundnessDD.variants.profiling.{ProfilingDD, SaveProfiling}
 import maf.test.deltaDebugging.soundnessDD.variants.smartReplacement.SaveSmartReplacement
 import maf.test.deltaDebugging.soundnessDD.variants.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
 import maf.util.benchmarks.Statistics
@@ -31,8 +30,7 @@ object Evaluate:
     FitnessDD.dataCollector = new DataCollector
     TransformingDD.dataCollector = new DataCollector
     ParallelDD.dataCollector = new DataCollector
-    ProfilingDD.dataCollector = new DataCollector
-    DeadCodeDD.dataCollector = new DataCollector
+    KillLambdaDD.dataCollector = new DataCollector
 
     for(i <- List(1))
       //SaveCounting.save()

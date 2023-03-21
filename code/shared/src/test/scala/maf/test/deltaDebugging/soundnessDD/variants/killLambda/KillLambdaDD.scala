@@ -5,13 +5,13 @@ import maf.deltaDebugging.gtr.transformations.TransformationManager
 import maf.language.scheme.{SchemeExp, SchemeLambda}
 import maf.test.deltaDebugging.soundnessDD.variants.*
 
-object DeadCodeDD:
+object KillLambdaDD:
   var dataCollector = new DataCollector
   var bugName = "noneYet"
 
   def reduce(startProgram: SchemeExp,
              program: SchemeExp,
-             soundnessTester: DeadCodeTester,
+             soundnessTester: KillLambdaTester,
              benchmark: String): Unit =
 
     var oracleInvocations = 0

@@ -13,6 +13,6 @@ object SaveDeadCode:
         new SchemeModFLocalAdaptiveTests5
       ),
       "deadCodeDataCollector",
-      DeadCodeDD.dataCollector
+      KillLambdaDD.dataCollector
     )
   }

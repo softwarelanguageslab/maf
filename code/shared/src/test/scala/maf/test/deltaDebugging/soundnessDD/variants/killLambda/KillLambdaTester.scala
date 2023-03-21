@@ -13,7 +13,7 @@ import maf.test.modular.scheme.SchemeSoundnessTests
 import maf.util.Reader
 import maf.util.benchmarks.Timer
 
-trait DeadCodeTester extends SoundnessDDTester {
+trait KillLambdaTester extends SoundnessDDTester {
   def bugName: String
 
   override def createInterpreter(addResult: (Identity, Value) => Unit, io: IO, benchmark: Benchmark): KillLambdaInterpreter =
@@ -91,7 +91,7 @@ trait DeadCodeTester extends SoundnessDDTester {
     runAndFindLambdas(program, benchmark) match
       case (Some((failureMsg, dynAnalysis, staticProfiling)), _) =>
         if failureMsg.nonEmpty then
-          DeadCodeDD.bugName = bugName
+          KillLambdaDD.bugName = bugName
 
           val postLambdaKills = LambdaKiller.killLambdas(program, dynAnalysis, staticProfiling, this, benchmark)
           println("pre: " + program.size)
