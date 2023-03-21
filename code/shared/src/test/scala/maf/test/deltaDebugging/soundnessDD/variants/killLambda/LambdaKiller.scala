@@ -13,15 +13,29 @@ object LambdaKiller:
 
   def killLambdas(program: SchemeExp,
                   dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]],
+                  staticProfiling: Array[(String, Int)],
                   deadCodeTester: DeadCodeTester,
                   benchmark: Benchmark
             ): SchemeExp =
+
+    var lambdas = dynAnalysis.keySet.toList
+    lambdas = lambdas.sortWith((l1, l2) => {
+      val l1Profiling = staticProfiling.find(tpl => tpl._1 == l1.name.getOrElse(""))
+      val l2Profiling = staticProfiling.find(tpl => tpl._1 == l2.name.getOrElse(""))
+      l1Profiling match
+        case Some(tplL1) =>
+          l2Profiling match
+            case Some(tplL2) =>
+              tplL1._2 < tplL2._2
+            case _ => true
+        case _ => true
+    }).reverse
 
     for (lambdaToKill <- dynAnalysis.keySet)
       val callsAndReturnValues = dynAnalysis(lambdaToKill)
       val result = killLambda(program, lambdaToKill, callsAndReturnValues, deadCodeTester, benchmark)
       if result.nonEmpty then
-        return killLambdas(result.get._1, result.get._2, deadCodeTester, benchmark)
+        return killLambdas(result.get._1, result.get._2, staticProfiling, deadCodeTester, benchmark)
     program
 
   def killLambda(program: SchemeExp,

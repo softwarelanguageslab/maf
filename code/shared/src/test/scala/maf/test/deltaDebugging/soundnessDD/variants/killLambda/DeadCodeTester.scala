@@ -3,8 +3,9 @@ package maf.test.deltaDebugging.soundnessDD.variants.killLambda
 import maf.core.{Identity, IdentityWithData, NoCodeIdentity, NoCodeIdentityDebug, SimpleIdentity}
 import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeLambda, SchemeValue, SchemeVar}
 import maf.language.scheme.interpreter.ConcreteValues.Value
-import maf.language.scheme.interpreter.{ConcreteValues, KillLambdaInterpreter, FileIO, IO, SchemeInterpreter}
+import maf.language.scheme.interpreter.{ConcreteValues, FileIO, IO, KillLambdaInterpreter, SchemeInterpreter}
 import maf.language.sexp
+import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.test.SlowTest
 import maf.test.deltaDebugging.soundnessDD.variants.baseline.BaselineDD
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
@@ -34,7 +35,10 @@ trait DeadCodeTester extends SoundnessDDTester {
     (idnResults, dynAnalysis)
 
   def runAndFindLambdas(program: SchemeExp, benchmark: Benchmark):
-  (Option[(String, Map[SchemeLambda, Set[(SchemeFuncall, Value)]])], (Long, Long)) =
+  (Option[(String,
+    Map[SchemeLambda, Set[(SchemeFuncall, Value)]],
+    Array[(String, Int)]
+    )], (Long, Long)) =
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0
     var evalEndTime: Long = 0
@@ -73,7 +77,10 @@ trait DeadCodeTester extends SoundnessDDTester {
 
     if excThrown then
       (None, (evalRunTime, analysisRuntime))
-    else (Some((compareResults(anl.get, concreteResults.get), calledLambdas.get)), (evalRunTime, analysisRuntime))
+    else (Some((compareResults(anl.get, concreteResults.get),
+      calledLambdas.get,
+      anl.get.asInstanceOf[SequentialWorklistAlgorithm[SchemeExp]].getReAnalysisMap().toArray.sortWith((tpl1, tpl2) => tpl1._2 > tpl2._2),
+    )), (evalRunTime, analysisRuntime))
 
   override def onBenchmark(benchmark: Benchmark): Unit =
     println("DeadCode >>> running benchmark: " + benchmark)
@@ -82,11 +89,11 @@ trait DeadCodeTester extends SoundnessDDTester {
     val program = parseProgram(content, benchmark)
 
     runAndFindLambdas(program, benchmark) match
-      case (Some((failureMsg, dynAnalysis)), _) =>
+      case (Some((failureMsg, dynAnalysis, staticProfiling)), _) =>
         if failureMsg.nonEmpty then
           DeadCodeDD.bugName = bugName
 
-          val postLambdaKills = LambdaKiller.killLambdas(program, dynAnalysis, this, benchmark)
+          val postLambdaKills = LambdaKiller.killLambdas(program, dynAnalysis, staticProfiling, this, benchmark)
           println("pre: " + program.size)
           println("post: " + postLambdaKills.size)
           //DeadCodeDD.reduce(program, postLambdaKills, this, benchmark)
