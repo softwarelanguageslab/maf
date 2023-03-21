@@ -4,6 +4,7 @@ package scheme
 import maf.interpreter.ConcreteSchemeValue
 import maf.util.*
 import typeclasses.*
+import cats.extensions.*
 
 /** Represents a lattice that supports all Scheme operations, that is: a
   * combination of the operations on strings, integers, booleans, real numbers,
@@ -26,15 +27,25 @@ trait SchemeLattice[L]
       CharLattice[L, L, L, L],
       Galois[ConcreteSchemeValue, L]:
 
-  // TODO: closures
-  // TODO: primitives
-
-  def cons(car: L, cdr: L): L
+  import ConcreteSchemeValue.given
 
   /** A valid Scheme lattice should provide a Galois connection between concrete
     * and abstract values
     */
   given galois: Galois[ConcreteSchemeValue, L]
+
+  // TODO: closures
+  // TODO: primitives
+
+  def cons(car: L, cdr: L): L
+  def car[M[_]: MonadError[Error]: MonadJoin](v: L): M[L]
+  def cdr[M[_]: MonadError[Error]: MonadJoin](v: L): M[L]
+
+  def isBoolean(v: L): L
+
+  // Convenience procedures
+  def boolTop: L =
+    join(Galois.inject[Boolean, L](true), Galois.inject[Boolean, L](false))
 
   // prevent name clashes between RealLattice and IntLattice
   override def isZero[B: BoolLattice: GaloisFrom[Boolean]](v: L)(using

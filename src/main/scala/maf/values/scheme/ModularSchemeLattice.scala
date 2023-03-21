@@ -17,7 +17,6 @@ class ModularSchemeDomain[
     Sym: SymbolLattice: GaloisFrom[String]
 ] extends SchemeDomain:
   type Val = HMap[LatKey]
-
   val IntT = LatKey.T[BigInt, I]("integer")
   val RealT = LatKey.T[Double, R]("real")
   val BoolT = LatKey.T[Boolean, B]("boolean")
@@ -252,19 +251,10 @@ class ModularSchemeDomain[
 
     override def isFalse(b: Val): Boolean = ???
 
+    override def isBoolean(b: Val): Val = ???
+
     override def not(b: Val): Val = ???
   }
-
-  //
-  // Injection
-  //
-
-  // override def inject(c: Char): Val = inject(CharT, c)
-  // override def injectSymbol(sym: String): Val = inject(SymT, sym)
-  // override def injectString(str: String): Val = inject(StringT, str)
-  // override def inject(n: Double): Val = inject(RealT, n)
-  // override def inject(b: Boolean): Val = inject(BoolT, b)
-  // override def inject(n: BigInt): Val = inject(IntT, n)
 
 //
 // Frequently used domains
