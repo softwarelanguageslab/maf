@@ -1,4 +1,4 @@
-package maf.test.deltaDebugging.soundnessDD.variants.deadCode
+package maf.test.deltaDebugging.soundnessDD.variants.killLambda
 
 import maf.core.Position
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}

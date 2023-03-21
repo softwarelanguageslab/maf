@@ -1,4 +1,4 @@
-package maf.test.deltaDebugging.soundnessDD.variants.deadCode
+package maf.test.deltaDebugging.soundnessDD.variants.killLambda
 
 import maf.core.{Identity, IdentityWithData, NoCodeIdentity, NoCodeIdentityDebug, SimpleIdentity}
 import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeLambda, SchemeValue, SchemeVar}

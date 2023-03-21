@@ -3,7 +3,7 @@ package maf.test.deltaDebugging.soundnessDD.variants
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import maf.test.deltaDebugging.soundnessDD.variants.baseline.{BaselineDD, SaveBaseline}
 import maf.test.deltaDebugging.soundnessDD.variants.counting.{CountingDD, SaveCounting}
-import maf.test.deltaDebugging.soundnessDD.variants.deadCode.{DeadCodeDD, SaveDeadCode}
+import maf.test.deltaDebugging.soundnessDD.variants.killLambda.{DeadCodeDD, SaveDeadCode}
 import maf.test.deltaDebugging.soundnessDD.variants.fitness.{FitnessDD, SaveFitness}
 import maf.test.deltaDebugging.soundnessDD.variants.parallel.{ParallelDD, SaveParallel}
 import maf.test.deltaDebugging.soundnessDD.variants.profiling.{ProfilingDD, SaveProfiling}

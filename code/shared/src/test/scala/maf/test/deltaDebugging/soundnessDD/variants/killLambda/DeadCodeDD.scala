@@ -1,4 +1,4 @@
-package maf.test.deltaDebugging.soundnessDD.variants.deadCode
+package maf.test.deltaDebugging.soundnessDD.variants.killLambda
 
 import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.transformations.TransformationManager
