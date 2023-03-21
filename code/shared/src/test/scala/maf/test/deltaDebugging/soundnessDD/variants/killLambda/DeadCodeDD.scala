@@ -25,7 +25,7 @@ object DeadCodeDD:
       p => {
         oracleInvocations += 1
         oracleTreeSizes = oracleTreeSizes.::(p.size)
-        soundnessTester.runAndIdentifyDeadCode(p, benchmark) match
+        soundnessTester.runAndFindLambdas(p, benchmark) match
           case (Some((failureMsg, calledLambdas)), _) =>
             //topCalledLambdas = calledLambdas
             p.findUndefinedVariables().isEmpty && failureMsg.nonEmpty

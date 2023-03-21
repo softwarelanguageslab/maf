@@ -167,6 +167,8 @@ object Replacing:
             Some(SchemePair(carExp, cdrExp, NoCodeIdentity))
           case _ =>
             None
+      case v: ConcreteValues.Value.Clo =>
+        Some(constantLambdas().head)
       case _ => None
 
   private def extractTypes(keySet: Set[HMapKey]): Set[String] =

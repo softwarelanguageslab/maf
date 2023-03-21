@@ -13,8 +13,8 @@ import scala.concurrent.duration.{Duration, SECONDS}
 import scala.concurrent.*
 import scala.util.control.TailCalls.*
 
-class DeadCodeSchemeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
-                                io: IO = new EmptyIO()) extends SchemeInterpreter(cb, io):
+class KillLambdaInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
+                            io: IO = new EmptyIO()) extends SchemeInterpreter(cb, io):
 
   import ConcreteValues._
   import scala.util.control.TailCalls._
