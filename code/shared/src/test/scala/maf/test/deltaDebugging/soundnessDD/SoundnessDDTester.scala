@@ -68,18 +68,6 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
       None
   }
 
-  def runAndCompare_(program: SchemeExp, benchmark: Benchmark): Option[(String, Map[Identity, Any])] = {
-    try
-      val concreteResults = evalProgram(program, benchmark)
-      // analyze the program using a ModF analysis
-      val anl = runAnalysis(program, benchmark)
-      // check if the analysis results soundly (over-)approximate the concrete results
-      val analysisResults: Map[Identity, Any] = anl.resultsPerIdn
-      Some((compareResults(anl, concreteResults), analysisResults))
-    catch case exc: Throwable =>
-      None
-  }
-
   def runCompareAndtime(program: SchemeExp, benchmark: Benchmark): (Option[String], (Long, Long)) = {
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0

@@ -11,8 +11,8 @@ object SaveSmartReplacement:
         //new SchemeModFLocalAdaptiveTests1,
         new SchemeModFLocalAdaptiveTests2,
         new SchemeModFLocalAdaptiveTests3,
-        //new SchemeModFLocalAdaptiveTests4,
-        //new SchemeModFLocalAdaptiveTests5
+        new SchemeModFLocalAdaptiveTests4,
+        new SchemeModFLocalAdaptiveTests5
       ),
       "smartReplacementDataCollector",
       SmartReplacementDD.dataCollector

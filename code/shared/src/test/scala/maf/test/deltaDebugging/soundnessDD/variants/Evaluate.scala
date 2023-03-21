@@ -37,14 +37,13 @@ object Evaluate:
     for(i <- List(1))
       //SaveCounting.save()
       //SaveFitness.save()
-      //SaveTransforming.save()
       SaveSmartReplacement.save()
-      /*
-      SaveParallel.save()
-      SaveProfiling.save()
-      SaveDeadCode.save()
-      SaveBaseline.save()
-      */
+      SaveTransforming.save()
+      //SaveParallel.save()
+      //SaveProfiling.save()
+      //SaveDeadCode.save()
+      //SaveBaseline.save()
+
 
   }
 

@@ -12,10 +12,13 @@ import maf.modular.scheme.SchemeDomain
 
 object Replacing:
   private var count = -1
-  var anlResults: Map[Identity, Any] = Map()
+  var valuesMap: Map[SchemeExp, Set[ConcreteValues.Value]] = Map()
+  var problematicValue: Option[ConcreteValues.Value] = None
 
+  /*
   type Analysis = ModAnalysis[SchemeExp] with AnalysisResults[SchemeExp] with SchemeDomain
   var analysis: Option[Analysis] = None
+  */
 
   private def newID(): String =
     count += 1
@@ -68,32 +71,44 @@ object Replacing:
   )
 
   def allSimpleValues(exp: SchemeExp): List[SchemeExp] =
-    analysis match
-      case Some(anl: Analysis) =>
-        val analysisResults: Option[Set[anl.Value]] = anlResults.get(exp.idn).asInstanceOf[Option[Set[anl.Value]]]
-        analysisResults match
-          case Some(set) =>
-            val keySet: Set[HMapKey] = set.flatMap(v => v.asInstanceOf[HMap].contents.keySet)
-            val types: Set[String] = extractTypes(keySet)
-            val res = types.toList.flatMap(t => typeToExps(t))
-            res
-      case None =>
-        values
+    val observedValues = valuesMap.getOrElse(exp, Set()).toList
+    if observedValues.isEmpty then
+      values
+    else
+      problematicValue match
+        case Some(concreteProblematicValue) =>
+          val filteredProblematic = observedValues.filter(value => value equals concreteProblematicValue)
+          val filteredNonProblematic = observedValues.filterNot(value => value equals concreteProblematicValue)
+          val ordered = filteredProblematic ++ filteredNonProblematic //problematic ones get priority
+          val expLst = ordered.flatMap(value => valueToExp(value))
+          if expLst.isEmpty then
+            values
+          else expLst
+        case None =>
+          val expLst = observedValues.flatMap(value => valueToExp(value))
+          if expLst.nonEmpty then
+            expLst
+          else values
 
   def allValues(exp: SchemeExp): List[SchemeExp] =
-    analysis match
-      case Some(anl: Analysis) =>
-        val analysisResults: Option[Set[anl.Value]] = anlResults.get(exp.idn).asInstanceOf[Option[Set[anl.Value]]]
-        analysisResults match
-          case Some(set) =>
-            val keySet: Set[HMapKey] = set.flatMap(v => v.asInstanceOf[HMap].contents.keySet)
-            val types: Set[String] = extractTypes(keySet)
-            types.toList.flatMap(t => typeToExps(t))
-          case None =>
+    val observedValues = valuesMap.getOrElse(exp, Set()).toList
+    if observedValues.isEmpty then
+      lambdaValues() ++ values
+    else
+      problematicValue match
+        case Some(concreteProblematicValue) =>
+          val filteredProblematic = observedValues.filter(value => value equals concreteProblematicValue)
+          val filteredNonProblematic = observedValues.filterNot(value => value equals concreteProblematicValue)
+          val ordered = filteredProblematic ++ filteredNonProblematic //problematic ones get priority
+          val expLst = ordered.flatMap(value => valueToExp(value))
+          if expLst.isEmpty then
             lambdaValues() ++ values
-      case None =>
-        lambdaValues() ++ values
-
+          else expLst
+        case None =>
+          val expLst = observedValues.flatMap(value => valueToExp(value))
+          if expLst.nonEmpty then
+            expLst
+          else lambdaValues() ++ values
 
   private def replaceWithValue(exp: SchemeExp, toReplace: SchemeExp => Boolean, value: SchemeExp): SchemeExp =
     exp.map(subExp => {
