@@ -91,11 +91,11 @@ trait DeadCodeTester extends SoundnessDDTester {
         if failureMsg.nonEmpty then
           DeadCodeDD.bugName = bugName
 
-          val postLambdaKills = DeadCodeRemover.removeDeadLambdas(program, dynAnalysis, this, benchmark)
+          val postDCE = DeadCodeRemover.removeDeadLambdas(program, dynAnalysis, this, benchmark)
           println("pre: " + program.size)
-          println("post: " + postLambdaKills.size)
+          println("post: " + postDCE.size)
           //println(program.prettyString())
-          //println(postLambdaKills.prettyString())
-          DeadCodeDD.reduce(program, postLambdaKills, this, benchmark)
+          //println(postDCE.prettyString())
+          DeadCodeDD.reduce(program, postDCE, this, benchmark)
       case _ =>
 }
