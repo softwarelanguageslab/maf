@@ -21,6 +21,8 @@ class ModularSchemeDomain[
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice: GaloisFrom[String]
 ] extends SchemeDomain:
+  import maf.util.datastructures.ListOps.*
+
   /** Type alias for convience */
   type Val = HMap[SchemeTag]
 
@@ -211,35 +213,60 @@ class ModularSchemeDomain[
         _
     ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
         c: Val
-    ): M[B] = ???
+    ): M[B] =
+      MonadJoin[M].mfoldMap(split(c)) {
+        case CharT(c) =>
+          CharLattice[C, I, Sym, S].isUpper[M, B](c)
+        case v => raiseError(TypeError("isUpper: expected char", v))
+      }
 
     override def charEq[M[
         _
     ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
         c1: Val,
         c2: Val
-    ): M[B] = ???
+    ): M[B] =
+      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+        case (CharT(c1), CharT(c2)) =>
+          CharLattice[C, I, Sym, S].charEq[M, B](c1, c2)
+        case v => raiseError(TypeError("charEq: expected char", v))
+      }
 
     override def charLt[M[
         _
     ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
         c1: Val,
         c2: Val
-    ): M[B] = ???
+    ): M[B] =
+      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+        case (CharT(c1), CharT(c2)) =>
+          CharLattice[C, I, Sym, S].charLt[M, B](c1, c2)
+        case v => raiseError(TypeError("charEq: expected char", v))
+      }
 
     override def charEqCI[M[
         _
     ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
         c1: Val,
         c2: Val
-    ): M[B] = ???
+    ): M[B] =
+      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+        case (CharT(c1), CharT(c2)) =>
+          CharLattice[C, I, Sym, S].charEqCI[M, B](c1, c2)
+        case v => raiseError(TypeError("charEq: expected char", v))
+      }
 
     override def charLtCI[M[
         _
     ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
         c1: Val,
         c2: Val
-    ): M[B] = ???
+    ): M[B] =
+      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+        case (CharT(c1), CharT(c2)) =>
+          CharLattice[C, I, Sym, S].charLtCI[M, B](c1, c2)
+        case v => raiseError(TypeError("charEq: expected char", v))
+      }
 
     //
     // String lattice
