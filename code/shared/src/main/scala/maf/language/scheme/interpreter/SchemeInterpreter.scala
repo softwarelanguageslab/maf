@@ -126,14 +126,14 @@ class SchemeInterpreter(
                 yield res
 
     //determines whether a given value should be checked or not
-    private def checkValue(v: Value): Boolean = v match
+    protected def checkValue(v: Value): Boolean = v match
         case Value.Undefined(_) =>
             //println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
             false
         case _ =>
             true
 
-    private def checkAddr(a: Addr): Boolean = a._2 match
+    protected def checkAddr(a: Addr): Boolean = a._2 match
         case _: AddrInfo.VarAddr | _: AddrInfo.PtrAddr => true
         case _                                         => false
 
