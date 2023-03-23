@@ -10,6 +10,7 @@ import values.*
 import values.scheme.*
 import values.typeclasses.*
 import maf.interpreter.*
+import maf.interpreter.SimpleSchemeValue
 
 trait SchemePrimitive[V: Lattice, A <: Address]:
   // Every primitive in Scheme has a unique name
@@ -43,7 +44,7 @@ class SchemeLatticePrimitives[V](using lat: SchemeLattice[V]):
   ): Map[String, SchemePrimitive[V, Address]] =
     prims.map(prim => (prim.name, prim)).toMap
 
-  val unspecified: V = Galois.inject[ConcreteSchemeValue, V](SchemeUnspecified)
+  val unspecified: V = Galois.inject[SimpleSchemeValue, V](SchemeUnspecified)
 
   // shorthand (after instantiating V and A)
   type PrimM[M[_]] = SchemePrimM[M, Address, V]

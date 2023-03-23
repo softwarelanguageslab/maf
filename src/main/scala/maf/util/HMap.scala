@@ -24,9 +24,20 @@ case class HMap[KT <: HMapKey](
     // NOTE: asInstanceOf is safe here since put only allows insertions of values with the corresponding key
     contents.get(key).map(_.asInstanceOf[V])
 
+  /** Returns `true` if the map contains only a single key equal to the given
+    * argument
+    */
+  def isSingleton[K <: KT](k: K): Boolean =
+    contents.keys.size == 1 && contents.keys.head == k
+
+  def isSingleton: Boolean = contents.keys.size == 1
+
   /** Retrieve all the keys stored in the HMap */
   def keys: Set[KT] =
     contents.keys.toSet
+
+  def contains[K <: KT](k: K): Boolean =
+    contents.contains(k)
 
   /** Check whether the set of key-value pairs in the HMap is empty */
   def isEmpty: Boolean = contents.isEmpty

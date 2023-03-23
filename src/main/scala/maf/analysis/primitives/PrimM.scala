@@ -14,6 +14,7 @@ import cats.data.*
 import cats.{MonadError => _, *}
 import cats.extensions.*
 import cats.syntax.all._
+import maf.interpreter.SimpleSchemeValue
 
 /** Exception that is thrown when an address is not found in the store. *
   * @param adr
@@ -84,8 +85,11 @@ trait SchemePrimM[M[_]: Monad, A <: Address, V]
   def allocList(exs: List[SchemeExp], vlus: List[V])(using
       lat: SchemeLattice[V]
   ): M[V] =
-    exs.zip(vlus).foldM[M, V](SchemeNil) { case (rest, (ex, vlu)) =>
-      allocVal(ex, lat.cons(vlu, rest)).map(adr => SchemePtr(adr))
+    exs.zip(vlus).foldM[M, V](Galois.inject[SimpleSchemeValue, V](SchemeNil)) {
+      case (rest, (ex, vlu)) =>
+        allocVal(ex, lat.cons(vlu, rest)).map(adr =>
+          Galois.inject[SimpleSchemeValue, V](SchemePtr(adr))
+        )
     }
   def currentThread: M[TID] = throw new Exception("Not supported")
 

@@ -150,6 +150,10 @@ object ConstantPropagation:
         case (Bottom, _)                => BoolLattice[B2].bottom
         case (_, Bottom)                => BoolLattice[B2].bottom
 
+    def split(x: L[A]): Set[L[A]] = x match
+      case Bottom            => Set()
+      case Top | Constant(_) => Set(x)
+
   type B = L[Boolean]
   type S = L[String]
   type I = L[BigInt]

@@ -29,6 +29,9 @@ object Galois:
   given Galois[Unit, Unit] with
     def inject(c: Unit): Unit = ()
 
+  given [A]: Galois[A, Set[A]] with
+    def inject(c: A): Set[A] = Set(c)
+
 /** Convience type alias that curries the concrete and abstract type, used for
   * context bounds
   */

@@ -65,9 +65,10 @@ trait SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
       )
     )
 
-  // TODO: rename to insert
-  def inject(tpy: K, v: tpy.Concrete): HMap[K] =
+  def insert(tpy: K, v: tpy.Concrete): HMap[K] =
     HMap.empty.put(tpy, tpy.galois.inject(v))
+  def insertA(tpy: K)(v: tpy.Abstract): HMap[K] =
+    HMap.empty.put(tpy, v)
 
   def eql[B: BoolLattice: GaloisFrom[Boolean]](x: HMap[K], y: HMap[K]): B = ???
 

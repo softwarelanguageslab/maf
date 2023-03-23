@@ -2,6 +2,7 @@ package maf.util
 
 import maf.syntax.*
 import maf.values.typeclasses.*
+import cats.Show
 
 /** An address */
 trait Address extends SmartHash:
@@ -18,6 +19,10 @@ trait Address extends SmartHash:
     * program location (e.g., pre-allocated addresses for primitives)
     */
   def idn: Identity
+
+object Address:
+  given Show[Address] with
+    def show(v: Address): String = v.toString
 
 /** Decide about equality between addresses. */
 trait MaybeEq[A]:

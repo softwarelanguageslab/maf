@@ -776,8 +776,8 @@ abstract class RealLatticeTest[
               subsumes(b, a),
               StringLattice[S, I, C, Sym]
                 .subsumes(
-                  lat.toString[I, C, S, Sym](b),
-                  lat.toString[I, C, S, Sym](a)
+                  lat.toString[Sym, I, C, S](b),
+                  lat.toString[Sym, I, C, S](a)
                 )
             )
           }
@@ -787,7 +787,7 @@ abstract class RealLatticeTest[
       p.property("∀ a: inject(a.toString) ⊑ toString(inject(a))") =
         forAll((a: Double) =>
           StringLattice[S, I, C, Sym].subsumes(
-            lat.toString[I, C, S, Sym](inject(a)),
+            lat.toString[Sym, I, C, S](inject(a)),
             inject(a.toString)
           )
         )

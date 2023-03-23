@@ -2,11 +2,16 @@ package maf
 package values
 package scheme
 
-import interpreter.ConcreteSchemeValue
+import interpreter.*
 import typeclasses.*
+import cats.syntax.all.*
+import cats.{MonadError => _, _}
 import util.*
+import maf.syntax.scheme.*
 import domains.*
 import cats.extensions.MonadError
+import maf.values.typeclasses.Galois.inject
+import cats.extensions.Errors.raiseError
 
 class ModularSchemeDomain[
     I: IntLattice: GaloisFrom[BigInt],
@@ -16,24 +21,66 @@ class ModularSchemeDomain[
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice: GaloisFrom[String]
 ] extends SchemeDomain:
+  /** Type alias for convience */
   type Val = HMap[SchemeTag]
+
   trait SchemeTag extends LatKey
 
   given lattice: SchemeLattice[Val] with SparseProductLattice[SchemeTag] with {
+    type P = Unit // TODO:
 
-    protected case class Tag[C, A: GaloisFrom[C]: Lattice](
-        name: String,
-        can: SchemeType
+    protected class Tag[C, A: GaloisFrom[C]: Lattice](
+        val name: String
     ) extends LatKey.T[C, A],
-          SchemeTag
+          SchemeTag:
 
-    val IntT = Tag[BigInt, I]("integer", CIntT)
-    val RealT = Tag[Double, R]("real", CRealT)
-    val BoolT = Tag[Boolean, B]("boolean", CBoolT)
-    val StringT = Tag[String, S]("string", CStrT)
-    val CharT = Tag[Char, C]("char", CCharT)
-    val SymT = Tag[String, Sym]("symbol", CSymT)
-    val NilT = Tag[Unit, Unit]("null", CNullT)
+      def unapply(v: Val): Option[A] =
+        v.get(this)
+
+    //
+    // Utility functions
+    //
+
+    /** Raises an error in the given Monad */
+    private def raiseError[M[_]: MonadError, X](error: Error): M[X] =
+      ApplicativeError[M, Error].raiseError(error)
+
+    private def setExtractor[C, A <: Set[X], X](
+        tag: Tag[C, A]
+    ): Extractor[Val, X] =
+      (v: Val) =>
+        assert(v.isSingleton, "extractor: value not split")
+        if v.isSingleton(tag) then
+          val vlu: Set[X] = v.get(tag).get
+          assert(vlu.size == 1)
+          Some(vlu.head)
+        else None
+
+    /** Split the value into its smaller parts such that ∀ V, ⋃ { v \in split(V)
+      * } = V
+      */
+    def split(v: Val): Set[Val] =
+      v.keys.flatMap(key =>
+        key.lat.split(v.get(key).get).map(HMap.empty.put(key, _))
+      )
+
+    //
+    // Type tags + conversions to canonical representations
+    //
+
+    val IntT = new Tag[BigInt, I]("integer")
+    val RealT = new Tag[Double, R]("real")
+    val PrimT = new Tag[String, Set[String]]("primitive")
+    val BoolT = new Tag[Boolean, B]("boolean")
+    val StringT = new Tag[String, S]("string")
+    val CharT = new Tag[Char, C]("char")
+    val SymT = new Tag[String, Sym]("symbol")
+    val StrT = new Tag[String, S]("string")
+    val NilT = new Tag[Unit, Unit]("null")
+    val UnspT = new Tag[Unit, Unit]("unspecified")
+    val PaiT = ???
+    val PtrT = new Tag[Address, Set[Address]]("pointer")
+    val CloT = new Tag[(SchemeExp, Env), Set[(SchemeExp, Env)]]("closure")
 
     type MonadError[M[_]] = cats.extensions.MonadError[Error][M]
 
@@ -41,24 +88,46 @@ class ModularSchemeDomain[
     // Extraction of canonical values
     //
 
-    override def elements(v: Val): List[CanonicalValue] = ???
-    given galois: Galois[ConcreteSchemeValue, Val] = ???
+    given galois: Galois[SimpleSchemeValue, Val] with {
+      def inject(c: SimpleSchemeValue): Val = c match
+        case SchemeInt(i)      => insert(IntT, i)
+        case SchemeDouble(d)   => insert(RealT, d)
+        case SchemeNil         => insert(NilT, ())
+        case SchemeString(s)   => insert(StrT, s)
+        case SchemeBoolean(b)  => insert(BoolT, b)
+        case SchemeUnspecified => insert(UnspT, ())
+    }
 
     //
-    // Type predicates
+    // Type predicates & extractors
     //
 
-    def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
-    def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def primitive: Extractor[Val, String] = setExtractor(PrimT)
+    def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(PrimT))
+    def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(StrT))
+    def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(BoolT))
+    def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(RealT))
+    def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(SymT))
+    def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(PtrT))
+    def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(PaiT))
+    def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(NilT))
+    def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(IntT))
+    def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(CharT))
+    def closures = setExtractor(CloT)
+    def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(CloT))
+    def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+      inject(v.contains(UnspT))
 
     //
     // Pairs
@@ -77,6 +146,10 @@ class ModularSchemeDomain[
         init: Val
     ): M[Val] = ???
 
+    //
+    // toString
+    //
+
     def toString[Sym: SymbolLattice, I: IntLattice, C: CharLattice_[
       I,
       Sym,
@@ -84,12 +157,17 @@ class ModularSchemeDomain[
     ], S: StringLattice_[I, C, Sym]: GaloisFrom[String]](v: Val): S = ???
 
     //
-    // toString
+    // Char lattice
     //
 
     override def downCase[M[_]: MonadError: MonadJoin](
         c: Val
-    ): M[Val] = ???
+    ): M[Val] =
+      MonadJoin[M].mfoldMap(split(c)) {
+        case CharT(c) =>
+          CharLattice[C, I, Sym, S].downCase(c) map insertA(CharT)
+        case v => raiseError(TypeError("downCase: expected char", v))
+      }
 
     override def toChar[C: CharLattice_[Val, Sym, S]: GaloisFrom[
       Char
@@ -105,7 +183,12 @@ class ModularSchemeDomain[
 
     override def upCase[M[_]: MonadError: MonadJoin](
         c: Val
-    ): M[Val] = ???
+    ): M[Val] =
+      MonadJoin[M].mfoldMap(split(c)) {
+        case CharT(c) =>
+          CharLattice[C, I, Sym, S].upCase(c) map insertA(CharT)
+        case v => raiseError(TypeError("upCase: expected char", v))
+      }
 
     override def toInt[M[_]: MonadError: MonadJoin, I: IntLattice: GaloisFrom[
       BigInt
@@ -117,7 +200,12 @@ class ModularSchemeDomain[
         _
     ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
         c: Val
-    ): M[B] = ???
+    ): M[B] =
+      MonadJoin[M].mfoldMap(split(c)) {
+        case CharT(c) =>
+          CharLattice[C, I, Sym, S].isLower[M, B](c)
+        case v => raiseError(TypeError("isLower: expected char", v))
+      }
 
     override def isUpper[M[
         _
@@ -152,6 +240,10 @@ class ModularSchemeDomain[
         c1: Val,
         c2: Val
     ): M[B] = ???
+
+    //
+    // String lattice
+    //
 
     override def length[M[_]: MonadError: MonadJoin](
         s: Val
@@ -191,6 +283,10 @@ class ModularSchemeDomain[
         length: Val,
         char: Val
     ): M[Val] = ???
+
+    //
+    // Int Lattice
+    //
 
     override def quotient[M[_]: MonadError: MonadJoin](
         n1: Val,

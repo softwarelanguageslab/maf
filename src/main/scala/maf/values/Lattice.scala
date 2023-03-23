@@ -55,6 +55,11 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
     */
   final def lteq(x: L, y: L): Boolean = subsumes(y, x)
 
+  /** Split the value into its constituents such that ∀ V : ⨆ { v ∈ split(V) =
+    * V}
+    */
+  def split(v: L): Set[L]
+
   /** ...and elements of the lattice can be compared */
   final def tryCompare(x: L, y: L): Option[Int] =
     (subsumes(x, y), subsumes(y, x)) match
@@ -66,6 +71,11 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
 object Lattice:
   def apply[L: Lattice]: Lattice[L] = implicitly
 
+  extension [L: Lattice](v: L)
+    def ⊔(w: => L): L =
+      Lattice[L].join(v, w)
+    def split: Set[L] = Lattice[L].split(v)
+
   class SetLattice[A: Show] extends Lattice[Set[A]]:
     def show(x: Set[A]): String =
       "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
@@ -73,10 +83,11 @@ object Lattice:
     def bottom: Set[A] = Set.empty
     def join(x: Set[A], y: => Set[A]): Set[A] = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
+    def split(v: Set[A]): Set[Set[A]] = v.map(Set(_))
     def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Set[A], y: Set[A]) = ???
     def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
 
-  implicit def setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
+  given setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
 
   implicit object UnitLattice extends Lattice[Unit]:
     def show(v: Unit): String = "()"
@@ -84,6 +95,7 @@ object Lattice:
     def bottom = ()
     def join(x: Unit, y: => Unit): Unit = ()
     def subsumes(x: Unit, y: => Unit): Boolean = true
+    def split(v: Unit): Set[Unit] = Set(())
     def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Unit, y: Unit): B =
       Galois.inject[Boolean, B](true)
 
