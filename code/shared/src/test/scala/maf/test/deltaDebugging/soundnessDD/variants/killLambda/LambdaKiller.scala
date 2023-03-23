@@ -15,8 +15,7 @@ object LambdaKiller:
                   dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]],
                   staticProfiling: Array[((Int, Int), Int)],
                   deadCodeTester: KillLambdaTester,
-                  benchmark: Benchmark
-            ): SchemeExp =
+                  benchmark: Benchmark): SchemeExp =
 
     var lambdas = dynAnalysis.keySet.toList
     lambdas = lambdas.sortWith((l1, l2) => {
