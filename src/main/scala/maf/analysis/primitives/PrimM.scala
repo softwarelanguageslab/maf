@@ -7,7 +7,8 @@ import syntax.*
 import syntax.scheme.*
 import util.*
 import values.*
-import values.scheme.*
+import values.scheme.{given, *}
+import values.cscheme.*
 import values.typeclasses.*
 import cats.data.*
 import cats.{MonadError => _, *}
@@ -86,6 +87,8 @@ trait SchemePrimM[M[_]: Monad, A <: Address, V]
     exs.zip(vlus).foldM[M, V](SchemeNil) { case (rest, (ex, vlu)) =>
       allocVal(ex, lat.cons(vlu, rest)).map(adr => SchemePtr(adr))
     }
+  def currentThread: M[TID] = throw new Exception("Not supported")
+
   // exotic -- not so important if not implemented yet
   // def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] =
   //  throw new Exception("Not supported")

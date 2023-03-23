@@ -11,13 +11,13 @@ trait CharLattice[C, I: IntLattice, Sym: SymbolLattice, S: StringLattice_[
   I,
   C,
   Sym
-]] extends Lattice[C]:
+]] extends Lattice[C],
+      AsString[C]:
   def downCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C]
   def upCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C]
   def toInt[M[_]: MonadError[Error]: MonadJoin, I: IntLattice: GaloisFrom[
     BigInt
   ]](c: C): M[I]
-  def toString(c: C): S
 
   def isLower[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
     Boolean

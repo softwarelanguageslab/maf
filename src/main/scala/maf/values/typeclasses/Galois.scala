@@ -15,11 +15,6 @@ trait Galois[C, A]:
     */
   def inject(c: C): A
 
-  /** Extract a set concrete values from the abstract domain, this function
-    * corresponds to the `gamma` function in a Galois connection
-    */
-  def extract(a: A): Option[Set[C]]
-
 object Galois:
   /** Injects a concrete value into the abstract domain using the Galois
     * connection in context
@@ -33,7 +28,6 @@ object Galois:
 
   given Galois[Unit, Unit] with
     def inject(c: Unit): Unit = ()
-    def extract(a: Unit): Option[Set[Unit]] = Some(Set(()))
 
 /** Convience type alias that curries the concrete and abstract type, used for
   * context bounds

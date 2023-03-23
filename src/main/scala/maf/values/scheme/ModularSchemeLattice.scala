@@ -16,49 +16,77 @@ class ModularSchemeDomain[
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice: GaloisFrom[String]
 ] extends SchemeDomain:
-  type Val = HMap[LatKey]
-  val IntT = LatKey.T[BigInt, I]("integer")
-  val RealT = LatKey.T[Double, R]("real")
-  val BoolT = LatKey.T[Boolean, B]("boolean")
-  val StringT = LatKey.T[String, S]("string")
-  val CharT = LatKey.T[Char, C]("char")
-  val SymT = LatKey.T[String, Sym]("symbol")
-  val NilT = LatKey.T[Unit, Unit]("null")
+  type Val = HMap[SchemeTag]
+  trait SchemeTag extends LatKey
 
-  given lattice: SchemeLattice[Val] with SparseProductLattice[LatKey] with {
+  given lattice: SchemeLattice[Val] with SparseProductLattice[SchemeTag] with {
+
+    protected case class Tag[C, A: GaloisFrom[C]: Lattice](
+        name: String,
+        can: SchemeType
+    ) extends LatKey.T[C, A],
+          SchemeTag
+
+    val IntT = Tag[BigInt, I]("integer", CIntT)
+    val RealT = Tag[Double, R]("real", CRealT)
+    val BoolT = Tag[Boolean, B]("boolean", CBoolT)
+    val StringT = Tag[String, S]("string", CStrT)
+    val CharT = Tag[Char, C]("char", CCharT)
+    val SymT = Tag[String, Sym]("symbol", CSymT)
+    val NilT = Tag[Unit, Unit]("null", CNullT)
+
     type MonadError[M[_]] = cats.extensions.MonadError[Error][M]
 
+    //
+    // Extraction of canonical values
+    //
+
+    override def elements(v: Val): List[CanonicalValue] = ???
     given galois: Galois[ConcreteSchemeValue, Val] = ???
+
+    //
+    // Type predicates
+    //
+
+    def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+    def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B = ???
+
+    //
+    // Pairs
+    //
+
+    def cons(car: Val, cdr: Val): Val = ???
+    def car[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
+    def cdr[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
+
+    //
+    // Pointers & vectors
+    //
+    def pointer(adr: Address): Val = ???
+    def vector[M[_]: MonadError: MonadJoin](
+        siz: Val,
+        init: Val
+    ): M[Val] = ???
+
+    def toString[Sym: SymbolLattice, I: IntLattice, C: CharLattice_[
+      I,
+      Sym,
+      S
+    ], S: StringLattice_[I, C, Sym]: GaloisFrom[String]](v: Val): S = ???
 
     //
     // toString
     //
 
-    override def toString[C: CharLattice_[Val, Sym, S], S: StringLattice_[
-      Val,
-      C,
-      Sym
-    ]: GaloisFrom[String], Sym: SymbolLattice](n: Val): S = ???
-
-    override def toString[I: IntLattice, C: CharLattice_[
-      I,
-      Sym,
-      S
-    ], S: StringLattice_[
-      I,
-      C,
-      Sym
-    ]: GaloisFrom[String], Sym: SymbolLattice](n: Val): S = ???
-
-    def toString[I: IntLattice, C: CharLattice_[I, Val, S], S: StringLattice_[
-      I,
-      C,
-      Val
-    ]: GaloisFrom[String]](n: Val): S = ???
-
-    override def toString(c: Val): Val = ???
-
-    override def cons(car: Val, cdr: Val): Val = ???
     override def downCase[M[_]: MonadError: MonadJoin](
         c: Val
     ): M[Val] = ???
@@ -125,17 +153,6 @@ class ModularSchemeDomain[
         c2: Val
     ): M[B] = ???
 
-    /** Inject a concrete value into the abstract domain, this function
-      * corresponds to the `alpha` function in a Galois connection
-      */
-    override def inject(c: ConcreteSchemeValue): Val = ???
-
-    /** Extract a set concrete values from the abstract domain, this function
-      * corresponds to the `gamma` function in a Galois connection
-      */
-    override def extract(a: Val): Option[Set[ConcreteSchemeValue]] =
-      ???
-
     override def length[M[_]: MonadError: MonadJoin](
         s: Val
     ): M[Val] = ???
@@ -201,6 +218,10 @@ class ModularSchemeDomain[
 
     override def valuesBetween(n1: Val, n2: Val): Set[Val] = ???
 
+    //
+    // Reals
+    //
+
     override def ceiling[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
     override def floor[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
@@ -240,6 +261,8 @@ class ModularSchemeDomain[
     override def expt[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
       ???
 
+    // ordering
+
     override def lt[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[
       Boolean
     ]](
@@ -247,11 +270,11 @@ class ModularSchemeDomain[
         n2: Val
     ): M[B] = ???
 
+    // booleans
+
     override def isTrue(b: Val): Boolean = ???
 
     override def isFalse(b: Val): Boolean = ???
-
-    override def isBoolean(b: Val): Val = ???
 
     override def not(b: Val): Val = ???
   }

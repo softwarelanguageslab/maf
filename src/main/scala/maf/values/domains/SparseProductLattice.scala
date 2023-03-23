@@ -6,12 +6,15 @@ import typeclasses.*
 import util.*
 
 /** Represents a key of a type in the lattice */
-trait LatKey:
+trait LatKey extends HMapKey:
   /** The concrete value of the key */
   type Concrete
 
   /** The abstract value of the key */
   type Abstract
+
+  /** Value correzsponding to the key in the HMap */
+  type Value = Abstract
 
   /** A Galois connection such that concrete values can be injected in the
     * abstract domain, and abstract values extracted
@@ -25,27 +28,11 @@ trait LatKey:
   val name: String
 
 object LatKey:
-  /** Auxilary alias for a lattice key, can be used to fill in the abstract type
-    * members using type parameters
-    */
-  type Aux[C, A] = LatKey { type Concrete = C; type Abstract = A }
-
-  /** Convience constructor for a LatKey given a lattice for the abstract value
-    * and a galois connection between the abstract and concrete value
-    */
-  def T[C, A: Lattice](nam: String)(using Galois[C, A]): LatKey.Aux[C, A] =
-    new LatKey:
-      type Concrete = C
-      type Abstract = A
-      val galois = summon
-      val lat = summon
-      val name = nam
-
-  /** Any mapping between a LatKey and its corresponding abstract value is a
-    * valid mapping. This given provides evidence of this fact automatically.
-    */
-  given allowedMapping[K <: LatKey.Aux[C, A], C, A]: Mapping[K, A] =
-    Mapping.derived
+  trait T[C, A: GaloisFrom[C]: Lattice] extends LatKey:
+    type Concrete = C
+    type Abstract = A
+    def galois = summon
+    def lat = summon
 
 /** A product lattice represented as an `HMap` to limit memory usuage when its
   * contents are sparse.
@@ -59,29 +46,28 @@ trait SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
 
   def join(x: HMap[K], y: => HMap[K]): HMap[K] =
     // joins the corresponding keys in the HMap together
-    (x.keysWithEvidence ++ y.keysWithEvidence).foldLeft(x) {
-      case (result, (key, ev)) =>
-        result.put(
-          key,
-          key.lat.join(
-            result.get(key)(using ev).getOrElse(key.lat.bottom),
-            y.get(key)(using ev).getOrElse(key.lat.bottom)
-          )
-        )(using ev)
+    (x.keys ++ y.keys).foldLeft(x) { case (result, key) =>
+      result.put(
+        key,
+        key.lat.join(
+          result.get(key).getOrElse(key.lat.bottom),
+          y.get(key).getOrElse(key.lat.bottom)
+        )
+      )
     }
 
   def subsumes(x: HMap[K], y: => HMap[K]): Boolean =
     // ∀k ∈ domain(x) ∪ domain(y):  y(k) ⊑ x(k)
-    (x.keysWithEvidence ++ y.keysWithEvidence).forall { case (key, ev) =>
+    (x.keys ++ y.keys).forall(key =>
       key.lat.subsumes(
-        x.get(key)(using ev).getOrElse(key.lat.bottom),
-        y.get(key)(using ev).getOrElse(key.lat.bottom)
+        x.get(key).getOrElse(key.lat.bottom),
+        y.get(key).getOrElse(key.lat.bottom)
       )
-    }
+    )
 
   // TODO: rename to insert
   def inject(tpy: K, v: tpy.Concrete): HMap[K] =
-    HMap.empty.put(tpy, tpy.galois.inject(v))(using LatKey.allowedMapping)
+    HMap.empty.put(tpy, tpy.galois.inject(v))
 
   def eql[B: BoolLattice: GaloisFrom[Boolean]](x: HMap[K], y: HMap[K]): B = ???
 
@@ -90,8 +76,8 @@ trait SparseProductLattice[K <: LatKey] extends Lattice[HMap[K]]:
   //
 
   override def show(t: HMap[K]): String =
-    t.keysWithEvidence
-      .map { case (key, ev) =>
-        key.lat.show(t.get(key)(using ev).getOrElse(key.lat.bottom))
+    t.keys
+      .map { case (key) =>
+        key.lat.show(t.get(key).getOrElse(key.lat.bottom))
       }
       .mkString("{", ",", "}")

@@ -15,6 +15,8 @@ object ConcreteSchemeValue:
   given Conversion[Double, ConcreteSchemeValue] = SchemeDouble.apply
   given Conversion[String, ConcreteSchemeValue] = SchemeString.apply
   given Conversion[Boolean, ConcreteSchemeValue] = SchemeBoolean.apply
+  given Conversion[Address, ConcreteSchemeValue] = SchemePtr.apply
+  given Conversion[Char, ConcreteSchemeValue] = SchemeChar.apply
 
   //
   // Galois
@@ -35,23 +37,25 @@ object ConcreteSchemeValue:
     *   the type of the abstract value, can by anything as its domain supports
     *   injecting scheme values.
     */
-  class GaloisFor[A, L: GaloisFrom[ConcreteSchemeValue]](
+  class GaloisForSubdomain[A, L: GaloisFrom[ConcreteSchemeValue]](
       f: PartialFunction[ConcreteSchemeValue, A]
   )(using
-      Conversion[A, ConcreteSchemeValue]
+      conv: Conversion[A, ConcreteSchemeValue]
   ) extends Galois[A, L]:
-    def inject(a: A): L = Galois.inject[ConcreteSchemeValue, L](a)
-    def extract(v: L): Option[Set[A]] =
-      summon[Galois[ConcreteSchemeValue, L]].extract(v).map(_.collect(f))
+    def inject(a: A): L = Galois.inject[ConcreteSchemeValue, L](conv(a))
 
   given [L: GaloisFrom[ConcreteSchemeValue]]: Galois[Boolean, L] =
-    GaloisFor[Boolean, L] { case SchemeBoolean(b) => b }
+    GaloisForSubdomain[Boolean, L] { case SchemeBoolean(b) => b }
   given [L: GaloisFrom[ConcreteSchemeValue]]: Galois[BigInt, L] =
-    GaloisFor[BigInt, L] { case SchemeInt(b) => b }
+    GaloisForSubdomain[BigInt, L] { case SchemeInt(b) => b }
   given [L: GaloisFrom[ConcreteSchemeValue]]: Galois[String, L] =
-    GaloisFor[String, L] { case SchemeString(b) => b }
+    GaloisForSubdomain[String, L] { case SchemeString(b) => b }
   given [L: GaloisFrom[ConcreteSchemeValue]]: Galois[Double, L] =
-    GaloisFor[Double, L] { case SchemeDouble(b) => b }
+    GaloisForSubdomain[Double, L] { case SchemeDouble(b) => b }
+  given [L: GaloisFrom[ConcreteSchemeValue]]: Galois[Address, L] =
+    GaloisForSubdomain[Address, L] { case SchemePtr(adr) => adr }
+  given [L: GaloisFrom[ConcreteSchemeValue]]: Galois[Char, L] =
+    GaloisForSubdomain[Char, L] { case SchemeChar(c) => c }
 
 /** A Scheme integer
   * @note
@@ -83,3 +87,6 @@ case object SchemeUnspecified extends ConcreteSchemeValue
 
 /** A boolean value */
 case class SchemeBoolean(b: Boolean) extends ConcreteSchemeValue
+
+/** A Scheme character value */
+case class SchemeChar(c: Char) extends ConcreteSchemeValue

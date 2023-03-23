@@ -382,15 +382,15 @@ object ConstantPropagation:
         case (Constant(x), Constant(y)) => x.to(y).map(i => Constant(i)).toSet
         case _                          => Set()
 
-      def toString[C: CharLattice_[I, Sym, S], S: StringLattice_[
-        I,
-        C,
-        Sym
-      ]: GaloisFrom[String], Sym: SymbolLattice](n: I): S =
+      def toString[Sym: SymbolLattice, I2: IntLattice, C: CharLattice_[
+        I2,
+        Sym,
+        S
+      ], S: StringLattice_[I2, C, Sym]: GaloisFrom[String]](n: I): S =
         n match
-          case Top         => StringLattice[S, I, C, Sym].top
+          case Top         => StringLattice[S, I2, C, Sym].top
           case Constant(x) => Galois.inject[String, S](x.toString)
-          case Bottom      => StringLattice[S, I, C, Sym].bottom
+          case Bottom      => StringLattice[S, I2, C, Sym].bottom
       def toChar[C: CharLattice_[I, Sym, S]: GaloisFrom[
         Char
       ], S: StringLattice_[
@@ -492,14 +492,15 @@ object ConstantPropagation:
       ): M[B2] =
         ((n1, n2) mapN (_ < _)).toB[B2].pure
 
-      def toString[I: IntLattice, C: CharLattice_[I, Sym, S], S: StringLattice_[
-        I,
-        C,
-        Sym
-      ]: GaloisFrom[String], Sym: SymbolLattice](n: R): S = n match
-        case Top         => StringLattice[S, I, C, Sym].top
-        case Constant(x) => Galois.inject[String, S](x.toString)
-        case Bottom      => StringLattice[S, I, C, Sym].bottom
+      def toString[Sym2: SymbolLattice, I2: IntLattice, C2: CharLattice_[
+        I2,
+        Sym2,
+        S
+      ], S: StringLattice_[I2, C2, Sym2]: GaloisFrom[String]](c: R): S =
+        c match
+          case Top         => StringLattice[S, I2, C2, Sym2].top
+          case Constant(x) => Galois.inject[String, S](x.toString)
+          case Bottom      => StringLattice[S, I2, C2, Sym2].bottom
     }
 
     implicit val charCP: CharLattice[C, I, Sym, S] =
@@ -509,7 +510,17 @@ object ConstantPropagation:
           c.map(_.toLower).pure
         def upCase[M[_]: MonadError[Error]: MonadJoin](c: C): M[C] =
           c.map(_.toUpper).pure
-        def toString(c: C): S = c map (_.toString)
+
+        def toString[Sym: SymbolLattice, I2: IntLattice, C2: CharLattice_[
+          I2,
+          Sym,
+          S
+        ], S: StringLattice_[I2, C2, Sym]: GaloisFrom[String]](c: C): S =
+          c match
+            case Top         => StringLattice[S, I2, C2, Sym].top
+            case Constant(x) => Galois.inject[String, S](x.toString)
+            case Bottom      => StringLattice[S, I2, C2, Sym].bottom
+
         def toInt[M[_]: MonadError[
           Error
         ]: MonadJoin, I2: IntLattice: GaloisFrom[BigInt]](
@@ -559,16 +570,14 @@ object ConstantPropagation:
       new BaseInstance[String]("Symbol")(LatticeShow.symShow)
         with SymbolLattice[Sym] {
         def injectSymbol(x: String) = Constant(x)
-        def toString[I: IntLattice, C: CharLattice_[
-          I,
-          Sym,
+
+        def toString[Sym2: SymbolLattice, I2: IntLattice, C2: CharLattice_[
+          I2,
+          Sym2,
           S
-        ], S: StringLattice_[
-          I,
-          C,
-          Sym
-        ]: GaloisFrom[String]](s: Sym): S = s match
-          case Top         => StringLattice[S, I, C, Sym].top
-          case Constant(x) => Galois.inject[String, S](x)
-          case Bottom      => StringLattice[S, I, C, Sym].bottom
+        ], S: StringLattice_[I2, C2, Sym2]: GaloisFrom[String]](c: Sym): S =
+          c match
+            case Top         => StringLattice[S, I2, C2, Sym2].top
+            case Constant(x) => Galois.inject[String, S](x.toString)
+            case Bottom      => StringLattice[S, I2, C2, Sym2].bottom
       }

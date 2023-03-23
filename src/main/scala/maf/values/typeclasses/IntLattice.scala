@@ -5,7 +5,7 @@ import maf.util.Error
 import cats.extensions.*
 
 /** A lattice for integers */
-trait IntLattice[I] extends Lattice[I] { self =>
+trait IntLattice[I] extends Lattice[I], AsString[I] { self =>
   def toReal[M[_]: MonadError[Error]: MonadJoin, R: RealLattice: GaloisFrom[
     Double
   ]](n: I): M[R]
@@ -35,11 +35,6 @@ trait IntLattice[I] extends Lattice[I] { self =>
     Boolean
   ]](n1: I, n2: I): M[B]
   def valuesBetween(n1: I, n2: I): Set[I]
-  def toString[C: CharLattice_[I, Sym, S], S: StringLattice_[
-    I,
-    C,
-    Sym
-  ]: GaloisFrom[String], Sym: SymbolLattice](n: I): S
   def toChar[C: CharLattice_[I, Sym, S]: GaloisFrom[Char], S: StringLattice_[
     I,
     C,
