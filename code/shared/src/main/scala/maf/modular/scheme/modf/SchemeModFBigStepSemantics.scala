@@ -188,7 +188,7 @@ object TEvalM:
     trait LogFailMonadEValM extends FailSilentMonadEvalM:
         def warn(msg: String): Unit
         override def fail[X](e: Error): EvalM[X] =
-            warn(s"ignoring error $e")
+            //warn(s"ignoring error $e")
             super.fail(e)
 
 trait BigStepModFSemantics extends BigStepModFSemanticsT { outer =>
