@@ -35,11 +35,11 @@ object Extractor:
   */
 trait SchemeLattice[L]
     extends IntLattice[L],
-      StringLattice[L, L, L, L],
       BoolLattice[L],
       RealLattice[L],
       SymbolLattice[L],
-      CharLattice[L, L, L, L]:
+      CharLattice[L, L, L, L],
+      Lattice[L]:
 
   import ConcreteSchemeValue.given
 
@@ -94,15 +94,7 @@ trait SchemeLattice[L]
   def closures: Extractor[L, (SchemeExp, Env)]
   def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  // TODO: closures
-  // TODO: primitives
-
-  def cons(car: L, cdr: L): L
-  def car[M[_]: MonadError[Error]: MonadJoin](v: L): M[L]
-  def cdr[M[_]: MonadError[Error]: MonadJoin](v: L): M[L]
-
   def pointer(adr: Address): L
-  def vector[M[_]: MonadError[Error]: MonadJoin](siz: L, init: L): M[L]
 
   // Convenience procedures
   def boolTop: L =

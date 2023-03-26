@@ -5,415 +5,423 @@ package scheme
 import interpreter.*
 import typeclasses.*
 import cats.syntax.all.*
-import cats.{MonadError => _, _}
-import util.*
+import cats.{MonadError => _, ~> => _, _}
+import util.{Key => _, *}
 import maf.syntax.scheme.*
 import domains.*
 import cats.extensions.MonadError
 import maf.values.typeclasses.Galois.inject
 import cats.extensions.Errors.raiseError
+import maf.util.types.{given, *}
 
-class ModularSchemeDomain[
+//
+// Types in a Scheme Value
+//
+
+case object IntT extends Key[IntT]
+type IntT = IntT.type
+case object RealT extends Key[RealT]
+type RealT = RealT.type
+case object PrimT extends Key[PrimT]
+type PrimT = PrimT.type
+case object BoolT extends Key[BoolT]
+type BoolT = BoolT.type
+case object StringT extends Key[StringT]
+type StringT = StringT.type
+case object CharT extends Key[CharT]
+type CharT = CharT.type
+case object SymT extends Key[SymT]
+type SymT = SymT.type
+case object NilT extends Key[NilT]
+type NilT = NilT.type
+case object UnspT extends Key[UnspT]
+type UnspT = UnspT.type
+case object PaiT extends Key[PaiT]
+type PaiT = PaiT.type
+case object PtrT extends Key[PtrT]
+type PtrT = PtrT.type
+case object CloT extends Key[CloT]
+type CloT = CloT.type
+
+// TODO:
+type Environment = Unit
+
+type ModularSchemeValue[I, R, B, S, C, Sym] =
+  (IntT ~> I) :*:
+    (RealT ~> R) :*:
+    (BoolT ~> B) :*:
+    (StringT ~> S) :*:
+    (CharT ~> C) :*:
+    (SymT ~> Sym) :*:
+    (NilT ~> Unit) :*:
+    (UnspT ~> Unit) :*:
+    (PrimT ~> Set[String]) :*:
+    (CloT ~> Set[(SchemeExp, Environment)])
+
+given ModularSchemeDomain[
     I: IntLattice: GaloisFrom[BigInt],
     R: RealLattice: GaloisFrom[Double],
     B: BoolLattice: GaloisFrom[Boolean],
     S: StringLattice_[I, C, Sym]: GaloisFrom[String],
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice: GaloisFrom[String]
-] extends SchemeDomain:
+]: SchemeLattice[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]] with
   import maf.util.datastructures.ListOps.*
 
   /** Type alias for convience */
-  type Val = HMap[SchemeTag]
+  type Val = SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]
 
-  trait SchemeTag extends LatKey
+  // Core lattice operations
+  def join(x: Val, y: => Val): Val =
+    Join[Val#Content](x, y)
 
-  given lattice: SchemeLattice[Val] with SparseProductLattice[SchemeTag] with {
-    type P = Unit // TODO:
+  def subsumes(x: Val, y: => Val): Boolean =
+    Subsumes[Val#Content](x, y)
 
-    protected class Tag[C, A: GaloisFrom[C]: Lattice](
-        val name: String
-    ) extends LatKey.T[C, A],
-          SchemeTag:
+  type P = Unit // TODO:
 
-      def unapply(v: Val): Option[A] =
-        v.get(this)
+  //
+  // Utility functions
+  //
 
-    //
-    // Utility functions
-    //
+  /** Raises an error in the given Monad */
+  private def raiseError[M[_]: MonadError, X](error: Error): M[X] =
+    ApplicativeError[M, Error].raiseError(error)
 
-    /** Raises an error in the given Monad */
-    private def raiseError[M[_]: MonadError, X](error: Error): M[X] =
-      ApplicativeError[M, Error].raiseError(error)
+  private def setExtractor[C, A <: Set[X], X](
+      tag: Tag[C, A]
+  ): Extractor[SplitVal, X] =
+    (v: SplitVal) =>
+      v.get(tag)
+        .map(set =>
+          assert(set.size == 1)
+          set.head
+        )
 
-    private def setExtractor[C, A <: Set[X], X](
-        tag: Tag[C, A]
-    ): Extractor[Val, X] =
-      (v: Val) =>
-        assert(v.isSingleton, "extractor: value not split")
-        if v.isSingleton(tag) then
-          val vlu: Set[X] = v.get(tag).get
-          assert(vlu.size == 1)
-          Some(vlu.head)
-        else None
+  /** Split the value into its smaller parts such that ∀ V, ⋃ { v \in split(V) }
+    * \= V
+    */
+  def split(v: Val): Set[Val] =
+    v.keys.flatMap(key => key.lat.split(v.get(key).get).map(KeyPair(key, _)))
 
-    /** Split the value into its smaller parts such that ∀ V, ⋃ { v \in split(V)
-      * } = V
-      */
-    def split(v: Val): Set[Val] =
-      v.keys.flatMap(key =>
-        key.lat.split(v.get(key).get).map(HMap.empty.put(key, _))
-      )
+  type MonadError[M[_]] = cats.extensions.MonadError[Error][M]
 
-    //
-    // Type tags + conversions to canonical representations
-    //
+  //
+  // Extraction of canonical values
+  //
 
-    val IntT = new Tag[BigInt, I]("integer")
-    val RealT = new Tag[Double, R]("real")
-    val PrimT = new Tag[String, Set[String]]("primitive")
-    val BoolT = new Tag[Boolean, B]("boolean")
-    val StringT = new Tag[String, S]("string")
-    val CharT = new Tag[Char, C]("char")
-    val SymT = new Tag[String, Sym]("symbol")
-    val StrT = new Tag[String, S]("string")
-    val NilT = new Tag[Unit, Unit]("null")
-    val UnspT = new Tag[Unit, Unit]("unspecified")
-    val PaiT = ???
-    val PtrT = new Tag[Address, Set[Address]]("pointer")
-    val CloT = new Tag[(SchemeExp, Env), Set[(SchemeExp, Env)]]("closure")
+  given galois: Galois[SimpleSchemeValue, Val] = ???
 
-    type MonadError[M[_]] = cats.extensions.MonadError[Error][M]
+  // Type predicates & extractors
+  //
 
-    //
-    // Extraction of canonical values
-    //
+  def primitive: Extractor[Val, String] = setExtractor(PrimT)
+  def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[PrimT])
+  def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[StringT])
+  def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[BoolT])
+  def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[RealT])
+  def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[SymT])
+  def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[PtrT])
+  def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[PaiT])
+  def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[NilT])
+  def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[IntT])
+  def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[CharT])
+  def closures = setExtractor(CloT)
+  def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[CloT])
+  def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[UnspT])
 
-    given galois: Galois[SimpleSchemeValue, Val] with {
-      def inject(c: SimpleSchemeValue): Val = c match
-        case SchemeInt(i)      => insert(IntT, i)
-        case SchemeDouble(d)   => insert(RealT, d)
-        case SchemeNil         => insert(NilT, ())
-        case SchemeString(s)   => insert(StrT, s)
-        case SchemeBoolean(b)  => insert(BoolT, b)
-        case SchemeUnspecified => insert(UnspT, ())
+  //
+  // Pairs
+  //
+
+  def cons(car: Val, cdr: Val): Val = ???
+  def car[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
+  def cdr[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
+
+  //
+  // Pointers & vectors
+  //
+  def pointer(adr: Address): Val = ???
+  def vector[M[_]: MonadError: MonadJoin](
+      siz: Val,
+      init: Val
+  ): M[Val] = ???
+
+  //
+  // toString
+  //
+
+  def toString[Sym: SymbolLattice, I: IntLattice, C: CharLattice_[
+    I,
+    Sym,
+    S
+  ], S: StringLattice_[I, C, Sym]: GaloisFrom[String]](v: Val): S = ???
+
+  //
+  // Char lattice
+  //
+
+  override def downCase[M[_]: MonadError: MonadJoin](
+      c: Val
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(c)) {
+      case CharT(c) =>
+        CharLattice[C, I, Sym, S].downCase(c) map insertA(CharT)
+      case v => raiseError(TypeError("downCase: expected char", v))
     }
 
-    //
-    // Type predicates & extractors
-    //
+  override def toChar[C: CharLattice_[Val, Sym, S]: GaloisFrom[
+    Char
+  ], S: StringLattice_[
+    Val,
+    C,
+    Sym
+  ], Sym: SymbolLattice](n: Val): C = ???
 
-    def primitive: Extractor[Val, String] = setExtractor(PrimT)
-    def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(PrimT))
-    def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(StrT))
-    def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(BoolT))
-    def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(RealT))
-    def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(SymT))
-    def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(PtrT))
-    def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(PaiT))
-    def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(NilT))
-    def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(IntT))
-    def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(CharT))
-    def closures = setExtractor(CloT)
-    def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(CloT))
-    def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-      inject(v.contains(UnspT))
+  def toReal[M[_]: MonadError: MonadJoin, R: RealLattice: GaloisFrom[
+    Double
+  ]](n: Val): M[R] = ???
 
-    //
-    // Pairs
-    //
+  override def upCase[M[_]: MonadError: MonadJoin](
+      c: Val
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(c)) {
+      case CharT(c) =>
+        CharLattice[C, I, Sym, S].upCase(c) map insertA(CharT)
+      case v => raiseError(TypeError("upCase: expected char", v))
+    }
 
-    def cons(car: Val, cdr: Val): Val = ???
-    def car[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
-    def cdr[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
+  override def toInt[M[_]: MonadError: MonadJoin, I: IntLattice: GaloisFrom[
+    BigInt
+  ]](
+      c: Val
+  ): M[I] = ???
 
-    //
-    // Pointers & vectors
-    //
-    def pointer(adr: Address): Val = ???
-    def vector[M[_]: MonadError: MonadJoin](
-        siz: Val,
-        init: Val
-    ): M[Val] = ???
+  override def isLower[M[
+      _
+  ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
+      c: Val
+  ): M[B] =
+    MonadJoin[M].mfoldMap(split(c)) {
+      case CharT(c) =>
+        CharLattice[C, I, Sym, S].isLower[M, B](c)
+      case v => raiseError(TypeError("isLower: expected char", v))
+    }
 
-    //
-    // toString
-    //
+  override def isUpper[M[
+      _
+  ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
+      c: Val
+  ): M[B] =
+    MonadJoin[M].mfoldMap(split(c)) {
+      case CharT(c) =>
+        CharLattice[C, I, Sym, S].isUpper[M, B](c)
+      case v => raiseError(TypeError("isUpper: expected char", v))
+    }
 
-    def toString[Sym: SymbolLattice, I: IntLattice, C: CharLattice_[
-      I,
-      Sym,
-      S
-    ], S: StringLattice_[I, C, Sym]: GaloisFrom[String]](v: Val): S = ???
+  override def charEq[M[
+      _
+  ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
+      c1: Val,
+      c2: Val
+  ): M[B] =
+    MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+      case (CharT(c1), CharT(c2)) =>
+        CharLattice[C, I, Sym, S].charEq[M, B](c1, c2)
+      case v => raiseError(TypeError("charEq: expected char", v))
+    }
 
-    //
-    // Char lattice
-    //
+  override def charLt[M[
+      _
+  ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
+      c1: Val,
+      c2: Val
+  ): M[B] =
+    MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+      case (CharT(c1), CharT(c2)) =>
+        CharLattice[C, I, Sym, S].charLt[M, B](c1, c2)
+      case v => raiseError(TypeError("charEq: expected char", v))
+    }
 
-    override def downCase[M[_]: MonadError: MonadJoin](
-        c: Val
-    ): M[Val] =
-      MonadJoin[M].mfoldMap(split(c)) {
-        case CharT(c) =>
-          CharLattice[C, I, Sym, S].downCase(c) map insertA(CharT)
-        case v => raiseError(TypeError("downCase: expected char", v))
-      }
+  override def charEqCI[M[
+      _
+  ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
+      c1: Val,
+      c2: Val
+  ): M[B] =
+    MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+      case (CharT(c1), CharT(c2)) =>
+        CharLattice[C, I, Sym, S].charEqCI[M, B](c1, c2)
+      case v => raiseError(TypeError("charEq: expected char", v))
+    }
 
-    override def toChar[C: CharLattice_[Val, Sym, S]: GaloisFrom[
-      Char
-    ], S: StringLattice_[
-      Val,
-      C,
-      Sym
-    ], Sym: SymbolLattice](n: Val): C = ???
+  override def charLtCI[M[
+      _
+  ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
+      c1: Val,
+      c2: Val
+  ): M[B] =
+    MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
+      case (CharT(c1), CharT(c2)) =>
+        CharLattice[C, I, Sym, S].charLtCI[M, B](c1, c2)
+      case v => raiseError(TypeError("charEq: expected char", v))
+    }
 
-    def toReal[M[_]: MonadError: MonadJoin, R: RealLattice: GaloisFrom[
-      Double
-    ]](n: Val): M[R] = ???
+  //
+  // String lattice
+  //
 
-    override def upCase[M[_]: MonadError: MonadJoin](
-        c: Val
-    ): M[Val] =
-      MonadJoin[M].mfoldMap(split(c)) {
-        case CharT(c) =>
-          CharLattice[C, I, Sym, S].upCase(c) map insertA(CharT)
-        case v => raiseError(TypeError("upCase: expected char", v))
-      }
+  override def length[M[_]: MonadError: MonadJoin](
+      s: Val
+  ): M[Val] = ???
 
-    override def toInt[M[_]: MonadError: MonadJoin, I: IntLattice: GaloisFrom[
-      BigInt
-    ]](
-        c: Val
-    ): M[I] = ???
+  override def append[M[_]: MonadError: MonadJoin](
+      s1: Val,
+      s2: Val
+  ): M[Val] = ???
 
-    override def isLower[M[
-        _
-    ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
-        c: Val
-    ): M[B] =
-      MonadJoin[M].mfoldMap(split(c)) {
-        case CharT(c) =>
-          CharLattice[C, I, Sym, S].isLower[M, B](c)
-        case v => raiseError(TypeError("isLower: expected char", v))
-      }
+  override def substring[M[_]: MonadError: MonadJoin](
+      s: Val,
+      from: Val,
+      to: Val
+  ): M[Val] = ???
 
-    override def isUpper[M[
-        _
-    ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
-        c: Val
-    ): M[B] =
-      MonadJoin[M].mfoldMap(split(c)) {
-        case CharT(c) =>
-          CharLattice[C, I, Sym, S].isUpper[M, B](c)
-        case v => raiseError(TypeError("isUpper: expected char", v))
-      }
+  override def ref[M[_]: MonadError: MonadJoin](
+      s: Val,
+      i: Val
+  ): M[Val] = ???
 
-    override def charEq[M[
-        _
-    ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
-        c1: Val,
-        c2: Val
-    ): M[B] =
-      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
-        case (CharT(c1), CharT(c2)) =>
-          CharLattice[C, I, Sym, S].charEq[M, B](c1, c2)
-        case v => raiseError(TypeError("charEq: expected char", v))
-      }
+  override def set[M[_]: MonadError: MonadJoin](
+      s: Val,
+      i: Val,
+      c: Val
+  ): M[Val] = ???
 
-    override def charLt[M[
-        _
-    ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
-        c1: Val,
-        c2: Val
-    ): M[B] =
-      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
-        case (CharT(c1), CharT(c2)) =>
-          CharLattice[C, I, Sym, S].charLt[M, B](c1, c2)
-        case v => raiseError(TypeError("charEq: expected char", v))
-      }
+  override def toSymbol[M[_]: MonadError: MonadJoin](
+      s: Val
+  ): M[Val] = ???
 
-    override def charEqCI[M[
-        _
-    ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
-        c1: Val,
-        c2: Val
-    ): M[B] =
-      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
-        case (CharT(c1), CharT(c2)) =>
-          CharLattice[C, I, Sym, S].charEqCI[M, B](c1, c2)
-        case v => raiseError(TypeError("charEq: expected char", v))
-      }
+  override def toNumber[M[_]: MonadError: MonadJoin](
+      s: Val
+  ): M[Val] = ???
 
-    override def charLtCI[M[
-        _
-    ]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](
-        c1: Val,
-        c2: Val
-    ): M[B] =
-      MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
-        case (CharT(c1), CharT(c2)) =>
-          CharLattice[C, I, Sym, S].charLtCI[M, B](c1, c2)
-        case v => raiseError(TypeError("charEq: expected char", v))
-      }
+  override def makeString[M[_]: MonadError: MonadJoin](
+      length: Val,
+      char: Val
+  ): M[Val] = ???
 
-    //
-    // String lattice
-    //
+  //
+  // Int Lattice
+  //
 
-    override def length[M[_]: MonadError: MonadJoin](
-        s: Val
-    ): M[Val] = ???
+  override def quotient[M[_]: MonadError: MonadJoin](
+      n1: Val,
+      n2: Val
+  ): M[Val] = ???
 
-    override def append[M[_]: MonadError: MonadJoin](
-        s1: Val,
-        s2: Val
-    ): M[Val] = ???
+  override def div[M[_], R: GaloisFrom[Double]](
+      n1: Val,
+      n2: Val
+  )(using
+      e1: cats.MonadError[M, Error],
+      e2: maf.values.typeclasses.MonadJoin[M],
+      e3: maf.values.typeclasses.RealLattice[R]
+  ): M[R] = ???
 
-    override def substring[M[_]: MonadError: MonadJoin](
-        s: Val,
-        from: Val,
-        to: Val
-    ): M[Val] = ???
+  override def modulo[M[_]: MonadError: MonadJoin](
+      n1: Val,
+      n2: Val
+  ): M[Val] = ???
 
-    override def ref[M[_]: MonadError: MonadJoin](
-        s: Val,
-        i: Val
-    ): M[Val] = ???
+  override def remainder[M[_]: MonadError: MonadJoin](
+      n1: Val,
+      n2: Val
+  ): M[Val] = ???
 
-    override def set[M[_]: MonadError: MonadJoin](
-        s: Val,
-        i: Val,
-        c: Val
-    ): M[Val] = ???
+  override def valuesBetween(n1: Val, n2: Val): Set[Val] = ???
 
-    override def toSymbol[M[_]: MonadError: MonadJoin](
-        s: Val
-    ): M[Val] = ???
+  //
+  // Reals
+  //
 
-    override def toNumber[M[_]: MonadError: MonadJoin](
-        s: Val
-    ): M[Val] = ???
+  override def ceiling[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def makeString[M[_]: MonadError: MonadJoin](
-        length: Val,
-        char: Val
-    ): M[Val] = ???
+  override def floor[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    //
-    // Int Lattice
-    //
+  override def round[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def quotient[M[_]: MonadError: MonadJoin](
-        n1: Val,
-        n2: Val
-    ): M[Val] = ???
+  override def log[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def div[M[_], R: GaloisFrom[Double]](
-        n1: Val,
-        n2: Val
-    )(using
-        e1: cats.MonadError[M, Error],
-        e2: maf.values.typeclasses.MonadJoin[M],
-        e3: maf.values.typeclasses.RealLattice[R]
-    ): M[R] = ???
+  override def random[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def modulo[M[_]: MonadError: MonadJoin](
-        n1: Val,
-        n2: Val
-    ): M[Val] = ???
+  override def sin[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def remainder[M[_]: MonadError: MonadJoin](
-        n1: Val,
-        n2: Val
-    ): M[Val] = ???
+  override def asin[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def valuesBetween(n1: Val, n2: Val): Set[Val] = ???
+  override def cos[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    //
-    // Reals
-    //
+  override def acos[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def ceiling[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def tan[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def floor[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def atan[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def round[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def sqrt[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
 
-    override def log[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def plus[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
+    ???
 
-    override def random[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def minus[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
+    ???
 
-    override def sin[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def times[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
+    ???
 
-    override def asin[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def div[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
+    ???
 
-    override def cos[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def expt[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
+    ???
 
-    override def acos[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  // ordering
 
-    override def tan[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def lt[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](
+      n1: Val,
+      n2: Val
+  ): M[B] = ???
 
-    override def atan[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  // booleans
 
-    override def sqrt[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def isTrue(b: Val): Boolean = ???
 
-    override def plus[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-      ???
+  override def isFalse(b: Val): Boolean = ???
 
-    override def minus[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-      ???
-
-    override def times[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-      ???
-
-    override def div[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-      ???
-
-    override def expt[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-      ???
-
-    // ordering
-
-    override def lt[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[
-      Boolean
-    ]](
-        n1: Val,
-        n2: Val
-    ): M[B] = ???
-
-    // booleans
-
-    override def isTrue(b: Val): Boolean = ???
-
-    override def isFalse(b: Val): Boolean = ???
-
-    override def not(b: Val): Val = ???
-  }
+  override def not(b: Val): Val = ???
 
 //
 // Frequently used domains
 //
 
-val CP = ConstantPropagation
-
-object ConstantPropagationSchemeDomain
-    extends ModularSchemeDomain[
-      CP.I,
-      CP.R,
-      CP.B,
-      CP.S,
-      CP.C,
-      CP.Sym
-    ]
+import ConstantPropagation.*
+type CPSchemeValue = ModularSchemeValue[
+  CP[BigInt],
+  CP[Double],
+  CP[Boolean],
+  CP[String],
+  CP[Char],
+  CP[Symbol]
+]

@@ -32,7 +32,9 @@ case class PrimitiveVariadicArityError(
 case class PrimitiveNotApplicable[V](name: String, args: List[V]) extends Error
 case class UserError(message: String) extends Error
 
-class SchemeLatticePrimitives[V](using lat: SchemeLattice[V]):
+class SchemeLatticePrimitives[V](using domain: SchemeDomain.Aux[V]):
+  private val lat = domain.lattice
+  import domain.given
   import lat.{given, _}
   import Monad._
   import Galois.*

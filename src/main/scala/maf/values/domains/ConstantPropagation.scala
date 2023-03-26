@@ -24,6 +24,9 @@ import maf.util.*
   * CP int values, and no combination of other values.
   */
 object ConstantPropagation:
+  /** An alias to denote elements of the constant propagation domain */
+  type CP[X] = L[X]
+
   /** All elements of the lattice are of type L
     *
     * @note
@@ -103,6 +106,8 @@ object ConstantPropagation:
     *   purposes.
     */
   abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]]:
+    type Split = L[A]
+
     def show(x: L[A]): String = x match
       case Top         => typeName
       case Constant(x) => x.toString
@@ -159,7 +164,7 @@ object ConstantPropagation:
   type I = L[BigInt]
   type R = L[Double]
   type C = L[Char]
-  type Sym = L[String]
+  type Sym = L[Symbol]
 
   object L:
     implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool")
@@ -570,9 +575,19 @@ object ConstantPropagation:
           ((c1, c2) mapN { _.toUpper < _.toUpper }).toB[B2].pure
       }
 
+    /** A thin wrapper around strings and symbols in order to differentiate them
+      * on a type level
+      */
+    case class Symbol(v: String) extends AnyVal
+
+    /** A symbol can be converted to a String implicitly */
+    given Conversion[Symbol, String] = _.v
+
+    given Show[Symbol] with
+      def show(v: Symbol): String = v.v.toString()
+
     implicit val symCP: SymbolLattice[Sym] =
-      new BaseInstance[String]("Symbol")(LatticeShow.symShow)
-        with SymbolLattice[Sym] {
+      new BaseInstance[Symbol]("Symbol") with SymbolLattice[Sym] {
         def injectSymbol(x: String) = Constant(x)
 
         def toString[Sym2: SymbolLattice, I2: IntLattice, C2: CharLattice_[

@@ -22,6 +22,8 @@ object LatticeTopUndefined extends MAFException
   * join operation and a bottom element
   */
 trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
+  /** The value of one of the lattice consituents */
+  type SplitVal <: L
 
   /** A lattice has a bottom element */
   def bottom: L
@@ -58,7 +60,7 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
   /** Split the value into its constituents such that ∀ V : ⨆ { v ∈ split(V) =
     * V}
     */
-  def split(v: L): Set[L]
+  def split(v: L): Set[SplitVal]
 
   /** ...and elements of the lattice can be compared */
   final def tryCompare(x: L, y: L): Option[Int] =
@@ -71,25 +73,28 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
 object Lattice:
   def apply[L: Lattice]: Lattice[L] = implicitly
 
-  extension [L: Lattice](v: L)
+  extension [L](v: L)(using lat: Lattice[L])
     def ⊔(w: => L): L =
       Lattice[L].join(v, w)
-    def split: Set[L] = Lattice[L].split(v)
+    def split: Set[lat.SplitVal] = lat.split(v)
 
   class SetLattice[A: Show] extends Lattice[Set[A]]:
+    type SplitVal = maf.util.datastructures.Singleton[A]
     def show(x: Set[A]): String =
       "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
     def top = throw LatticeTopUndefined
     def bottom: Set[A] = Set.empty
     def join(x: Set[A], y: => Set[A]): Set[A] = x.union(y)
     def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
-    def split(v: Set[A]): Set[Set[A]] = v.map(Set(_))
+    def split(v: Set[A]): Set[SplitVal] =
+      v.map(maf.util.datastructures.Singleton(_))
     def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Set[A], y: Set[A]) = ???
     def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
 
   given setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
 
   implicit object UnitLattice extends Lattice[Unit]:
+    type SplitVal = Unit
     def show(v: Unit): String = "()"
     def top = throw LatticeTopUndefined
     def bottom = ()
