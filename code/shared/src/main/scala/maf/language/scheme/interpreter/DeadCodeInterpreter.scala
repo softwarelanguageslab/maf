@@ -20,7 +20,7 @@ class DeadCodeInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _) 
   import scala.util.control.TailCalls._
 
   private var aliveCode: Set[SchemeExp] = Set()
-  def runAndIdentifyLambdas(
+  def runAndIdentifyDeadCode(
                                    program: SchemeExp,
                                    timeout: Timeout.T,
                                    version: Version = New

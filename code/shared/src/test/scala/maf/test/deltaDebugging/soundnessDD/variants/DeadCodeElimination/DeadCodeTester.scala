@@ -28,7 +28,7 @@ trait DeadCodeTester extends SoundnessDDTester {
     var dynAnalysis: Set[SchemeExp] = Set()
     for _ <- 1 to times do
       val (ellapsed, _) = Timer.time({
-        val tpl = interpreter.runAndIdentifyLambdas(program, timeout)
+        val tpl = interpreter.runAndIdentifyDeadCode(program, timeout)
         dynAnalysis = tpl._2
       })
       SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = true)

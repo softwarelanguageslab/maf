@@ -23,7 +23,7 @@ class SDCE_Interpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => 
   
   private var aliveCode: Set[SchemeExp] = Set()
 
-  def runAndIdentifyLambdas(
+  def runAndIdentifyDeadCode(
                              program: SchemeExp,
                              timeout: Timeout.T,
                              version: Version = New

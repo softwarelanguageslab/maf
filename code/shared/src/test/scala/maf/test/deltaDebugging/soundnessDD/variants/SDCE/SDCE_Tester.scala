@@ -53,9 +53,9 @@ trait SDCE_Tester extends SoundnessDDTester {
     for _ <- 1 to times do
       interpreter match
         case i: DeadCodeInterpreter =>
-          dynAnalysis = i.runAndIdentifyLambdas(program, timeout)._2
+          dynAnalysis = i.runAndIdentifyDeadCode(program, timeout)._2
         case i: SDCE_Interpreter =>
-          dynAnalysis = i.runAndIdentifyLambdas(program, timeout)._2
+          dynAnalysis = i.runAndIdentifyDeadCode(program, timeout)._2
         case _ => throw new Exception()
     (idnResults, dynAnalysis)
 
