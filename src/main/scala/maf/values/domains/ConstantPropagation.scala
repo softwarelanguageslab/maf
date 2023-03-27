@@ -278,7 +278,9 @@ object ConstantPropagation:
                 Constant(str.updated(idx.toInt, chr)).pure
               // If neither the index or character are constant, don't even bother
               case _ => Top.pure
-        def lt[M[_]: MonadError[Error]: MonadJoin, B2: BoolLattice: GaloisFrom[
+        def stringLt[M[_]: MonadError[
+          Error
+        ]: MonadJoin, B2: BoolLattice: GaloisFrom[
           Boolean
         ]](
             s1: S,
@@ -511,9 +513,9 @@ object ConstantPropagation:
         S
       ], S: StringLattice_[I2, C2, Sym2]: GaloisFrom[String]](c: R): S =
         c match
-          case Top                 => StringLattice[S, I2, C2, Sym2].top
-          case Constant(Symbol(x)) => Galois.inject[String, S](x.toString)
-          case Bottom              => StringLattice[S, I2, C2, Sym2].bottom
+          case Top         => StringLattice[S, I2, C2, Sym2].top
+          case Constant(x) => Galois.inject[String, S](x.toString)
+          case Bottom      => StringLattice[S, I2, C2, Sym2].bottom
     }
 
     implicit val charCP: CharLattice[C, I, Sym, S] =

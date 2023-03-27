@@ -3,6 +3,7 @@ package maf.values
 import maf.values.typeclasses.*
 import maf.values.domains.*
 import org.scalacheck._
+import ConstantPropagation.Symbol
 
 trait LatticeGenerator[L]:
   def any: Gen[L]
@@ -16,7 +17,8 @@ object Generators:
   val int: Gen[BigInt] = Gen.choose(-1000, 1000)
   val double: Gen[Double] = Gen.choose(-1000.0, 1000.0)
   val char: Gen[Char] = Gen.choose(0.toChar, 255.toChar)
-  val sym: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr))
+  val sym: Gen[Symbol] =
+    Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr)).map(Symbol(_))
 
 class BooleanGenerator[B: BoolLattice: GaloisFrom[Boolean]]
     extends LatticeGenerator[B]:
@@ -115,6 +117,6 @@ object ConstantPropagationRealGenerator
 object ConstantPropagationCharGenerator
     extends ConstantPropagationGenerator[Char](Generators.char)
 object ConstantPropagationSymbolGenerator
-    extends ConstantPropagationGenerator[String](Generators.sym)(
+    extends ConstantPropagationGenerator[Symbol](Generators.sym)(
       ConstantPropagation.L.symCP
     )

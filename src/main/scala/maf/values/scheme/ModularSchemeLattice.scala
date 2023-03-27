@@ -43,11 +43,13 @@ case object PtrT extends Key[PtrT]
 type PtrT = PtrT.type
 case object CloT extends Key[CloT]
 type CloT = CloT.type
+case object VecT extends Key[VecT]
+type VecT = VecT.type
 
 // TODO:
 type Environment = Unit
 
-type ModularSchemeValue[I, R, B, S, C, Sym] =
+type ModularSchemeValue[I, R, B, S, C, Sym, V, P] =
   (IntT ~> I) :*:
     (RealT ~> R) :*:
     (BoolT ~> B) :*:
@@ -58,7 +60,9 @@ type ModularSchemeValue[I, R, B, S, C, Sym] =
     (UnspT ~> Unit) :*:
     (PrimT ~> Set[String]) :*:
     (CloT ~> Set[(SchemeExp, Environment)]) :*:
-    (PtrT ~> Set[Address])
+    (PtrT ~> Set[Address]) :*:
+    (VecT ~> V) :*:
+    (PaiT ~> P)
 
 given ModularSchemeDomain[
     I: IntLattice: GaloisFrom[BigInt],
@@ -67,15 +71,21 @@ given ModularSchemeDomain[
     S: StringLattice_[I, C, Sym],
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
     Sym: SymbolLattice: GaloisFrom[String],
-    Pai: PairLattice_[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]],
-    Vec: VectorLattice_[SparseProduct[
-      ModularSchemeValue[I, R, B, S, C, Sym]
+    Pai: PairLattice_[
+      SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]]
+    ],
+    Vec
+](using
+    vecLat: VectorLattice[Vec, SparseProduct[
+      ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]
     ], I]
-]: SchemeLattice[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]] with
+): SchemeLattice[
+  SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]]
+] with
   import maf.util.datastructures.ListOps.*
 
   /** Type alias for convience */
-  type Val = SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]
+  type Val = SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]]
 
   //
   // Core lattice operations
@@ -89,6 +99,11 @@ given ModularSchemeDomain[
 
   def subsumes(x: Val, y: => Val): Boolean =
     subsumer(x, y)
+
+  def show(v: Val): String = v.toString
+  def top: Val = throw LatticeTopUndefined
+  def bottom: Val = SparseProduct.empty[Val#Content]
+  def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Val, y: Val): B = ???
 
   private def insertA[K, V](k: K)(v: V)(using
       KeyValueIn[K, V, Val#Content]
@@ -109,7 +124,7 @@ given ModularSchemeDomain[
       KeyValueIn[K, V, Val#Content]
   ): Extractor[Val, A] =
     new Extractor:
-      def unapply(v: Val): Option[A] =
+      def extract(v: Val): Option[A] =
         if v.isSingleton then
           v.get(k) match
             case Some(Singleton(v)) => Some(v)
@@ -164,6 +179,147 @@ given ModularSchemeDomain[
 
   def pointer(adr: Address): Val =
     insertA(PtrT)(Set(adr): Set[Address])
+
+  //
+  // String operations
+  //
+
+  override def length[M[_]: MonadError: MonadJoin](s: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(s)) {
+      case StringT(s) => StringLattice[S, I, C, Sym].length(s) map insertA(IntT)
+      case v =>
+        raiseError(TypeError("string-length: argument is not a string", v))
+    }
+
+  override def append[M[_]: MonadError: MonadJoin](s1: Val, s2: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(s1).cartesian(split(s2))) {
+      case (StringT(s1), StringT(s2)) =>
+        StringLattice[S, I, C, Sym].append(s1, s2) map insertA(StringT)
+      case (v1, v2) =>
+        raiseError(TypeError("append: arguments must be strings", (v1, v2)))
+    }
+
+  override def substring[M[_]: MonadError: MonadJoin](
+      s: Val,
+      from: Val,
+      to: Val
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(
+      split(s).cartesian(split(from)).cartesian(split(to))
+    ) {
+      case ((StringT(s1), IntT(i1)), IntT(i2)) =>
+        StringLattice[S, I, C, Sym].substring(s1, i1, i2) map insertA(StringT)
+      case v =>
+        raiseError(
+          TypeError("substring: arguments must be (string, int, int)", v)
+        )
+    }
+
+  override def ref[M[_]: MonadError: MonadJoin](s: Val, i: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(s).cartesian(split(i))) {
+      case (StringT(s), IntT(i)) =>
+        StringLattice[S, I, C, Sym].ref(s, i) map insertA(CharT)
+      case (v1, v2) =>
+        raiseError(
+          TypeError("string-ref: arguments must be (string, int)", (v1, v2))
+        )
+    }
+
+  override def set[M[_]: MonadError: MonadJoin](
+      s: Val,
+      i: Val,
+      c: Val
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(s).cartesian(split(i)).cartesian(split(c))) {
+      case ((StringT(s), IntT(i)), CharT(c)) =>
+        StringLattice[S, I, C, Sym].set(s, i, c) map insertA(StringT)
+      case v =>
+        raiseError(
+          TypeError("string-set: arguments must be (string, int, char)", v)
+        )
+    }
+
+  override def stringLt[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[
+    Boolean
+  ]](s1: Val, s2: Val): M[B] =
+    MonadJoin[M].mfoldMap(split(s1).cartesian(split(s2))) {
+      case (StringT(s1), StringT(s2)) =>
+        StringLattice[S, I, C, Sym].stringLt(s1, s2)
+      case v =>
+        raiseError(
+          TypeError("string-ref: arguments must be (string, int, char)", v)
+        )
+    }
+
+  override def toSymbol[M[_]: MonadError: MonadJoin](s: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(s)) {
+      case StringT(s) =>
+        StringLattice[S, I, C, Sym].toSymbol(s) map insertA(SymT)
+      case v =>
+        raiseError(TypeError("string->symbol: expected string", v))
+    }
+  override def toNumber[M[_]: MonadError: MonadJoin](s: Val): M[Val] = ???
+
+  override def makeString[M[_]: MonadError: MonadJoin](
+      length: Val,
+      char: Val
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(length).cartesian(split(char))) {
+      case (IntT(i), CharT(c)) =>
+        StringLattice[S, I, C, Sym].makeString(i, c) map insertA(StringT)
+      case v =>
+        raiseError(TypeError("make-string: expected (int, char)", v))
+    }
+
+  //
+  // Vector
+  //
+
+  def vector[M[_]: MonadError: MonadJoin](size: Val, init: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(size).cartesian(split(init))) {
+      case (IntT(size), init) => vecLat.vector(size, init) map insertA(VecT)
+      case v =>
+        raiseError(TypeError("vector: expected (int, any)", v))
+    }
+
+  def vectorSet[M[_]: MonadError: MonadJoin](
+      vec: Val,
+      pos: Val,
+      vlu: Val
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(
+      split(vec).cartesian(split(pos)).cartesian(split(vlu))
+    ) {
+      case ((VecT(vec), IntT(pos)), v) =>
+        vecLat.vectorSet(vec, pos, v) map insertA(VecT)
+      case v =>
+        raiseError(TypeError("vector-set!: expected (vector, pos, any)", v))
+    }
+
+  def vectorRef[M[_]: MonadError: MonadJoin](vec: Val, pos: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(vec).cartesian(split(pos))) {
+      case (VecT(v), IntT(i)) =>
+        vecLat.vectorRef(v, i)
+      case v =>
+        raiseError(TypeError("vector-ref: expected (vector, int)", v))
+    }
+
+  //
+  // Pairs
+  //
+
+  def cons(a: Val, b: Val): Val =
+    insertA(PaiT)(PairLattice[Pai, Val].cons(a, b))
+  def car[M[_]: MonadError: MonadJoin](a: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(a)) {
+      case (PaiT(a)) => PairLattice[Pai, Val].car(a)
+      case v         => raiseError(TypeError("car: expected pair", v))
+    }
+  def cdr[M[_]: MonadError: MonadJoin](a: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(a)) {
+      case (PaiT(a)) => PairLattice[Pai, Val].cdr(a)
+      case v         => raiseError(TypeError("car: expected pair", v))
+    }
 
   //
   // toString
@@ -389,11 +545,12 @@ given ModularSchemeDomain[
 //
 
 import ConstantPropagation.*
-type CPSchemeValue = ModularSchemeValue[
-  CP[BigInt],
-  CP[Double],
-  CP[Boolean],
-  CP[String],
-  CP[Char],
-  CP[Symbol]
-]
+import cats.mtl.syntax.raise
+//type CPSchemeValue = ModularSchemeValue[
+//  CP[BigInt],
+//  CP[Double],
+//  CP[Boolean],
+//  CP[String],
+//  CP[Char],
+//  CP[Symbol]
+//]

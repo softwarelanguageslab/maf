@@ -29,7 +29,7 @@ trait StringLattice[S, I: IntLattice, C: CharLattice_[
       c: C
   ): M[S]
 
-  def lt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
+  def stringLt[M[_]: MonadError[Error]: MonadJoin, B: BoolLattice: GaloisFrom[
     Boolean
   ]](s1: S, s2: S): M[B]
   def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym]

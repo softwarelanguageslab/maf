@@ -9,3 +9,6 @@ trait PairLattice[L, V] extends Lattice[L]:
   def cons(a: V, b: V): L
   def car[M[_]: MonadError[Error]: MonadJoin](a: L): M[V]
   def cdr[M[_]: MonadError[Error]: MonadJoin](a: L): M[V]
+
+object PairLattice:
+  def apply[L, V](using p: PairLattice[L, V]): PairLattice[L, V] = p
