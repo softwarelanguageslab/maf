@@ -292,8 +292,9 @@ object ConstantPropagation:
         ).pure
         def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym] =
           (s match
-            case Bottom => SymbolLattice[Sym].bottom
-            case Top    => SymbolLattice[Sym].top
+            case Bottom      => SymbolLattice[Sym].bottom
+            case Top         => SymbolLattice[Sym].top
+            case Constant(s) => SymbolLattice[Sym].symbol(s)
           ).pure
 
         def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S) =
@@ -589,7 +590,7 @@ object ConstantPropagation:
 
     implicit val symCP: SymbolLattice[Sym] =
       new BaseInstance[Symbol]("Symbol") with SymbolLattice[Sym] {
-        def injectSymbol(x: String) = Constant(x)
+        def symbol(x: String) = Constant(Symbol(x))
 
         def toString[Sym2: SymbolLattice, I2: IntLattice, C2: CharLattice_[
           I2,

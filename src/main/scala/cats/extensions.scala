@@ -23,3 +23,11 @@ extension [A](vs: List[A])
     vs match
       case Nil     => z.pure
       case x :: xs => xs.foldRightM(z)(fa) >>= (rst => fa(x, rst))
+
+extension [M[_]: Monad, A, B, C](v: (M[A], M[B]))
+  def flatMapN(f: (A, B) => M[C]): M[C] =
+    for
+      av <- v._1
+      bv <- v._2
+      cv <- f(av, bv)
+    yield cv

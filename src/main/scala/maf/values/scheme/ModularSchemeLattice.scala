@@ -10,7 +10,7 @@ import util.*
 import maf.syntax.scheme.*
 import maf.util.datastructures.*
 import domains.*
-import cats.extensions.MonadError
+import cats.extensions.*
 import maf.values.typeclasses.Galois.inject
 import cats.extensions.Errors.raiseError
 import maf.util.types.{given, *}
@@ -454,10 +454,74 @@ given ModularSchemeDomain[
   // Int Lattice
   //
 
+  private def numOperation2[M[_]: MonadError: MonadJoin](name: String)(
+      intOp: (I, I) => M[I],
+      realOp: (R, R) => M[R]
+  )(n1: Val, n2: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(n1).cartesian(split(n2))) {
+      case (IntT(n1), IntT(n2)) => intOp(n1, n2) map insertA(IntT)
+      case (IntT(n1), RealT(n2)) =>
+        ((IntLattice[I].toReal(n1), n2.pure) flatMapN ((r1: R, r2: R) =>
+          realOp(r1, r2)
+        )) map insertA[RealT, R](
+          RealT
+        )
+      case (RealT(n1), IntT(n2)) =>
+        ((n1.pure, IntLattice[I].toReal(n2)) flatMapN ((r1: R, r2: R) =>
+          realOp(r1, r2)
+        )) map insertA(RealT)
+      case (RealT(n1), RealT(n2)) =>
+        realOp(n1, n2) map insertA(RealT)
+      case v =>
+        raiseError(TypeError(s"$name: expected int or real", v))
+    }
+
+  private def numOperation2R[M[_]: MonadError: MonadJoin](name: String)(
+      intOp: (I, I) => M[R],
+      realOp: (R, R) => M[R]
+  )(n1: Val, n2: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(n1).cartesian(split(n2))) {
+      case (IntT(n1), IntT(n2)) => intOp(n1, n2) map insertA(RealT)
+      case (IntT(n1), RealT(n2)) =>
+        ((IntLattice[I].toReal(n1), n2.pure) flatMapN ((r1: R, r2: R) =>
+          realOp(r1, r2)
+        )) map insertA[RealT, R](
+          RealT
+        )
+      case (RealT(n1), IntT(n2)) =>
+        ((n1.pure, IntLattice[I].toReal(n2)) flatMapN ((r1: R, r2: R) =>
+          realOp(r1, r2)
+        )) map insertA(RealT)
+      case (RealT(n1), RealT(n2)) =>
+        realOp(n1, n2) map insertA(RealT)
+      case v =>
+        raiseError(TypeError(s"$name: expected int or real", v))
+    }
+
+  private def numOperation1[M[_]: MonadError: MonadJoin](name: String)(
+      realOp: R => M[R]
+  )(n: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(n)) {
+      case IntT(n)  => (IntLattice[I].toReal(n) >>= realOp) map insertA(RealT)
+      case RealT(r) => realOp(r) map insertA(RealT)
+      case v        => raiseError(TypeError(s"$name: expected int or real", v))
+    }
+
+  private def error2[M[_]: MonadError: MonadJoin, X](
+      error: Error
+  )(_v1: X, _v2: X): M[X] =
+    raiseError(error)
+
   override def quotient[M[_]: MonadError: MonadJoin](
       n1: Val,
       n2: Val
-  ): M[Val] = ???
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(n1).cartesian(split(n2))) {
+      case (IntT(n1), IntT(n2)) =>
+        IntLattice[I].quotient(n1, n2) map insertA(IntT)
+      case v =>
+        raiseError(TypeError("quotient: expected integer", v))
+    }
 
   override def div[M[_], R: GaloisFrom[Double]](
       n1: Val,
@@ -471,12 +535,24 @@ given ModularSchemeDomain[
   override def modulo[M[_]: MonadError: MonadJoin](
       n1: Val,
       n2: Val
-  ): M[Val] = ???
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(n1).cartesian(split(n2))) {
+      case (IntT(n1), IntT(n2)) =>
+        IntLattice[I].modulo(n1, n2) map insertA(IntT)
+      case v =>
+        raiseError(TypeError(s"modulo: expected integers", v))
+    }
 
   override def remainder[M[_]: MonadError: MonadJoin](
       n1: Val,
       n2: Val
-  ): M[Val] = ???
+  ): M[Val] =
+    MonadJoin[M].mfoldMap(split(n1).cartesian(split(n2))) {
+      case (IntT(n1), IntT(n2)) =>
+        IntLattice[I].remainder(n1, n2) map insertA(IntT)
+      case v =>
+        raiseError(TypeError(s"remainder: expected integers", v))
+    }
 
   override def valuesBetween(n1: Val, n2: Val): Set[Val] = ???
 
@@ -484,44 +560,56 @@ given ModularSchemeDomain[
   // Reals
   //
 
-  override def ceiling[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def ceiling[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("ceiling")(RealLattice[R].ceiling)(n)
 
-  override def floor[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def floor[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("floor")(RealLattice[R].floor)(n)
 
-  override def round[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def round[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("round")(RealLattice[R].round)(n)
 
-  override def log[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def log[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("log")(RealLattice[R].log)(n)
 
-  override def random[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def random[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("random")(RealLattice[R].random)(n)
 
-  override def sin[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def sin[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("sin")(RealLattice[R].sin)(n)
 
-  override def asin[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def asin[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("asin")(RealLattice[R].asin)(n)
 
-  override def cos[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def cos[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("cos")(RealLattice[R].cos)(n)
 
-  override def acos[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def acos[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("acos")(RealLattice[R].acos)(n)
 
-  override def tan[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def tan[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("tan")(RealLattice[R].tan)(n)
 
-  override def atan[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def atan[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("atan")(RealLattice[R].atan)(n)
 
-  override def sqrt[M[_]: MonadError: MonadJoin](n: Val): M[Val] = ???
+  override def sqrt[M[_]: MonadError: MonadJoin](n: Val): M[Val] =
+    numOperation1("sqrt")(RealLattice[R].sqrt)(n)
 
   override def plus[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-    ???
+    numOperation2("plus")(IntLattice[I].plus, RealLattice[R].plus)(n1, n2)
 
   override def minus[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-    ???
+    numOperation2("minus")(IntLattice[I].minus, RealLattice[R].minus)(n1, n2)
 
   override def times[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-    ???
+    numOperation2("times")(IntLattice[I].times, RealLattice[R].times)(n1, n2)
 
   override def div[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-    ???
+    numOperation2R("div")(IntLattice[I].div[M, R], RealLattice[R].div)(n1, n2)
 
   override def expt[M[_]: MonadError: MonadJoin](n1: Val, n2: Val): M[Val] =
-    ???
+    numOperation2("expt")(IntLattice[I].expt, RealLattice[R].expt)(n1, n2)
 
   // ordering
 
@@ -534,11 +622,33 @@ given ModularSchemeDomain[
 
   // booleans
 
-  override def isTrue(b: Val): Boolean = ???
+  override def isTrue(b: Val): Boolean =
+    split(b).exists {
+      case BoolT(b) => BoolLattice[B].isTrue(b)
+      case _        => true
+    }
 
-  override def isFalse(b: Val): Boolean = ???
+  override def isFalse(b: Val): Boolean =
+    split(b).exists {
+      case BoolT(b) => BoolLattice[B].isFalse(b)
+      case _        => false
+    }
 
-  override def not(b: Val): Val = ???
+  override def not(b: Val): Val =
+    val t =
+      if isTrue(b) then Galois.inject[Boolean, B](false)
+      else BoolLattice[B].bottom
+    val f =
+      if isFalse(b) then Galois.inject[Boolean, B](true)
+      else BoolLattice[B].bottom
+    insertA(BoolT)(BoolLattice[B].join(t, f))
+
+  //
+  // Symbols
+  //
+
+  override def symbol(v: String): Val =
+    insertA(SymT)(SymbolLattice[Sym].symbol(v))
 
 //
 // Frequently used domains
