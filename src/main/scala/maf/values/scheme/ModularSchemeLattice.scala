@@ -304,6 +304,11 @@ given ModularSchemeDomain[
         raiseError(TypeError("vector-ref: expected (vector, int)", v))
     }
 
+  def vectorLength[M[_]: MonadError: MonadJoin, I: IntLattice](vec: Val): M[I] =
+    MonadJoin[M].mfoldMap(split(vec)) { case VecT(vec) =>
+      vecLat.vectorLength(vec)
+    }
+
   //
   // Pairs
   //

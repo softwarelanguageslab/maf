@@ -130,12 +130,12 @@ class SchemeLatticePrimitives[V](using
         // `symbol->string`,
         `symbol?`,
         `tan`,
-        // `make-vector`,
-        // `vector`,
-        // `vector-length`,
-        // `vector-ref`,
-        // `vector-set!`,
-        // `vector?`,
+        `make-vector`,
+        `vector`,
+        `vector-length`,
+        `vector-ref`,
+        `vector-set!`,
+        `vector?`,
         `<`,
         `=`,
         /* IO primitives */
@@ -403,7 +403,9 @@ class SchemeLatticePrimitives[V](using
     //    }
 
     // case object `pair?` extends SchemePrimRefTypeCheck("pair?")
-    // case object `vector?` extends SchemePrimRefTypeCheck("vector?")
+    // TODO:
+    case object `vector?` extends SchemePrim1("vector?"):
+      def call[M[_$8]: PrimM](fexp: SchemeExp, x: V): M[V] = ???
     // case object `thread?` extends SchemePrim1("thread?")
     // case object `lock?` extends SchemePrimRefTypeCheck("lock?")
 
@@ -528,242 +530,241 @@ class SchemeLatticePrimitives[V](using
           yield unspecified
         }
 
-    // TODO: introduce vectors in a proper way
-    // case object `make-vector` extends SchemePrimVarArg("make-vector"):
-    //   def createVec[M[_]: PrimM](fpos: SchemeExp, size: V, init: V): M[V] =
-    //     for
-    //       vec <- lat.vector(size, init)
-    //       adr <- PrimM[M].allocVal(fpos, vec)
-    //     yield lat.pointer(adr)
-    //   def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
-    //     case size :: Nil         => createVec(fpos, size, unspecified)
-    //     case size :: init :: Nil => createVec(fpos, size, init)
-    //     case l =>
-    //       PrimM[M].raiseError(PrimitiveVariadicArityError(name, 1, l.size))
+  case object `make-vector` extends SchemePrimVarArg("make-vector"):
+    def createVec[M[_]: PrimM](fpos: SchemeExp, size: V, init: V): M[V] =
+      for
+        vec <- lat.vector(size, init)
+        adr <- PrimM[M].allocVal(fpos, vec)
+      yield lat.pointer(adr)
+    def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
+      case size :: Nil         => createVec(fpos, size, unspecified)
+      case size :: init :: Nil => createVec(fpos, size, init)
+      case l =>
+        PrimM[M].raiseError(PrimitiveVariadicArityError(name, 1, l.size))
 
-    // case object `vector` extends SchemePrimVarArg("vector"):
-    //   def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
-    //     for
-    //       emptyVec <- lat.vector(inject(BigInt(args.size)), bottom)
-    //       filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) {
-    //         case (acc, (arg, idx)) =>
-    //           lat.(acc, inject(BigInt(idx)), arg)
-    //       }
-    //       adr <- PrimM[M].allocVal(fpos, filledVec)
-    //     yield lat.pointer(adr)
+  case object `vector` extends SchemePrimVarArg("vector"):
+    def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
+      for
+        emptyVec <- lat.vector(inject(BigInt(args.size)), bottom)
+        filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) {
+          case (acc, (arg, idx)) =>
+            lat.vectorSet(acc, inject(BigInt(idx)), arg)
+        }
+        adr <- PrimM[M].allocVal(fpos, filledVec)
+      yield lat.pointer(adr)
 
-    // case object `vector-length` extends SchemePrim1("vector-length"):
-    //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-    //     dereferencePointer(x) { (_, vec) => vectorLength(vec) }
+  case object `vector-length` extends SchemePrim1("vector-length"):
+    def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+      dereferencePointer(x) { (_, vec) => lat.vectorLength(vec) }
 
-    // case object `vector-ref` extends SchemePrim2("vector-ref"):
-    //   def call[M[_]: PrimM](fpos: SchemeExp, v: V, idx: V): M[V] =
-    //     dereferencePointer(v) { (_, vec) => lat.vectorRef(vec, idx) }
+  case object `vector-ref` extends SchemePrim2("vector-ref"):
+    def call[M[_]: PrimM](fpos: SchemeExp, v: V, idx: V): M[V] =
+      dereferencePointer(v) { (_, vec) => lat.vectorRef(vec, idx) }
 
-    // case object `vector-set!` extends SchemePrim3("vector-set!"):
-    //   def call[M[_]: PrimM](fpos: SchemeExp, x: V, index: V, newval: V): M[V] =
-    //     dereferencePointer(x) { (adr, vec) =>
-    //       for
-    //         newvec <- lat.vectorSet(vec, index, newval)
-    //         _ <- PrimM[M].updateSto(adr, newvec)
-    //       yield unspecified
-    //     }
+  case object `vector-set!` extends SchemePrim3("vector-set!"):
+    def call[M[_]: PrimM](fpos: SchemeExp, x: V, index: V, newval: V): M[V] =
+      dereferencePointer(x) { (adr, vec) =>
+        for
+          newvec <- lat.vectorSet(vec, index, newval)
+          _ <- PrimM[M].updateSto(adr, newvec)
+        yield unspecified
+      }
 
-    // TODO: reintroduce structs in a proper way
-    // case object StructRef extends SchemePrim2("__struct_ref"):
-    //   def call[M[_]: PrimM](fpos: SchemeExp, s: V, field: V): M[V] =
-    //     MonadJoin[M].mjoin(
-    //       lat
-    //         .getStructs(s)
-    //         .flatMap(s =>
-    //           // TODO: this is sound but very imprecise; use the value "field" and a corresponding operation in the lattice to make this more precise
-    //           // and fetch the actual field whenever possible
-    //           s.fields.contents.map(Monad[M].unit)
-    //         ) ++ (if lat.isOpq(s) then
-    //                 Set(Monad[M].unit(lat.opq(ContractValues.Opq())))
-    //               else Set())
-    //     )
+  // TODO: reintroduce structs in a proper way
+  // case object StructRef extends SchemePrim2("__struct_ref"):
+  //   def call[M[_]: PrimM](fpos: SchemeExp, s: V, field: V): M[V] =
+  //     MonadJoin[M].mjoin(
+  //       lat
+  //         .getStructs(s)
+  //         .flatMap(s =>
+  //           // TODO: this is sound but very imprecise; use the value "field" and a corresponding operation in the lattice to make this more precise
+  //           // and fetch the actual field whenever possible
+  //           s.fields.contents.map(Monad[M].unit)
+  //         ) ++ (if lat.isOpq(s) then
+  //                 Set(Monad[M].unit(lat.opq(ContractValues.Opq())))
+  //               else Set())
+  //     )
 
-  // case object `input-port?` extends SchemePrim1("input-port?")
-  // case object `output-port?` extends SchemePrim1("output-port?")
+// case object `input-port?` extends SchemePrim1("input-port?")
+// case object `output-port?` extends SchemePrim1("output-port?")
 
-  // case object `open-input-file` extends SchemePrim1("open-input-file"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     dereferencePointer(x) { (_, str) =>
-  //       MonadJoin[M].condM(unaryOp(SchemeOp.IsString)(str)) {
-  //         for
-  //           // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
-  //           portstring <- binaryOp(SchemeOp.StringAppend)(
-  //             string("__file__"),
-  //             str
-  //           )
-  //           inputPort <- unaryOp(SchemeOp.MakeInputPort)(portstring)
-  //         yield inputPort
-  //       } {
-  //         PrimM[M].raiseError(
-  //           PrimitiveNotApplicable("open-input-file", List(x))
-  //         )
-  //       }
-  //     }
+// case object `open-input-file` extends SchemePrim1("open-input-file"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     dereferencePointer(x) { (_, str) =>
+//       MonadJoin[M].condM(unaryOp(SchemeOp.IsString)(str)) {
+//         for
+//           // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
+//           portstring <- binaryOp(SchemeOp.StringAppend)(
+//             string("__file__"),
+//             str
+//           )
+//           inputPort <- unaryOp(SchemeOp.MakeInputPort)(portstring)
+//         yield inputPort
+//       } {
+//         PrimM[M].raiseError(
+//           PrimitiveNotApplicable("open-input-file", List(x))
+//         )
+//       }
+//     }
 
-  // case object `open-input-string` extends SchemePrim1("open-input-string"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     dereferencePointer(x) { (_, str) =>
-  //       MonadJoin[M].condM(unaryOp(SchemeOp.IsString)(str)) {
-  //         unaryOp(SchemeOp.MakeInputPort)(str)
-  //       } {
-  //         PrimM[M].raiseError(
-  //           PrimitiveNotApplicable("open-input-string", List(x))
-  //         )
-  //       }
-  //     }
+// case object `open-input-string` extends SchemePrim1("open-input-string"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     dereferencePointer(x) { (_, str) =>
+//       MonadJoin[M].condM(unaryOp(SchemeOp.IsString)(str)) {
+//         unaryOp(SchemeOp.MakeInputPort)(str)
+//       } {
+//         PrimM[M].raiseError(
+//           PrimitiveNotApplicable("open-input-string", List(x))
+//         )
+//       }
+//     }
 
-  // case object `open-output-file` extends SchemePrim1("open-output-file"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     dereferencePointer(x) { (_, str) =>
-  //       MonadJoin[M].condM(unaryOp(SchemeOp.IsString)(str)) {
-  //         for
-  //           // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
-  //           portstring <- binaryOp(SchemeOp.StringAppend)(
-  //             string("__file__"),
-  //             str
-  //           )
-  //           outputPort <- unaryOp(SchemeOp.MakeOutputPort)(portstring)
-  //         yield outputPort
-  //       } {
-  //         PrimM[M].raiseError(
-  //           PrimitiveNotApplicable("open-output-file", List(x))
-  //         )
-  //       }
-  //     }
+// case object `open-output-file` extends SchemePrim1("open-output-file"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     dereferencePointer(x) { (_, str) =>
+//       MonadJoin[M].condM(unaryOp(SchemeOp.IsString)(str)) {
+//         for
+//           // TODO: this could be cleaner by having a difference between a file input port and string input port, but this would be a bit overkill
+//           portstring <- binaryOp(SchemeOp.StringAppend)(
+//             string("__file__"),
+//             str
+//           )
+//           outputPort <- unaryOp(SchemeOp.MakeOutputPort)(portstring)
+//         yield outputPort
+//       } {
+//         PrimM[M].raiseError(
+//           PrimitiveNotApplicable("open-output-file", List(x))
+//         )
+//       }
+//     }
 
-  // case object `close-input-port` extends SchemePrim1("close-input-port"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     MonadJoin[M].condM(unaryOp(SchemeOp.IsInputPort)(x)) {
-  //       unspecified.pure
-  //     } {
-  //       PrimM[M].raiseError(
-  //         PrimitiveNotApplicable("close-input-port", List(x))
-  //       )
-  //     }
+// case object `close-input-port` extends SchemePrim1("close-input-port"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     MonadJoin[M].condM(unaryOp(SchemeOp.IsInputPort)(x)) {
+//       unspecified.pure
+//     } {
+//       PrimM[M].raiseError(
+//         PrimitiveNotApplicable("close-input-port", List(x))
+//       )
+//     }
 
-  // case object `close-output-port` extends SchemePrim1("close-output-port"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     MonadJoin[M].condM(unaryOp(SchemeOp.IsOutputPort)(x)) {
-  //       unspecified.pure
-  //     } {
-  //       PrimM[M].raiseError(
-  //         PrimitiveNotApplicable("close-output-port", List(x))
-  //       )
-  //     }
+// case object `close-output-port` extends SchemePrim1("close-output-port"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     MonadJoin[M].condM(unaryOp(SchemeOp.IsOutputPort)(x)) {
+//       unspecified.pure
+//     } {
+//       PrimM[M].raiseError(
+//         PrimitiveNotApplicable("close-output-port", List(x))
+//       )
+//     }
 
-  // case object `current-input-port` extends SchemePrim0("current-input-port"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
-  //     unaryOp(SchemeOp.MakeInputPort)(string("__console__"))
+// case object `current-input-port` extends SchemePrim0("current-input-port"):
+//   def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
+//     unaryOp(SchemeOp.MakeInputPort)(string("__console__"))
 
-  // case object `current-output-port`
-  //     extends SchemePrim0("current-output-port"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
-  //     unaryOp(SchemeOp.MakeOutputPort)(string("__console__"))
+// case object `current-output-port`
+//     extends SchemePrim0("current-output-port"):
+//   def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
+//     unaryOp(SchemeOp.MakeOutputPort)(string("__console__"))
 
-  // class ReadOrPeekChar(name: String) extends SchemePrimVarArg(name):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = vs match
-  //     case Nil => charTop.pure
-  //     case inp :: Nil =>
-  //       MonadJoin[M].condM(unaryOp(SchemeOp.IsInputPort)(inp)) {
-  //         charTop.pure
-  //       } {
-  //         PrimM[M].raiseError(PrimitiveNotApplicable(name, vs))
-  //       }
-  //     case l => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
+// class ReadOrPeekChar(name: String) extends SchemePrimVarArg(name):
+//   def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = vs match
+//     case Nil => charTop.pure
+//     case inp :: Nil =>
+//       MonadJoin[M].condM(unaryOp(SchemeOp.IsInputPort)(inp)) {
+//         charTop.pure
+//       } {
+//         PrimM[M].raiseError(PrimitiveNotApplicable(name, vs))
+//       }
+//     case l => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
 
-  // case object `read-char` extends ReadOrPeekChar("read-char")
-  // case object `peek-char` extends ReadOrPeekChar("peek-char")
+// case object `read-char` extends ReadOrPeekChar("read-char")
+// case object `peek-char` extends ReadOrPeekChar("peek-char")
 
-  // case object `write-char` extends SchemePrimVarArg("write-char"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] =
-  //     def check(res: M[V]): M[V] =
-  //       MonadJoin[M].condM(res) { unspecified.pure } {
-  //         PrimM[M].raiseError(PrimitiveNotApplicable(name, vs))
-  //       }
-  //     vs match
-  //       case chr :: Nil => check(unaryOp(SchemeOp.IsChar)(chr))
-  //       case chr :: out :: Nil =>
-  //         val res = for
-  //           isChar <- unaryOp(SchemeOp.IsChar)(chr)
-  //           isPort <- unaryOp(SchemeOp.IsOutputPort)(out)
-  //         yield and(isChar, isPort)
-  //         check(res)
-  //       case l => PrimM[M].raiseError(PrimitiveArityError(name, 2, l.size))
+// case object `write-char` extends SchemePrimVarArg("write-char"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] =
+//     def check(res: M[V]): M[V] =
+//       MonadJoin[M].condM(res) { unspecified.pure } {
+//         PrimM[M].raiseError(PrimitiveNotApplicable(name, vs))
+//       }
+//     vs match
+//       case chr :: Nil => check(unaryOp(SchemeOp.IsChar)(chr))
+//       case chr :: out :: Nil =>
+//         val res = for
+//           isChar <- unaryOp(SchemeOp.IsChar)(chr)
+//           isPort <- unaryOp(SchemeOp.IsOutputPort)(out)
+//         yield and(isChar, isPort)
+//         check(res)
+//       case l => PrimM[M].raiseError(PrimitiveArityError(name, 2, l.size))
 
-  // class WriteOrDisplay(name: String) extends SchemePrimVarArg(name):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = vs match
-  //     case _ :: Nil => unspecified.pure
-  //     case _ :: outputPort :: Nil =>
-  //       MonadJoin[M].condM((unaryOp(SchemeOp.IsOutputPort)(outputPort))) {
-  //         unspecified.pure
-  //       } {
-  //         PrimM[M].raiseError(PrimitiveNotApplicable(name, vs))
-  //       }
-  //     case l => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
+// class WriteOrDisplay(name: String) extends SchemePrimVarArg(name):
+//   def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = vs match
+//     case _ :: Nil => unspecified.pure
+//     case _ :: outputPort :: Nil =>
+//       MonadJoin[M].condM((unaryOp(SchemeOp.IsOutputPort)(outputPort))) {
+//         unspecified.pure
+//       } {
+//         PrimM[M].raiseError(PrimitiveNotApplicable(name, vs))
+//       }
+//     case l => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
 
-  // case object `display` extends WriteOrDisplay("display")
-  // case object `write` extends WriteOrDisplay("write")
+// case object `display` extends WriteOrDisplay("display")
+// case object `write` extends WriteOrDisplay("write")
 
-  // case object `read` extends SchemePrimVarArg("read"):
-  //   def topValue[M[_]: PrimM](fpos: SchemeExp): M[V] =
-  //     for
-  //       adr <- PrimM[M].allocPtr(fpos)
-  //       ptr = lat.pointer(adr)
-  //       vlu = lat.join(
-  //         Seq(ptr, nil, numTop, realTop, charTop, symbolTop, boolTop)
-  //       )
-  //       cns = lat.cons(vlu, vlu)
-  //       // Note #1: creating a vector with these arguments is known to succeed
-  //       // Note #2: vector (and string) should use a different address than the cons-cell
-  //       // Note #3: need to ensure that abstract count == +inf for adr!
-  //       MayFailSuccess(vct) = lat.vector(numTop, vlu)
-  //       _ <- PrimM[M].extendSto(adr, cns)
-  //       _ <- PrimM[M].extendSto(adr, vct)
-  //       _ <- PrimM[M].extendSto(adr, stringTop)
-  //     yield vlu
-  //   def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
-  //     case Nil => topValue(fpos)
-  //     case inp :: Nil =>
-  //       MonadJoin[M].condM(unaryOp(SchemeOp.IsInputPort)(inp)) {
-  //         topValue(fpos)
-  //       } {
-  //         PrimM[M].raiseError(PrimitiveNotApplicable(name, args))
-  //       }
-  //     case oth => PrimM[M].raiseError(PrimitiveArityError(name, 1, oth.size))
+// case object `read` extends SchemePrimVarArg("read"):
+//   def topValue[M[_]: PrimM](fpos: SchemeExp): M[V] =
+//     for
+//       adr <- PrimM[M].allocPtr(fpos)
+//       ptr = lat.pointer(adr)
+//       vlu = lat.join(
+//         Seq(ptr, nil, numTop, realTop, charTop, symbolTop, boolTop)
+//       )
+//       cns = lat.cons(vlu, vlu)
+//       // Note #1: creating a vector with these arguments is known to succeed
+//       // Note #2: vector (and string) should use a different address than the cons-cell
+//       // Note #3: need to ensure that abstract count == +inf for adr!
+//       MayFailSuccess(vct) = lat.vector(numTop, vlu)
+//       _ <- PrimM[M].extendSto(adr, cns)
+//       _ <- PrimM[M].extendSto(adr, vct)
+//       _ <- PrimM[M].extendSto(adr, stringTop)
+//     yield vlu
+//   def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
+//     case Nil => topValue(fpos)
+//     case inp :: Nil =>
+//       MonadJoin[M].condM(unaryOp(SchemeOp.IsInputPort)(inp)) {
+//         topValue(fpos)
+//       } {
+//         PrimM[M].raiseError(PrimitiveNotApplicable(name, args))
+//       }
+//     case oth => PrimM[M].raiseError(PrimitiveArityError(name, 1, oth.size))
 
-  // case object `eof-object?` extends SchemePrim1("eof-object?"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
-  //     if subsumes(x, charTop) then boolTop.pure
-  //     else inject(false).pure
+// case object `eof-object?` extends SchemePrim1("eof-object?"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
+//     if subsumes(x, charTop) then boolTop.pure
+//     else inject(false).pure
 
-  // case object `new-lock` extends SchemePrim0("new-lock"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
-  //     for adr <- PrimM[M].allocVal(fpos, lat.lock(Set.empty))
-  //     yield lat.pointer(adr)
+// case object `new-lock` extends SchemePrim0("new-lock"):
+//   def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
+//     for adr <- PrimM[M].allocVal(fpos, lat.lock(Set.empty))
+//     yield lat.pointer(adr)
 
-  // case object `acquire` extends SchemePrim1("acquire"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     dereferencePointer(x) { (addr, lock) =>
-  //       for
-  //         thread <- PrimM[M].currentThread
-  //         locked <- lat.acquire(lock, thread)
-  //         _ <- PrimM[M].updateSto(addr, locked)
-  //       yield unspecified
-  //     }
+// case object `acquire` extends SchemePrim1("acquire"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     dereferencePointer(x) { (addr, lock) =>
+//       for
+//         thread <- PrimM[M].currentThread
+//         locked <- lat.acquire(lock, thread)
+//         _ <- PrimM[M].updateSto(addr, locked)
+//       yield unspecified
+//     }
 
-  // case object `release` extends SchemePrim1("release"):
-  //   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-  //     dereferencePointer(x) { (addr, lock) =>
-  //       for
-  //         thread <- PrimM[M].currentThread
-  //         unlocked <- lat.release(lock, thread)
-  //         _ <- PrimM[M].updateSto(addr, unlocked)
-  //       yield unspecified
-  //     }
+// case object `release` extends SchemePrim1("release"):
+//   def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+//     dereferencePointer(x) { (addr, lock) =>
+//       for
+//         thread <- PrimM[M].currentThread
+//         unlocked <- lat.release(lock, thread)
+//         _ <- PrimM[M].updateSto(addr, unlocked)
+//       yield unspecified
+//     }

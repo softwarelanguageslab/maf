@@ -97,6 +97,7 @@ trait SchemeLattice[L]
   def closures: Extractor[L, (SchemeExp, Env)]
   def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
+  /** Inject an address as a pointer in the abstract domain */
   def pointer(adr: Address): L
 
   // Convenience procedures

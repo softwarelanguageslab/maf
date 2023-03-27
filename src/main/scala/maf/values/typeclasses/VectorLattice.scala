@@ -13,3 +13,6 @@ trait VectorLattice[L, V, I: IntLattice] extends Lattice[L]:
       vlu: V
   ): M[L]
   def vectorRef[M[_]: MonadError[Error]: MonadJoin](vec: L, pos: I): M[V]
+  def vectorLength[M[_]: MonadError[Error]: MonadJoin, I: IntLattice](
+      vec: L
+  ): M[I]
