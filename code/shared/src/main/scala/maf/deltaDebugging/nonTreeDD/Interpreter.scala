@@ -5,18 +5,26 @@ import maf.deltaDebugging.nonTreeDD.AST.*
 
 object Interpreter:
   type Program = List[Instruction]
-  case class Register(var value: Int)
-  object Reg1 extends Register(-1)
-  object Reg2 extends Register(-1)
-  object Reg3 extends Register(-1)
-  object Reg4 extends Register(-1)
-  object Reg5 extends Register(-1)
-  object Reg6 extends Register(-1)
-  object RegReturn extends Register(-1)
-
-
+  abstract class Register(var value: Int)
+  case object Reg1 extends Register(-1)
+  case object Reg2 extends Register(-1)
+  case object Reg3 extends Register(-1)
+  case object Reg4 extends Register(-1)
+  case object Reg5 extends Register(-1)
+  case object Reg6 extends Register(-1)
+  case object RegReturn extends Register(-1)
 
   def eval(program: Program): Int =
+    Reg1.value = -1
+    Reg2.value = -1
+    Reg3.value = -1
+    Reg4.value = -1
+    Reg5.value = -1
+    Reg6.value = -1
+    RegReturn.value = -1
+    evalProgram(program)
+
+  private def evalProgram(program: Program): Int =
     program match
       case instr :: rest =>
         instr match
@@ -31,10 +39,10 @@ object Interpreter:
               case _: Div =>
                 destination.value = v1 / v2
               case _: Sub =>
-                destination.value = v1 / v2
+                destination.value = v1 - v2
           case SetConstant(destination, const) =>
             destination.value = const
-        eval(rest)
+        evalProgram(rest)
 
       case Nil =>
         RegReturn.value
