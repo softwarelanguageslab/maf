@@ -70,7 +70,7 @@ trait AllocM[M[_]: Monad, A]:
   def allocPtr(exp: SchemeExp): M[A]
 
 /** Monadic operations for implementing Scheme primitives */
-trait SchemePrimM[M[_]: Monad, A <: Address, V]
+trait SchemePrimM[M[_]: Monad, V, A <: Address]
     extends MonadJoin[M]
     with cats.MonadError[M, Error]
     with AllocM[M, A]

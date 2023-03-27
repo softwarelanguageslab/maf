@@ -19,7 +19,7 @@ trait SchemePrimitive[V: Lattice, A <: Address]:
   def call[M[_]](
       fexp: SchemeExp,
       args: List[V]
-  )(implicit m: SchemePrimM[M, A, V]): M[V]
+  )(implicit m: SchemePrimM[M, V, A]): M[V]
 
 // Primitive-specific errors
 case class PrimitiveArityError(name: String, expected: Int, got: Int)
@@ -32,9 +32,9 @@ case class PrimitiveVariadicArityError(
 case class PrimitiveNotApplicable[V](name: String, args: List[V]) extends Error
 case class UserError(message: String) extends Error
 
-class SchemeLatticePrimitives[V](using domain: SchemeDomain.Aux[V]):
-  private val lat = domain.lattice
-  import domain.given
+class SchemeLatticePrimitives[V](using
+    lat: SchemeLattice[V]
+):
   import lat.{given, _}
   import Monad._
   import Galois.*
@@ -49,7 +49,7 @@ class SchemeLatticePrimitives[V](using domain: SchemeDomain.Aux[V]):
   val unspecified: V = Galois.inject[SimpleSchemeValue, V](SchemeUnspecified)
 
   // shorthand (after instantiating V and A)
-  type PrimM[M[_]] = SchemePrimM[M, Address, V]
+  type PrimM[M[_]] = SchemePrimM[M, V, Address]
   object PrimM:
     def apply[M[_]: PrimM]: PrimM[M] = summon
 
@@ -425,7 +425,7 @@ class SchemeLatticePrimitives[V](using domain: SchemeDomain.Aux[V]):
           char: V
       ): M[V] =
         for
-          str <- makeString(length, char)
+          str <- lat.makeString(length, char)
           adr <- PrimM[M].allocVal(fpos, str)
         yield lat.pointer(adr)
       def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match

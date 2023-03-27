@@ -6,8 +6,9 @@ import interpreter.*
 import typeclasses.*
 import cats.syntax.all.*
 import cats.{MonadError => _, ~> => _, _}
-import util.{Key => _, *}
+import util.*
 import maf.syntax.scheme.*
+import maf.util.datastructures.*
 import domains.*
 import cats.extensions.MonadError
 import maf.values.typeclasses.Galois.inject
@@ -56,27 +57,43 @@ type ModularSchemeValue[I, R, B, S, C, Sym] =
     (NilT ~> Unit) :*:
     (UnspT ~> Unit) :*:
     (PrimT ~> Set[String]) :*:
-    (CloT ~> Set[(SchemeExp, Environment)])
+    (CloT ~> Set[(SchemeExp, Environment)]) :*:
+    (PtrT ~> Set[Address])
 
 given ModularSchemeDomain[
     I: IntLattice: GaloisFrom[BigInt],
     R: RealLattice: GaloisFrom[Double],
     B: BoolLattice: GaloisFrom[Boolean],
-    S: StringLattice_[I, C, Sym]: GaloisFrom[String],
+    S: StringLattice_[I, C, Sym],
     C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
-    Sym: SymbolLattice: GaloisFrom[String]
+    Sym: SymbolLattice: GaloisFrom[String],
+    Pai: PairLattice_[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]],
+    Vec: VectorLattice_[SparseProduct[
+      ModularSchemeValue[I, R, B, S, C, Sym]
+    ], I]
 ]: SchemeLattice[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]] with
   import maf.util.datastructures.ListOps.*
 
   /** Type alias for convience */
   type Val = SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym]]
 
+  //
   // Core lattice operations
+  //
+
+  private val joiner = Join[Val#Content]
+  private val subsumer = Subsumes[Val#Content]
+
   def join(x: Val, y: => Val): Val =
-    Join[Val#Content](x, y)
+    joiner(x, y)
 
   def subsumes(x: Val, y: => Val): Boolean =
-    Subsumes[Val#Content](x, y)
+    subsumer(x, y)
+
+  private def insertA[K, V](k: K)(v: V)(using
+      KeyValueIn[K, V, Val#Content]
+  ): Val =
+    SparseProduct.empty[Val#Content].put(k, v)
 
   type P = Unit // TODO:
 
@@ -88,21 +105,22 @@ given ModularSchemeDomain[
   private def raiseError[M[_]: MonadError, X](error: Error): M[X] =
     ApplicativeError[M, Error].raiseError(error)
 
-  private def setExtractor[C, A <: Set[X], X](
-      tag: Tag[C, A]
-  ): Extractor[SplitVal, X] =
-    (v: SplitVal) =>
-      v.get(tag)
-        .map(set =>
-          assert(set.size == 1)
-          set.head
-        )
+  private def setExtractor[K, V <: Set[A], A](k: K)(using
+      KeyValueIn[K, V, Val#Content]
+  ): Extractor[Val, A] =
+    new Extractor:
+      def unapply(v: Val): Option[A] =
+        if v.isSingleton then
+          v.get(k) match
+            case Some(Singleton(v)) => Some(v)
+            case _                  => None
+        else None
 
   /** Split the value into its smaller parts such that ∀ V, ⋃ { v \in split(V) }
     * \= V
     */
   def split(v: Val): Set[Val] =
-    v.keys.flatMap(key => key.lat.split(v.get(key).get).map(KeyPair(key, _)))
+    Split[Val#Content](v)
 
   type MonadError[M[_]] = cats.extensions.MonadError[Error][M]
 
@@ -128,8 +146,6 @@ given ModularSchemeDomain[
     inject(v.contains[SymT])
   def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
     inject(v.contains[PtrT])
-  def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
-    inject(v.contains[PaiT])
   def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
     inject(v.contains[NilT])
   def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
@@ -143,21 +159,11 @@ given ModularSchemeDomain[
     inject(v.contains[UnspT])
 
   //
-  // Pairs
-  //
-
-  def cons(car: Val, cdr: Val): Val = ???
-  def car[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
-  def cdr[M[_]: MonadError: MonadJoin](v: Val): M[Val] = ???
-
-  //
   // Pointers & vectors
   //
-  def pointer(adr: Address): Val = ???
-  def vector[M[_]: MonadError: MonadJoin](
-      siz: Val,
-      init: Val
-  ): M[Val] = ???
+
+  def pointer(adr: Address): Val =
+    insertA(PtrT)(Set(adr): Set[Address])
 
   //
   // toString
@@ -192,7 +198,12 @@ given ModularSchemeDomain[
 
   def toReal[M[_]: MonadError: MonadJoin, R: RealLattice: GaloisFrom[
     Double
-  ]](n: Val): M[R] = ???
+  ]](n: Val): M[R] =
+    MonadJoin[M].mfoldMap(split(n)) {
+      case IntT(c) =>
+        (IntLattice[I].toReal(c): M[R])
+      case v => raiseError(TypeError("toReal: expected integer", v))
+    }
 
   override def upCase[M[_]: MonadError: MonadJoin](
       c: Val
@@ -207,7 +218,11 @@ given ModularSchemeDomain[
     BigInt
   ]](
       c: Val
-  ): M[I] = ???
+  ): M[I] =
+    MonadJoin[M].mfoldMap(split(c)) {
+      case RealT(r) => RealLattice[R].toInt(r)
+      case v        => raiseError(TypeError("toInt: expected int", v))
+    }
 
   override def isLower[M[
       _
@@ -278,49 +293,6 @@ given ModularSchemeDomain[
         CharLattice[C, I, Sym, S].charLtCI[M, B](c1, c2)
       case v => raiseError(TypeError("charEq: expected char", v))
     }
-
-  //
-  // String lattice
-  //
-
-  override def length[M[_]: MonadError: MonadJoin](
-      s: Val
-  ): M[Val] = ???
-
-  override def append[M[_]: MonadError: MonadJoin](
-      s1: Val,
-      s2: Val
-  ): M[Val] = ???
-
-  override def substring[M[_]: MonadError: MonadJoin](
-      s: Val,
-      from: Val,
-      to: Val
-  ): M[Val] = ???
-
-  override def ref[M[_]: MonadError: MonadJoin](
-      s: Val,
-      i: Val
-  ): M[Val] = ???
-
-  override def set[M[_]: MonadError: MonadJoin](
-      s: Val,
-      i: Val,
-      c: Val
-  ): M[Val] = ???
-
-  override def toSymbol[M[_]: MonadError: MonadJoin](
-      s: Val
-  ): M[Val] = ???
-
-  override def toNumber[M[_]: MonadError: MonadJoin](
-      s: Val
-  ): M[Val] = ???
-
-  override def makeString[M[_]: MonadError: MonadJoin](
-      length: Val,
-      char: Val
-  ): M[Val] = ???
 
   //
   // Int Lattice

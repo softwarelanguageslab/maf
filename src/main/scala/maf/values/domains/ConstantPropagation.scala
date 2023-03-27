@@ -166,6 +166,11 @@ object ConstantPropagation:
   type C = L[Char]
   type Sym = L[Symbol]
 
+  /** A thin wrapper around strings and symbols in order to differentiate them
+    * on a type level
+    */
+  case class Symbol(v: String) extends AnyVal
+
   object L:
     implicit val boolCP: BoolLattice[B] = new BaseInstance[Boolean]("Bool")
       with BoolLattice[B] {
@@ -285,9 +290,8 @@ object ConstantPropagation:
         ).pure
         def toSymbol[M[_]: MonadError[Error]: MonadJoin](s: S): M[Sym] =
           (s match
-            case Bottom      => SymbolLattice[Sym].bottom
-            case Top         => SymbolLattice[Sym].top
-            case Constant(x) => Galois.inject(x)
+            case Bottom => SymbolLattice[Sym].bottom
+            case Top    => SymbolLattice[Sym].top
           ).pure
 
         def toNumber[M[_]: MonadError[Error]: MonadJoin](s: S) =
@@ -507,9 +511,9 @@ object ConstantPropagation:
         S
       ], S: StringLattice_[I2, C2, Sym2]: GaloisFrom[String]](c: R): S =
         c match
-          case Top         => StringLattice[S, I2, C2, Sym2].top
-          case Constant(x) => Galois.inject[String, S](x.toString)
-          case Bottom      => StringLattice[S, I2, C2, Sym2].bottom
+          case Top                 => StringLattice[S, I2, C2, Sym2].top
+          case Constant(Symbol(x)) => Galois.inject[String, S](x.toString)
+          case Bottom              => StringLattice[S, I2, C2, Sym2].bottom
     }
 
     implicit val charCP: CharLattice[C, I, Sym, S] =
@@ -575,11 +579,6 @@ object ConstantPropagation:
           ((c1, c2) mapN { _.toUpper < _.toUpper }).toB[B2].pure
       }
 
-    /** A thin wrapper around strings and symbols in order to differentiate them
-      * on a type level
-      */
-    case class Symbol(v: String) extends AnyVal
-
     /** A symbol can be converted to a String implicitly */
     given Conversion[Symbol, String] = _.v
 
@@ -596,7 +595,7 @@ object ConstantPropagation:
           S
         ], S: StringLattice_[I2, C2, Sym2]: GaloisFrom[String]](c: Sym): S =
           c match
-            case Top         => StringLattice[S, I2, C2, Sym2].top
-            case Constant(x) => Galois.inject[String, S](x.toString)
-            case Bottom      => StringLattice[S, I2, C2, Sym2].bottom
+            case Top                 => StringLattice[S, I2, C2, Sym2].top
+            case Constant(Symbol(x)) => Galois.inject[String, S](x)
+            case Bottom              => StringLattice[S, I2, C2, Sym2].bottom
       }

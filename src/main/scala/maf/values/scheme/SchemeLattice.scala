@@ -9,8 +9,8 @@ import cats.extensions.*
 import maf.interpreter.SimpleSchemeValue
 
 given [L](using lat: SchemeLattice[L]): Galois[SimpleSchemeValue, L] with
-  val gal = lat.galois
-  export gal.*
+  val galois = lat.galois
+  export galois.*
 
 trait Extractor[L, E]:
   def extract(v: L): Option[(E)]
@@ -29,9 +29,12 @@ object Extractor:
   * these operations. For example, R5RS says that if a real number and an
   * integer number are added together, the result is a real number.
   *
-  * The recommended representation of values in this lattice is an `HMap` which
-  * bundles several lattices together into a sparse product lattice which has
-  * both efficient time and space characteristcs.
+  * The recommended representation of values in this lattice is a
+  * `SparseProduct` which bundles several lattices together into a sparse
+  * product lattice which has both efficient time and space characteristcs.
+  *
+  * @tparam L
+  *   the type of the abstract Scheme value
   */
 trait SchemeLattice[L]
     extends IntLattice[L],
@@ -39,6 +42,9 @@ trait SchemeLattice[L]
       RealLattice[L],
       SymbolLattice[L],
       CharLattice[L, L, L, L],
+      VectorLattice[L, L, L],
+      PairLattice[L, L],
+      StringLattice[L, L, L, L],
       Lattice[L]:
 
   import ConcreteSchemeValue.given
@@ -80,9 +86,6 @@ trait SchemeLattice[L]
 
   /** A pointer value, must contain an address */
   def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
-
-  /** A pair, may contain a car and a cdr */
-  def isPai[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
   /** A null values, does not contain any interesting subvalues */
   def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: L): B

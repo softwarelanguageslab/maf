@@ -26,7 +26,7 @@ trait Key[K]:
   given KeyFor[K] with
     def key: K = outer
 
-  def unapply[P: Product, V](v: SparseProduct[P])(using
+  def unapply[P, V](v: SparseProduct[P])(using
       KeyValueIn[K, V, P]
   ): Option[V] =
     v.get(summon[KeyFor[K]].key)
@@ -101,12 +101,18 @@ given [P](using NoDuplicates[P]): Product[P] with {}
 //
 // Sparse (HMap) interpretation
 //
+sealed trait AbstractSparseProductKey extends HMapKey:
+  type Key
+  val k: Key
 
-case class SparseProductKey[K, V](k: K) extends HMapKey:
+case class SparseProductKey[K, V](val k: K) extends AbstractSparseProductKey:
   type Value = V
+  type Key = K
   override def toString(): String = k.toString()
 
-class SparseProduct[P: Product] private (map: UntypedHMap) {
+class SparseProduct[P: Product] private (
+    private val map: HMapValue[AbstractSparseProductKey]
+) {
   type Content = P
   type Self[P] = SparseProduct[P]
 
@@ -138,9 +144,59 @@ class SparseProduct[P: Product] private (map: UntypedHMap) {
   def contains[K: KeyFor](using KeyIn[K, P]): Boolean =
     map.contains(SparseProductKey(Key[K]))
 
+  /** Checks whether the HMap is a singleton */
+  def isSingleton: Boolean = map.isSingleton
+
+  def zipWith[F[_], IP](using
+      getInstances: SummonForValues[F, IP, P]
+  )(b: => SparseProduct[P])(
+      zipper: ZipWith[F]
+  ): SparseProduct[P] =
+    val instances = getInstances.instances
+    SparseProduct(
+      (map.keys ++ b.map.keys)
+        .foldLeft(HMap.empty: HMapValue[AbstractSparseProductKey])((map, key) =>
+          val Fval =
+            instances.get[key.Key, F[key.Value]](key.k)(using null)
+          map.put(
+            key,
+            zipper(
+              map.get(key).getOrElse(zipper.default(using Fval)),
+              b.map.get(key).getOrElse(zipper.default(using Fval))
+            )(using Fval)
+          )
+        )
+    )
+
+  def forall[F[_], IP](b: SparseProduct[P])(
+      f: ForAll[F]
+  )(using
+      getInstances: SummonForValues[F, IP, P]
+  ): Boolean =
+    val instances = getInstances.instances
+    (map.keys ++ b.map.keys).forall((key) =>
+      val Fval =
+        instances.get[key.Key, F[key.Value]](key.k)(using null)
+
+      f(
+        map.get(key).getOrElse(f.default(using Fval)),
+        b.map.get(key).getOrElse(f.default(using Fval))
+      )(
+        using Fval
+      )
+    )
+
   override def toString(): String =
     map.toString()
 }
+
+trait ZipWith[F[_]]:
+  def apply[V](a: V, b: V)(using F[V]): V
+  def default[V](using F[V]): V
+
+trait ForAll[F[_]]:
+  def apply[V](a: V, b: V)(using F[V]): Boolean
+  def default[V](using F[V]): V
 
 object SparseProduct:
   def empty[P: Product]: SparseProduct[P] = SparseProduct(HMap.empty)
@@ -181,7 +237,9 @@ extension [P](p: P)
 /** A (non-sparse) version of a product, ensures that all keys in the product
   * are available
   */
-class TaggedTuple[P: Product] private (map: UntypedHMap) {
+private class TaggedTuple[P: Product] private (
+    val map: HMapValue[AbstractSparseProductKey]
+) {
 
   /** Retrieve a particular key from the tuple, ensures that the value is in the
     * tuple at compile-time

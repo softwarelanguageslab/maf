@@ -24,6 +24,9 @@ sealed trait HMapValue[KT <: HMapKey]:
   /** Check whether the set of key-value pairs in the HMap is empty */
   def isEmpty: Boolean
 
+  /** Checks whether the HMap is a singleton */
+  def isSingleton: Boolean
+
 /** A key-tagged key-value pair. The key determines the type of the value by
   * associating the value with an abstract type member of the key
   *
@@ -44,6 +47,8 @@ class KeyPair[KT <: HMapKey](val key: KT, content: key.Value)
     HMap.empty
       .put(nkey, nvalue)
       .put(key, content)
+
+  def isSingleton: Boolean = true
 
   /** Retrieve the value associated with the key `key` */
   def get(k: KT): Option[k.Value] =
@@ -80,6 +85,9 @@ case class HMap[KT <: HMapKey](
 
   def contains[K <: KT](k: K): Boolean =
     contents.contains(k)
+
+  def isSingleton: Boolean =
+    contents.size == 1
 
   def isEmpty: Boolean = contents.isEmpty
 
