@@ -23,6 +23,6 @@ test:
   artifacts:
     when: always
     paths:
-      - target/test-reports
+      - target/test-reports/*.xml
     reports:
-      junit: target/test-reports
+      junit: target/test-reports/*.xml
