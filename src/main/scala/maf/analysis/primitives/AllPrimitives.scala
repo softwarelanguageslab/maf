@@ -71,7 +71,7 @@ class SchemeLatticePrimitives[V](using
         `*`,
         SchemePlus,
         SchemeMinus,
-        // `/`,
+        `/`,
         `acos`,
         `asin`,
         `atan`,
@@ -94,7 +94,7 @@ class SchemeLatticePrimitives[V](using
         `char?`,
         `cons`,
         `cos`,
-        // `eq?`,
+        `eq?`,
         `exact->inexact`,
         `expt`,
         `floor`,
@@ -106,7 +106,7 @@ class SchemeLatticePrimitives[V](using
         `null?`,
         // `number->string`,
         `number?`,
-        // `pair?`,
+        `pair?`,
         `procedure?`,
         `quotient`,
         `real?`,
@@ -115,7 +115,7 @@ class SchemeLatticePrimitives[V](using
         `set-car!`,
         `set-cdr!`,
         `sin`,
-        // `sqrt`,
+        `sqrt`,
         `string->number`,
         `string->symbol`,
         `string-append`,
@@ -123,7 +123,7 @@ class SchemeLatticePrimitives[V](using
         `string-ref`,
         `string-set!`,
         `string<?`,
-        // `string?`,
+        `string?`,
         `substring`,
         // `symbol->string`,
         `symbol?`,
@@ -441,7 +441,7 @@ class SchemeLatticePrimitives[V](using
           }
         }
 
-    // case object `string?` extends SchemePrimRefTypeCheck("string?")
+    case object `string?` extends SchemePrimRefTypeCheck("string?", lat.isStr)
 
     case object `substring` extends SchemePrim3("substring"):
       def call[M[_]: PrimM](fpos: SchemeExp, x: V, start: V, end: V): M[V] =
