@@ -339,25 +339,14 @@ class SchemeLatticePrimitives[V](using
           lat.times(acc, num)
         )
 
-    // case object `/` extends SchemePrimVarArg("/"):
-    //   def call[M[_]: PrimM](fexp: SchemeExp, vs: List[V]): M[V] = vs match
-    //     case Nil => PrimM[M].raiseError(PrimitiveVariadicArityError("/", 1, 0))
-    //     case x :: r =>
-    //       for
-    //         multrest <- `*`.call(r)
-    //         r <- lat.div[M, V](x, multrest)
-    //         fl <- `floor`.call(fexp, r)
-    //         isexact = lat.eql(r, fl)
-    //         xisint <- isInteger(x)
-    //         multrestisint <- isInteger(multrest)
-    //         convert = and(isexact, and(xisint, multrestisint))
-    //         exr <- inexactToExact(r)
-    //         res <- MonadJoin[M].condM(PrimM[M].inject(convert))(
-    //           PrimM[M].inject(exr)
-    //         )(
-    //           PrimM[M].inject(r)
-    //         )
-    //       yield res
+    case object `/` extends SchemePrimVarArg("/"):
+      def call[M[_]: PrimM](fexp: SchemeExp, vs: List[V]): M[V] = vs match
+        case Nil => PrimM[M].raiseError(PrimitiveVariadicArityError("/", 1, 0))
+        case x :: r =>
+          for
+            multrest <- `*`.call(r)
+            r <- lat.div[M, V](x, multrest)
+          yield r // TODO: returns a real but could be an integer (/ 8 2) = 4.0 but should 4
 
     case object `=` extends SchemePrimVarArg("="):
       def eq[M[_]: PrimM](first: V, l: List[V]): M[V] = l match
@@ -372,40 +361,24 @@ class SchemeLatticePrimitives[V](using
         case Nil       => Galois.inject(true).pure
         case x :: rest => eq(x, rest)
 
-    // case object `sqrt` extends SchemePrim1("sqrt"):
-    //  def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-    //    /* n >= 0 */
-    //    for
-    //      r <- lat.sqrt(x)
-    //      fl <- `floor`.call(fpos, r)
-    //      argisexact <- isInteger(x)
-    //      resisexact <- numEq(r, fl)
-    //      convert = and(argisexact, resisexact)
-    //      exr <- inexactToExact(r)
-    //      res <- MonadJoin[M].condM(PrimM[M].inject(convert))(
-    //        PrimM[M].inject(exr)
-    //      )(
-    //        PrimM[M].inject(r)
-    //      )
-    //    yield res
+    case object `sqrt` extends SchemePrim1("sqrt"):
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+        lat.sqrt(
+          x
+        ) // TODO: returns a real but could be an integer (for example (sqrt 16) = 4 not 4.0)
 
-    // abstract class SchemePrimRefTypeCheck(
-    //    name: String,
-    //    check: SchemeOp.SchemeOp1
-    // ) extends SchemePrim1(name):
-    //  def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-    //    MonadJoin[M].condM(isPointer(x)) {
-    //      dereferencePointer(x) { (_, vlu) =>
-    //        unaryOp(check)(vlu)
-    //      }
-    //    } {
-    //      inject(false).pure
-    //    }
+    abstract class SchemePrimRefTypeCheck(
+        name: String,
+        check: (V => V)
+    ) extends SchemePrim1(name):
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+        MonadJoin[M].cond(isPtr[V](x)) {
+          dereferencePointer(x) { (_, vlu) => check(vlu).pure }
+        } { inject(false).pure }
 
     // case object `pair?` extends SchemePrimRefTypeCheck("pair?")
     // TODO:
-    case object `vector?` extends SchemePrim1("vector?"):
-      def call[M[_$8]: PrimM](fexp: SchemeExp, x: V): M[V] = ???
+    case object `vector?` extends SchemePrimRefTypeCheck("vector?", lat.isVec)
     // case object `thread?` extends SchemePrim1("thread?")
     // case object `lock?` extends SchemePrimRefTypeCheck("lock?")
 

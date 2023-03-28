@@ -172,6 +172,10 @@ given ModularSchemeDomain[
     inject(v.contains[CloT])
   def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
     inject(v.contains[UnspT])
+  def isVec[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[VecT])
+  def isPair[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
+    inject(v.contains[PaiT])
 
   //
   // Pointers & vectors
@@ -258,7 +262,14 @@ given ModularSchemeDomain[
       case v =>
         raiseError(TypeError("string->symbol: expected string", v))
     }
-  override def toNumber[M[_]: MonadError: MonadJoin](s: Val): M[Val] = ???
+
+  override def toNumber[M[_]: MonadError: MonadJoin](s: Val): M[Val] =
+    MonadJoin[M].mfoldMap(split(s)) {
+      case StringT(s) =>
+        StringLattice[S, I, C, Sym].toNumber(s) map insertA(IntT)
+      case v =>
+        raiseError(TypeError("string->number: expected string", v))
+    }
 
   override def makeString[M[_]: MonadError: MonadJoin](
       length: Val,
@@ -481,6 +492,28 @@ given ModularSchemeDomain[
         raiseError(TypeError(s"$name: expected int or real", v))
     }
 
+  private def numOperation2B[M[_]: MonadError: MonadJoin, B: BoolLattice](
+      name: String
+  )(
+      intOp: (I, I) => M[B],
+      realOp: (R, R) => M[B]
+  )(n1: Val, n2: Val): M[B] =
+    MonadJoin[M].mfoldMap(split(n1).cartesian(split(n2))) {
+      case (IntT(n1), IntT(n2)) => intOp(n1, n2)
+      case (IntT(n1), RealT(n2)) =>
+        ((IntLattice[I].toReal(n1), n2.pure) flatMapN ((r1: R, r2: R) =>
+          realOp(r1, r2)
+        ))
+      case (RealT(n1), IntT(n2)) =>
+        ((n1.pure, IntLattice[I].toReal(n2)) flatMapN ((r1: R, r2: R) =>
+          realOp(r1, r2)
+        ))
+      case (RealT(n1), RealT(n2)) =>
+        realOp(n1, n2)
+      case v =>
+        raiseError(TypeError(s"$name: expected int or real", v))
+    }
+
   private def numOperation2R[M[_]: MonadError: MonadJoin](name: String)(
       intOp: (I, I) => M[R],
       realOp: (R, R) => M[R]
@@ -623,7 +656,8 @@ given ModularSchemeDomain[
   ]](
       n1: Val,
       n2: Val
-  ): M[B] = ???
+  ): M[B] =
+    numOperation2B("<")(IntLattice[I].lt, RealLattice[R].lt)(n1, n2)
 
   // booleans
 
