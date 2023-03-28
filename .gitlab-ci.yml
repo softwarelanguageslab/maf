@@ -17,8 +17,6 @@ before_script:
 
 test:
   stage: test
-  needs:
-    - compile
   script:
     # Execute your project's tests
     - sbt clean test
