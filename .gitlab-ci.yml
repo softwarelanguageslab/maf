@@ -1,18 +1,6 @@
-# This file is a template, and might need editing before it works on your project.
-# You can copy and paste this template into a new `.gitlab-ci.yml` file.
-# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
-#
-# To contribute improvements to CI/CD templates, please follow the Development guide at:
-# https://docs.gitlab.com/ee/development/cicd/templates.html
-# This specific template is located at:
-# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Scala.gitlab-ci.yml
-
-# Official OpenJDK Java image. Look for the different tagged releases at
-# https://hub.docker.com/_/openjdk/ . A Java image is not required
-# but an image with a JVM speeds up the build a bit.
 image: eclipse-temurin:19
 
-stages: ["build", "test"]
+stages: ["test"]
 
 before_script:
   # Enable the usage of sources over https
@@ -26,13 +14,6 @@ before_script:
   # Install SBT
   - apt-get update -y
   - apt-get install sbt -y
-  # Log the sbt version
-  - sbt sbtVersion
-
-compile:
-  stage: build
-  script: 
-    - sbt clean compile
 
 test:
   stage: test
@@ -40,4 +21,10 @@ test:
     - compile
   script:
     # Execute your project's tests
-    - sbt test
+    - sbt clean test
+  artifacts:
+    when: always
+    paths:
+      - target/test-reports
+    reports:
+      junit: target/test-reports
