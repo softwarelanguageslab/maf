@@ -26,4 +26,4 @@ object Address:
 
 /** Decide about equality between addresses. */
 trait MaybeEq[A]:
-  def apply[B: BoolLattice](a1: A, a2: A): B
+  def apply[B: BoolLattice: GaloisFrom[Boolean]](a1: A, a2: A): B

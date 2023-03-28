@@ -46,8 +46,7 @@ type CloT = CloT.type
 case object VecT extends Key[VecT]
 type VecT = VecT.type
 
-// TODO:
-type Environment = Unit
+type Environment[X] = Unit
 
 type ModularSchemeValue[I, R, B, S, C, Sym, V, P] =
   (IntT ~> I) :*:
@@ -59,12 +58,12 @@ type ModularSchemeValue[I, R, B, S, C, Sym, V, P] =
     (NilT ~> Unit) :*:
     (UnspT ~> Unit) :*:
     (PrimT ~> Set[String]) :*:
-    (CloT ~> Set[(SchemeExp, Environment)]) :*:
+    (CloT ~> Set[(SchemeExp, Environment[Address])]) :*:
     (PtrT ~> Set[Address]) :*:
     (VecT ~> V) :*:
     (PaiT ~> P)
 
-given ModularSchemeDomain[
+trait ModularSchemeDomain[
     I: IntLattice: GaloisFrom[BigInt],
     R: RealLattice: GaloisFrom[Double],
     B: BoolLattice: GaloisFrom[Boolean],
@@ -79,9 +78,9 @@ given ModularSchemeDomain[
     vecLat: VectorLattice[Vec, SparseProduct[
       ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]
     ], I]
-): SchemeLattice[
-  SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]]
-] with
+) extends SchemeLattice[
+      SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]]
+    ]:
   import maf.util.datastructures.ListOps.*
 
   /** Type alias for convience */
@@ -692,6 +691,23 @@ given ModularSchemeDomain[
 
   override def symbol(v: String): Val =
     insertA(SymT)(SymbolLattice[Sym].symbol(v))
+
+given modularSchemeLattice[
+    I: IntLattice: GaloisFrom[BigInt],
+    R: RealLattice: GaloisFrom[Double],
+    B: BoolLattice: GaloisFrom[Boolean],
+    S: StringLattice_[I, C, Sym],
+    C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
+    Sym: SymbolLattice: GaloisFrom[String],
+    Pai: PairLattice_[
+      SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]]
+    ],
+    Vec: VectorLattice_[SparseProduct[
+      ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]
+    ], I]
+]: SchemeLattice[SparseProduct[
+  ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]
+]] = new ModularSchemeDomain {}
 
 //
 // Frequently used domains

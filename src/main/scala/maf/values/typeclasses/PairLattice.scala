@@ -12,3 +12,6 @@ trait PairLattice[L, V] extends Lattice[L]:
 
 object PairLattice:
   def apply[L, V](using p: PairLattice[L, V]): PairLattice[L, V] = p
+
+//
+// case class AbstractPair[L](car: L, cdr: L)

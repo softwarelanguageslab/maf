@@ -25,6 +25,7 @@ case class UninitialisedVariableError(id: Identifier[SchemeExp]) extends Error
 case class PrimitiveError(errs: Set[Error]) extends Error
 case class UndefinedExpressionExpected(idn: Identity) extends Error
 case class UnsupportedExpression(exp: Expression[SchemeExp]) extends Error
+case object OutOfBoundsError extends Error
 
 /** Use with care, can be used for legacy string based errors */
 case class StringError(messsage: String) extends Error
