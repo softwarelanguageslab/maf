@@ -12,22 +12,32 @@
 # but an image with a JVM speeds up the build a bit.
 image: eclipse-temurin:19
 
+stages: ["build", "test"]
+
 before_script:
   # Enable the usage of sources over https
-  - apt-get update -yqq
-  - apt-get install apt-transport-https -yqq
+  - apt-get update -y
+  - apt-get install apt-transport-https gnupg  -yqq
   # Add keyserver for SBT
   - echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
   - mkdir -p /root/.gnupg
   - gpg --recv-keys --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/scalasbt-release.gpg --keyserver hkp://keyserver.ubuntu.com:80 2EE0EA64E40A89B84B2DF73499E82A75642AC823
   - chmod 644 /etc/apt/trusted.gpg.d/scalasbt-release.gpg
   # Install SBT
-  - apt-get update -yqq
-  - apt-get install sbt -yqq
+  - apt-get update -y
+  - apt-get install sbt -y
   # Log the sbt version
   - sbt sbtVersion
 
+compile:
+  stage: build
+  script: 
+    - sbt clean compile
+
 test:
+  stage: test
+  needs:
+    - compile
   script:
     # Execute your project's tests
-    - sbt clean test
+    - sbt test
