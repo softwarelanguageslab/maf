@@ -137,6 +137,9 @@ given ModularSchemeDomain[
   def split(v: Val): Set[Val] =
     Split[Val#Content](v)
 
+  /** Equality between two values */
+  def eq(x: Val, y: Val)(comparePtr: MaybeEq[Address]): Val = ???
+
   type MonadError[M[_]] = cats.extensions.MonadError[Error][M]
 
   //
@@ -159,6 +162,7 @@ given ModularSchemeDomain[
     inject(v.contains[RealT])
   def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
     inject(v.contains[SymT])
+  def ptr = setExtractor(PtrT)
   def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
     inject(v.contains[PtrT])
   def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =

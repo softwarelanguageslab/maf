@@ -60,8 +60,8 @@ trait SchemeLattice[L]
   // Extractors and predicates for types in the Scheme Lattice
   //
 
-  /** Scheme primitives, must at least have a `String` field corresponding to
-    * the name of the primitive
+  /** Pattern for matching against singleton primitive values, singletons can be
+    * obtained using method `split`
     */
   def primitive: Extractor[L, String]
   def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
@@ -93,7 +93,9 @@ trait SchemeLattice[L]
   /** Unspecified values */
   def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** Closure values */
+  /** Pattern for matching against singleton closures, which can be obtained
+    * using method `split`
+    */
   def closures: Extractor[L, (SchemeExp, Env)]
   def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
@@ -105,6 +107,14 @@ trait SchemeLattice[L]
 
   /** Inject an address as a pointer in the abstract domain */
   def pointer(adr: Address): L
+
+  /** Pattern for matching against singleton pointer values, which can be
+    * obtained using method `split`
+    */
+  def ptr: Extractor[L, Address]
+
+  /** Equality between two values */
+  def eq(x: L, y: L)(comparePtr: MaybeEq[Address]): L
 
   // Convenience procedures
   def boolTop: L =

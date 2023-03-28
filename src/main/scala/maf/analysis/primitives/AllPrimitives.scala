@@ -11,6 +11,7 @@ import values.scheme.*
 import values.typeclasses.*
 import maf.interpreter.*
 import maf.interpreter.SimpleSchemeValue
+import cats.extensions.Errors.raiseError
 
 trait SchemePrimitive[V: Lattice, A <: Address]:
   // Every primitive in Scheme has a unique name
@@ -58,11 +59,8 @@ class SchemeLatticePrimitives[V](using
     */
   def dereferencePointer[M[_]: PrimM, X: Lattice](x: V)(
       f: (Address, V) => M[X]
-  ): M[X] = ???
-  // Galois
-  //  .extract[Address, V](x)
-  //  .map(PrimM[M].deref(_)(f))
-  //  .getOrElse(sys.error("values does not contain adresses"))
+  ): M[X] =
+    PrimM[M].deref(split(x).collect { case lat.ptr(a, _) => a })(f)
 
   // See comments in SchemeR5RSBenchmarks.scala for a list of all supported and unsupported primitives
   def allPrimitives: Map[String, SchemePrimitive[V, Address]] =
@@ -253,17 +251,13 @@ class SchemeLatticePrimitives[V](using
       def call[M[_$11]: PrimM](fpos: SchemeExp, x: V, y: V): M[V] =
         lat.charEq(x, y)
     case object `char?` extends SchemePrim1("char?"):
-      def call[M[_$9]: PrimM](fexp: SchemeExp, x: V): M[V] = ??? // TODO
+      def call[M[_$9]: PrimM](fexp: SchemeExp, x: V): M[V] =
+        lat.isChar[V](x).pure
     case object `cos` extends SchemePrim1("cos"):
       def call[M[_$9]: PrimM](fexp: SchemeExp, x: V): M[V] = lat.cos(x)
-    // case object `eq?` extends SchemePrim2("eq?"):
-    //  def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V) =
-    //    for
-    //      aeq <- PrimM[
-    //        M
-    //      ].addrEq // analysis determines how equality between 2 addrs is done
-    //      res <- Galois.inject[Boolean, V](lat.eq(x, y)(aeq))
-    //    yield res
+    case object `eq?` extends SchemePrim2("eq?"):
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V) =
+        PrimM[M].addrEq map lat.eq(x, y)
     case object `error` extends SchemePrim1("error"):
       def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         PrimM[M].raiseError(UserError(x.toString))
@@ -376,8 +370,7 @@ class SchemeLatticePrimitives[V](using
           dereferencePointer(x) { (_, vlu) => check(vlu).pure }
         } { inject(false).pure }
 
-    // case object `pair?` extends SchemePrimRefTypeCheck("pair?")
-    // TODO:
+    case object `pair?` extends SchemePrimRefTypeCheck("pair?", lat.isPair)
     case object `vector?` extends SchemePrimRefTypeCheck("vector?", lat.isVec)
     // case object `thread?` extends SchemePrim1("thread?")
     // case object `lock?` extends SchemePrimRefTypeCheck("lock?")
