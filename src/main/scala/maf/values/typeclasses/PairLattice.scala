@@ -17,33 +17,35 @@ trait PairLattice[L, V] extends Lattice[L]:
 object PairLattice:
     def apply[L, V](using p: PairLattice[L, V]): PairLattice[L, V] = p
 
-given simplePairLattice[L: Lattice]: PairLattice[AbstractPair[L], L] with {
-    def show(t: AbstractPair[L]): String =
-        s"(${t.car} . ${t.cdr})"
+case class AbstractPair[L](car: L, cdr: L)
+object AbstractPair:
+    given simplePairLattice[L: Lattice]: PairLattice[AbstractPair[L], L] with {
+        def show(t: AbstractPair[L]): String =
+            s"(${t.car} . ${t.cdr})"
 
-    def bottom: AbstractPair[L] =
-        AbstractPair(Lattice[L].bottom, Lattice[L].bottom)
-    override def isBottom(x: AbstractPair[L]): Boolean =
-        Lattice[L].isBottom(x.car) && Lattice[L].isBottom(x.cdr)
+        def bottom: AbstractPair[L] =
+            AbstractPair(Lattice[L].bottom, Lattice[L].bottom)
+        override def isBottom(x: AbstractPair[L]): Boolean =
+            Lattice[L].isBottom(x.car) && Lattice[L].isBottom(x.cdr)
 
-    def eql[B: BoolLattice: GaloisFrom[Boolean]](
-        x: AbstractPair[L],
-        y: AbstractPair[L]
-      ): B = ???
-    def join(x: AbstractPair[L], y: => AbstractPair[L]): AbstractPair[L] =
-        AbstractPair(Lattice[L].join(x.car, y.car), Lattice[L].join(x.cdr, y.cdr))
-    def split(v: AbstractPair[L]): Set[AbstractPair[L]] =
-        Lattice[L]
-            .split(v.car)
-            .cartesian(Lattice[L].split(v.cdr))
-            .map(AbstractPair(_, _))
-            .toSet
-    def subsumes(x: AbstractPair[L], y: => AbstractPair[L]): Boolean =
-        Lattice[L].subsumes(x.car, y.car) && Lattice[L].subsumes(x.cdr, y.cdr)
-    def top: AbstractPair[L] = throw LatticeTopUndefined
-    def car[M[_]: MonadError[Error]: MonadJoin](a: AbstractPair[L]): M[L] =
-        a.car.pure
-    def cdr[M[_]: MonadError[Error]: MonadJoin](a: AbstractPair[L]): M[L] =
-        a.cdr.pure
-    def cons(a: L, b: L): AbstractPair[L] = AbstractPair(a, b)
-}
+        def eql[B: BoolLattice: GaloisFrom[Boolean]](
+            x: AbstractPair[L],
+            y: AbstractPair[L]
+          ): B = ???
+        def join(x: AbstractPair[L], y: => AbstractPair[L]): AbstractPair[L] =
+            AbstractPair(Lattice[L].join(x.car, y.car), Lattice[L].join(x.cdr, y.cdr))
+        def split(v: AbstractPair[L]): Set[AbstractPair[L]] =
+            Lattice[L]
+                .split(v.car)
+                .cartesian(Lattice[L].split(v.cdr))
+                .map(AbstractPair(_, _))
+                .toSet
+        def subsumes(x: AbstractPair[L], y: => AbstractPair[L]): Boolean =
+            Lattice[L].subsumes(x.car, y.car) && Lattice[L].subsumes(x.cdr, y.cdr)
+        def top: AbstractPair[L] = throw LatticeTopUndefined
+        def car[M[_]: MonadError[Error]: MonadJoin](a: AbstractPair[L]): M[L] =
+            a.car.pure
+        def cdr[M[_]: MonadError[Error]: MonadJoin](a: AbstractPair[L]): M[L] =
+            a.cdr.pure
+        def cons(a: L, b: L): AbstractPair[L] = AbstractPair(a, b)
+    }
