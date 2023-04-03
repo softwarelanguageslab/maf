@@ -23,17 +23,19 @@ object Extractor:
   def apply[L, E](f: PartialFunction[L, E]): Extractor[L, E] =
     (v: L) => f.andThen(Some(_)).applyOrElse(v, (_) => None)
 
-/** Represents a lattice that supports all Scheme operations, that is: a
-  * combination of the operations on strings, integers, booleans, real numbers,
-  * symbols and characters.
+trait SchemeDomain[L: Lattice, V, P]:
+  val lattice: SchemeLattice[L]
+  val vectorLattice: VectorLattice[V]
+  val pairLattice: PairLattice[V, L, L]
+
+/** Represents a lattice that supports all Scheme operations, that is: a combination of the operations on strings,
+  * integers, booleans, real numbers, symbols and characters.
   *
-  * An implementation of this trait should represents the R5RS semantics for
-  * these operations. For example, R5RS says that if a real number and an
-  * integer number are added together, the result is a real number.
+  * An implementation of this trait should represents the R5RS semantics for these operations. For example, R5RS says
+  * that if a real number and an integer number are added together, the result is a real number.
   *
-  * The recommended representation of values in this lattice is a
-  * `SparseProduct` which bundles several lattices together into a sparse
-  * product lattice which has both efficient time and space characteristcs.
+  * The recommended representation of values in this lattice is a `SparseProduct` which bundles several lattices
+  * together into a sparse product lattice which has both efficient time and space characteristcs.
   *
   * @tparam L
   *   the type of the abstract Scheme value
@@ -44,8 +46,6 @@ trait SchemeLattice[L]
       RealLattice[L],
       SymbolLattice[L],
       CharLattice[L, L, L, L],
-      VectorLattice[L, L, L],
-      PairLattice[L, L],
       StringLattice[L, L, L, L],
       Lattice[L]:
 
@@ -53,17 +53,18 @@ trait SchemeLattice[L]
 
   type Env = Environment[Address]
 
-  /** A valid Scheme lattice should provide a Galois connection between concrete
-    * and abstract values
+  /** A valid Scheme lattice should provide a Galois connection between concrete and abstract values
     */
   given galois: Galois[SimpleSchemeValue, L]
+
+  /** A nil value */
+  def nil: L
 
   //
   // Extractors and predicates for types in the Scheme Lattice
   //
 
-  /** Pattern for matching against singleton primitive values, singletons can be
-    * obtained using method `split`
+  /** Pattern for matching against singleton primitive values, singletons can be obtained using method `split`
     */
   def primitive: Extractor[L, String]
   def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
@@ -95,8 +96,7 @@ trait SchemeLattice[L]
   /** Unspecified values */
   def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** Pattern for matching against singleton closures, which can be obtained
-    * using method `split`
+  /** Pattern for matching against singleton closures, which can be obtained using method `split`
     */
   def closures: Extractor[L, (SchemeLambdaExp, Env)]
   def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
@@ -111,8 +111,7 @@ trait SchemeLattice[L]
   /** Inject an address as a pointer in the abstract domain */
   def pointer(adr: Address): L
 
-  /** Pattern for matching against singleton pointer values, which can be
-    * obtained using method `split`
+  /** Pattern for matching against singleton pointer values, which can be obtained using method `split`
     */
   def ptr: Extractor[L, Address]
 
@@ -124,7 +123,8 @@ trait SchemeLattice[L]
     join(Galois.inject[Boolean, L](true), Galois.inject[Boolean, L](false))
 
   // prevent name clashes between RealLattice and IntLattice
-  override def isZero[B: BoolLattice: GaloisFrom[Boolean]](v: L)(using
-      Galois[BigInt, L]
-  ): B =
+  override def isZero[B: BoolLattice: GaloisFrom[Boolean]](
+      v: L
+    )(using Galois[BigInt, L]
+    ): B =
     eql(v, Galois.inject[SimpleSchemeValue, L](BigInt(0)))

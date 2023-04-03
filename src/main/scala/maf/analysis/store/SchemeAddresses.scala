@@ -6,10 +6,12 @@ import maf.syntax.scheme.SchemeExp
 import maf.syntax.Identifier
 
 sealed trait SchemeAddress[+Context] extends Address
-case class VarAddr[Context](vrr: Identifier[SchemeExp], ctx: Context) extends SchemeAddress[Context]:
+case class VarAddr[Context](vrr: Identifier[SchemeExp], ctx: Context)
+    extends SchemeAddress[Context]:
     val idn: Identity = vrr.idn
     def printable: Boolean = true
-case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddress[Context]:
+case class PtrAddr[Context](exp: SchemeExp, ctx: Context)
+    extends SchemeAddress[Context]:
     val idn: Identity = exp.idn
     def printable: Boolean = true
 case class PrmAddr(nam: String) extends SchemeAddress[Nothing]:

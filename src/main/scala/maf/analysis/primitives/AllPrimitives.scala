@@ -13,30 +13,30 @@ import maf.interpreter.*
 import maf.interpreter.SimpleSchemeValue
 import cats.extensions.Errors.raiseError
 
-trait SchemePrimitive[V: Lattice, A <: Address]:
+trait SchemePrimitive[V, A <: Address]:
   // Every primitive in Scheme has a unique name
   def name: String
   // They can be called given the calling expression and arguments using any compatible SchemePrimM monad
   def call[M[_]](
       fexp: SchemeExp,
       args: List[V]
-  )(implicit m: SchemePrimM[M, V, A]): M[V]
+    )(implicit m: SchemePrimM[M, V, A]
+    ): M[V]
 
 // Primitive-specific errors
-case class PrimitiveArityError(name: String, expected: Int, got: Int)
-    extends Error
+case class PrimitiveArityError(name: String, expected: Int, got: Int) extends Error
 case class PrimitiveVariadicArityError(
     name: String,
     expectedAtLeast: Int,
-    got: Int
-) extends Error
+    got: Int)
+    extends Error
 case class PrimitiveNotApplicable[V](name: String, args: List[V]) extends Error
 case class UserError(message: String) extends Error
 
-class SchemeLatticePrimitives[V](using
-    lat: SchemeLattice[V]
-):
-  import lat.{given, _}
+class SchemeLatticePrimitives[V, Vec, Pai](
+    using dom: SchemeDomain[V, Vec, Pai]):
+  val lat = dom.lattice
+  import lat.{_, given}
   import Monad._
   import Galois.*
   import MonadJoin._
@@ -44,7 +44,7 @@ class SchemeLatticePrimitives[V](using
 
   def ofList(
       prims: List[SchemePrimitive[V, Address]]
-  ): Map[String, SchemePrimitive[V, Address]] =
+    ): Map[String, SchemePrimitive[V, Address]] =
     prims.map(prim => (prim.name, prim)).toMap
 
   val unspecified: V = Galois.inject[SimpleSchemeValue, V](SchemeUnspecified)
@@ -54,12 +54,13 @@ class SchemeLatticePrimitives[V](using
   object PrimM:
     def apply[M[_]: PrimM]: PrimM[M] = summon
 
-  /** Dereferences a pointer x (which may point to multiple addresses) and
-    * applies a function to its value, joining everything together
+  /** Dereferences a pointer x (which may point to multiple addresses) and applies a function to its value, joining
+    * everything together
     */
-  def dereferencePointer[M[_]: PrimM, X: Lattice](x: V)(
-      f: (Address, V) => M[X]
-  ): M[X] =
+  def dereferencePointer[M[_]: PrimM, X: Lattice](
+      x: V
+    )(f: (Address, V) => M[X]
+    ): M[X] =
     PrimM[M].deref(split(x).collect { case lat.ptr(a, _) => a })(f)
 
   // See comments in SchemeR5RSBenchmarks.scala for a list of all supported and unsupported primitives
@@ -173,45 +174,45 @@ class SchemeLatticePrimitives[V](using
       // `thread?`
     )
 
-  abstract class SchemePrim0(val name: String)
-      extends SchemePrimitive[V, Address]:
+  abstract class SchemePrim0(val name: String) extends SchemePrimitive[V, Address]:
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
       case Nil => call(fpos)
-      case _   => PrimM[M].raiseError(PrimitiveArityError(name, 0, args.length))
+      case _ =>
+        PrimM[M].raiseError(PrimitiveArityError(name, 0, args.length))
     def call[M[_]: PrimM](fpos: SchemeExp): M[V]
 
-  abstract class SchemePrim1(val name: String)
-      extends SchemePrimitive[V, Address]:
+  abstract class SchemePrim1(val name: String) extends SchemePrimitive[V, Address]:
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
       case x :: Nil => call(fpos, x)
-      case _ => PrimM[M].raiseError(PrimitiveArityError(name, 1, args.length))
+      case _ =>
+        PrimM[M].raiseError(PrimitiveArityError(name, 1, args.length))
     def call[M[_]: PrimM](fexp: SchemeExp, x: V): M[V]
 
-  abstract class SchemePrim2(val name: String)
-      extends SchemePrimitive[V, Address]:
+  abstract class SchemePrim2(val name: String) extends SchemePrimitive[V, Address]:
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
       case x :: y :: Nil => call(fpos, x, y)
-      case _ => PrimM[M].raiseError(PrimitiveArityError(name, 2, args.length))
+      case _ =>
+        PrimM[M].raiseError(PrimitiveArityError(name, 2, args.length))
     def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V): M[V]
 
-  abstract class SchemePrim3(val name: String)
-      extends SchemePrimitive[V, Address]:
+  abstract class SchemePrim3(val name: String) extends SchemePrimitive[V, Address]:
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
       case x :: y :: z :: Nil => call(fpos, x, y, z)
-      case _ => PrimM[M].raiseError(PrimitiveArityError(name, 3, args.length))
+      case _ =>
+        PrimM[M].raiseError(PrimitiveArityError(name, 3, args.length))
     def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V, z: V): M[V]
 
-  abstract class SchemePrimVarArg(val name: String)
-      extends SchemePrimitive[V, Address]
+  abstract class SchemePrimVarArg(val name: String) extends SchemePrimitive[V, Address]
 
   object PrimitiveDefs:
     import ConcreteSchemeValue.given
     case object `<` extends SchemePrim2("<"):
-      def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V): M[V] = lat.lt(x, y)
+      def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V): M[V] =
+        lat.lt(x, y)
     case object `acos` extends SchemePrim1("acos"):
       def call[M[_]: PrimM](fexp: SchemeExp, x: V): M[V] = lat.acos(x)
     case object `asin` extends SchemePrim1("asin"):
-      def call[M[_$8]: PrimM](fexp: SchemeExp, x: V): M[V] = lat.asin(x)
+      def call[M[_]: PrimM](fexp: SchemeExp, x: V): M[V] = lat.asin(x)
     case object `atan` extends SchemePrim1("atan"):
       def call[M[_$8]: PrimM](fexp: SchemeExp, x: V): M[V] = lat.atan(x)
     case object `boolean?` extends SchemePrim1("boolean?"):
@@ -320,22 +321,25 @@ class SchemeLatticePrimitives[V](using
         vs.foldM(Galois.inject(BigInt(0)))((acc, num) => lat.plus(acc, num))
 
     case object SchemeMinus extends SchemePrimVarArg("-"):
-      def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
-        case Nil => PrimM[M].raiseError(PrimitiveVariadicArityError("-", 1, 0))
-        case x :: Nil => lat.minus(Galois.inject(BigInt(0)), x)
-        case x :: rst =>
-          SchemePlus.call(rst) >>= { (lat.minus(x, _)) }
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
+        args match
+          case Nil =>
+            PrimM[M].raiseError(
+              PrimitiveVariadicArityError("-", 1, 0)
+            )
+          case x :: Nil => lat.minus(Galois.inject(BigInt(0)), x)
+          case x :: rst =>
+            SchemePlus.call(rst) >>= { (lat.minus(x, _)) }
 
     case object `*` extends SchemePrimVarArg("*"):
       def call[M[_]: PrimM](fpos: SchemeExp, vs: List[V]): M[V] = call(vs)
       def call[M[_]: PrimM](vs: List[V]): M[V] =
-        vs.foldLeftM(Galois.inject(BigInt(1)))((acc, num) =>
-          lat.times(acc, num)
-        )
+        vs.foldLeftM(Galois.inject(BigInt(1)))((acc, num) => lat.times(acc, num))
 
     case object `/` extends SchemePrimVarArg("/"):
       def call[M[_]: PrimM](fexp: SchemeExp, vs: List[V]): M[V] = vs match
-        case Nil => PrimM[M].raiseError(PrimitiveVariadicArityError("/", 1, 0))
+        case Nil =>
+          PrimM[M].raiseError(PrimitiveVariadicArityError("/", 1, 0))
         case x :: r =>
           for
             multrest <- `*`.call(r)
@@ -363,8 +367,8 @@ class SchemeLatticePrimitives[V](using
 
     abstract class SchemePrimRefTypeCheck(
         name: String,
-        check: (V => V)
-    ) extends SchemePrim1(name):
+        check: (V => V))
+        extends SchemePrim1(name):
       def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
         MonadJoin[M].cond(isPtr[V](x)) {
           dereferencePointer(x) { (_, vlu) => check(vlu).pure }
@@ -391,15 +395,18 @@ class SchemeLatticePrimitives[V](using
           fpos: SchemeExp,
           length: V,
           char: V
-      ): M[V] =
+        ): M[V] =
         for
           str <- lat.makeString(length, char)
           adr <- PrimM[M].allocVal(fpos, str)
         yield lat.pointer(adr)
-      def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
-        case length :: Nil         => mkString(fpos, length, inject(0.toChar))
-        case length :: char :: Nil => mkString(fpos, length, char)
-        case l => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
+      def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
+        args match
+          case length :: Nil =>
+            mkString(fpos, length, inject(0.toChar))
+          case length :: char :: Nil => mkString(fpos, length, char)
+          case l =>
+            PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
 
     // case object `number->string` extends SchemePrim1("number->string"):
     //  def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
@@ -512,9 +519,8 @@ class SchemeLatticePrimitives[V](using
     def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
       for
         emptyVec <- lat.vector(inject(BigInt(args.size)), bottom)
-        filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) {
-          case (acc, (arg, idx)) =>
-            lat.vectorSet(acc, inject(BigInt(idx)), arg)
+        filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) { case (acc, (arg, idx)) =>
+          lat.vectorSet(acc, inject(BigInt(idx)), arg)
         }
         adr <- PrimM[M].allocVal(fpos, filledVec)
       yield lat.pointer(adr)
@@ -528,7 +534,12 @@ class SchemeLatticePrimitives[V](using
       dereferencePointer(v) { (_, vec) => lat.vectorRef(vec, idx) }
 
   case object `vector-set!` extends SchemePrim3("vector-set!"):
-    def call[M[_]: PrimM](fpos: SchemeExp, x: V, index: V, newval: V): M[V] =
+    def call[M[_]: PrimM](
+        fpos: SchemeExp,
+        x: V,
+        index: V,
+        newval: V
+      ): M[V] =
       dereferencePointer(x) { (adr, vec) =>
         for
           newvec <- lat.vectorSet(vec, index, newval)
