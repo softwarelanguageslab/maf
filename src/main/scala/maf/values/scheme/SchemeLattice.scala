@@ -7,6 +7,8 @@ import typeclasses.*
 import maf.syntax.scheme.SchemeExp
 import cats.extensions.*
 import maf.interpreter.SimpleSchemeValue
+import maf.syntax.scheme.SchemeLambda
+import maf.syntax.scheme.SchemeLambdaExp
 
 given [L](using lat: SchemeLattice[L]): Galois[SimpleSchemeValue, L] with
   val galois = lat.galois
@@ -49,7 +51,7 @@ trait SchemeLattice[L]
 
   import ConcreteSchemeValue.given
 
-  type Env = Unit // TODO
+  type Env = Environment[Address]
 
   /** A valid Scheme lattice should provide a Galois connection between concrete
     * and abstract values
@@ -96,8 +98,9 @@ trait SchemeLattice[L]
   /** Pattern for matching against singleton closures, which can be obtained
     * using method `split`
     */
-  def closures: Extractor[L, (SchemeExp, Env)]
+  def closures: Extractor[L, (SchemeLambdaExp, Env)]
   def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+  def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): L
 
   /** Vector values */
   def isVec[B: BoolLattice: GaloisFrom[Boolean]](v: L): B

@@ -27,6 +27,10 @@ trait MonadJoin[M[_]: Monad]:
     val trueBranch = if BoolLattice[B].isTrue(b) then m1 else mzero[X]
     val falseBranch = if BoolLattice[B].isFalse(b) then m2 else mzero[X]
     mjoin(trueBranch, falseBranch)
+
+  def guard(b: Boolean)(e: => M[Unit]): M[Unit] =
+    if b then ().pure else e
+
   // alternative version of `cond` that expresses the boolean condition as a monad
   def condM[X: Lattice, B: BoolLattice](mb: M[B])(m1: M[X])(m2: M[X]): M[X] =
     val trueBranch =

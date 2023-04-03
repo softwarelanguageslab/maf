@@ -96,3 +96,6 @@ case class SchemeBoolean(b: Boolean) extends SimpleSchemeValue
 
 /** A Scheme character value */
 case class SchemeChar(c: Char) extends SimpleSchemeValue
+
+/** A Scheme "void" value returned from impure expressions such as `set!` */
+case object SchemeVoid extends SimpleSchemeValue
