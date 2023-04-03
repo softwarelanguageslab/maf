@@ -9,122 +9,116 @@ import cats.extensions.*
 import maf.interpreter.SimpleSchemeValue
 import maf.syntax.scheme.SchemeLambda
 import maf.syntax.scheme.SchemeLambdaExp
+import maf.analysis.store.*
 
-given [L](using lat: SchemeLattice[L]): Galois[SimpleSchemeValue, L] with
-  val galois = lat.galois
-  export galois.*
+given [L, V, P](using lat: SchemeLattice[L, V, P]): Galois[SimpleSchemeValue, L] with
+    val galois = lat.galois
+    export galois.*
 
 trait Extractor[L, E]:
-  def extract(v: L): Option[(E)]
-  def unapply(v: L): Option[(E, L)] =
-    extract(v).map((_, v))
+    def extract(v: L): Option[(E)]
+    def unapply(v: L): Option[(E, L)] =
+        extract(v).map((_, v))
 
-object Extractor:
-  def apply[L, E](f: PartialFunction[L, E]): Extractor[L, E] =
-    (v: L) => f.andThen(Some(_)).applyOrElse(v, (_) => None)
+trait SchemeDomain[L, Vec, Pai]:
+    given schemeLattice: SchemeLattice[L, Vec, Pai]
+    given pairLattice: PairLattice[Pai, L]
+    given vectorLattice: VectorLattice[Vec, L, L]
 
-/** Represents a lattice that supports all Scheme operations, that is: a
-  * combination of the operations on strings, integers, booleans, real numbers,
+/** Represents a lattice that supports all Scheme operations, that is: a combination of the operations on strings, integers, booleans, real numbers,
   * symbols and characters.
   *
-  * An implementation of this trait should represents the R5RS semantics for
-  * these operations. For example, R5RS says that if a real number and an
+  * An implementation of this trait should represents the R5RS semantics for these operations. For example, R5RS says that if a real number and an
   * integer number are added together, the result is a real number.
   *
-  * The recommended representation of values in this lattice is a
-  * `SparseProduct` which bundles several lattices together into a sparse
-  * product lattice which has both efficient time and space characteristcs.
+  * The recommended representation of values in this lattice is a `SparseProduct` which bundles several lattices together into a sparse product
+  * lattice which has both efficient time and space characteristcs.
   *
   * @tparam L
   *   the type of the abstract Scheme value
   */
-trait SchemeLattice[L]
+trait SchemeLattice[L, Vec, Pair]
     extends IntLattice[L],
       BoolLattice[L],
       RealLattice[L],
       SymbolLattice[L],
       CharLattice[L, L, L, L],
-      VectorLattice[L, L, L],
-      PairLattice[L, L],
       StringLattice[L, L, L, L],
       Lattice[L]:
 
-  import ConcreteSchemeValue.given
+    import ConcreteSchemeValue.given
 
-  type Env = Environment[Address]
+    type Env = Environment[Address]
 
-  /** A valid Scheme lattice should provide a Galois connection between concrete
-    * and abstract values
-    */
-  given galois: Galois[SimpleSchemeValue, L]
+    /** A valid Scheme lattice should provide a Galois connection between concrete and abstract values
+      */
+    given galois: Galois[SimpleSchemeValue, L]
 
-  //
-  // Extractors and predicates for types in the Scheme Lattice
-  //
+    //
+    // Extractors and predicates for types in the Scheme Lattice
+    //
 
-  /** Pattern for matching against singleton primitive values, singletons can be
-    * obtained using method `split`
-    */
-  def primitive: Extractor[L, String]
-  def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** Pattern for matching against singleton primitive values, singletons can be obtained using method `split`
+      */
+    def primitive: Extractor[L, String]
+    def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A string, might contain a string corresponding to its concrete value */
-  def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A string, might contain a string corresponding to its concrete value */
+    def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A boolean */
-  def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A boolean */
+    def isBool[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A real number, might contain a concrete double */
-  def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A real number, might contain a concrete double */
+    def isReal[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** An integer number */
-  def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** An integer number */
+    def isInt[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A symbol */
-  def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A symbol */
+    def isSym[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A character */
-  def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A character */
+    def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A pointer value, must contain an address */
-  def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A pointer value, must contain an address */
+    def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** A null values, does not contain any interesting subvalues */
-  def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** A null values, does not contain any interesting subvalues */
+    def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** Unspecified values */
-  def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** Unspecified values */
+    def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
-  /** Pattern for matching against singleton closures, which can be obtained
-    * using method `split`
-    */
-  def closures: Extractor[L, (SchemeLambdaExp, Env)]
-  def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
-  def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): L
+    /** Pattern for matching against singleton closures, which can be obtained using method `split`
+      */
+    def closures: Extractor[L, (SchemeLambdaExp, Env)]
+    def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): L
 
-  /** Vector values */
-  def isVec[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    //
+    // Pointers
+    //
 
-  /** Pair values */
-  def isPair[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
+    /** Inject a pointer to a vector */
+    def injectVecPtr(adr: VectorAddress[Vec]): L
 
-  /** Inject an address as a pointer in the abstract domain */
-  def pointer(adr: Address): L
+    /** Pattern that matches if the abstract value is equal to exactly one address */
+    def vectorAddress(v: L): Extractor[L, VectorAddress[Vec]]
 
-  /** Pattern for matching against singleton pointer values, which can be
-    * obtained using method `split`
-    */
-  def ptr: Extractor[L, Address]
+    /** Inject a pointer to a vector */
+    def injectPairPtr(adr: PairAddress[Pair]): L
 
-  /** Equality between two values */
-  def eq(x: L, y: L)(comparePtr: MaybeEq[Address]): L
+    /** Pattern that matches if the abstract value is equal to exactly one address */
+    def pairAddress(v: L): Extractor[L, PairAddress[Pair]]
 
-  // Convenience procedures
-  def boolTop: L =
-    join(Galois.inject[Boolean, L](true), Galois.inject[Boolean, L](false))
+    /** Equality between two values */
+    def eq(x: L, y: L)(comparePtr: MaybeEq[Address]): L
 
-  // prevent name clashes between RealLattice and IntLattice
-  override def isZero[B: BoolLattice: GaloisFrom[Boolean]](v: L)(using
-      Galois[BigInt, L]
-  ): B =
-    eql(v, Galois.inject[SimpleSchemeValue, L](BigInt(0)))
+    // Convenience procedures
+    def boolTop: L =
+        join(Galois.inject[Boolean, L](true), Galois.inject[Boolean, L](false))
+
+    // prevent name clashes between RealLattice and IntLattice
+    override def isZero[B: BoolLattice: GaloisFrom[Boolean]](v: L)(using Galois[BigInt, L]): B =
+        eql(v, Galois.inject[SimpleSchemeValue, L](BigInt(0)))
