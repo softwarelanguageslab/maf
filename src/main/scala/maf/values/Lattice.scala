@@ -87,7 +87,7 @@ object Lattice:
     given setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
 
     /** Lattice instance for wrapped values */
-    def wrapLattice[V: Lattice, W](using self: Rec[V, W]): Lattice[W] = new Lattice[W] {
+    def wrapLattice[V: Lattice, W](using self: Wrap[V, W]): Lattice[W] = new Lattice[W] {
         def join(x: W, y: => W): W = self.wrap(self.unwrap(x) ⊔ self.unwrap(y))
         def subsumes(x: W, y: => W): Boolean =
             self.unwrap(x) ⊑ self.unwrap(y)
@@ -119,7 +119,7 @@ object Lattice:
         if xs.isEmpty then Lattice[L].bottom
         else Lattice[L].join(f(xs.head), foldMapL(xs.tail, f))
 
-trait Rec[V, W]:
+trait Wrap[V, W]:
     type Vlu = V
     type Wra = W
 

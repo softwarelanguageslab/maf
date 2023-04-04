@@ -134,8 +134,11 @@ trait ModularSchemeLattice[
 
     given galois: Galois[SimpleSchemeValue, Val] with {
         def inject(c: SimpleSchemeValue): Val = c match
-            case SchemeNil => insertA(NilT)(())
-            case _         => ???
+            case SchemeNil       => insertA(NilT)(())
+            case SchemeInt(n)    => insertA(IntT)(Galois.inject[BigInt, I](n))
+            case SchemeDouble(d) => insertA(RealT)(Galois.inject[Double, R](d))
+            case SchemeChar(c)   => insertA(CharT)(Galois.inject[Char, C](c))
+            case _               => ???
     }
 
     // Type predicates & extractors
@@ -158,10 +161,10 @@ trait ModularSchemeLattice[
         inject(v.contains[IntT])
     def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[CharT])
-    def closures: Extractor[Val, (SchemeLambdaExp, VarAddress[Val])] = setExtractor(CloT)
+    def closures: Extractor[Val, (SchemeLambdaExp, Environment[Address])] = setExtractor(CloT)
     def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[CloT])
-    def injectClosure(lam: SchemeLambdaExp, env: Environment[VarAddress[Val]]): Val =
+    def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): Val =
         insertA(CloT)(Set((lam, env)))
     def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[UnspT])
@@ -175,7 +178,7 @@ trait ModularSchemeLattice[
         insertA(VecTPtr)(Set(adr): Set[VectorAddress[Vec]])
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def vectorAddress(v: Val): Extractor[Val, VectorAddress[Vec]] =
+    def vectorAddress: Extractor[Val, VectorAddress[Vec]] =
         setExtractor(VecTPtr)
 
     /** Inject a pointer to a vector */
@@ -183,7 +186,7 @@ trait ModularSchemeLattice[
         insertA(PaiTPtr)(Set(adr): Set[PairAddress[Pai]])
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def pairAddress(v: Val): Extractor[Val, PairAddress[Pai]] =
+    def pairAddress: Extractor[Val, PairAddress[Pai]] =
         setExtractor(PaiTPtr)
 
     //
@@ -317,9 +320,7 @@ trait ModularSchemeLattice[
         }
 
     override def toChar[
-        C: CharLattice_[Val, Sym, S]: GaloisFrom[
-          Char
-        ],
+        C: CharLattice_[Val, Sym, S]: GaloisFrom[Char],
         S: StringLattice_[
           Val,
           C,
@@ -397,42 +398,21 @@ trait ModularSchemeLattice[
             case v => raiseError(TypeError("charEq: expected char", v))
         }
 
-    override def charLt[
-        M[
-            _
-        ]: MonadError: MonadJoin,
-        B: BoolLattice: GaloisFrom[Boolean]
-      ](c1: Val,
-        c2: Val
-      ): M[B] =
+    override def charLt[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](c1: Val, c2: Val): M[B] =
         MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
             case (CharT(c1), CharT(c2)) =>
                 CharLattice[C, I, Sym, S].charLt[M, B](c1, c2)
             case v => raiseError(TypeError("charEq: expected char", v))
         }
 
-    override def charEqCI[
-        M[
-            _
-        ]: MonadError: MonadJoin,
-        B: BoolLattice: GaloisFrom[Boolean]
-      ](c1: Val,
-        c2: Val
-      ): M[B] =
+    override def charEqCI[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](c1: Val, c2: Val): M[B] =
         MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
             case (CharT(c1), CharT(c2)) =>
                 CharLattice[C, I, Sym, S].charEqCI[M, B](c1, c2)
             case v => raiseError(TypeError("charEq: expected char", v))
         }
 
-    override def charLtCI[
-        M[
-            _
-        ]: MonadError: MonadJoin,
-        B: BoolLattice: GaloisFrom[Boolean]
-      ](c1: Val,
-        c2: Val
-      ): M[B] =
+    override def charLtCI[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](c1: Val, c2: Val): M[B] =
         MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
             case (CharT(c1), CharT(c2)) =>
                 CharLattice[C, I, Sym, S].charLtCI[M, B](c1, c2)
@@ -663,14 +643,69 @@ trait ModularSchemeLattice[
     override def symbol(v: String): Val =
         insertA(SymT)(SymbolLattice[Sym].symbol(v))
 
-//given modularSchemeLattice[Self,
-//                           I: IntLattice: GaloisFrom[BigInt],
-//                           R: RealLattice: GaloisFrom[Double],
-//                           B: BoolLattice: GaloisFrom[Boolean],
-//                           S: StringLattice_[I, C, Sym]: GaloisFrom[String],
-//                           C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
-//                           Sym: SymbolLattice,
-//                           Pai: PairLattice_[Self],
-//                           Vec
-//](using vecLat: VectorLattice[Vec, Self, I], self: Rec[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]], Self]): SchemeLattice[self.Vlu] =
-//    new ModularSchemeDomain[Self, I, R, B, S, C, Sym, Pai, Vec] {}
+object ModularSchemeLattice:
+    def modularSchemeLattice[
+        I: IntLattice: GaloisFrom[BigInt],
+        R: RealLattice: GaloisFrom[Double],
+        B: BoolLattice: GaloisFrom[Boolean],
+        S: StringLattice_[I, C, Sym]: GaloisFrom[String],
+        C: CharLattice_[I, Sym, S]: GaloisFrom[Char],
+        Sym: SymbolLattice,
+        Pai,
+        Vec
+      ]: SchemeLattice[SparseProduct[ModularSchemeValue[I, R, B, S, C, Sym, Vec, Pai]], Vec, Pai] =
+        new ModularSchemeLattice[I, R, B, S, C, Sym, Pai, Vec] {}
+
+object ConstantPropagationDomain:
+    outer =>
+    import ConstantPropagation.{*, given}
+    import ModularSchemeLattice.{*, given}
+
+    case class CPSchemeValue(content: Val)
+
+    type Vec = AbstractVector[CPSchemeValue, CPSchemeValue]
+    type Pai = AbstractPair[CPSchemeValue]
+    type Val = SparseProduct[ModularSchemeValue[CP[BigInt],
+                                                CP[Double],
+                                                CP[Boolean],
+                                                CP[String],
+                                                CP[Char],
+                                                CP[Symbol],
+                                                AbstractVector[CPSchemeValue, CPSchemeValue],
+                                                AbstractPair[CPSchemeValue]
+    ]]
+
+    private given self: Wrap[Val, CPSchemeValue] with
+        given wrap: Conversion[Vlu, Wra] = CPSchemeValue.apply
+        given unwrap: Conversion[Wra, Vlu] = _.content
+
+    given Lattice[CPSchemeValue] = Lattice.wrapLattice[Val, CPSchemeValue](using schemeLattice, self)
+    given IntLattice[CPSchemeValue] = IntLattice.wrapIntLattice[Val, CPSchemeValue](using schemeLattice, self)
+
+    given schemeLattice: SchemeLattice[Val, Vec, Pai] = modularSchemeLattice
+    lazy val pairLattice: PairLattice[Pai, CPSchemeValue] = summon
+    lazy val vectorLattice: VectorLattice[Vec, CPSchemeValue, CPSchemeValue] = summon
+
+    // given cpDomain: SchemeDomain[Val, Vec, Pai] with
+    //     given schemeLattice: SchemeLattice[Val, Vec, Pai] = outer.schemeLattice
+    //     given pairLattice: PairLattice[Pai, Val] = outer.pairLattice
+    //     given vectorLattice: VectorLattice[Vec, Val, Val] = outer.vectorLattice
+
+object Main extends App:
+    type Lat[X] = Either[Error, X]
+
+    given MonadJoin[Lat] with {
+        def mjoin[X: Lattice](a: Lat[X], b: Lat[X]): Lat[X] =
+            (a, b) mapN ((a, b) => Lattice[X].join(a, b))
+    }
+
+    given [A: Lattice, E]: Conversion[Either[E, A], A] =
+        _.getOrElse(Lattice[A].bottom)
+
+    import ConstantPropagationDomain.{*, given}
+    import SchemeLattice.given
+
+    val a = inject[SimpleSchemeValue, Val](SchemeInt(5))
+    val b = inject[SimpleSchemeValue, Val](SchemeInt(6))
+    val c = schemeLattice.plus(a, b)
+    println(c)

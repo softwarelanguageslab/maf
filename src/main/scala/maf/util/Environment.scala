@@ -6,6 +6,9 @@ import cats.Show
 sealed trait Environment[A <: Address] extends SmartHash { outer =>
     type This >: this.type <: Environment[A] { type This = outer.This }
 
+    /** Type (hack) to make environments from a subtype to environment of a supertype */
+    def as[A1 >: A <: Address]: Environment[A1]
+
     /** Restrict the environment to only certain keys */
     def restrictTo(keys: Set[String]): This
 
@@ -38,6 +41,7 @@ object Environment:
 /** Mapping from variable name to addresses */
 case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Environment[A]:
     type This = BasicEnvironment[A]
+    def as[A1 >: A <: Address]: BasicEnvironment[A1] = BasicEnvironment(content.map { case (key, value) => (key) -> (value: A1) })
     def restrictTo(keys: Set[String]): BasicEnvironment[A] =
         this.copy(content = content.view.filterKeys(keys).toMap)
     def lookup(name: String): Option[A] = content.get(name)
@@ -60,6 +64,10 @@ case class BasicEnvironment[A <: Address](content: Map[String, A]) extends Envir
 
 case class WrappedEnv[A <: Address, D](env: Environment[A], depth: Int, data: D) extends Environment[A]:
     type This = WrappedEnv[A, D]
+
+    def as[A1 >: A <: Address]: WrappedEnv[A1, D] =
+        WrappedEnv(env.as[A1], depth, data)
+
     def restrictTo(keys: Set[String]): WrappedEnv[A, D] =
         this.copy(env = env.restrictTo(keys))
     def lookup(name: String): Option[A] = env.lookup(name)
@@ -77,6 +85,9 @@ case class NestedEnv[A <: Address, E <: Address](
     rst: Option[E])
     extends Environment[A]:
     type This = NestedEnv[A, E]
+
+    def as[A1 >: A <: Address]: NestedEnv[A1, E] =
+        NestedEnv(content.map { case (k, v) => k -> (v: A1) }, rst)
 
     /** Restrict the environment to only certain keys */
     def restrictTo(keys: Set[String]): This =

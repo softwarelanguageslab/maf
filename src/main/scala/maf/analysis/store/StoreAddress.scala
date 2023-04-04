@@ -5,6 +5,8 @@ import maf.util.HMapKey
 import cats.Show
 
 trait StoreAddress extends Address, HMapKey
+object StoreAddress:
+    type Aux[V] = StoreAddress { type Value = V }
 trait VectorAddress[V] extends StoreAddress:
     type Value = V
 object VectorAddress:
@@ -12,7 +14,9 @@ object VectorAddress:
         def show(v: VectorAddress[V]): String = v.toString
 trait PairAddress[V] extends StoreAddress:
     type Value = V
-trait VarAddress[V] extends StoreAddress:
+trait ValAddress[V] extends StoreAddress:
+    type Value = V
+trait VarAddress[V] extends ValAddress[V]:
     type Value = V
 object PairAddress:
     given [V]: Show[PairAddress[V]] with

@@ -22,7 +22,7 @@ type Adr = Address
 trait EnvironmentM[M[_], Val] extends Monad[M]:
     private given self: Monad[M] = this
 
-    type Env = Environment[VarAddress[Val]]
+    type Env = Environment[ValAddress[Val]]
 
     def getEnv: M[Env]
     def withEnv[X](f: Env => Env)(blk: M[X]): M[X]
@@ -33,18 +33,18 @@ trait EnvironmentM[M[_], Val] extends Monad[M]:
             res <- withEnv(_ => newEnv) { blk }
         yield res
 
-    def lookupEnv(id: Var): M[VarAddress[Val]] =
+    def lookupEnv(id: Var): M[ValAddress[Val]] =
         getEnv map (_.lookup(id.name).getOrElse(
           throw new Exception(s"undefined variable ${id.name}@${id.idn}")
         ))
-    def withExtendedEnv[X](nam: String, adr: VarAddress[Val])(blk: M[X]): M[X] =
+    def withExtendedEnv[X](nam: String, adr: ValAddress[Val])(blk: M[X]): M[X] =
         withEnv(_.extend(nam, adr))(blk)
-    def withExtendedEnv[X](bds: Iterable[(String, VarAddress[Val])])(blk: M[X]): M[X] =
+    def withExtendedEnv[X](bds: Iterable[(String, ValAddress[Val])])(blk: M[X]): M[X] =
         withEnv(_.extend(bds))(blk)
 
 trait AnalysisM[M[_], Val, Vec, Pai] extends SchemePrimM[M, Val, Vec, Pai]:
     type Lam = SchemeLambdaExp
-    type Env = Environment[VarAddress[Val]]
+    type Env = Environment[ValAddress[Val]]
     type Ctx
 
     def getCtx: M[Ctx]
@@ -84,9 +84,10 @@ final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, P
     type Lam = SchemeLambdaExp
     type Val = V
     type Prim = SchemePrimitive[V, Vec, Pai, Adr]
-    type Env = Environment[VarAddress[V]]
+    type Env = Environment[Address]
 
     import dom.given
+    import SchemeLattice.given
 
     def eval(exp: SchemeExp): A[V] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)
@@ -112,12 +113,12 @@ final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, P
 
     private def evalLambda(lam: Lam): A[V] =
         import m.{given, *}
-        m.getEnv map (env => lattice.injectClosure(lam, env.restrictTo(lam.fv)))
+        m.getEnv map (env => lattice.injectClosure(lam, env.restrictTo(lam.fv).as[Address]))
 
     private def evalLiteralValue(exp: SchemeValue): A[V] =
         import m.given
         exp.value match
-            case sexp.Value.String(s)    => storeVal(exp, inject[String, V](s))
+            // case sexp.Value.String(s)    => storeVal(exp, inject[String, V](s))
             case sexp.Value.Integer(n)   => inject(n).pure
             case sexp.Value.Real(r)      => inject(r).pure
             case sexp.Value.Boolean(b)   => inject(b).pure
@@ -149,13 +150,13 @@ final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, P
         bds: List[(Var, Exp)],
         bdy: List[Exp]
       ): A[V] =
+        import m.{given, *}
         val (vrs, rhs) = bds.unzip
         for
             vls <- evalAll(rhs)
             ads <- vrs.traverse(m.allocVar)
             res <- m.withExtendedEnv(vrs.map(_.name).zip(ads)) {
-                ads.zip(vls).traverse(
-                m.extendSto(ads.zip(vls)) >> evalSequence(bdy)
+                ads.zip(vls).traverse_ { case (adr, vlu) => extendSto(adr, vlu) } >> evalSequence(bdy)
             }
         yield res
 
@@ -233,13 +234,15 @@ final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, P
             _ <- guard(lam.check(agc)) {
                 raiseError(ArityError(lam.idn, lam.args.size, agc, app.idn))
             }
-            fvs <- lex.addrs.toList.traverse(adr => lookupSto(adr).map((adr, _)))
+            fvs <- lex.addrs.toList.traverse { case adr: ValAddress[V @unchecked] =>
+                lookupSto(adr).map((adr, _))
+            }
             result <- withCtx(newContext(app, lam, ags, _)) {
                 argBindings(app, lam, ags, fvs) >>= { bds =>
                     val envBds = bds.map((nam, adr, _) => (nam, adr))
                     val stoBds = bds.map((_, adr, vlu) => (adr, vlu))
                     withEnv(_ => Environment(envBds)) {
-                        extendSto(stoBds) >> call(lam)
+                        stoBds.traverse_ { case (adr, vlu) => extendSto(adr, vlu) } >> call(lam)
                     }
                 }
             }
@@ -250,7 +253,7 @@ final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, P
         lam: Lam,
         ags: List[Val],
         fvs: Iterable[(Adr, Val)]
-      ): A[List[(String, Adr, Val)]] =
+      ): A[List[(String, ValAddress[Val], Val)]] =
         import m.*
         for
             // fixed args
@@ -265,33 +268,13 @@ final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, P
                     val (_, vag) = ags.splitAt(len)
                     val (_, vex) = app.args.splitAt(len)
                     for
-                        lst <- allocLst(vex.zip(vag))
+                        lst <- allocList(vex, vag)
                         adr <- allocVar(varArg)
                     yield List((varArg.name, adr, lst))
             // free variables
             frv <- fvs.toList.traverse { (adr, vlu) =>
                 adr match
-                    case VarAddr(idf, _) => allocVar(idf).map((idf.name, _, vlu))
-                    case PrmAddr(nam)    => (nam, adr, vlu).pure
+                    case VarAddrWithContext(idf, _) => allocVar(idf).map((idf.name, _, vlu))
+                    case adr: PrmAddr[V @unchecked] => (adr.nam, adr: ValAddress[V], vlu).pure
             }
         yield fxa ++ vra ++ frv
-
-    private def storeVal(exp: Exp, vlu: Val): A[Val] =
-        import m.{given, *}
-        for
-            adr <- allocPtr(exp)
-            _ <- extendSto(adr, vlu)
-        yield lattice.pointer(adr)
-
-    private def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
-        storeVal(pai, m.lattice.cons(car, cdr))
-
-    private def allocLst(els: List[(Exp, Val)]): A[Val] =
-        import m.{given, *}
-        els match
-            case Nil => inject[SimpleSchemeValue, Val](SchemeNil).pure
-            case (exp, vlu) :: rst =>
-                for
-                    rst <- allocLst(rst)
-                    pai <- allocPai(exp, vlu, rst)
-                yield pai

@@ -11,10 +11,6 @@ import maf.syntax.scheme.SchemeLambda
 import maf.syntax.scheme.SchemeLambdaExp
 import maf.analysis.store.*
 
-given [L, V, P](using lat: SchemeLattice[L, V, P]): Galois[SimpleSchemeValue, L] with
-    val galois = lat.galois
-    export galois.*
-
 trait Extractor[L, E]:
     def extract(v: L): Option[E]
     def unapply(v: L): Option[(E, L)] =
@@ -48,7 +44,7 @@ trait SchemeLattice[L, Vec, Pair]
 
     import ConcreteSchemeValue.given
 
-    type Env = Environment[VarAddress[L]]
+    type Env = Environment[Address]
 
     /** A valid Scheme lattice should provide a Galois connection between concrete and abstract values
       */
@@ -80,9 +76,6 @@ trait SchemeLattice[L, Vec, Pair]
 
     /** A character */
     def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
-
-    /** A pointer value, must contain an address */
-    def isPtr[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
     /** A null values, does not contain any interesting subvalues */
     def isNull[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
@@ -122,3 +115,8 @@ trait SchemeLattice[L, Vec, Pair]
     // prevent name clashes between RealLattice and IntLattice
     override def isZero[B: BoolLattice: GaloisFrom[Boolean]](v: L)(using Galois[BigInt, L]): B =
         eql(v, Galois.inject[SimpleSchemeValue, L](BigInt(0)))
+
+object SchemeLattice:
+    given [L, V, P](using lat: SchemeLattice[L, V, P]): Galois[SimpleSchemeValue, L] with
+        val galois = lat.galois
+        export galois.*

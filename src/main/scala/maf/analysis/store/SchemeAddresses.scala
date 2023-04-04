@@ -12,7 +12,8 @@ case class VarAddrWithContext[Context, V](vrr: Identifier[SchemeExp], ctx: Conte
 case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddress[Context]:
     val idn: Identity = exp.idn
     def printable: Boolean = true
-case class PrmAddr(nam: String) extends SchemeAddress[Nothing]:
+case class PrmAddr[V](nam: String) extends SchemeAddress[Nothing], ValAddress[V]:
+    type Value = V
     def printable = false
     def idn: Identity = Identity.none
     override def toString: String = s"PrmAddr($nam)"
