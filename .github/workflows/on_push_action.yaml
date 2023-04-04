@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-un: ubuntu-latest
+    runs-on: ubuntu-latest
     name: Run fast tests
     steps:
       # Send a notification to Slack.
