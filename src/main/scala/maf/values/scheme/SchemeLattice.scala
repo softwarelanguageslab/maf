@@ -16,7 +16,7 @@ given [L, V, P](using lat: SchemeLattice[L, V, P]): Galois[SimpleSchemeValue, L]
     export galois.*
 
 trait Extractor[L, E]:
-    def extract(v: L): Option[(E)]
+    def extract(v: L): Option[E]
     def unapply(v: L): Option[(E, L)] =
         extract(v).map((_, v))
 
@@ -48,7 +48,7 @@ trait SchemeLattice[L, Vec, Pair]
 
     import ConcreteSchemeValue.given
 
-    type Env = Environment[Address]
+    type Env = Environment[VarAddress[L]]
 
     /** A valid Scheme lattice should provide a Galois connection between concrete and abstract values
       */
@@ -104,13 +104,13 @@ trait SchemeLattice[L, Vec, Pair]
     def injectVecPtr(adr: VectorAddress[Vec]): L
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def vectorAddress(v: L): Extractor[L, VectorAddress[Vec]]
+    def vectorAddress: Extractor[L, VectorAddress[Vec]]
 
     /** Inject a pointer to a vector */
     def injectPairPtr(adr: PairAddress[Pair]): L
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def pairAddress(v: L): Extractor[L, PairAddress[Pair]]
+    def pairAddress: Extractor[L, PairAddress[Pair]]
 
     /** Equality between two values */
     def eq(x: L, y: L)(comparePtr: MaybeEq[Address]): L

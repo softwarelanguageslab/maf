@@ -61,10 +61,10 @@ trait StoreM[M[_]: Monad, A, V]:
   * @tparam Pai
   *   the type of pairs referenced by addresses to pairs
   */
-trait AllocM[M[_]: Monad, Vec, Pai, A]:
+trait AllocM[M[_]: Monad, V, Vec, Pai]:
     /** Allocates a new address based on a source code identifier, usually associated with variables
       */
-    def allocVar(idn: Identifier[SchemeExp]): M[A]
+    def allocVar(idn: Identifier[SchemeExp]): M[VarAddress[V]]
 
     /** Allocates an address for pairs, usually associated with a source location of a pair literal or a primitive that allocates a pair */
     def allocPair(exp: SchemeExp): M[PairAddress[Pai]]
@@ -73,11 +73,7 @@ trait AllocM[M[_]: Monad, Vec, Pai, A]:
     def allocVec(exp: SchemeExp): M[VectorAddress[Vec]]
 
 /** Monadic operations for implementing Scheme primitives */
-trait SchemePrimM[M[_]: Monad, V, Vec, Pai, A <: Address]
-    extends MonadJoin[M]
-    with cats.MonadError[M, Error]
-    with AllocM[M, Vec, Pai, A]
-    with StoreM[M, A, V]:
+trait SchemePrimM[M[_]: Monad, V, Vec, Pai] extends MonadJoin[M] with cats.MonadError[M, Error] with AllocM[M, V, Vec, Pai] with StoreM[M, Address, V]:
 
     // for convenience
     def storeVec(exp: SchemeExp, vlu: Vec): M[VectorAddress[Vec]] =
@@ -94,7 +90,8 @@ trait SchemePrimM[M[_]: Monad, V, Vec, Pai, A <: Address]
       )(using
         dom: SchemeDomain[V, Vec, Pai]
       ): M[V] =
-        import dom.schemeLattice.given
+        val lat = dom.schemeLattice
+        import lat.given
 
         exs.zip(vlus).foldM[M, V](Galois.inject[SimpleSchemeValue, V](SchemeNil)) { case (rest, (ex, vlu)) =>
             storePair(ex, dom.pairLattice.cons(vlu, rest)).map(adr => Galois.inject[SimpleSchemeValue, V](SchemePtr(adr)))

@@ -13,7 +13,7 @@ import values.typeclasses.*
 import maf.interpreter.*
 import maf.interpreter.SimpleSchemeValue
 import cats.extensions.Errors.raiseError
-import maf.values.Extractor
+import maf.values.scheme.Extractor
 
 trait SchemePrimitive[V: Lattice, Vec, Pai, A <: Address]:
     // Every primitive in Scheme has a unique name
@@ -22,7 +22,7 @@ trait SchemePrimitive[V: Lattice, Vec, Pai, A <: Address]:
     def call[M[_]](
         fexp: SchemeExp,
         args: List[V]
-      )(implicit m: SchemePrimM[M, V, Vec, Pai, A]
+      )(implicit m: SchemePrimM[M, V, Vec, Pai]
       ): M[V]
 
 // Primitive-specific errors
@@ -66,7 +66,7 @@ class SchemeLatticePrimitives[V, Vec, Pai](
         x: V
       )(patt: Extractor[V, A],
         msg: String
-      )(f: (Address, A#Value) => M[X]
+      )(f: (A, A#Value) => M[X]
       ): M[X] =
         MonadJoin[M].mfoldMap(split(x)) { case patt(adr, _) =>
             PrimM[M].deref(adr)(f(adr, _))
@@ -374,7 +374,7 @@ class SchemeLatticePrimitives[V, Vec, Pai](
                     case _          => inject(false).pure
                 }
 
-        case object `pair?` extends SchemePrimRefTypeCheck("pair?", lat.pairAddress)
+        case object `pair?` extends SchemePrimRefTypeCheck[PairAddress[Pai]]("pair?", lat.pairAddress)
         case object `vector?` extends SchemePrimRefTypeCheck("vector?", lat.vectorAddress)
         // case object `thread?` extends SchemePrim1("thread?")
         // case object `lock?` extends SchemePrimRefTypeCheck("lock?")
@@ -480,11 +480,11 @@ class SchemeLatticePrimitives[V, Vec, Pai](
                 dereferencePointer[M, V, PairAddress[Pai]](x)(lat.pairAddress, "not a pair")((_, cons) => dom.pairLattice.car(cons))
         case object `cdr` extends SchemePrim1("cdr"):
             def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-                dereferencePointer(x)(lat.pairAddress, "not a pair")((_, cons) => dom.pairLattice.cdr(cons))
+                dereferencePointer[M, V, PairAddress[Pai]](x)(lat.pairAddress, "not a pair")((_, cons) => dom.pairLattice.cdr(cons))
 
         case object `set-car!` extends SchemePrim2("set-car!"):
             def call[M[_]: PrimM](fpos: SchemeExp, cell: V, value: V): M[V] =
-                dereferencePointer(cell)(lat.pairAddress, "not a pair") { (addr, cons) =>
+                dereferencePointer[M, V, PairAddress[Pai]](cell)(lat.pairAddress, "not a pair") { (addr, cons) =>
                     for
                         cdr <- dom.pairLattice.cdr(cons)
                         _ <- PrimM[M].updateSto(addr, dom.pairLattice.cons(value, cdr))
@@ -493,9 +493,9 @@ class SchemeLatticePrimitives[V, Vec, Pai](
 
         case object `set-cdr!` extends SchemePrim2("set-cdr!"):
             def call[M[_]: PrimM](fpos: SchemeExp, cell: V, value: V): M[V] =
-                dereferencePointer(cell)(lat.pairAddress, "not a pair") { (addr, cons) =>
+                dereferencePointer[M, V, PairAddress[Pai]](cell)(lat.pairAddress, "not a pair") { (addr, cons) =>
                     for
-                        car <- lat.car(cons)
+                        car <- dom.pairLattice.car(cons)
                         _ <- PrimM[M].updateSto(addr, dom.pairLattice.cons(car, value))
                     yield unspecified
                 }
@@ -504,8 +504,8 @@ class SchemeLatticePrimitives[V, Vec, Pai](
         def createVec[M[_]: PrimM](fpos: SchemeExp, size: V, init: V): M[V] =
             for
                 vec <- dom.vectorLattice.vector(size, init)
-                adr <- PrimM[M].storeVector(fpos, vec)
-            yield lat.pointer(adr)
+                adr <- PrimM[M].storeVec(fpos, vec)
+            yield lat.injectVecPtr(adr)
         def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
             case size :: Nil         => createVec(fpos, size, unspecified)
             case size :: init :: Nil => createVec(fpos, size, init)
@@ -515,24 +515,24 @@ class SchemeLatticePrimitives[V, Vec, Pai](
     case object `vector` extends SchemePrimVarArg("vector"):
         def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
             for
-                emptyVec <- lat.vector(inject(BigInt(args.size)), bottom)
-                filledVec <- args.zipWithIndex.foldLeftM[M, V](emptyVec) { case (acc, (arg, idx)) =>
-                    lat.vectorSet(acc, inject(BigInt(idx)), arg)
+                emptyVec <- dom.vectorLattice.vector(inject(BigInt(args.size)), bottom)
+                filledVec <- args.zipWithIndex.foldLeftM[M, Vec](emptyVec) { case (acc, (arg, idx)) =>
+                    dom.vectorLattice.vectorSet(acc, inject(BigInt(idx)), arg)
                 }
-                adr <- PrimM[M].allocVal(fpos, filledVec)
-            yield lat.pointer(adr)
+                adr <- PrimM[M].storeVec(fpos, filledVec)
+            yield lat.injectVecPtr(adr)
 
     case object `vector-length` extends SchemePrim1("vector-length"):
         def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-            dereferencePointer(x)(lat.vectorAddress, "not a vector") { (_, vec) => dom.vectorLattice.vectorLength(vec) }
+            dereferencePointer[M, V, VectorAddress[Vec]](x)(lat.vectorAddress, "not a vector") { (_, vec) => dom.vectorLattice.vectorLength(vec) }
 
     case object `vector-ref` extends SchemePrim2("vector-ref"):
         def call[M[_]: PrimM](fpos: SchemeExp, v: V, idx: V): M[V] =
-            dereferencePointer(v)(lat.vectorAddress, "not a vector") { (_, vec) => dom.vectorLattice.vectorRef(vec, idx) }
+            dereferencePointer[M, V, VectorAddress[Vec]](v)(lat.vectorAddress, "not a vector") { (_, vec) => dom.vectorLattice.vectorRef(vec, idx) }
 
     case object `vector-set!` extends SchemePrim3("vector-set!"):
         def call[M[_]: PrimM](fpos: SchemeExp, x: V, index: V, newval: V): M[V] =
-            dereferencePointer(x)(lat.vectorAddress, "not a vector") { (adr, vec) =>
+            dereferencePointer[M, V, VectorAddress[Vec]](x)(lat.vectorAddress, "not a vector") { (adr, vec) =>
                 for
                     newvec <- dom.vectorLattice.vectorSet(vec, index, newval)
                     _ <- PrimM[M].updateSto(adr, newvec)

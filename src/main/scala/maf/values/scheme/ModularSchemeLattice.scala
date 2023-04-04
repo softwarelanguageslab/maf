@@ -158,10 +158,10 @@ trait ModularSchemeLattice[
         inject(v.contains[IntT])
     def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[CharT])
-    def closures: Extractor[Val, (SchemeLambdaExp, Env)] = setExtractor(CloT)
+    def closures: Extractor[Val, (SchemeLambdaExp, VarAddress[Val])] = setExtractor(CloT)
     def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[CloT])
-    def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): Val =
+    def injectClosure(lam: SchemeLambdaExp, env: Environment[VarAddress[Val]]): Val =
         insertA(CloT)(Set((lam, env)))
     def isUnsp[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[UnspT])

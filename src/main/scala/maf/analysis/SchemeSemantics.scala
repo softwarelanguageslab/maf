@@ -5,7 +5,8 @@ import maf.analysis.store.*
 import maf.syntax.sexp.*
 import maf.syntax.scheme.*
 import cats.syntax.all.*
-import maf.values.scheme.SchemeLattice
+import cats.Monad
+import maf.values.scheme.*
 import maf.syntax.*
 import primitives.*
 import maf.values.typeclasses.Galois.*
@@ -15,18 +16,14 @@ import maf.values.scheme.given
 import maf.values.typeclasses.Galois.inject
 
 type Var = Identifier[SchemeExp]
-type Adr = Address
-type Env = Environment[Adr]
 type Exp = SchemeExp
-type Lam = SchemeLambdaExp
-type App = SchemeFuncall
-type Clo = (Lam, Env)
-type Idn = Identity
-type Prim = SchemePrimitive[Value, Address]
+type Adr = Address
 
-trait AnalysisM[M[_], Val] extends SchemePrimM[M, Val, Adr]:
-    type Ctx
-    type Env = Environment[Adr]
+trait EnvironmentM[M[_], Val] extends Monad[M]:
+    private given self: Monad[M] = this
+
+    type Env = Environment[VarAddress[Val]]
+
     def getEnv: M[Env]
     def withEnv[X](f: Env => Env)(blk: M[X]): M[X]
     def withEnvM[X](f: Env => M[Env])(blk: M[X]): M[X] =
@@ -35,57 +32,63 @@ trait AnalysisM[M[_], Val] extends SchemePrimM[M, Val, Adr]:
             newEnv <- f(oldEnv)
             res <- withEnv(_ => newEnv) { blk }
         yield res
-    def lookupEnv(id: Var): M[Adr] =
+
+    def lookupEnv(id: Var): M[VarAddress[Val]] =
         getEnv map (_.lookup(id.name).getOrElse(
           throw new Exception(s"undefined variable ${id.name}@${id.idn}")
         ))
-    def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
+    def withExtendedEnv[X](nam: String, adr: VarAddress[Val])(blk: M[X]): M[X] =
         withEnv(_.extend(nam, adr))(blk)
-    def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
+    def withExtendedEnv[X](bds: Iterable[(String, VarAddress[Val])])(blk: M[X]): M[X] =
         withEnv(_.extend(bds))(blk)
+
+trait AnalysisM[M[_], Val, Vec, Pai] extends SchemePrimM[M, Val, Vec, Pai]:
+    type Lam = SchemeLambdaExp
+    type Env = Environment[VarAddress[Val]]
+    type Ctx
+
     def getCtx: M[Ctx]
     def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
-    def allocVar(idn: Identifier[SchemeExp]): M[Adr] =
-        for ctx <- getCtx yield VarAddr(idn, ctx)
-    def allocPtr(exp: SchemeExp): M[Adr] =
-        for ctx <- getCtx yield PtrAddr(exp, ctx)
     def call(lam: Lam): M[Val]
-    def nontail[A](blk: => M[A]): M[A] = blk
+
     // Scala is too stupid to figure this out...
-    implicit final private val self: AnalysisM[M, Val] = this
+    given self: AnalysisM[M, Val, Vec, Pai] = this
 
 object AnalysisM:
-    def apply[M[_], Val, Ctx](
+    def apply[M[_], Val, Vec, Pai](
         using
-        anl: AnalysisM[M, Val]
-      ): AnalysisM[M, Val] = anl
+        anl: AnalysisM[M, Val, Vec, Pai]
+      ): AnalysisM[M, Val, Vec, Pai] = anl
 
-trait SchemeContextSensitivityM[M[_], Val] extends AnalysisM[M, Val]:
+trait SchemeContextSensitivityM[M[_], Val, Vec, Pai] extends AnalysisM[M, Val, Vec, Pai]:
     def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx
 
-trait SchemeSemanticsM[M[_], Val: SchemeDomain] extends AnalysisM[M, Val] with SchemeContextSensitivityM[M, Val]:
-    val primitives = SchemeDomain[Val].primitives
-    given lattice: SchemeLattice[Val] = SchemeDomain[Val].lattice
+trait SchemeValues[V, Vec, Pai]:
+    type Prim = SchemePrimitive[V, Vec, Pai, Adr]
+    type Val = V
 
-    def eval(e: SchemeExp): M[Val]
+    given domain: SchemeDomain[V, Vec, Pai]
+    given primitives: SchemeLatticePrimitives[V, Vec, Pai]
+    given lattice: SchemeLattice[V, Vec, Pai] = domain.schemeLattice
 
-/** Trait that introduces utility functions when mixed in */
-trait Semantics:
-    def withM[A[_], Val, Ctx, X](
-        using sem: SchemeSemanticsM[A, Val]
-      )(f: SchemeSemanticsM[A, Val] => A[X]
-      ): A[X] =
-        f(sem)
+trait SchemeSemanticsM[M[_], V, Vec, Pai] extends AnalysisM[M, V, Vec, Pai] with SchemeContextSensitivityM[M, V, Vec, Pai] with EnvironmentM[M, V]:
+    def eval(e: SchemeExp): M[V]
 
 object SchemeSemanticsM:
-    def apply[A[_], Adr, Val](using sem: SchemeSemanticsM[A, Val]) = sem
+    def apply[A[_], Val, Vec, Pai](using sem: SchemeSemanticsM[A, Val, Vec, Pai]) = sem
 
-object SchemeSemantics extends Semantics:
+final class SchemeSemantics[A[_], V, Vec, Pai](using dom: SchemeValues[V, Vec, Pai], m: SchemeSemanticsM[A, V, Vec, Pai]):
     // shorthands
-    type Val = Value
-    type M[A[_]] = SchemeSemanticsM[A, Value]
+    type M[A[_], V] = SchemeSemanticsM[A, V, Vec, Pai]
+    type App = SchemeFuncall
+    type Lam = SchemeLambdaExp
+    type Val = V
+    type Prim = SchemePrimitive[V, Vec, Pai, Adr]
+    type Env = Environment[VarAddress[V]]
 
-    def eval[A[_]: M](exp: SchemeExp): A[Val] = exp match
+    import dom.given
+
+    def eval(exp: SchemeExp): A[V] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)
         case lam: SchemeLambdaExp       => evalLambda(lam)
         case SchemeVar(id)              => evalVariable(id)
@@ -98,7 +101,7 @@ object SchemeSemantics extends Semantics:
         case SchemeAssert(exp, _)       => evalAssert(exp)
         case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
 
-    def evalAll[A[_]](lst: List[SchemeExp])(using m: M[A]): A[List[Val]] = lst match
+    def evalAll(lst: List[SchemeExp]): A[List[V]] = lst match
         case Nil         => Nil.pure
         case last :: Nil => m.eval(last).map(_ :: Nil)
         case next :: rest =>
@@ -107,63 +110,59 @@ object SchemeSemantics extends Semantics:
                 vs <- evalAll(rest)
             yield v :: vs
 
-    private def evalLambda[A[_]: M](lam: Lam): A[Val] =
-        val m = summon[M[A]]
-        m.getEnv map (env => m.lattice.injectClosure(lam, env.restrictTo(lam.fv)))
+    private def evalLambda(lam: Lam): A[V] =
+        import m.{given, *}
+        m.getEnv map (env => lattice.injectClosure(lam, env.restrictTo(lam.fv)))
 
-    private def evalLiteralValue[A[_]: M](exp: SchemeValue): A[Val] = withM { m =>
+    private def evalLiteralValue(exp: SchemeValue): A[V] =
         import m.given
-
         exp.value match
-            case sexp.Value.String(s)    => storeVal(exp, inject[String, Val](s))
+            case sexp.Value.String(s)    => storeVal(exp, inject[String, V](s))
             case sexp.Value.Integer(n)   => inject(n).pure
             case sexp.Value.Real(r)      => inject(r).pure
             case sexp.Value.Boolean(b)   => inject(b).pure
             case sexp.Value.Character(c) => inject(c).pure
             case sexp.Value.Symbol(s)    => inject(s).pure
-            case sexp.Value.Nil          => inject[SimpleSchemeValue, Val](SchemeNil).pure
-    }
+            case sexp.Value.Nil          => inject[SimpleSchemeValue, V](SchemeNil).pure
 
-    private def evalVariable[A[_]: M](vrb: Var): A[Val] = withM { m =>
+    private def evalVariable(vrb: Var): A[V] =
+        import m.{given, *}
         for
             adr <- m.lookupEnv(vrb)
             vlu <- m.lookupSto(adr)
         yield vlu
-    }
 
-    private def evalSequence[A[_]: M](eps: Iterable[Exp]): A[Val] = withM { m =>
+    private def evalSequence(eps: Iterable[Exp]): A[V] =
         import m.{given, *}
         eps match
             case Nil          => inject[SimpleSchemeValue, Val](SchemeVoid).pure
             case last :: Nil  => m.eval(last)
             case next :: rest => m.eval(next) >> evalSequence(rest)
-    }
 
-    private def evalIf[A[_]: M](prd: Exp, csq: Exp, alt: Exp): A[Val] = withM { m =>
+    private def evalIf(prd: Exp, csq: Exp, alt: Exp): A[V] =
         for
             cnd <- m.eval(prd)
             res <- cond(cnd, m.eval(csq), m.eval(alt))
         yield res
-    }
 
-    private def evalLet[A[_]: M](
+    private def evalLet(
         bds: List[(Var, Exp)],
         bdy: List[Exp]
-      ): A[Val] = withM { m =>
+      ): A[V] =
         val (vrs, rhs) = bds.unzip
         for
             vls <- evalAll(rhs)
             ads <- vrs.traverse(m.allocVar)
             res <- m.withExtendedEnv(vrs.map(_.name).zip(ads)) {
+                ads.zip(vls).traverse(
                 m.extendSto(ads.zip(vls)) >> evalSequence(bdy)
             }
         yield res
-    }
 
-    private def evalLetStar[A[_]: M](
+    private def evalLetStar(
         bds: List[(Var, Exp)],
         bdy: List[Exp]
-      ): A[Val] = withM { m =>
+      ): A[V] =
         bds match
             case Nil => evalSequence(bdy)
             case (vrb, rhs) :: rst =>
@@ -174,13 +173,11 @@ object SchemeSemantics extends Semantics:
                         m.extendSto(adr, vlu) >> evalLetStar(rst, bdy)
                     }
                 yield res
-    }
 
-    private def evalLetrec[A[_]](
+    private def evalLetrec(
         bds: List[(Var, Exp)],
         bdy: List[Exp]
-      )(using m: M[A]
-      ): A[Val] =
+      ): A[V] =
         val (vrs, rhs) = bds.unzip
         for
             ads <- vrs.traverse(m.allocVar)
@@ -195,19 +192,15 @@ object SchemeSemantics extends Semantics:
         yield res
 
     // by default, asserts are ignored
-    private def evalAssert[A[_]: M](exp: Exp): A[Val] = withM { m =>
+    private def evalAssert(exp: Exp): A[V] =
         import m.given
-        inject[SimpleSchemeValue, Val](SchemeVoid).pure
-    }
+        inject[SimpleSchemeValue, V](SchemeVoid).pure
 
-    private def cond[A[_]: M](cnd: Val, csq: A[Val], alt: A[Val]): A[Val] =
-        withM { m =>
-            import m.{given, *}
+    private def cond(cnd: V, csq: A[V], alt: A[V]): A[V] =
+        import m.{given, *}
+        m.cond(cnd) /* then */ { csq } /* else */ { alt }
 
-            m.cond(cnd) /* then */ { csq } /* else */ { alt }
-        }
-
-    private def evalCall[A[_]](app: App)(using m: M[A]): A[Val] =
+    private def evalCall(app: App): A[V] =
         import m.{given, *}
         for
             fun <- m.eval(app.f)
@@ -215,29 +208,24 @@ object SchemeSemantics extends Semantics:
             res <- applyFun(app, fun, ags)
         yield res
 
-    private def applyFun[A[_]](app: App, fun: Val, ags: List[Val])(using m: M[A]): A[Val] =
+    private def applyFun(app: App, fun: V, ags: List[V]): A[V] =
         import m.{given, *}
-        m.mfoldMap(m.lattice.split(fun)) {
-            case m.lattice.primitive(prm, _) =>
-                applyPrimitive(app, m.primitives.allPrimitives(prm), ags)
-            case m.lattice.closures((lam, lex), _) =>
+        m.mfoldMap(lattice.split(fun)) {
+            case lattice.primitive(prm, _) =>
+                applyPrimitive(app, dom.primitives.allPrimitives(prm), ags)
+            case lattice.closures((lam, lex), _) =>
                 applyClosure(app, lam, lex, ags)
             case v => raiseError(TypeError("value cannot applied", v))
         }
 
-    private def applyPrimitive[A[_]: M](
-        app: App,
-        prm: Prim,
-        ags: List[Val]
-      ): A[Val] =
+    private def applyPrimitive(app: App, prm: Prim, ags: List[V]): A[V] =
         prm.call(app, ags)
 
-    private def applyClosure[A[_]](
+    private def applyClosure(
         app: App,
         lam: Lam,
         lex: Env,
         ags: List[Val]
-      )(using m: M[A]
       ): A[Val] =
         import m.{given, *}
         val agc = ags.length
@@ -257,12 +245,11 @@ object SchemeSemantics extends Semantics:
             }
         yield result
 
-    private def argBindings[A[_]](
+    private def argBindings(
         app: App,
         lam: Lam,
         ags: List[Val],
         fvs: Iterable[(Adr, Val)]
-      )(using m: M[A]
       ): A[List[(String, Adr, Val)]] =
         import m.*
         for
@@ -289,17 +276,17 @@ object SchemeSemantics extends Semantics:
             }
         yield fxa ++ vra ++ frv
 
-    private def storeVal[A[_]](exp: Exp, vlu: Val)(using m: M[A]): A[Val] =
+    private def storeVal(exp: Exp, vlu: Val): A[Val] =
         import m.{given, *}
         for
             adr <- allocPtr(exp)
             _ <- extendSto(adr, vlu)
         yield lattice.pointer(adr)
 
-    private def allocPai[A[_]](pai: Exp, car: Val, cdr: Val)(using m: M[A]): A[Val] =
+    private def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
         storeVal(pai, m.lattice.cons(car, cdr))
 
-    private def allocLst[A[_]](els: List[(Exp, Val)])(using m: M[A]): A[Val] =
+    private def allocLst(els: List[(Exp, Val)]): A[Val] =
         import m.{given, *}
         els match
             case Nil => inject[SimpleSchemeValue, Val](SchemeNil).pure
