@@ -371,27 +371,14 @@ trait ModularSchemeLattice[
             case v => raiseError(TypeError("isLower: expected char", v))
         }
 
-    override def isUpper[
-        M[
-            _
-        ]: MonadError: MonadJoin,
-        B: BoolLattice: GaloisFrom[Boolean]
-      ](c: Val
-      ): M[B] =
+    override def isUpper[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](c: Val): M[B] =
         MonadJoin[M].mfoldMap(split(c)) {
             case CharT(c) =>
                 CharLattice[C, I, Sym, S].isUpper[M, B](c)
             case v => raiseError(TypeError("isUpper: expected char", v))
         }
 
-    override def charEq[
-        M[
-            _
-        ]: MonadError: MonadJoin,
-        B: BoolLattice: GaloisFrom[Boolean]
-      ](c1: Val,
-        c2: Val
-      ): M[B] =
+    override def charEq[M[_]: MonadError: MonadJoin, B: BoolLattice: GaloisFrom[Boolean]](c1: Val, c2: Val): M[B] =
         MonadJoin[M].mfoldMap(split(c1).cartesian(split(c2))) {
             case (CharT(c1), CharT(c2)) =>
                 CharLattice[C, I, Sym, S].charEq[M, B](c1, c2)
