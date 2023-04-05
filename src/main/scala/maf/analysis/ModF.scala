@@ -167,9 +167,9 @@ given [Ctx0, M[_]: Monad]: CtxM[CtxT[Ctx0, M]] with {
     override type Ctx = Ctx0
 
     def getCtx: CtxT[Ctx0, M][Ctx] =
-        Kleisli(env => env.pure[M])
+        Kleisli(ctx => ctx.pure[M])
     def withCtx[X](f: Ctx => Ctx)(blk: CtxT[Ctx0, M][X]): CtxT[Ctx0, M][X] =
-        Kleisli(env => blk.run(f(env)))
+        Kleisli(ctx => blk.run(f(ctx)))
 }
 
 //
