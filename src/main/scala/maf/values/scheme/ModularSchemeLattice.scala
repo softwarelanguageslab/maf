@@ -137,11 +137,12 @@ trait ModularSchemeLattice[
 
     given galois: Galois[SimpleSchemeValue, Val] with {
         def inject(c: SimpleSchemeValue): Val = c match
-            case SchemeNil       => insertA(NilT)(())
-            case SchemeInt(n)    => insertA(IntT)(Galois.inject[BigInt, I](n))
-            case SchemeDouble(d) => insertA(RealT)(Galois.inject[Double, R](d))
-            case SchemeChar(c)   => insertA(CharT)(Galois.inject[Char, C](c))
-            case _               => ???
+            case SchemeNil        => insertA(NilT)(())
+            case SchemeInt(n)     => insertA(IntT)(Galois.inject[BigInt, I](n))
+            case SchemeDouble(d)  => insertA(RealT)(Galois.inject[Double, R](d))
+            case SchemeChar(c)    => insertA(CharT)(Galois.inject[Char, C](c))
+            case SchemeBoolean(b) => insertA(BoolT)(Galois.inject[Boolean, B](b))
+            case _                => ???
     }
 
     // Type predicates & extractors
@@ -697,26 +698,3 @@ object ConstantPropagationDomain:
 
     // export implicits (for injections, conversions between wrapped and unwrapped, ...)
     export self.given
-
-object Main extends App:
-    type Lat[X] = Either[Error, X]
-
-    given MonadJoin[Lat] with {
-        def mjoin[X: Lattice](a: Lat[X], b: Lat[X]): Lat[X] =
-            (a, b) mapN ((a, b) => Lattice[X].join(a, b))
-    }
-
-    given [A: Lattice, E]: Conversion[Either[E, A], A] =
-        _.getOrElse(Lattice[A].bottom)
-
-    import ConstantPropagationDomain.{*, given}
-    import SchemeLattice.given
-
-    val a = inject[SimpleSchemeValue, Val](SchemeInt(5))
-    val b = inject[SimpleSchemeValue, Val](SchemeInt(6))
-    val c = schemeLattice.plus(a, b)
-    println(c)
-
-    import cpDomain.given
-    val d = cpDomain.pairLattice.cons(a, b)
-    println(Lattice[Pai].show(d))
