@@ -11,10 +11,10 @@ import maf.syntax.scheme.SchemeLambda
 import maf.syntax.scheme.SchemeLambdaExp
 import maf.analysis.store.*
 
-trait Extractor[L, E]:
-    def extract(v: L): Option[E]
+trait Pattern[L, E]:
+    def matches(v: L): Option[E]
     def unapply(v: L): Option[(E, L)] =
-        extract(v).map((_, v))
+        matches(v).map((_, v))
 
 trait SchemeDomain[L, Vec, Pai]:
     type W
@@ -60,7 +60,7 @@ trait SchemeLattice[L, Vec, Pair]
 
     /** Pattern for matching against singleton primitive values, singletons can be obtained using method `split`
       */
-    def primitive: Extractor[L, String]
+    def primitive: Pattern[L, String]
     def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
 
     /** A string, might contain a string corresponding to its concrete value */
@@ -89,7 +89,7 @@ trait SchemeLattice[L, Vec, Pair]
 
     /** Pattern for matching against singleton closures, which can be obtained using method `split`
       */
-    def closures: Extractor[L, (SchemeLambdaExp, Env)]
+    def closures: Pattern[L, (SchemeLambdaExp, Env)]
     def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: L): B
     def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): L
 
@@ -101,13 +101,23 @@ trait SchemeLattice[L, Vec, Pair]
     def injectVecPtr(adr: VectorAddress[Vec]): L
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def vectorAddress: Extractor[L, VectorAddress[Vec]]
+    def vectorAddress: Pattern[L, VectorAddress[Vec]]
 
     /** Inject a pointer to a vector */
     def injectPairPtr(adr: PairAddress[Pair]): L
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def pairAddress: Extractor[L, PairAddress[Pair]]
+    def pairAddress: Pattern[L, PairAddress[Pair]]
+
+    /** Inject a pointer to a string */
+    def injectStringPtr(adr: Address): L
+
+    /** Matches against a pointer to a string
+      *
+      * @note
+      *   This matches any address which does not necessarily point to a string but can point to any Scheme value, making it less type-safe
+      */
+    def stringAddress: Pattern[L, Address]
 
     /** Equality between two values */
     def eq(x: L, y: L)(comparePtr: MaybeEq[Address]): L

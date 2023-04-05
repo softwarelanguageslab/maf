@@ -44,6 +44,8 @@ case object VecTPtr extends Key[VecTPtr]
 type VecTPtr = VecTPtr.type
 case object PaiTPtr extends Key[PaiTPtr]
 type PaiTPtr = PaiTPtr.type
+case object StringTPtr extends Key[StringTPtr]
+type StringTPtr = StringTPtr.type
 
 type ModularSchemeValue[I, R, B, S, C, Sym, V, P] =
     (IntT ~> I) :*:
@@ -57,7 +59,8 @@ type ModularSchemeValue[I, R, B, S, C, Sym, V, P] =
         (PrimT ~> Set[String]) :*:
         (CloT ~> Set[(SchemeLambdaExp, Environment[Address])]) :*:
         (VecTPtr ~> Set[VectorAddress[V]]) :*:
-        (PaiTPtr ~> Set[PairAddress[P]])
+        (PaiTPtr ~> Set[PairAddress[P]]) :*:
+        (StringTPtr ~> Set[Address])
 
 trait ModularSchemeLattice[
     I: IntLattice: GaloisFrom[BigInt],
@@ -109,9 +112,9 @@ trait ModularSchemeLattice[
     private def raiseError[M[_]: MonadError, X](error: Error): M[X] =
         ApplicativeError[M, Error].raiseError(error)
 
-    private def setExtractor[K, V <: Set[A], A](k: K)(using KeyValueIn[K, V, Val#Content]): Extractor[Val, A] =
-        new Extractor:
-            def extract(v: Val): Option[A] =
+    private def setExtractor[K, V <: Set[A], A](k: K)(using KeyValueIn[K, V, Val#Content]): Pattern[Val, A] =
+        new Pattern:
+            def matches(v: Val): Option[A] =
                 if v.isSingleton then
                     v.get(k) match
                         case Some(Singleton(v)) => Some(v)
@@ -144,7 +147,7 @@ trait ModularSchemeLattice[
     // Type predicates & extractors
     //
 
-    def primitive: Extractor[Val, String] = setExtractor(PrimT)
+    def primitive: Pattern[Val, String] = setExtractor(PrimT)
     def isPrim[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[PrimT])
     def isStr[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
@@ -161,7 +164,7 @@ trait ModularSchemeLattice[
         inject(v.contains[IntT])
     def isChar[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[CharT])
-    def closures: Extractor[Val, (SchemeLambdaExp, Environment[Address])] = setExtractor(CloT)
+    def closures: Pattern[Val, (SchemeLambdaExp, Environment[Address])] = setExtractor(CloT)
     def isClo[B: BoolLattice: GaloisFrom[Boolean]](v: Val): B =
         inject(v.contains[CloT])
     def injectClosure(lam: SchemeLambdaExp, env: Environment[Address]): Val =
@@ -178,7 +181,7 @@ trait ModularSchemeLattice[
         insertA(VecTPtr)(Set(adr): Set[VectorAddress[Vec]])
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def vectorAddress: Extractor[Val, VectorAddress[Vec]] =
+    def vectorAddress: Pattern[Val, VectorAddress[Vec]] =
         setExtractor(VecTPtr)
 
     /** Inject a pointer to a vector */
@@ -186,8 +189,11 @@ trait ModularSchemeLattice[
         insertA(PaiTPtr)(Set(adr): Set[PairAddress[Pai]])
 
     /** Pattern that matches if the abstract value is equal to exactly one address */
-    def pairAddress: Extractor[Val, PairAddress[Pai]] =
+    def pairAddress: Pattern[Val, PairAddress[Pai]] =
         setExtractor(PaiTPtr)
+
+    def injectStringPtr(adr: Address): Val = insertA(StringTPtr)(Set(adr))
+    def stringAddress: Pattern[Val, Address] = setExtractor(StringTPtr)
 
     //
     // String operations

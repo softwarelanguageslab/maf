@@ -13,7 +13,7 @@ import values.typeclasses.*
 import maf.interpreter.*
 import maf.interpreter.SimpleSchemeValue
 import cats.extensions.Errors.raiseError
-import maf.values.scheme.Extractor
+import maf.values.scheme.Pattern
 
 trait SchemePrimitive[V: Lattice, Vec, Pai, A <: Address]:
     // Every primitive in Scheme has a unique name
@@ -64,7 +64,7 @@ class SchemeLatticePrimitives[V, Vec, Pai](
       */
     def dereferencePointer[M[_]: PrimM, X: Lattice, A <: StoreAddress.Aux[V2], V2](
         x: V
-      )(patt: Extractor[V, A],
+      )(patt: Pattern[V, A],
         msg: String
       )(f: (A, V2) => M[X]
       ): M[X] =
@@ -126,15 +126,15 @@ class SchemeLatticePrimitives[V, Vec, Pai](
             `set-cdr!`,
             `sin`,
             `sqrt`,
-            // `string->number`,
-            // `string->symbol`,
-            // `string-append`,
-            // `string-length`,
-            // `string-ref`,
-            // `string-set!`,
-            // `string<?`,
-            // `string?`,
-            // `substring`,
+            `string->number`,
+            `string->symbol`,
+            `string-append`,
+            `string-length`,
+            `string-ref`,
+            `string-set!`,
+            `string<?`,
+            `string?`,
+            `substring`,
             // `symbol->string`,
             `symbol?`,
             `tan`,
@@ -366,7 +366,7 @@ class SchemeLatticePrimitives[V, Vec, Pai](
 
         abstract class SchemePrimRefTypeCheck[A <: StoreAddress](
             name: String,
-            patt: Extractor[V, A])
+            patt: Pattern[V, A])
             extends SchemePrim1(name):
             def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
                 MonadJoin[M].mfoldMap(split(x)) {
@@ -379,96 +379,98 @@ class SchemeLatticePrimitives[V, Vec, Pai](
         // case object `thread?` extends SchemePrim1("thread?")
         // case object `lock?` extends SchemePrimRefTypeCheck("lock?")
 
-        // case object `string-append` extends SchemePrimVarArg("string-append"):
-        //    private def buildString[M[_]: PrimM](args: List[V]): M[V] =
-        //        args.foldRightM(Galois.inject[String, V]("")) { (x, rst) =>
-        //            dereferencePointer[M, V](x)((_, str) => lat.append[M](str, rst))
-        //        }
-        //    def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
-        //        for
-        //            str <- buildString(args)
-        //            adr <- PrimM[M].allocVal(fpos, str)
-        //        yield lat.pointer(adr)
+        private def tryStrPtr: Pattern[V, ValAddress[V]] = (v: V) => lat.stringAddress.matches(v).map(adr => AddrWrapper[V](adr))
 
-        // case object `make-string` extends SchemePrimVarArg("make-string"):
-        //    private def mkString[M[_]: PrimM](
-        //        fpos: SchemeExp,
-        //        length: V,
-        //        char: V
-        //      ): M[V] =
-        //        for
-        //            str <- lat.makeString(length, char)
-        //            adr <- PrimM[M].allocVal(fpos, str)
-        //        yield lat.pointer(adr)
-        //    def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
-        //        case length :: Nil         => mkString(fpos, length, inject(0.toChar))
-        //        case length :: char :: Nil => mkString(fpos, length, char)
-        //        case l                     => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
+        case object `string-append` extends SchemePrimVarArg("string-append"):
+            private def buildString[M[_]: PrimM](args: List[V]): M[V] =
+                args.foldRightM(Galois.inject[String, V]("")) { (x, rst) =>
+                    dereferencePointer(x)(tryStrPtr, "not a string")((_, str) => lat.append[M](str, rst))
+                }
+            def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
+                for
+                    str <- buildString(args)
+                    adr <- PrimM[M].storeString(fpos, str)
+                yield lat.injectStringPtr(adr)
+
+        case object `make-string` extends SchemePrimVarArg("make-string"):
+            private def mkString[M[_]: PrimM](
+                fpos: SchemeExp,
+                length: V,
+                char: V
+              ): M[V] =
+                for
+                    str <- lat.makeString(length, char)
+                    adr <- PrimM[M].storeString(fpos, str)
+                yield lat.injectStringPtr(adr)
+            def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] = args match
+                case length :: Nil         => mkString(fpos, length, inject(0.toChar))
+                case length :: char :: Nil => mkString(fpos, length, char)
+                case l                     => PrimM[M].raiseError(PrimitiveArityError(name, 1, l.size))
 
         // case object `number->string` extends SchemePrim1("number->string"):
-        //  def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-        //    for
-        //      str <- unaryOp(SchemeOp.NumberToString)(x)
-        //      adr <- PrimM[M].allocVal(fpos, str)
-        //    yield lat.pointer(adr)
+        //    def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+        //        for
+        //            str <- unaryOp(SchemeOp.NumberToString)(x)
+        //            adr <- PrimM[M].allocVal(fpos, str)
+        //        yield lat.pointer(adr)
 
-        // case object `string->number` extends SchemePrim1("string->number"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-        //         dereferencePointer(x) { (_, str) => lat.toNumber(str) }
+        case object `string->number` extends SchemePrim1("string->number"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+                dereferencePointer(x)(tryStrPtr, "not a string") { (_, str) => lat.toNumber(str) }
 
-        // case object `string->symbol` extends SchemePrim1("string->symbol"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-        //         dereferencePointer(x) { (_, str) => lat.toSymbol(str) }
+        case object `string->symbol` extends SchemePrim1("string->symbol"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+                dereferencePointer(x)(tryStrPtr, "not a string") { (_, str) => lat.toSymbol(str) }
 
-        // case object `string-length` extends SchemePrim1("string-length"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-        //         dereferencePointer(x) { (_, str) => lat.length(x) }
+        case object `string-length` extends SchemePrim1("string-length"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
+                dereferencePointer(x)(tryStrPtr, "not a string") { (_, str) => lat.length(x) }
 
-        // case object `string-ref` extends SchemePrim2("string-ref"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V, idx: V): M[V] =
-        //         dereferencePointer(x) { (_, str) => lat.ref(str, idx) }
+        case object `string-ref` extends SchemePrim2("string-ref"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V, idx: V): M[V] =
+                dereferencePointer(x)(tryStrPtr, "not a string") { (_, str) => lat.ref(str, idx) }
 
-        // case object `string-set!` extends SchemePrim3("string-set!"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V, idx: V, chr: V): M[V] =
-        //         dereferencePointer(x) { (adr, str) =>
-        //             for
-        //                 updatedStr <- lat.set(str, idx, chr)
-        //                 _ <- PrimM[M].updateSto(adr, updatedStr)
-        //             yield unspecified
-        //         }
+        case object `string-set!` extends SchemePrim3("string-set!"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V, idx: V, chr: V): M[V] =
+                dereferencePointer(x)(tryStrPtr, "not a string") { (adr, str) =>
+                    for
+                        updatedStr <- lat.set(str, idx, chr)
+                        _ <- PrimM[M].updateSto(adr, updatedStr)
+                    yield unspecified
+                }
 
-        // case object `string<?` extends SchemePrim2("string<?"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V): M[V] =
-        //         dereferencePointer(x) { (_, xstr) =>
-        //             dereferencePointer(y) { (_, ystr) =>
-        //                 lat.lt(xstr, ystr)
-        //             }
-        //         }
+        case object `string<?` extends SchemePrim2("string<?"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V, y: V): M[V] =
+                dereferencePointer(x)(tryStrPtr, "not a string") { (_, xstr) =>
+                    dereferencePointer(y)(tryStrPtr, "not a string") { (_, ystr) =>
+                        lat.lt(xstr, ystr)
+                    }
+                }
 
-        // case object `string?` extends SchemePrimRefTypeCheck("string?", lat.isStr)
+        case object `string?` extends SchemePrimRefTypeCheck("string?", tryStrPtr)
 
-        // case object `substring` extends SchemePrim3("substring"):
-        //     def call[M[_]: PrimM](fpos: SchemeExp, x: V, start: V, end: V): M[V] =
-        //         for
-        //             substr <- dereferencePointer(x) { (_, str) =>
-        //                 lat.substring(str, start, end)
-        //             }
-        //             adr <- PrimM[M].allocVal(fpos, substr)
-        //         yield lat.pointer(adr)
+        case object `substring` extends SchemePrim3("substring"):
+            def call[M[_]: PrimM](fpos: SchemeExp, x: V, start: V, end: V): M[V] =
+                for
+                    substr <- dereferencePointer(x)(tryStrPtr, "not a string") { (_, str) =>
+                        lat.substring(str, start, end)
+                    }
+                    adr <- PrimM[M].storeString(fpos, substr)
+                yield lat.injectStringPtr(adr)
 
         // case object `symbol->string` extends SchemePrim1("symbol->string"):
-        //   def call[M[_]: PrimM](fpos: SchemeExp, sym: V): M[V] =
-        //     for
-        //       str <- lat.toString[V](sym)
-        //       adr <- PrimM[M].allocVal(fpos, str)
-        //     yield lat.pointer(adr)
+        //    def call[M[_]: PrimM](fpos: SchemeExp, sym: V): M[V] =
+        //        for
+        //            str <- lat.toString[V](sym)
+        //            adr <- PrimM[M].allocVal(fpos, str)
+        //        yield lat.pointer(adr)
 
         // case object `char->string` extends SchemePrim1("char->string"):
-        //   def call[M[_]: PrimM](fpos: SchemeExp, chr: V): M[V] =
-        //     for
-        //       str <- unaryOp(SchemeOp.CharacterToString)(chr)
-        //       adr <- PrimM[M].allocVal(fpos, str)
-        //     yield lat.pointer(adr)
+        //    def call[M[_]: PrimM](fpos: SchemeExp, chr: V): M[V] =
+        //        for
+        //            str <- unaryOp(SchemeOp.CharacterToString)(chr)
+        //            adr <- PrimM[M].allocVal(fpos, str)
+        //        yield lat.pointer(adr)
 
         case object `cons` extends SchemePrim2("cons"):
             def call[M[_]: PrimM](fpos: SchemeExp, car: V, cdr: V): M[V] =

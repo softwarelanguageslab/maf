@@ -66,6 +66,9 @@ trait AllocM[M[_]: Monad, V, Vec, Pai]:
       */
     def allocVar(idn: Identifier[SchemeExp]): M[VarAddress[V]]
 
+    /** Allocates an address for strings */
+    def allocString(exp: SchemeExp): M[ValAddress[V]]
+
     /** Allocates an address for pairs, usually associated with a source location of a pair literal or a primitive that allocates a pair */
     def allocPair(exp: SchemeExp): M[PairAddress[Pai]]
 
@@ -80,6 +83,8 @@ trait SchemePrimM[M[_]: Monad, V, Vec, Pai] extends MonadJoin[M] with cats.Monad
         allocVec(exp).flatMap(adr => extendSto(adr, vlu) >> adr.pure)
     def storePair(exp: SchemeExp, vlu: Pai): M[PairAddress[Pai]] =
         allocPair(exp).flatMap(adr => extendSto(adr, vlu) >> adr.pure)
+    def storeString(exp: SchemeExp, vlu: V): M[ValAddress[V]] =
+        allocString(exp).flatMap(adr => extendSto(adr, vlu) >> adr.pure)
 
     def deref[X: Lattice, A <: StoreAddress](adr: A)(f: (adr.Value) => M[X]): M[X] =
         lookupSto(adr) >>= f
