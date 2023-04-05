@@ -26,6 +26,10 @@ sealed trait HMapValue[KT <: HMapKey]:
     /** Checks whether the HMap is a singleton */
     def isSingleton: Boolean
 
+    /** Adjusts the value at the given `key` by calling function `f` */
+    def adjustAt(key: KT)(f: Option[key.Value] => key.Value): HMapValue[KT] =
+        put(key, f(get(key)))
+
 /** A key-tagged key-value pair. The key determines the type of the value by associating the value with an abstract type member of the key
   *
   * @param key

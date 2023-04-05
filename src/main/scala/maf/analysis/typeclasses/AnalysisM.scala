@@ -20,9 +20,7 @@ import maf.values.typeclasses.Galois.inject
   *
   * Environments are nested and lexical meaning that a typical `MonadReader` should be sufficient for this
   */
-trait EnvironmentM[M[_], Val] extends Monad[M]:
-    private given self: Monad[M] = this
-
+trait EnvironmentM[M[_]: Monad, Val]:
     type Env = Environment[ValAddress[Val]]
 
     def getEnv: M[Env]
@@ -43,13 +41,17 @@ trait EnvironmentM[M[_], Val] extends Monad[M]:
     def withExtendedEnv[X](bds: Iterable[(String, ValAddress[Val])])(blk: M[X]): M[X] =
         withEnv(_.extend(bds))(blk)
 
-trait AnalysisM[M[_], Val, Vec, Pai] extends SchemePrimM[M, Val, Vec, Pai]:
-    type Lam = SchemeLambdaExp
-    type Env = Environment[ValAddress[Val]]
+trait CtxM[M[_]: Monad]:
     type Ctx
 
     def getCtx: M[Ctx]
     def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
+
+trait AnalysisM[M[_], Val, Vec, Pai] extends SchemePrimM[M, Val, Vec, Pai], CtxM[M]:
+    type Lam = SchemeLambdaExp
+    type Env = Environment[ValAddress[Val]]
+    type Ctx
+
     def call(lam: Lam): M[Val]
 
     // Scala is too stupid to figure this out...
