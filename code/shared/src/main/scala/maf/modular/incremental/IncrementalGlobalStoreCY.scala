@@ -130,7 +130,9 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             }
         }
         oldFlowsR.exists { case (w, rs) =>
-            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store(w), oldStore(w))
+            // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
+            rs.diff(flowsR(w)).nonEmpty ||
+                !lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom))
         }
 
     /**
@@ -158,7 +160,9 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             //val old = store.getOrElse(a, lattice.bottom)
             //if old != v then // No need for a trigger when nothing changes. TODO adding this tests causes unsoundness and errors?
             // Refine the store. TODO remove when v is bottom!
+            if configuration.checkAsserts then assert(lattice.subsumes(inter.store(a), v))
             store += (a -> v)
+            if configuration.checkAsserts then assert(store(a) == provenanceValue(a))
             // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
             // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
             trigger(AddrDependency(a))
@@ -190,14 +194,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             else super.writeAddr(addr, value)
 
         override def commit(): Unit =
-            val oldStore = inter.store
-            val oldDataFlowR = dataFlowR
-            //super.commit()
+            val oldStore = inter.store // Store before the analysis of this component.
+            val oldDataFlowR = dataFlowR // Data flow information before the analysis of this component.
+            super.commit()
             // Todo: is CY more efficient before or after WI? Or should it work at the same time?
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlow)
                 if version == New then updateSCAs(oldStore, oldDataFlowR)
-            super.commit()
 
     end IncrementalGlobalStoreCYIntraAnalysis
 

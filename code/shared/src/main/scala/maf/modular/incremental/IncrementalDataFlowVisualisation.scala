@@ -79,7 +79,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
                 )
                 .toMap
         // Compute the edges.
-        var edges: Set[Edge] = computeEdges() // Set[(GE, GE, AdrDep)] =
+        val edges: Set[Edge] = computeEdges() // Set[(GE, GE, AdrDep)] =
           //  addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
         val g = DotGraph[GE, GE]().G.typeclass
