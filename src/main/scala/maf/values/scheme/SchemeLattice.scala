@@ -17,9 +17,13 @@ trait Extractor[L, E]:
         extract(v).map((_, v))
 
 trait SchemeDomain[L, Vec, Pai]:
+    type W
+    val wrapper: Iso[L, W]
+    export wrapper.given
+
     given schemeLattice: SchemeLattice[L, Vec, Pai]
-    given pairLattice: PairLattice[Pai, L]
-    given vectorLattice: VectorLattice[Vec, L, L]
+    given pairLattice: PairLattice[Pai, W]
+    given vectorLattice: VectorLattice[Vec, W, W]
 
 /** Represents a lattice that supports all Scheme operations, that is: a combination of the operations on strings, integers, booleans, real numbers,
   * symbols and characters.

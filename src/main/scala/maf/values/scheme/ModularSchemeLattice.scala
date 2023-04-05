@@ -662,7 +662,7 @@ object ConstantPropagationDomain:
                                                 AbstractPair[CPSchemeValue]
     ]]
 
-    private given self: Wrap[Val, CPSchemeValue] with
+    private given self: Iso[Val, CPSchemeValue] with
         given wrap: Conversion[Vlu, Wra] = CPSchemeValue.apply
         given unwrap: Conversion[Wra, Vlu] = _.content
 
@@ -673,10 +673,14 @@ object ConstantPropagationDomain:
     lazy val pairLattice: PairLattice[Pai, CPSchemeValue] = summon
     lazy val vectorLattice: VectorLattice[Vec, CPSchemeValue, CPSchemeValue] = summon
 
-    // given cpDomain: SchemeDomain[Val, Vec, Pai] with
-    //     given schemeLattice: SchemeLattice[Val, Vec, Pai] = outer.schemeLattice
-    //     given pairLattice: PairLattice[Pai, Val] = outer.pairLattice
-    //     given vectorLattice: VectorLattice[Vec, Val, Val] = outer.vectorLattice
+    given cpDomain: SchemeDomain[Val, Vec, Pai] with
+        type W = CPSchemeValue
+        val wrapper: Iso[Val, W] = outer.self
+        given schemeLattice: SchemeLattice[Val, Vec, Pai] = outer.schemeLattice
+        given pairLattice: PairLattice[Pai, W] = outer.pairLattice
+        given vectorLattice: VectorLattice[Vec, W, W] = outer.vectorLattice
+
+    export self.given
 
 object Main extends App:
     type Lat[X] = Either[Error, X]
@@ -696,3 +700,7 @@ object Main extends App:
     val b = inject[SimpleSchemeValue, Val](SchemeInt(6))
     val c = schemeLattice.plus(a, b)
     println(c)
+
+    import cpDomain.given
+    val d = cpDomain.pairLattice.cons(a, b)
+    println(Lattice[Pai].show(d))

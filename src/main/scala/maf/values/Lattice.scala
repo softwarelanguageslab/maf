@@ -87,7 +87,7 @@ object Lattice:
     given setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
 
     /** Lattice instance for wrapped values */
-    def wrapLattice[V: Lattice, W](using self: Wrap[V, W]): Lattice[W] = new Lattice[W] {
+    def wrapLattice[V: Lattice, W](using self: Iso[V, W]): Lattice[W] = new Lattice[W] {
         def join(x: W, y: => W): W = self.wrap(self.unwrap(x) ⊔ self.unwrap(y))
         def subsumes(x: W, y: => W): Boolean =
             self.unwrap(x) ⊑ self.unwrap(y)
@@ -119,9 +119,22 @@ object Lattice:
         if xs.isEmpty then Lattice[L].bottom
         else Lattice[L].join(f(xs.head), foldMapL(xs.tail, f))
 
-trait Wrap[V, W]:
+/** A wrapper is an isomorphism from a wrapped value to a wrapper. */
+trait Iso[V, W]:
     type Vlu = V
     type Wra = W
 
     given wrap: Conversion[Vlu, Wra]
     given unwrap: Conversion[Wra, Vlu]
+
+    /** Convenience conversion to convert any value in a monad to a wrapped variant */
+    given wrapM[M[_]: Monad]: Conversion[M[Vlu], M[Wra]] =
+        (v: M[Vlu]) => v map wrap
+
+    /** Opposite of `wrapM` */
+    given unwrapM[M[_]: Monad]: Conversion[M[Wra], M[Vlu]] =
+        (v: M[Wra]) => v map unwrap
+
+    /** If there is a galois from some value to the wrapped value, then there is also a galois from that value to the wrapper value */
+    given isogalois[C](using gal: Galois[C, V]): Galois[C, W] =
+        (v: C) => wrap(gal.inject(v))

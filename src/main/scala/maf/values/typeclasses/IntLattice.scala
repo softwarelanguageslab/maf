@@ -58,7 +58,7 @@ object IntLattice:
     def apply[I: IntLattice]: IntLattice[I] = implicitly
 
     // Some default implementations of the IntLattice
-    given wrapIntLattice[I: IntLattice, W](using w: Wrap[I, W]): IntLattice[W] with {
+    given wrapIntLattice[I: IntLattice, W](using w: Iso[I, W]): IntLattice[W] with {
         private val lat: Lattice[W] = Lattice.wrapLattice[I, W]
         export lat.*
         import cats.syntax.all.*

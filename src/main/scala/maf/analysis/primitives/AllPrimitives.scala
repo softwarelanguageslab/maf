@@ -515,9 +515,9 @@ class SchemeLatticePrimitives[V, Vec, Pai](
     case object `vector` extends SchemePrimVarArg("vector"):
         def call[M[_]: PrimM](fpos: SchemeExp, args: List[V]): M[V] =
             for
-                emptyVec <- dom.vectorLattice.vector(inject(BigInt(args.size)), bottom)
+                emptyVec <- dom.vectorLattice.vector(inject(BigInt(args.size))(using isogalois), bottom)
                 filledVec <- args.zipWithIndex.foldLeftM[M, Vec](emptyVec) { case (acc, (arg, idx)) =>
-                    dom.vectorLattice.vectorSet(acc, inject(BigInt(idx)), arg)
+                    dom.vectorLattice.vectorSet(acc, inject(BigInt(idx))(using isogalois), arg)
                 }
                 adr <- PrimM[M].storeVec(fpos, filledVec)
             yield lat.injectVecPtr(adr)

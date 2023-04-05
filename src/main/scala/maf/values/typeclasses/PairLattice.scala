@@ -21,7 +21,7 @@ case class AbstractPair[L](car: L, cdr: L)
 object AbstractPair:
     given simplePairLattice[L: Lattice]: PairLattice[AbstractPair[L], L] with {
         def show(t: AbstractPair[L]): String =
-            s"(${t.car} . ${t.cdr})"
+            s"(${Lattice[L].show(t.car)} . ${Lattice[L].show(t.cdr)})"
 
         def bottom: AbstractPair[L] =
             AbstractPair(Lattice[L].bottom, Lattice[L].bottom)
