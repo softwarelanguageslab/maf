@@ -79,6 +79,7 @@ trait AllocM[M[_]: Monad, V, Vec, Pai]:
 trait SchemePrimM[M[_]: Monad, V, Vec, Pai] extends MonadJoin[M] with cats.MonadError[M, Error] with AllocM[M, V, Vec, Pai] with StoreM[M, Address, V]:
 
     // for convenience
+
     def storeVec(exp: SchemeExp, vlu: Vec): M[VectorAddress[Vec]] =
         allocVec(exp).flatMap(adr => extendSto(adr, vlu) >> adr.pure)
     def storePair(exp: SchemeExp, vlu: Pai): M[PairAddress[Pai]] =

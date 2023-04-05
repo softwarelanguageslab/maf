@@ -654,7 +654,12 @@ object ConstantPropagationDomain:
     import ConstantPropagation.{*, given}
     import ModularSchemeLattice.{*, given}
 
+    /** Wrapper type for recursive constituents of the Scheme value */
     case class CPSchemeValue(content: Val)
+
+    //
+    // Shorthands
+    //
 
     type Vec = AbstractVector[CPSchemeValue, CPSchemeValue]
     type Pai = AbstractPair[CPSchemeValue]
@@ -668,17 +673,21 @@ object ConstantPropagationDomain:
                                                 AbstractPair[CPSchemeValue]
     ]]
 
+    /** There exists an isomorphism between the wrapper type and the Scheme value */
     private given self: Iso[Val, CPSchemeValue] with
         given wrap: Conversion[Vlu, Wra] = CPSchemeValue.apply
         given unwrap: Conversion[Wra, Vlu] = _.content
 
+    // derive lattices for the wrapper type
     given Lattice[CPSchemeValue] = Lattice.wrapLattice[Val, CPSchemeValue](using schemeLattice, self)
     given IntLattice[CPSchemeValue] = IntLattice.wrapIntLattice[Val, CPSchemeValue](using schemeLattice, self)
 
+    // derive scheme lattices for the constant proapgation domain
     given schemeLattice: SchemeLattice[Val, Vec, Pai] = modularSchemeLattice
     lazy val pairLattice: PairLattice[Pai, CPSchemeValue] = summon
     lazy val vectorLattice: VectorLattice[Vec, CPSchemeValue, CPSchemeValue] = summon
 
+    // the constant propgation domain itself
     given cpDomain: SchemeDomain[Val, Vec, Pai] with
         type W = CPSchemeValue
         val wrapper: Iso[Val, W] = outer.self
@@ -686,6 +695,7 @@ object ConstantPropagationDomain:
         given pairLattice: PairLattice[Pai, W] = outer.pairLattice
         given vectorLattice: VectorLattice[Vec, W, W] = outer.vectorLattice
 
+    // export implicits (for injections, conversions between wrapped and unwrapped, ...)
     export self.given
 
 object Main extends App:
