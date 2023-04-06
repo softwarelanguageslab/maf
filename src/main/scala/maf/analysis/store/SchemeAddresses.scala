@@ -10,6 +10,15 @@ sealed trait SchemeAddress[+Context] extends Address
 case class VarAddrWithContext[Context, V: Lattice](vrr: Identifier[SchemeExp], ctx: Context) extends SchemeAddress[Context], VarAddress[V]:
     val idn: Identity = vrr.idn
     def printable: Boolean = true
+case class StringAddrWithContext[Context, S: Lattice](vrr: SchemeExp, ctx: Context) extends SchemeAddress[Context], ValAddress[S]:
+    val idn: Identity = vrr.idn
+    def printable: Boolean = true
+case class PaiAddrWithContext[Context, P: Lattice](vrr: SchemeExp, ctx: Context) extends SchemeAddress[Context], PairAddress[P]:
+    val idn: Identity = vrr.idn
+    def printable: Boolean = true
+case class VecAddrWithContext[Context, P: Lattice](vrr: SchemeExp, ctx: Context) extends SchemeAddress[Context], VectorAddress[P]:
+    val idn: Identity = vrr.idn
+    def printable: Boolean = true
 case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddress[Context]:
     val idn: Identity = exp.idn
     def printable: Boolean = true

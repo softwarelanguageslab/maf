@@ -1,5 +1,6 @@
 package maf.analysis
 
+import maf.syntax.Identity
 import maf.util.datastructures.MapOps.*
 import cats.{MonadError => _, *}
 import maf.values.typeclasses.MonadJoin
@@ -18,6 +19,8 @@ import maf.util.*
 import maf.analysis.typeclasses.*
 import cats.data.Kleisli
 import maf.util.benchmarks.Timeout
+import maf.syntax.Identifier
+import maf.syntax.scheme.SchemeLambdaExp
 
 // type M = (ErrorT (StoT (EnvT (CtxT (AllocT Id)))))
 
@@ -32,8 +35,15 @@ import maf.util.benchmarks.Timeout
   */
 trait Component[+Ctx]
 
+/** The main component */
+case object Main extends Component[Nothing]
+
 /** A component corresponding to a call to some closure */
 case class CallComponent[Ctx](clo: (SchemeExp, Environment[Address]), ctx: Ctx) extends Component[Ctx]
+
+case class RetAddr[Ctx, V: Lattice](cmp: Component[Ctx]) extends Address, ValAddress[V]:
+    def printable: Boolean = true
+    def idn: Identity = Identity.none
 
 // Effects
 
@@ -86,16 +96,16 @@ given [M[_]: Monad]: MonadError[maf.util.Error][ErrorT[M]] with {
   * @tparam S
   *   the type of the store that is kept around
   */
-type StoreT[M[_], S] = [A] =>> StateT[M, S, A]
+type StoreT[S, M[_]] = [A] =>> StateT[M, S, A]
 
 /** The StoreT monad transformer implements the `StoreM` interface if the store `S` supports the `Store` typeclass */
-given [M[_]: Monad, S, V](using Store[S]): StoreM[StoreT[M, S], Address, V] with {
-    def lookupSto[A <: StoreAddress](adr: A): StoreT[M, S][adr.Value] =
+given [M[_]: Monad, S, V](using Store[S]): StoreM[StoreT[S, M], Address, V] with {
+    def lookupSto[A <: StoreAddress](adr: A): StoreT[S, M][adr.Value] =
         StateT.get.map(_.lookup(adr))
-    def addrEq: StoreT[M, S][MaybeEq[Address]] = ???
-    def updateSto[A <: StoreAddress](adr: A, v: adr.Value): StoreT[M, S][Unit] =
+    def addrEq: StoreT[S, M][MaybeEq[Address]] = ???
+    def updateSto[A <: StoreAddress](adr: A, v: adr.Value): StoreT[S, M][Unit] =
         StateT.modify(_.update(adr, v))
-    def extendSto[A <: StoreAddress](adr: A, v: adr.Value): StoreT[M, S][Unit] =
+    def extendSto[A <: StoreAddress](adr: A, v: adr.Value): StoreT[S, M][Unit] =
         StateT.modify(_.extend(adr, v))
 }
 
@@ -176,12 +186,34 @@ given [Ctx0, M[_]: Monad]: CtxM[CtxT[Ctx0, M]] with {
 }
 
 //
-// Allocation
+// Allocation & Components
 //
 
-type NoSensitivityT[M[_]] = [A] =>> M[A]
+case class Marker[M[_], X](m: M[X])
+given [M[_]: Monad]: Monad[[A] =>> Marker[M, A]] with {}
 
-// TODO
+type NoSensitivityT[M[_]] = [A] =>> Marker[M, A]
+
+given nsAllocM[M[_]: Monad, V: Lattice, Vec: Lattice, Pai: Lattice]: AllocM[NoSensitivityT[M], V, Vec, Pai] with {
+    def allocVar(idn: Identifier[SchemeExp]): NoSensitivityT[M][VarAddress[V]] =
+        VarAddrWithContext[Unit, V](idn, ()).pure
+    def allocString(exp: SchemeExp): NoSensitivityT[M][ValAddress[V]] =
+        StringAddrWithContext[Unit, V](exp, ()).pure
+    def allocPair(exp: SchemeExp): NoSensitivityT[M][PairAddress[Pai]] =
+        PaiAddrWithContext[Unit, Pai](exp, ()).pure
+    def allocVec(exp: SchemeExp): NoSensitivityT[M][VectorAddress[Vec]] =
+        VecAddrWithContext[Unit, Vec](exp, ()).pure
+}
+
+given [M[_]: Monad, V: Lattice, A](using storeM: StoreM[M, A, V], envM: EnvironmentM[M, V]): CallM[NoSensitivityT[M], V] with {
+    def call(lam: SchemeLambdaExp): NoSensitivityT[M][V] =
+        for
+            env <- envM.getEnv.lift
+            cmp = CallComponent((lam, env.as[Address]), ())
+            vlu <- storeM.lookupSto(RetAddr[Unit, V](cmp)).lift
+        yield vlu
+
+}
 
 //
 // ModF monad & algorithm
@@ -239,13 +271,84 @@ object ModF:
             else fix(step(intra)(state))
 
         val (initialCmp, intraState) = inject(program)
-        val interState = State(wl = WorkList[WL].empty[Component[Ctx]].add(initialCmp), intraState = intraState)
+        val interState = State(
+          wl = WorkList[WL].empty[Component[Ctx]].add(initialCmp),
+          intraState = intraState
+        )
+
         fix(interState)
 
 //
 // Putting it all together
 //
 
+type M[V, Vec, Pai] = [X] =>> ErrorT[NoSensitivityT[EffectT[Unit, StoreT[Store.SimpleStore, CtxT[Unit, EnvT[V, Id]]]]]][X]
+
+given [V, Vec, Pai]: SchemeSemanticsM[M[V, Vec, Pai], V, Vec, Pai] with {
+    type Ctx = Unit
+
+    def allocPair(exp: SchemeExp): M[V, Vec, Pai][PairAddress[Pai]] =
+        nsAllocM.allocPair(exp).lift
+
+    def allocString(exp: SchemeExp): M[V, Vec, Pai][ValAddress[V]] = ???
+    def allocVar(idn: Identifier[SchemeExp]): M[V, Vec, Pai][VarAddress[V]] = ???
+    def allocVec(exp: SchemeExp): M[V, Vec, Pai][VectorAddress[Vec]] = ???
+
+    def call(lam: SchemeLambdaExp): M[V, Vec, Pai][V] = ???
+
+    def handleErrorWith[A](fa: M[V, Vec, Pai][A])(f: Error => M[V, Vec, Pai][A]): M[V, Vec, Pai][A] = ???
+    def raiseError[A](e: Error): M[V, Vec, Pai][A] = ???
+
+    def withCtx[X](ctx: Ctx => Unit)(blk: M[V, Vec, Pai][X]): M[V, Vec, Pai][X] = ???
+    def getCtx: M[V, Vec, Pai][Unit] = ???
+
+    def getEnv: M[V, Vec, Pai][Environment[ValAddress[V]]] = ???
+    def withEnv[X](f: Env => Environment[ValAddress[V]])(blk: M[V, Vec, Pai][X]): M[V, Vec, Pai][X] = ???
+
+    def pure[A](x: A): M[V, Vec, Pai][A] = ???
+    def flatMap[A, B](fa: M[V, Vec, Pai][A])(f: A => M[V, Vec, Pai][B]): M[V, Vec, Pai][B] = ???
+    def tailRecM[A, B](a: A)(f: A => M[V, Vec, Pai][Either[A, B]]): M[V, Vec, Pai][B] = ???
+
+    def mjoin[X: Lattice](a: M[V, Vec, Pai][X], b: M[V, Vec, Pai][X]): M[V, Vec, Pai][X] = ???
+
+    def newContext(fex: Exp, lam: SchemeLambdaExp, ags: List[V], ctx: Ctx): Ctx = ???
+    def addrEq: M[V, Vec, Pai][MaybeEq[Address]] = ???
+
+    def extendSto[A <: StoreAddress](adr: A, v: adr.Value): M[V, Vec, Pai][Unit] = ???
+    def lookupSto[A <: StoreAddress](adr: A): M[V, Vec, Pai][adr.Value] = ???
+    def updateSto[A <: StoreAddress](adr: A, v: adr.Value): M[V, Vec, Pai][Unit] = ???
+
+    def eval(e: SchemeExp): M[V, Vec, Pai][V] = ???
+
+}
+
 //
 // Glue code for Monad transformers
 //
+
+trait MonadLift[T[_[_], _]]:
+    extension [M[_]: Monad, X](m: M[X]) def lift: T[M, X]
+
+given MonadLift[[M[_], X] =>> ErrorT[M][X]] with {
+    extension [M[_]: Monad, X](m: M[X])
+        def lift: ErrorT[M][X] =
+            m.map(v => (Set(), Some(v)))
+}
+
+given MonadLift[[M[_], X] =>> Marker[M, X]] with {
+    extension [M[_]: Monad, X](m: M[X])
+        def lift: Marker[M, X] =
+            Marker(m)
+}
+//
+// given [S]: MonadLift[[M[_], X] =>> StateT[M, S, X]] with {
+//     extension [M[_]: Monad, X](m: M[X])
+//         def lift: StateT[M, S, X] =
+//             StateT.lift(m)
+// }
+//
+// given [E]: MonadLift[[M[_], X] =>> Kleisli[M, E, X]] with {
+//     extension [M[_]: Monad, X](m: M[X])
+//         def lift: Kleisli[M, E, X] =
+//             Kleisli.liftF(m)
+// }

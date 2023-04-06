@@ -47,15 +47,19 @@ trait CtxM[M[_]: Monad]:
     def getCtx: M[Ctx]
     def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
 
-trait AnalysisM[M[_], Val, Vec, Pai] extends SchemePrimM[M, Val, Vec, Pai], CtxM[M]:
+trait CallM[M[_], Val]:
     type Lam = SchemeLambdaExp
     type Env = Environment[ValAddress[Val]]
-    type Ctx
 
     def call(lam: Lam): M[Val]
 
-    // Scala is too stupid to figure this out...
-    given self: AnalysisM[M, Val, Vec, Pai] = this
+trait EvalM[M[_], Val]:
+    def eval(e: SchemeExp): M[Val]
+
+trait SchemeContextSensitivityM[M[_], Val, Vec, Pai] extends AnalysisM[M, Val, Vec, Pai]:
+    def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx
+
+trait AnalysisM[M[_], Val, Vec, Pai] extends SchemePrimM[M, Val, Vec, Pai], CtxM[M], CallM[M, Val]
 
 object AnalysisM:
     def apply[M[_], Val, Vec, Pai](
@@ -63,11 +67,11 @@ object AnalysisM:
         anl: AnalysisM[M, Val, Vec, Pai]
       ): AnalysisM[M, Val, Vec, Pai] = anl
 
-trait SchemeContextSensitivityM[M[_], Val, Vec, Pai] extends AnalysisM[M, Val, Vec, Pai]:
-    def newContext(fex: Exp, lam: Lam, ags: List[Val], ctx: Ctx): Ctx
-
-trait SchemeSemanticsM[M[_], V, Vec, Pai] extends AnalysisM[M, V, Vec, Pai] with SchemeContextSensitivityM[M, V, Vec, Pai] with EnvironmentM[M, V]:
-    def eval(e: SchemeExp): M[V]
+trait SchemeSemanticsM[M[_], V, Vec, Pai]
+    extends AnalysisM[M, V, Vec, Pai]
+    with SchemeContextSensitivityM[M, V, Vec, Pai]
+    with EnvironmentM[M, V]
+    with EvalM[M, V]
 
 object SchemeSemanticsM:
     def apply[A[_], Val, Vec, Pai](using sem: SchemeSemanticsM[A, Val, Vec, Pai]) = sem
