@@ -3,6 +3,7 @@ package maf.analysis
 import cats.{MonadError => _, *}
 import maf.values.typeclasses.MonadJoin
 import cats.data.OptionT
+import maf.util.worklist.*
 import cats.extensions.MonadError
 import maf.values.Lattice
 import cats.syntax.all.*
@@ -15,6 +16,7 @@ import maf.syntax.scheme.SchemeExp
 import maf.util.*
 import maf.analysis.typeclasses.*
 import cats.data.Kleisli
+import maf.util.benchmarks.Timeout
 
 // type M = (ErrorT (StoT (EnvT (CtxT (AllocT Id)))))
 
@@ -197,6 +199,15 @@ trait ModfM[M[_]](using val analysisM: CtxM[M]):
 
     /** Returns the call effects of the intra-analysis represented by this monad */
     def calls[X](m: M[X]): Set[Component[Ctx]]
+
+object ModF:
+    case class State[Ctx, WL[_]: WorkList](
+        reads: Map[Effect, Set[Component[Ctx]]],
+        writes: Map[Component[Ctx], Set[Effect]],
+        seen: Set[Component[Ctx]],
+        wl: WL[Component[Ctx]])
+
+    def analyseProgram[Ctx, WL[_]: WorkList](program: SchemeExp, timeout: Timeout.T = Timeout.none): State[Ctx, WL] = ???
 
 //
 // Putting it all together
