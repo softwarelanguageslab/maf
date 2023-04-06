@@ -135,14 +135,17 @@ object Lattice:
             v.map(Lattice[X].show).toString()
         def top = throw LatticeTopUndefined
         def bottom = None
+        override def isBottom(x: Option[X]): Boolean =
+            x.map(v => Lattice[X].isBottom(v)).getOrElse(false)
         def join(x: Option[X], y: => Option[X]): Option[X] = (x, y) match
-            case (Some(x), None)    => Some(x)
-            case (None, Some(x))    => Some(x)
+            case (Some(x), None)    => if Lattice[X].isBottom(x) then None else Some(x)
+            case (None, Some(x))    => if Lattice[X].isBottom(x) then None else Some(x)
             case (Some(x), Some(y)) => Some(x ⊔ y)
             case _                  => None
         def subsumes(x: Option[X], y: => Option[X]): Boolean = (x, y) match
-            case (Some(_), None) | (None, Some(_)) | (None, None) => true
-            case (Some(x), Some(y))                               => y ⊑ x
+            case (Some(_), None)    => true
+            case (Some(x), Some(y)) => y ⊑ x
+            case _                  => false
         def split(v: Option[X]): Set[Option[X]] =
             v.map(Lattice[X].split(_).map(Some(_))).getOrElse(Set())
         def eql[B: BoolLattice: GaloisFrom[Boolean]](x: Option[X], y: Option[X]): B = ???
