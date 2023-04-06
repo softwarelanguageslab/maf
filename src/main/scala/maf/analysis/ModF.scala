@@ -1,5 +1,6 @@
 package maf.analysis
 
+import maf.util.datastructures.MapOps.*
 import cats.{MonadError => _, *}
 import maf.values.typeclasses.MonadJoin
 import cats.data.OptionT
@@ -185,29 +186,56 @@ given [Ctx0, M[_]: Monad]: CtxM[CtxT[Ctx0, M]] with {
 //
 
 /** A monad implementing this typeclass supports operations for fetching effects, the global store and a set of seen components */
-trait ModfM[M[_]](using val analysisM: CtxM[M]):
-    import analysisM.*
+trait ModfState[S, Ctx]:
+    extension (s: S)
+        /** Returns the read effects of the intra-analysis represented by this monad */
+        def reads: Set[Effect]
 
-    /** Returns a set of components seen in previous runs of the algorithm */
-    def seen[X](m: M[X]): Set[Component[Ctx]]
+        /** Returns the write effects of the intra-analysis represented by this monad */
+        def writes: Set[Effect]
 
-    /** Returns the read effects of the intra-analysis represented by this monad */
-    def reads[X](m: M[X]): Set[Effect]
+        /** Returns the spawn effects of the intra-analysis represented by this monad */
+        def spawned: Set[Component[Ctx]]
 
-    /** Returns the write effects of the intra-analysis represented by this monad */
-    def writes[X](m: M[X]): Set[Effect]
+        /** Clears the effect from the state */
+        def clearEffects: S
 
-    /** Returns the call effects of the intra-analysis represented by this monad */
-    def calls[X](m: M[X]): Set[Component[Ctx]]
+trait MonadResult[M[_]: Monad]:
+    extension [X](m: M[X]) def run: X
 
 object ModF:
-    case class State[Ctx, WL[_]: WorkList](
-        reads: Map[Effect, Set[Component[Ctx]]],
-        writes: Map[Component[Ctx], Set[Effect]],
-        seen: Set[Component[Ctx]],
-        wl: WL[Component[Ctx]])
+    case class State[Ctx, WL[_]: WorkList, S](
+        reads: Map[Effect, Set[Component[Ctx]]] = Map[Effect, Set[Component[Ctx]]](),
+        seen: Set[Component[Ctx]] = Set[Component[Ctx]](),
+        wl: WL[Component[Ctx]],
+        intraState: S)
 
-    def analyseProgram[Ctx, WL[_]: WorkList](program: SchemeExp, timeout: Timeout.T = Timeout.none): State[Ctx, WL] = ???
+    def analyseProgram[Ctx, WL[_]: WorkList, S](
+        program: SchemeExp,
+        inject: SchemeExp => (Component[Ctx], S),
+        intra: (Component[Ctx], S) => S,
+        timeout: Timeout.T = Timeout.none
+      )(using ModfState[S, Ctx]
+      ): State[Ctx, WL, S] =
+        def fix(state: State[Ctx, WL, S]): State[Ctx, WL, S] =
+            if state.wl.isEmpty then state
+            else
+                val next = state.wl.head // the component to analyse next
+                val rest = state.wl.tail // pop the component of the worklist
+                // run the intra-analysis on the next component
+                val newIntra = intra(next, state.intraState)
+                // register the read dependencies
+                val R = state.reads.merge(newIntra.reads.map(_ -> Set(next)).toMap)
+                // compute the components that need to be added to the worklist
+                val S = newIntra.spawned -- state.seen // spawned components
+                // trigger read dependencies
+                val W = newIntra.writes.flatMap(R(_))
+                // compute the next state
+                fix(State(reads = R, seen = state.seen ++ S, wl = rest.addAll(S ++ W), intraState = newIntra.clearEffects))
+
+        val (initialCmp, intraState) = inject(program)
+        val interState = State(wl = WorkList[WL].empty[Component[Ctx]].add(initialCmp), intraState = intraState)
+        fix(interState)
 
 //
 // Putting it all together
