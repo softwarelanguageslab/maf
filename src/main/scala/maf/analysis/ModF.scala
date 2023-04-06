@@ -179,6 +179,8 @@ given [Ctx0, M[_]: Monad]: CtxM[CtxT[Ctx0, M]] with {
 // Allocation
 //
 
+type NoSensitivityT[M[_]] = [A] =>> M[A]
+
 // TODO
 
 //
