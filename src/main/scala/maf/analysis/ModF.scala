@@ -85,6 +85,10 @@ given [M[_]: Monad]: MonadError[maf.util.Error][ErrorT[M]] with {
         (Set(e), None: Option[A]).pure
 }
 
+object ErrorT:
+    def liftF[F[_]: Monad, X](f: F[X]): ErrorT[F][X] =
+        f.map(v => (Set(), Some(v)))
+
 //
 // Global store
 //
@@ -190,7 +194,11 @@ given [Ctx0, M[_]: Monad]: CtxM[CtxT[Ctx0, M]] with {
 //
 
 case class Marker[M[_], X](m: M[X])
-given [M[_]: Monad]: Monad[[A] =>> Marker[M, A]] with {}
+given [M[_]: Monad]: Monad[[A] =>> Marker[M, A]] with {
+    def flatMap[A, B](fa: Marker[M, A])(f: A => Marker[M, B]): Marker[M, B] = ???
+    def pure[A](x: A): Marker[M, A] = ???
+    def tailRecM[A, B](a: A)(f: A => Marker[M, Either[A, B]]): Marker[M, B] = ???
+}
 
 type NoSensitivityT[M[_]] = [A] =>> Marker[M, A]
 
@@ -206,12 +214,12 @@ given nsAllocM[M[_]: Monad, V: Lattice, Vec: Lattice, Pai: Lattice]: AllocM[NoSe
 }
 
 given [M[_]: Monad, V: Lattice, A](using storeM: StoreM[M, A, V], envM: EnvironmentM[M, V]): CallM[NoSensitivityT[M], V] with {
-    def call(lam: SchemeLambdaExp): NoSensitivityT[M][V] =
-        for
-            env <- envM.getEnv.lift
-            cmp = CallComponent((lam, env.as[Address]), ())
-            vlu <- storeM.lookupSto(RetAddr[Unit, V](cmp)).lift
-        yield vlu
+    def call(lam: SchemeLambdaExp): NoSensitivityT[M][V] = ???
+    // for
+    //    env <- envM.getEnv.lift
+    //    cmp = CallComponent((lam, env.as[Address]), ())
+    //    vlu <- storeM.lookupSto(RetAddr[Unit, V](cmp)).lift
+    // yield vlu
 
 }
 
@@ -282,13 +290,14 @@ object ModF:
 // Putting it all together
 //
 
+type P1[V, Vec, Pai] = [X] =>> NoSensitivityT[EffectT[Unit, StoreT[Store.SimpleStore, CtxT[Unit, EnvT[V, Id]]]]][X]
 type M[V, Vec, Pai] = [X] =>> ErrorT[NoSensitivityT[EffectT[Unit, StoreT[Store.SimpleStore, CtxT[Unit, EnvT[V, Id]]]]]][X]
 
-given [V, Vec, Pai]: SchemeSemanticsM[M[V, Vec, Pai], V, Vec, Pai] with {
+given [V: Lattice, Vec: Lattice, Pai: Lattice]: SchemeSemanticsM[M[V, Vec, Pai], V, Vec, Pai] with {
     type Ctx = Unit
 
     def allocPair(exp: SchemeExp): M[V, Vec, Pai][PairAddress[Pai]] =
-        nsAllocM.allocPair(exp).lift
+        ErrorT.liftF(nsAllocM[P1[V, Vec, Pai], V, Vec, Pai].allocPair(exp))
 
     def allocString(exp: SchemeExp): M[V, Vec, Pai][ValAddress[V]] = ???
     def allocVar(idn: Identifier[SchemeExp]): M[V, Vec, Pai][VarAddress[V]] = ???
@@ -335,11 +344,11 @@ given MonadLift[[M[_], X] =>> ErrorT[M][X]] with {
             m.map(v => (Set(), Some(v)))
 }
 
-given MonadLift[[M[_], X] =>> Marker[M, X]] with {
-    extension [M[_]: Monad, X](m: M[X])
-        def lift: Marker[M, X] =
-            Marker(m)
-}
+// given MonadLift[[M[_], X] =>> Marker[M, X]] with {
+//     extension [M[_]: Monad, X](m: M[X])
+//         def lift: Marker[M, X] =
+//             Marker(m)
+// }
 //
 // given [S]: MonadLift[[M[_], X] =>> StateT[M, S, X]] with {
 //     extension [M[_]: Monad, X](m: M[X])

@@ -15,7 +15,7 @@ import maf.interpreter.SimpleSchemeValue
 import cats.extensions.Errors.raiseError
 import maf.values.scheme.Pattern
 
-trait SchemePrimitive[V: Lattice, Vec, Pai, A <: Address]:
+trait SchemePrimitive[V, Vec, Pai, A <: Address]:
     // Every primitive in Scheme has a unique name
     def name: String
     // They can be called given the calling expression and arguments using any compatible SchemePrimM monad
