@@ -210,6 +210,21 @@ object ModF:
         wl: WL[Component[Ctx]],
         intraState: S)
 
+    /** Take a single "step" in the ModF algorithm */
+    def step[Ctx, WL[_]: WorkList, S](intra: (Component[Ctx], S) => S)(state: State[Ctx, WL, S])(using ModfState[S, Ctx]): State[Ctx, WL, S] =
+        val next = state.wl.head // the component to analyse next
+        val rest = state.wl.tail // pop the component of the worklist
+        // run the intra-analysis on the next component
+        val newIntra = intra(next, state.intraState)
+        // register the read dependencies
+        val R = state.reads.merge(newIntra.reads.map(_ -> Set(next)).toMap)
+        // compute the components that need to be added to the worklist
+        val S = newIntra.spawned -- state.seen // spawned components
+        // trigger read dependencies
+        val W = newIntra.writes.flatMap(R(_))
+        // compute the next state
+        State(reads = R, seen = state.seen ++ S, wl = rest.addAll(S ++ W), intraState = newIntra.clearEffects)
+
     def analyseProgram[Ctx, WL[_]: WorkList, S](
         program: SchemeExp,
         inject: SchemeExp => (Component[Ctx], S),
@@ -219,19 +234,7 @@ object ModF:
       ): State[Ctx, WL, S] =
         def fix(state: State[Ctx, WL, S]): State[Ctx, WL, S] =
             if state.wl.isEmpty then state
-            else
-                val next = state.wl.head // the component to analyse next
-                val rest = state.wl.tail // pop the component of the worklist
-                // run the intra-analysis on the next component
-                val newIntra = intra(next, state.intraState)
-                // register the read dependencies
-                val R = state.reads.merge(newIntra.reads.map(_ -> Set(next)).toMap)
-                // compute the components that need to be added to the worklist
-                val S = newIntra.spawned -- state.seen // spawned components
-                // trigger read dependencies
-                val W = newIntra.writes.flatMap(R(_))
-                // compute the next state
-                fix(State(reads = R, seen = state.seen ++ S, wl = rest.addAll(S ++ W), intraState = newIntra.clearEffects))
+            else fix(step(intra)(state))
 
         val (initialCmp, intraState) = inject(program)
         val interState = State(wl = WorkList[WL].empty[Component[Ctx]].add(initialCmp), intraState = intraState)
