@@ -21,7 +21,7 @@ object TransformationManager:
       LetIdentifierShallowDrop,
       LetIdentifierDeepDrop,
       RemoveLambdaParamWithDeepDrop,
-      RemoveCallsAndReplaceByBody,
+      FlattenThunk,
       ReplaceByChild,
       DeleteChildSimple,
       ReplaceIdentifier,

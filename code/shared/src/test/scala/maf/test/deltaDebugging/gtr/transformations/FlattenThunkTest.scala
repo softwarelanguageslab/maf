@@ -1,10 +1,10 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeLambda.RemoveCallsAndReplaceByBody
+import maf.deltaDebugging.gtr.transformations.schemeLambda.FlattenThunk
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
+class FlattenThunkTest extends AnyFlatSpecTransformations {
   "RemoveCallsAndReplaceByBody" should "remove the calls to define-bound lambda, and replace lambda by body" in {
     val programText: String =
       """(begin
@@ -17,7 +17,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, defineExp).toList //should remove calls to f
+    val suggestedTrees = FlattenThunk.transform(t, defineExp).toList //should remove calls to f
 
     assert(suggestedTrees.length == 1)
     assertTreeString("(begin (define f (begin (* x x))) (+ 2 2))", suggestedTrees)
@@ -36,7 +36,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp).toList //should remove calls to f
+    val suggestedTrees = FlattenThunk.transform(t, letExp).toList //should remove calls to f
     assert(suggestedTrees.length == 1)
     assertTreeString("(begin (let ((f (begin (* x x)))) 1000) (+ 2 2))", suggestedTrees)
   }
@@ -53,7 +53,7 @@ class RemoveCallsAndReplaceByBodyTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = RemoveCallsAndReplaceByBody.transform(t, letExp).toList
+    val suggestedTrees = FlattenThunk.transform(t, letExp).toList
     assert(suggestedTrees equals List())
   }
 }
