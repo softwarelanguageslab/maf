@@ -1,10 +1,11 @@
 package maf.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeIf.IfToBegin
+import maf.deltaDebugging.gtr.transformations.schemeSequencify.{ApplToBegin, IfToBegin}
 import maf.deltaDebugging.gtr.transformations.schemeLambda.*
 import maf.deltaDebugging.gtr.transformations.schemeLet.*
 import maf.deltaDebugging.gtr.transformations.generics.*
 import maf.deltaDebugging.gtr.transformations.schemeIdentifier.ReplaceIdentifier
+import maf.deltaDebugging.gtr.transformations.schemePrim.FoldPrimitives
 
 object TransformationManager:
   
@@ -19,8 +20,10 @@ object TransformationManager:
       RemoveLambdaParamWithShallowDrop,
       IfToBegin,
       LetIdentifierShallowDrop,
-      LetIdentifierDeepDrop,
-      RemoveLambdaParamWithDeepDrop,
+      ApplToBegin,
+      FoldPrimitives,
+      //LetIdentifierDeepDrop,
+      //RemoveLambdaParamWithDeepDrop,
       FlattenThunk,
       ReplaceByChild,
       DeleteChildSimple,

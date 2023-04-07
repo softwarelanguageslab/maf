@@ -1,4 +1,4 @@
-package maf.deltaDebugging.gtr.transformations.schemeIf
+package maf.deltaDebugging.gtr.transformations.schemeSequencify
 
 import maf.deltaDebugging.gtr.transformations.Transformation
 import maf.language.scheme.*
