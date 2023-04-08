@@ -29,7 +29,6 @@ object TransformationManager:
       DeleteChildSimple,
       ReplaceIdentifier,
       ReplaceCalls,
-      ReplaceBySimpleValue,
       ReplaceByValue,
       RemoveCalls
     )
