@@ -5,7 +5,7 @@ import maf.deltaDebugging.gtr.transformations.schemeLambda.*
 import maf.deltaDebugging.gtr.transformations.schemeLet.*
 import maf.deltaDebugging.gtr.transformations.generics.*
 import maf.deltaDebugging.gtr.transformations.schemeIdentifier.ReplaceIdentifier
-import maf.deltaDebugging.gtr.transformations.schemePrim.FoldPrimitives
+import maf.deltaDebugging.gtr.transformations.schemePrim.ReplacePrimCalls
 
 object TransformationManager:
   
@@ -21,7 +21,7 @@ object TransformationManager:
       IfToBegin,
       LetIdentifierShallowDrop,
       ApplToBegin,
-      FoldPrimitives,
+      ReplacePrimCalls,
       //LetIdentifierDeepDrop,
       //RemoveLambdaParamWithDeepDrop,
       FlattenThunk,
