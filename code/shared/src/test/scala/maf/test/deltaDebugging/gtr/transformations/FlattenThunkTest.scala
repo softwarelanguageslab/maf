@@ -5,13 +5,13 @@ import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class FlattenThunkTest extends AnyFlatSpecTransformations {
-  "RemoveCallsAndReplaceByBody" should "remove the calls to define-bound lambda, and replace lambda by body" in {
+  "FlattenThunk" should "flatten defined thunks" in {
     val programText: String =
       """(begin
-        |  (define (f x) (* x x))
-        |  (f 1)
+        |  (define (f) (* 10 10))
+        |  (f)
         |  (+ 2 2)
-        |  (f 111))
+        |  (f))
         |  """.stripMargin
 
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
@@ -20,15 +20,15 @@ class FlattenThunkTest extends AnyFlatSpecTransformations {
     val suggestedTrees = FlattenThunk.transform(t, defineExp).toList //should remove calls to f
 
     assert(suggestedTrees.length == 1)
-    assertTreeString("(begin (define f (begin (* x x))) (+ 2 2))", suggestedTrees)
+    assertTreeString("(begin (define f (begin (* 10 10))) f (+ 2 2) f)", suggestedTrees)
   }
 
-  "RemoveCallsAndReplaceByBody" should "remove the calls to let-bound lambda, and replace the lambda by body" in {
+  "FlattenThunk" should "flatten let-bound thunks" in {
     val programText: String =
       """(begin
-        |  (let ((f (lambda (x) (* x x))))
-        |    (f 10)
-        |    (f 100)
+        |  (let ((f (lambda () (* 10 10))))
+        |    (f)
+        |    (f)
         |    1000)
         |  (+ 2 2))
         |  """.stripMargin
@@ -37,8 +37,9 @@ class FlattenThunkTest extends AnyFlatSpecTransformations {
     val letExp = t.exps.head
 
     val suggestedTrees = FlattenThunk.transform(t, letExp).toList //should remove calls to f
+
     assert(suggestedTrees.length == 1)
-    assertTreeString("(begin (let ((f (begin (* x x)))) 1000) (+ 2 2))", suggestedTrees)
+    assertTreeString("(begin (let ((f (begin (* 10 10)))) f f 1000) (+ 2 2))", suggestedTrees)
   }
 
   "RemoveCallsAndReplaceByBody" should "return an empty list given a non-lambda-binding exp" in {

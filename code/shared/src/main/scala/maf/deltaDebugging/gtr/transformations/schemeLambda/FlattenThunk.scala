@@ -12,16 +12,16 @@ object FlattenThunk extends Transformation:
     def removeCallsAndReplaceByBody(lambda: SchemeLambdaExp, id: Identifier): Unit =
       val lambdaReplaced = tree.replace(lambda, SchemeBegin(lambda.body, lambda.idn))
 
-      val callsRemoved = lambdaReplaced.deleteChildren({
-        case SchemeFuncall(f: SchemeVarExp, _, _) =>
-          f.id.name == id.name
-        case _ => false
+      val callsRemoved = lambdaReplaced.map(subExp => {
+        subExp match
+          case SchemeFuncall(f: SchemeVarExp, args, idn) =>
+            if f.id.name equals id.name then
+              f
+            else subExp
+          case _ => subExp
       })
 
-      callsRemoved match
-        case Some(tree: SchemeExp) =>
-          addTree(tree)
-        case _ =>
+      addTree(callsRemoved)
 
     node match
       case exp: SchemeLettishExp =>
