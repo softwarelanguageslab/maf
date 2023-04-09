@@ -38,7 +38,7 @@ object GTR:
                                deadCodeRemover: Option[SchemeExp => Option[SchemeExp]]): SchemeExp =
     for(node <- tree.levelNodes(lvl))
       for (candidateTree <- transformation.transform(tree, node))
-        if candidateTree.size < tree.size then
+        if candidateTree.size <= tree.size then
           transformation.invoke()
           if oracle(candidateTree) then
             onOracleHit(candidateTree)

@@ -4,6 +4,7 @@ import maf.deltaDebugging.gtr.transformations.schemeSequencify.IfToBegin
 import maf.deltaDebugging.gtr.transformations.schemeLambda.*
 import maf.deltaDebugging.gtr.transformations.schemeLet.*
 import maf.deltaDebugging.gtr.transformations.generics.*
+import maf.deltaDebugging.gtr.transformations.schemeDefine.{DefineDrop, DefineReplace}
 import maf.deltaDebugging.gtr.transformations.schemeIdentifier.ReplaceIdentifier
 import maf.deltaDebugging.gtr.transformations.schemePrim.ReplacePrimCalls
 
@@ -28,6 +29,8 @@ object TransformationManager:
       DeleteChildSimple,
       ReplaceIdentifier,
       ReplaceCalls,
-      ReplaceByValue,
       RemoveCalls,
+      LetToBegin,
+      DefineDrop,
+      DefineReplace,
     )
