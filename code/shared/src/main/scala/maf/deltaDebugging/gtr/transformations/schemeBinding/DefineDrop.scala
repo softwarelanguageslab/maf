@@ -1,7 +1,7 @@
-package maf.deltaDebugging.gtr.transformations.schemeDefine
+package maf.deltaDebugging.gtr.transformations.schemeBinding
 
 import maf.deltaDebugging.gtr.transformations.Transformation
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, RacketModule, RacketModuleExpose, RacketModuleLoad, RacketProvide, RacketRequire, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSanitizer, SchemeSetExp, SchemeSink, SchemeSource, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.language.scheme.*
 
 object DefineDrop extends Transformation:
   override val name: String = "DefineDrop"

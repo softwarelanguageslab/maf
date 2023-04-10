@@ -1,7 +1,7 @@
-package maf.deltaDebugging.gtr.transformations.schemeDefine
+package maf.deltaDebugging.gtr.transformations.schemeBinding
 
 import maf.deltaDebugging.gtr.transformations.Transformation
-import maf.deltaDebugging.gtr.transformations.schemeDefine.DefineDrop.addTree
+import maf.deltaDebugging.gtr.transformations.schemeBinding.DefineDrop.addTree
 import maf.deltaDebugging.gtr.transformations.traits.Replacing
 import maf.language.scheme.{SchemeDefineVariable, SchemeExp, SchemeLambdaExp, SchemeVarExp}
 

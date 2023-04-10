@@ -2,9 +2,8 @@ package maf.deltaDebugging.gtr.transformations
 
 import maf.deltaDebugging.gtr.transformations.schemeSequencify.IfToBegin
 import maf.deltaDebugging.gtr.transformations.schemeLambda.*
-import maf.deltaDebugging.gtr.transformations.schemeLet.*
+import maf.deltaDebugging.gtr.transformations.schemeBinding.*
 import maf.deltaDebugging.gtr.transformations.generics.*
-import maf.deltaDebugging.gtr.transformations.schemeDefine.{DefineDrop, DefineReplace}
 import maf.deltaDebugging.gtr.transformations.schemeIdentifier.ReplaceIdentifier
 import maf.deltaDebugging.gtr.transformations.schemePrim.ReplacePrimCalls
 
@@ -20,17 +19,15 @@ object TransformationManager:
     List(
       IfToBegin,
       ReplacePrimCalls,
-      LetIdentifierReplace,
-      LetIdentifierDeepDrop,
+      BindingReplace,
+      BindingDrop,
       RemoveLambdaParamWithDeepDrop,
       RemoveLambdaParamByReplacement,
-      FlattenThunk,
+      ThunkToBegin,
       ReplaceByChild,
       DeleteChildSimple,
       ReplaceIdentifier,
       ReplaceCalls,
       RemoveCalls,
       LetToBegin,
-      DefineDrop,
-      DefineReplace,
     )

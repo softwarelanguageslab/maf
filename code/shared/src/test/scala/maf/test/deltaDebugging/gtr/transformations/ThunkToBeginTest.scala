@@ -1,10 +1,10 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeLambda.FlattenThunk
+import maf.deltaDebugging.gtr.transformations.schemeLambda.ThunkToBegin
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
-class FlattenThunkTest extends AnyFlatSpecTransformations {
+class ThunkToBeginTest extends AnyFlatSpecTransformations {
   "FlattenThunk" should "flatten defined thunks" in {
     val programText: String =
       """(begin
@@ -17,7 +17,7 @@ class FlattenThunkTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val defineExp = t.exps.head
 
-    val suggestedTrees = FlattenThunk.transform(t, defineExp).toList //should remove calls to f
+    val suggestedTrees = ThunkToBegin.transform(t, defineExp).toList //should remove calls to f
 
     assert(suggestedTrees.length == 1)
     assertTreeString("(begin (define f (begin (* 10 10))) f (+ 2 2) f)", suggestedTrees)
@@ -36,7 +36,7 @@ class FlattenThunkTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = FlattenThunk.transform(t, letExp).toList //should remove calls to f
+    val suggestedTrees = ThunkToBegin.transform(t, letExp).toList //should remove calls to f
 
     assert(suggestedTrees.length == 1)
     assertTreeString("(begin (let ((f (begin (* 10 10)))) f f 1000) (+ 2 2))", suggestedTrees)
@@ -54,7 +54,7 @@ class FlattenThunkTest extends AnyFlatSpecTransformations {
     val t: SchemeBegin = SchemeParser.parseProgramText(programText).last.asInstanceOf[SchemeBegin]
     val letExp = t.exps.head
 
-    val suggestedTrees = FlattenThunk.transform(t, letExp).toList
+    val suggestedTrees = ThunkToBegin.transform(t, letExp).toList
     assert(suggestedTrees equals List())
   }
 }

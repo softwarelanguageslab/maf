@@ -1,10 +1,10 @@
-package maf.deltaDebugging.gtr.transformations.schemeLet
+package maf.deltaDebugging.gtr.transformations.schemeBinding
 
 import maf.deltaDebugging.gtr.transformations.Transformation
 import maf.language.scheme.{SchemeExp, SchemeLettishExp}
 
-object LetIdentifierDeepDrop extends Transformation:
-  override val name: String = "LetIdentifierDeepDrop"
+object BindingDrop extends Transformation:
+  override val name: String = "BindingDrop"
 
   def transformAndAdd(tree: SchemeExp, node: SchemeExp): Unit =
     node match
