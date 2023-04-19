@@ -7,14 +7,16 @@ import maf.core.Expression
 import scala.annotation.tailrec
 
 object GTR:
-  @tailrec
+  var fixpoint = true
+  //@tailrec
   def reduce(tree: SchemeExp,
              oracle: SchemeExp => Boolean,
              onOracleHit: SchemeExp => Unit,
              transformations: List[Transformation],
              deadCodeRemover: Option[SchemeExp => Option[SchemeExp]] = None): SchemeExp =
+    fixpoint = true
     val reducedTree: SchemeExp = BFT(tree, oracle, onOracleHit, transformations, deadCodeRemover)
-    if tree.size == reducedTree.size then
+    if fixpoint then
       //println("GTR total transformation count: " + transformations.map(_.getHits).fold(0)(_ + _))
       reducedTree
     else reduce(reducedTree, oracle, onOracleHit, transformations, deadCodeRemover)
@@ -41,6 +43,7 @@ object GTR:
         if candidateTree.size <= tree.size then
           transformation.invoke()
           if oracle(candidateTree) then
+            fixpoint = false
             onOracleHit(candidateTree)
             transformation.hit()
             deadCodeRemover match
