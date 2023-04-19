@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 
 object GTR:
   var fixpoint = true
-  //@tailrec
+  @tailrec
   def reduce(tree: SchemeExp,
              oracle: SchemeExp => Boolean,
              onOracleHit: SchemeExp => Unit,
