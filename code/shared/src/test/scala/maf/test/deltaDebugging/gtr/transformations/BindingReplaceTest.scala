@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeBinding.{BindingDrop, BindingReplace}
+import maf.deltaDebugging.treeDD.transformations.schemeBinding.{BindingDrop, BindingReplace}
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 
 class BindingReplaceTest extends AnyFlatSpecTransformations {

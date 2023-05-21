@@ -2,7 +2,7 @@ package maf.test.deltaDebugging.soundnessDD.variants.killLambda
 
 import maf.test.deltaDebugging.soundnessDD.variants.Evaluate
 
-object SaveDeadCode:
+object SaveKillLambda:
   def save(): Unit = {
     Evaluate.save(
       List(
@@ -12,7 +12,7 @@ object SaveDeadCode:
         new SchemeModFLocalAdaptiveTests4,
         new SchemeModFLocalAdaptiveTests5
       ),
-      "deadCodeDataCollector",
+      "killLambdaDataCollector",
       KillLambdaDD.dataCollector
     )
   }

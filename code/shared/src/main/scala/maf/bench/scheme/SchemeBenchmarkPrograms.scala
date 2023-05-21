@@ -92,48 +92,11 @@ object SchemeBenchmarkPrograms:
       "Streams.scm", // Uses define-macro.
       "callcc.scm" // call/cc not yet support in concrete interpreter
     )
-    lazy val ddVarious: Set[String] = fromFolder("test/R5RS/various")(
-      ".DS_Store",
-      "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
-      "quasiquoting.scm", // Uses unquote-splicing.
-      "Streams.scm", // Uses define-macro.
-      "callcc.scm", // call/cc not yet support in concrete interpreter
-      "bound-precision.scm",
-      "church-2-num.scm",
-      "church-6.scm",
-      "count.scm",
-      "define.scm",
-      "eta.scm",
-      "example.scm",
-      "fact.scm",
-      "fib.scm",
-      "SICP-compiler.scm",
-      "scm2c.scm",
-      "infinite-1.scm",
-      "infinite-2.scm",
-      "infinite-3.scm",
-      "regex.scm",
-      "kcfa3.scm",
-      "work.scm",
-      "four-in-a-row.scm",
-      "foo.scm",
-      "inc.scm",
-      "kcfa2.scm",
-      "lambda-update.scm",
-      "let.scm",
-      "letrec-begin.scm",
-      "map.scm",
-      "my-list.scm",
-      "nested-defines.scm",
-      "procedure.scm",
-      "rotate.scm",
-      "splitargs.scm",
-      "sq.scm",
-      "string.scm",
-      "strong-update.scm",
-      "sym.scm",
-      "test.scm",
-      "widen.scm",
+    lazy val ddSet: Set[String] = fromFolder("test/R5RS/DD")(
+      ".DS_Store"
+    )
+    lazy val succesRateSet: Set[String] = fromFolder("test/R5RS/DD2")(
+      ".DS_Store"
     )
     lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
     lazy val sequentialBenchmarks: Set[String] =

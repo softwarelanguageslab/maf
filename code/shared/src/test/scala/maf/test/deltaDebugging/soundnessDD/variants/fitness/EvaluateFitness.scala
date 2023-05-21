@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.soundnessDD.variants.fitness
 
-import maf.deltaDebugging.gtr.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.transformations.TransformationManager
 import maf.test.DDBenchmarks
 import maf.test.deltaDebugging.soundnessDD.variants.Evaluate
 import maf.util.benchmarks.Statistics

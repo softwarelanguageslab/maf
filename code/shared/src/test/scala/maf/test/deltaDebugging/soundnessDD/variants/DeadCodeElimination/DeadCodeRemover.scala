@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.variants.DeadCodeElimination
 
 import maf.core.*
-import maf.deltaDebugging.gtr.transformations.traits.Replacing
+import maf.deltaDebugging.treeDD.transformations.traits.Replacing
 import maf.language.scheme.interpreter.ConcreteValues
 import maf.language.scheme.*
 import maf.language.sexp.*

@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.variants.SDCE
 
-import maf.deltaDebugging.gtr.GTR
-import maf.deltaDebugging.gtr.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.SchemeReduce
+import maf.deltaDebugging.treeDD.transformations.TransformationManager
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues
 import maf.test.deltaDebugging.soundnessDD.variants.*
@@ -21,7 +21,7 @@ object SDCE_DD:
 
     val startTime = System.currentTimeMillis()
 
-    val reduced = GTR.reduce(
+    val reduced = SchemeReduce.reduce(
       program,
       p => {
         oracleInvocations += 1

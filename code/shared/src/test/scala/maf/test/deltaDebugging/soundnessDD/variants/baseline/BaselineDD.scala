@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.variants.baseline
 
-import maf.deltaDebugging.gtr.GTR
-import maf.deltaDebugging.gtr.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.variants.GTR
 import maf.language.scheme.SchemeExp
 import maf.test.deltaDebugging.soundnessDD.variants.*
 
@@ -30,7 +30,6 @@ object BaselineDD:
           case (None, (runTime, analysisTime)) =>
             false
       },
-      identity,
       TransformationManager.genericTransformations
     )
 

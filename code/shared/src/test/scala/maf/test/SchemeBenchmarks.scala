@@ -7,7 +7,10 @@ trait VariousSequentialBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.various)
     
 trait DDBenchmarks extends SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.ddVarious)
+    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.ddSet)
+    
+trait SuccesRateBenchmarks extends SchemeBenchmarkTests:
+    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.succesRateSet)
 
 trait RandomSequentialBenchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.selectRandomSeq(3))

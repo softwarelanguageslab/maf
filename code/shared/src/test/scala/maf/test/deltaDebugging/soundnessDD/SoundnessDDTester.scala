@@ -16,7 +16,7 @@ import scala.concurrent.duration.{Duration, SECONDS}
 
 trait SoundnessDDTester extends SchemeSoundnessTests:
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, SECONDS))
-  override def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(5, SECONDS)) //remember: concrete run may not halt
+  override def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, SECONDS)) //remember: concrete run may not halt
 
   protected def compareResults(
                                 analysis: Analysis,

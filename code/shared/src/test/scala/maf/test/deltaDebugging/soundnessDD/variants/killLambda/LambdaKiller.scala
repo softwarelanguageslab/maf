@@ -4,7 +4,7 @@ import maf.language.scheme.{SchemeExp, SchemeFuncall, SchemeLambda, SchemeValue,
 import maf.language.scheme.interpreter.ConcreteValues
 import maf.language.sexp.*
 import maf.core.*
-import maf.deltaDebugging.gtr.transformations.traits.Replacing
+import maf.deltaDebugging.treeDD.transformations.traits.Replacing
 
 import scala.util.Random
 

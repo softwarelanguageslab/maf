@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.variants.parallel
 
-import maf.deltaDebugging.gtr.{GTR, GTRParallel}
-import maf.deltaDebugging.gtr.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.{SchemeReduce, ParallelSchemeReduce}
+import maf.deltaDebugging.treeDD.transformations.TransformationManager
 import maf.language.scheme.SchemeExp
 import maf.test.deltaDebugging.soundnessDD.variants.counting.CountingTester
 import maf.test.deltaDebugging.soundnessDD.variants.{DataCollector, ReductionData}
@@ -19,7 +19,7 @@ object ParallelDD:
 
     val startTime = System.currentTimeMillis()
 
-    val reduced = GTRParallel.reduce(
+    val reduced = ParallelSchemeReduce.reduce(
       program,
       p => {
         val candidateSize = p.size

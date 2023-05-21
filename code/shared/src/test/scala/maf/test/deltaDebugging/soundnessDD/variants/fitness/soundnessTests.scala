@@ -4,10 +4,10 @@ import maf.core.Position
 import maf.language.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser}
 import maf.language.scheme.primitives.SchemePrelude
 import maf.modular.scheme.SchemeConstantPropagationDomain
-import maf.modular.scheme.modflocal.{SchemeModFLocal,  SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
+import maf.modular.scheme.modflocal.{SchemeModFLocal, SchemeModFLocalAnalysisResults, SchemeModFLocalNoSensitivity}
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.test.deltaDebugging.realBugs.*
-import maf.test.{AllSequentialBenchmarks, DDBenchmarks, RandomSequentialBenchmarks, VariousSequentialBenchmarks}
+import maf.test.{AllSequentialBenchmarks, DDBenchmarks, RandomSequentialBenchmarks, SuccesRateBenchmarks, VariousSequentialBenchmarks}
 
 trait SchemeModFLocalSoundnessTests extends FitnessTester with DDBenchmarks:
   //override def benchmarks: Set[Benchmark] = Set("test/R5RS/various/SICP-compiler.scm")

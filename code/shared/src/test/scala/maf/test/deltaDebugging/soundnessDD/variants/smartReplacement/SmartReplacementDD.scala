@@ -1,9 +1,9 @@
 package maf.test.deltaDebugging.soundnessDD.variants.smartReplacement
 
 import maf.core.Identity
-import maf.deltaDebugging.gtr.GTR
-import maf.deltaDebugging.gtr.transformations.TransformationManager
-import maf.deltaDebugging.gtr.transformations.traits.Replacing
+import maf.deltaDebugging.treeDD.SchemeReduce
+import maf.deltaDebugging.treeDD.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.transformations.traits.Replacing
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues
 import maf.test.deltaDebugging.soundnessDD.variants.*
@@ -26,7 +26,7 @@ object SmartReplacementDD:
     Replacing.valuesMap = valuesMap
     Replacing.problematicValue = problematicValue
 
-    val reduced = GTR.reduce(
+    val reduced = SchemeReduce.reduce(
       program,
       p => {
         oracleInvocations += 1

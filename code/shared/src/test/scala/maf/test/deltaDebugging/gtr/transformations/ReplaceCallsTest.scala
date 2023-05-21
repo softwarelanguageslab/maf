@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeLambda.ReplaceCalls
+import maf.deltaDebugging.treeDD.transformations.schemeLambda.ReplaceCalls
 import maf.language.scheme.{SchemeBegin, SchemeExp, SchemeParser}
 
 class ReplaceCallsTest extends AnyFlatSpecTransformations:

@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.variants.smartReplacement
 
 import maf.core.Identity
-import maf.deltaDebugging.gtr.transformations.traits.Replacing
+import maf.deltaDebugging.treeDD.transformations.traits.Replacing
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO, IO, SmartReplaceInterpreter}
