@@ -19,12 +19,12 @@ class KillLambdaInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _
   import ConcreteValues._
   import scala.util.control.TailCalls._
 
-  private var calls: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]] = Map()
+  private var calls: Map[SchemeLambda, (Set[(SchemeFuncall, ConcreteValues.Value)], Int)] = Map()
   def runAndIdentifyCalledLambdas(
                                    program: SchemeExp,
                                    timeout: Timeout.T,
                                    version: Version = New
-                                 ): (Value, Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]]) =
+                                 ): (Value, Map[SchemeLambda, (Set[(SchemeFuncall, ConcreteValues.Value)], Int)]) =
     calls = Map()
     setStore(initialSto)
     (eval(program, initialEnv, timeout, version).result, calls)
@@ -80,7 +80,10 @@ class KillLambdaInterpreter(cb: (Identity, ConcreteValues.Value) => Unit = (_, _
         yield {
           caughtLambda match
             case Some(lambda) =>
-              calls = calls + (lambda -> calls.getOrElse(lambda, Set()).union(Set((call, res))))
+              calls = calls + (lambda -> {
+                val prev = calls.getOrElse(lambda, (Set(), 0))
+                (prev._1.union(Set((call, res))), prev._2 + 1)
+              })
             case _ =>
           res
         }

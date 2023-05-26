@@ -10,39 +10,31 @@ import scala.util.Random
 
 object LambdaKiller:
   type Benchmark = String
+  private var oracleTreeSizes: List[Int] = List()
 
   def killLambdas(program: SchemeExp,
-                  dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]],
-                  staticProfiling: Array[((Int, Int), Int)],
+                  dynAnalysis: Map[SchemeLambda, (Set[(SchemeFuncall, ConcreteValues.Value)], Int)],
                   deadCodeTester: KillLambdaTester,
-                  benchmark: Benchmark): SchemeExp =
+                  benchmark: Benchmark): (SchemeExp, List[Int]) =
+    oracleTreeSizes = List()
 
-    var lambdas = dynAnalysis.keySet.toList
-    lambdas = lambdas.sortWith((l1, l2) => {
-      val l1Profiling = staticProfiling.find(tpl => tpl._1 == (l1.idn.idn.line, l1.idn.idn.col))
-      val l2Profiling = staticProfiling.find(tpl => tpl._1 == (l2.idn.idn.line, l2.idn.idn.col))
-      l1Profiling match
-        case Some(tplL1) =>
-          l2Profiling match
-            case Some(tplL2) =>
-              tplL1._2 < tplL2._2
-            case _ => true
-        case _ => true
-    }).reverse
+    var lambdas = dynAnalysis.toList
+    lambdas = lambdas.sortBy(l => {
+      l._2._2
+    })
 
     for (lambdaToKill <- dynAnalysis.keySet)
-      val callsAndReturnValues = dynAnalysis(lambdaToKill)
-      val result = killLambda(program, lambdaToKill, callsAndReturnValues, deadCodeTester, benchmark)
+      //val callsAndReturnValues = dynAnalysis(lambdaToKill)
+      val result = killLambda(program, lambdaToKill, deadCodeTester, benchmark)
       if result.nonEmpty then
-        return killLambdas(result.get._1, result.get._2, staticProfiling, deadCodeTester, benchmark)
-    program
+        return killLambdas(result.get._1, result.get._2, deadCodeTester, benchmark)
+    (program, oracleTreeSizes)
 
   def killLambda(program: SchemeExp,
                  lambdaToKill: SchemeLambda,
-                 callsAndReturnValues: Set[(SchemeFuncall, ConcreteValues.Value)],
                  deadCodeTester: KillLambdaTester,
                  benchmark: Benchmark):
-    Option[(SchemeExp, Map[SchemeLambda, Set[(SchemeFuncall, ConcreteValues.Value)]])] =
+    Option[(SchemeExp, Map[SchemeLambda, (Set[(SchemeFuncall, ConcreteValues.Value)], Int)])] =
 
       val lambdaKilled = program.deleteChildren(exp => {
         exp eq lambdaToKill
@@ -50,9 +42,24 @@ object LambdaKiller:
 
       lambdaKilled match
         case Some(programVariant) =>
-
           val undefinedVars: List[String] = programVariant.findUndefinedVariables().map(id => id.name)
+          val lambdaName = lambdaToKill.name
+          lambdaName match
+            case Some(name) =>
+              val callsReplaced = Replacing.replaceCallWithAllValues(programVariant, Identifier(name, NoCodeIdentity))
+              for (candidate <- callsReplaced) {
+                val oracleResults = deadCodeTester.runAndFindLambdas(candidate, benchmark)
+                oracleTreeSizes = oracleTreeSizes.::(candidate.size)
+                oracleResults match
+                  case (Some(tpl), _) =>
+                    if tpl._1.nonEmpty then
+                      return Some(candidate, tpl._2)
+                  case _ =>
+              }
+              None
+            case _ => None
 
+          /*
           val callsReplaced = programVariant.map(exp => {
             exp match
               case call: SchemeFuncall =>
@@ -77,6 +84,7 @@ object LambdaKiller:
                 return Some(callsReplaced, tpl._2)
             case _ =>
           None
+          */
         case _ => None
 
 

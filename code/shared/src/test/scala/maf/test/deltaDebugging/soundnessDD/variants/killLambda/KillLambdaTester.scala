@@ -19,13 +19,14 @@ trait KillLambdaTester extends SoundnessDDTester {
   override def createInterpreter(addResult: (Identity, Value) => Unit, io: IO, benchmark: Benchmark): KillLambdaInterpreter =
     new KillLambdaInterpreter(addResult, io)
 
-  def evalProgramAndFindLambdas(program: SchemeExp, benchmark: Benchmark): (Map[Identity, Set[Value]], Map[SchemeLambda, Set[(SchemeFuncall, Value)]]) =
+  def evalProgramAndFindLambdas(program: SchemeExp, benchmark: Benchmark):
+  (Map[Identity, Set[Value]], Map[SchemeLambda, (Set[(SchemeFuncall, Value)], Int)]) =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
     val times = concreteRuns(benchmark)
     val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
     val interpreter: KillLambdaInterpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
-    var dynAnalysis: Map[SchemeLambda, Set[(SchemeFuncall, Value)]] = Map()
+    var dynAnalysis: Map[SchemeLambda, (Set[(SchemeFuncall, Value)], Int)] = Map()
     for _ <- 1 to times do
       val (ellapsed, _) = Timer.time({
         val tpl = interpreter.runAndIdentifyCalledLambdas(program, timeout)
@@ -36,8 +37,7 @@ trait KillLambdaTester extends SoundnessDDTester {
 
   def runAndFindLambdas(program: SchemeExp, benchmark: Benchmark):
   (Option[(String,
-    Map[SchemeLambda, Set[(SchemeFuncall, Value)]],
-    Array[((Int, Int), Int)]
+    Map[SchemeLambda, (Set[(SchemeFuncall, Value)], Int)],
     )], (Long, Long)) =
     var evalStartTime: Long = 0
     var evalRunTime: Long = 0
@@ -51,7 +51,7 @@ trait KillLambdaTester extends SoundnessDDTester {
 
     var concreteResults: Option[Map[Identity, Set[Value]]] = None
     var anl: Option[Analysis] = None
-    var calledLambdas: Option[Map[SchemeLambda, Set[(SchemeFuncall, Value)]]] = None
+    var calledLambdas: Option[Map[SchemeLambda, (Set[(SchemeFuncall, Value)], Int)]] = None
 
     try
       evalStartTime = System.currentTimeMillis()
@@ -79,23 +79,18 @@ trait KillLambdaTester extends SoundnessDDTester {
       (None, (evalRunTime, analysisRuntime))
     else (Some((compareResults(anl.get, concreteResults.get),
       calledLambdas.get,
-      anl.get.asInstanceOf[SequentialWorklistAlgorithm[SchemeExp]].getReAnalysisMap().toArray.sortWith((tpl1, tpl2) => tpl1._2 > tpl2._2),
     )), (evalRunTime, analysisRuntime))
 
   override def onBenchmark(benchmark: Benchmark): Unit =
-    println("DeadCode >>> running benchmark: " + benchmark)
+    println("Kill Lambda >>> running benchmark: " + benchmark)
     // load the benchmark program
     val content = Reader.loadFile(benchmark)
     val program = parseProgram(content, benchmark)
 
     runAndFindLambdas(program, benchmark) match
-      case (Some((failureMsg, dynAnalysis, staticProfiling)), _) =>
+      case (Some((failureMsg, dynAnalysis)), _) =>
         if failureMsg.nonEmpty then
           KillLambdaDD.bugName = bugName
-
-          val postLambdaKills = LambdaKiller.killLambdas(program, dynAnalysis, staticProfiling, this, benchmark)
-          println("pre: " + program.size)
-          println("post: " + postLambdaKills.size)
-          KillLambdaDD.reduce(program, postLambdaKills, this, benchmark)
+          KillLambdaDD.reduce(program, program, this, benchmark, dynAnalysis)
       case _ =>
 }

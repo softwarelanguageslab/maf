@@ -7,7 +7,7 @@ object SavePreHalt:
   def save(): Unit = {
     Evaluate.save(
       List(
-        //new SchemeModFLocalAdaptiveTests1,
+        new SchemeModFLocalAdaptiveTests1,
         new SchemeModFLocalAdaptiveTests2,
         new SchemeModFLocalAdaptiveTests3,
         new SchemeModFLocalAdaptiveTests4,

@@ -1,11 +1,13 @@
 package maf.test.deltaDebugging.soundnessDD.variants
 
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
+import maf.test.deltaDebugging.soundnessDD.variants.SDCE.SaveSDCE
 import maf.test.deltaDebugging.soundnessDD.variants.baseline.{BaselineDD, SaveBaseline}
 import maf.test.deltaDebugging.soundnessDD.variants.counting.{CountingDD, SaveCounting}
 import maf.test.deltaDebugging.soundnessDD.variants.killLambda.{KillLambdaDD, SaveKillLambda}
 import maf.test.deltaDebugging.soundnessDD.variants.fitness.{FitnessDD, SaveFitness}
 import maf.test.deltaDebugging.soundnessDD.variants.parallel.{ParallelDD, SaveParallel}
+import maf.test.deltaDebugging.soundnessDD.variants.preHalt.SavePreHalt
 import maf.test.deltaDebugging.soundnessDD.variants.smartReplacement.SaveSmartReplacement
 import maf.test.deltaDebugging.soundnessDD.variants.transforming.{SaveTransforming, SchemeModFLocalAdaptiveTests1, TransformingDD}
 import maf.util.benchmarks.Statistics
@@ -23,19 +25,11 @@ object Evaluate:
       System.gc()
     }
 
-    val warmupIterations = 1
+    val warmupIterations = 3
     val dataIterations = 5
 
-    /*
-    Collected:
-      - Fitness
-      - Baseline
-      - Parallel
-      - Counting
-    */
-
     for(i <- 1 to warmupIterations) {
-      SaveTransforming.save()
+      SaveSDCE.save()
     }
 
     println("JIT warm-up done")
@@ -43,10 +37,8 @@ object Evaluate:
     reset()
 
     for (i <- 1 to dataIterations) {
-      SaveTransforming.save()
+      SaveSDCE.save()
     }
-
-    reset()
   }
 
   def save(tests: List[SoundnessDDTester], dataCollectorString: String, dataCollector: DataCollector): Unit = {
@@ -116,23 +108,98 @@ object Evaluate:
 
     timeCreateBoxplot(randomData.zip(transformingData), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ3/runtimes.txt")
 
+  def RQ4(transformingData: List[ReductionData], Layered: List[ReductionData]): Unit =
+    println("RQ4: is layering useful?")
+
+    timeCreateRow(transformingData, "Ordered Scheme-Reduce")
+    timeCreateRow(Layered, "Layered Scheme-Reduce")
+
+    timeCreateBoxplot(transformingData.zip(Layered), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ4/_1runtimes.txt")
+
+  def RQ5(transformingData: List[ReductionData], parallelData: List[ReductionData]): Unit =
+    println("RQ5: is parallelism useful?")
+
+    timeCreateRow(transformingData, "Ordered Scheme-Reduce")
+    timeCreateRow(parallelData, "Parallel Scheme-Reduce")
+
+    timeCreateBoxplot(transformingData.zip(parallelData), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ5/runtimes.txt")
+
+  def RQ6(transformingData: List[ReductionData], countingData: List[ReductionData]): Unit =
+    println("RQ6")
+
+    sizeCreateRow(transformingData)
+    sizeCreateRow(countingData)
+
+    sizeCreateBoxplot(transformingData, "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ6/SchemeReduce.txt")
+    sizeCreateBoxplot(countingData, "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ6/BE.txt")
+
+  def RQ7(transformingData: List[ReductionData], countingData: List[ReductionData]): Unit =
+    println("RQ7: transforming vs counting")
+
+    timeCreateRow(transformingData, "Ordered Scheme-Reduce")
+    timeCreateRow(countingData, "BE Ordered Scheme-Reduce")
+
+    timeCreateBoxplot(transformingData.zip(countingData), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ7/runtimes.txt")
+
+  def RQ8(transformingData: List[ReductionData], preHaltData: List[ReductionData]): Unit =
+    println("RQ8: transforming vs preHalt")
+
+    timeCreateRow(transformingData, "Ordered Scheme-Reduce")
+    timeCreateRow(preHaltData, "EH Ordered Scheme-Reduce")
+
+    timeCreateBoxplot(transformingData.zip(preHaltData), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ8/runtimes.txt")
+
+  def RQ9(transformingData: List[ReductionData], killLambdaData: List[ReductionData]): Unit =
+    println("RQ9")
+
+    timeCreateRow(transformingData, "Ordered Scheme-Reduce")
+    timeCreateRow(killLambdaData, "kill lambda Scheme-Reduce")
+
+    timeCreateBoxplot(transformingData.zip(killLambdaData), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ9/runtimes.txt")
+
+  def RQ10(transformingData: List[ReductionData], UCE_Data: List[ReductionData]): Unit =
+    println("RQ10")
+
+    timeCreateRow(transformingData, "Ordered Scheme-Reduce")
+    timeCreateRow(UCE_Data, "UCE Scheme-Reduce")
+
+    timeCreateBoxplot(transformingData.zip(UCE_Data), "/Users/turgut/Desktop/cs5/thesis/evaluations/final/RQ10/runtimes.txt")
 
 object ReaderAndAnalyzeData {
   def main(args: Array[String]): Unit = {
-    val baselineDataCollector: DataCollector = DataCollector.readObject("baselineDataCollector")
+    val baselineDataCollector = DataCollector.readObject("baselineDataCollector")
     merge(baselineDataCollector)
-    val randomDatacollector: DataCollector = DataCollector.readObject("randomDataCollector")
+    val randomDatacollector = DataCollector.readObject("randomDataCollector")
     merge(randomDatacollector)
-    val transformingDataCollector: DataCollector = DataCollector.readObject("transformingDataCollector")
+    val transformingDataCollector = DataCollector.readObject("transformingDataCollector")
     merge(transformingDataCollector)
-    val countingDataCollector: DataCollector = DataCollector.readObject("countingDataCollector")
-    merge(countingDataCollector)
-    val parallelDataCollector: DataCollector = DataCollector.readObject("parallelDataCollector")
+    val parallelDataCollector = DataCollector.readObject("parallelDataCollector")
     merge(parallelDataCollector)
+    val LayeredDataCollector = DataCollector.readObject("LayeredDataCollector")
+    merge(LayeredDataCollector)
 
-    Evaluate.RQ1(baselineDataCollector.reductionData, randomDatacollector.reductionData)
+
+    val countingDataCollector = DataCollector.readObject("countingDataCollector")
+    merge(countingDataCollector)
+    val preHaltDataCollector = DataCollector.readObject("preHaltDataCollector")
+    merge(preHaltDataCollector)
+    val killLambdaDataCollector = DataCollector.readObject("killLambdaDataCollector")
+    merge(killLambdaDataCollector)
+    val UCEDataCollector = DataCollector.readObject("UCEDataCollector")
+    merge(UCEDataCollector)
+
+    /*Evaluate.RQ1(baselineDataCollector.reductionData, randomDatacollector.reductionData)
     Evaluate.RQ2(baselineDataCollector.reductionData, randomDatacollector.reductionData)
     Evaluate.RQ3(randomDatacollector.reductionData, transformingDataCollector.reductionData)
+    Evaluate.RQ4(transformingDataCollector.reductionData, LayeredDataCollector.reductionData)
+    Evaluate.RQ5(transformingDataCollector.reductionData, parallelDataCollector.reductionData)*/
+
+    Evaluate.RQ7(transformingDataCollector.reductionData, countingDataCollector.reductionData)
+    Evaluate.RQ8(transformingDataCollector.reductionData, preHaltDataCollector.reductionData)
+    Evaluate.RQ9(transformingDataCollector.reductionData, killLambdaDataCollector.reductionData)
+    Evaluate.RQ10(transformingDataCollector.reductionData, UCEDataCollector.reductionData)
+
+    //Evaluate.RQ6(transformingDataCollector.reductionData, countingDataCollector.reductionData)
   }
 
   /** Merge aggregates several (non-deterministic) time measurements, to increase confidence in our results */

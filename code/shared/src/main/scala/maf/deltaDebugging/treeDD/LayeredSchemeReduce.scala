@@ -8,10 +8,13 @@ object LayeredSchemeReduce:
              oracle: SchemeExp => Boolean,
              onOracleHit: SchemeExp => Unit,
              transformations: List[Transformation],
-             deadCodeRemover: Option[SchemeExp => Option[SchemeExp]] = None): SchemeExp =
+             deadCodeRemover: Option[SchemeExp => Option[SchemeExp]] = None,
+             layerSize: Int
+            ): SchemeExp =
     var reduced = tree
-    for(i <- 1 to transformations.length)
-      val subset = transformations.take(i)
+    var subset: List[Transformation] = List()
+    while subset.size != transformations.size do
+      subset = transformations.take(subset.size + layerSize)
       reduced = SchemeReduce.reduce(reduced, oracle, onOracleHit, subset, deadCodeRemover)
     reduced
 

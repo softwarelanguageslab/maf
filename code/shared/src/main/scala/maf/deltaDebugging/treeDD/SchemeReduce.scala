@@ -51,11 +51,7 @@ object SchemeReduce:
                 val maybeRemoved = remover(candidateTree)
                 maybeRemoved match
                   case Some(removed) =>
-                    if oracle(removed) then
-                      println("GTR pre:  " + candidateTree.size)
-                      println("GTR post: " + removed.size)
-                      return reduceLevelNodes(removed, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
-                    else return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
+                    return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
                   case _ => return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
               case _ => return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation, deadCodeRemover)
     tree

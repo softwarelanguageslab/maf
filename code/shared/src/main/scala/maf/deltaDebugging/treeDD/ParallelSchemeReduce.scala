@@ -37,21 +37,23 @@ object ParallelSchemeReduce:
                                transformations: List[Transformation]): SchemeExp =
     val nodes = tree.levelNodes(lvl)
     var candidates: List[SchemeExp] = List()
-    for (t <- transformations)
-      for(node <- nodes)
-        candidates = candidates ++ t.transform(tree, node)
-        if candidates.size >= 12 then
-          val maybeFound: Option[SchemeExp] = candidates.par.find(oracle(_)) //parallel oracle invocations
-          maybeFound match
-            case Some(c) =>
-              fixpoint = false
-              onOracleHit(c)
-              return reduceLevelNodes(c, lvl, oracle, onOracleHit, transformations)
-            case _ =>
-              candidates = List()
+    for (t <- transformations) {
+      for(node <- nodes) {
+        for(candidate <- t.transform(tree, node)) {
+          candidates = candidates.::(candidate)
+          if candidates.size == 16 then
+            candidates.par.find(oracle(_)) match
+              case Some(c) =>
+                fixpoint = false
+                onOracleHit(c)
+                return reduceLevelNodes(c, lvl, oracle, onOracleHit, transformations)
+              case _ =>
+                candidates = List()
+        }
+      }
+    }
 
-    val maybeFound = candidates.find(oracle(_))
-    maybeFound match
+    candidates.find(oracle(_)) match
       case Some(c) =>
         fixpoint = false
         onOracleHit(c)

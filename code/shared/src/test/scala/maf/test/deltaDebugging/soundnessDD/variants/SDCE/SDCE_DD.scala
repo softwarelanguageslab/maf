@@ -16,7 +16,7 @@ object SDCE_DD:
              soundnessTester: SDCE_Tester,
              benchmark: String): Unit =
 
-    var oracleInvocations = 0
+    var oracleInvocations = 1 //1, not 0, due to initial call to DeadCodeRemover
     var oracleTreeSizes: List[Int] = List()
 
     val startTime = System.currentTimeMillis()
@@ -36,7 +36,11 @@ object SDCE_DD:
       },
       identity,
       TransformationManager.allTransformations, /** Uses all Transformations! */
-      Some(newCandidate => Some(DeadCodeRemover.removeDeadLambdas(newCandidate, dynAnalysis, soundnessTester, benchmark)))
+      Some(newCandidate => {
+        oracleInvocations += 1
+        oracleTreeSizes = oracleTreeSizes.::(newCandidate.size)
+        Some(DeadCodeRemover.removeDeadCode(newCandidate, dynAnalysis, soundnessTester, benchmark))
+      })
     )
 
     val endTime = System.currentTimeMillis()

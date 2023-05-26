@@ -3,7 +3,7 @@ package maf.test.deltaDebugging.soundnessDD.variants.SDCE
 import maf.test.deltaDebugging.soundnessDD.variants.Evaluate
 import maf.util.benchmarks.Statistics
 
-object SaveTransforming:
+object SaveSDCE:
   def save(): Unit = {
     Evaluate.save(
       List(
@@ -13,7 +13,7 @@ object SaveTransforming:
         new SchemeModFLocalAdaptiveTests4,
         new SchemeModFLocalAdaptiveTests5
       ),
-      "transformingDataCollector",
+      "UCEDataCollector",
       SDCE_DD.dataCollector
     )
   }

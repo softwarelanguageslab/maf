@@ -11,10 +11,10 @@ import scala.util.Random
 object DeadCodeRemover:
   type Benchmark = String
 
-  def removeDeadLambdas(program: SchemeExp,
-                        dynAnalysis: Set[SchemeExp],
-                        deadCodeTester: SDCE_Tester,
-                        benchmark: Benchmark
+  def removeDeadCode(program: SchemeExp,
+                     dynAnalysis: Set[SchemeExp],
+                     deadCodeTester: SDCE_Tester,
+                     benchmark: Benchmark
             ): SchemeExp =
 
     val deadCodeRemoved = program.map(exp => {

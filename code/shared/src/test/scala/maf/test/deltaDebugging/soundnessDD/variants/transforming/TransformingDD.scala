@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.soundnessDD.variants.transforming
 
-import maf.deltaDebugging.treeDD.SchemeReduce
+import maf.deltaDebugging.treeDD.{LayeredSchemeReduce, SchemeReduce}
 import maf.deltaDebugging.treeDD.transformations.TransformationManager
 import maf.language.scheme.SchemeExp
 import maf.test.deltaDebugging.soundnessDD.variants.*
@@ -18,7 +18,7 @@ object TransformingDD:
 
     val startTime = System.currentTimeMillis()
 
-    val reduced = SchemeReduce.reduce(
+    val reduced = LayeredSchemeReduce.reduce(
       program,
       p => {
         oracleInvocations += 1
@@ -31,7 +31,9 @@ object TransformingDD:
             false
       },
       identity,
-      TransformationManager.allTransformations /** Uses all Transformations! */
+      TransformationManager.allTransformations /** Uses all Transformations! */,
+      None,
+      7
     )
 
     val endTime = System.currentTimeMillis()

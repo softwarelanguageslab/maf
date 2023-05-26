@@ -87,9 +87,7 @@ trait SDCE_Tester extends SoundnessDDTester {
     runAndCompare_(program, benchmark, None) match
       case Some((failureMsg, problematicValue, dynAnalysis)) =>
         if failureMsg.nonEmpty then
-          val postDCE = DeadCodeRemover.removeDeadLambdas(program, dynAnalysis, this, benchmark)
-          println("pre: " + program.size)
-          println("post: " + postDCE.size)
+          val postDCE = DeadCodeRemover.removeDeadCode(program, dynAnalysis, this, benchmark)
           SDCE_DD.problematicValue = problematicValue
           SDCE_DD.bugName = bugName
           SDCE_DD.reduce(postDCE, this, benchmark)

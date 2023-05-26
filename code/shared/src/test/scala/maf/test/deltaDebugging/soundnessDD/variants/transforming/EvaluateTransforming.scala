@@ -13,7 +13,7 @@ object SaveTransforming:
         new SchemeModFLocalAdaptiveTests4,
         new SchemeModFLocalAdaptiveTests5
       ),
-      "transformingDataCollector",
+      "7LayeredDataCollector",
       TransformingDD.dataCollector
     )
   }
