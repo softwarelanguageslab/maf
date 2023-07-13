@@ -144,8 +144,13 @@ trait BaseSchemeMonadicUndefiner:
     import maf.core.Monad.MonadIterableOps
 
     protected def letrectify(body: List[SchemeExp], bindings: List[(Identifier, SchemeExp)], topLevel: Boolean): List[SchemeExp] =
-        if bindings.size == 0 then body
-        else if topLevel then List(SchemeLetrec(bindings, List(SchemeVar(bindings.last._1)), Identity.none))
+        if bindings.isEmpty then body
+        else if topLevel then
+            // This can be cleaner, but this avoids creating a top-level letrec when the entire expression is just a let. (todo: also on other levels and when no let is needed)
+            bindings.last._2 match {
+                case lettishExp: SchemeLettishExp if bindings.size == 1 => List(lettishExp)
+                case _ => List(SchemeLetrec(bindings, List(SchemeVar(bindings.last._1)), Identity.none))
+            }
         else List(SchemeLetrec(bindings, body, Identity.none))
 
     protected def letrectify1(body: SchemeExp, bindings: List[(Identifier, SchemeExp)], topLevel: Boolean): List[SchemeExp] =

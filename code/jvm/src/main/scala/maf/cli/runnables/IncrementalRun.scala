@@ -170,9 +170,9 @@ object IncrementalRun extends App:
     List(
         //"test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
         //"test/changes/scheme/freeze.scm", // Nog niet precies.
-        "test/DEBUG2.scm",
+        //"test/DEBUG2.scm",
         //"test/DEBUG2B.scm",
-        //"test/DEBUG4.scm"
+        "test/DEBUG4.scm"
     ).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))

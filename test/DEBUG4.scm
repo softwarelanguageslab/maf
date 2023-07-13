@@ -1,12 +1,12 @@
 (letrec ((app (lambda (f)
                 (lambda ()
-                  (f app)))))
-  (let ((fun (lambda (x) (x 'end))))
+                  (f app))))
+         (fun (lambda (x) 'end)))
     (if ((app (lambda (ign) #f)))
       ((app fun))
       (<change>
         ((app fun))
-        ()))))
+        '())))
 
 ; Reductie van "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-4.scm". Incrementele analyse all opt niet precies.
 ;(define (a b) (lambda (c) (b c)))
