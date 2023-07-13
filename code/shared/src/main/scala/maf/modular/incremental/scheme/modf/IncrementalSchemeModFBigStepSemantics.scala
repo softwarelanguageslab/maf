@@ -13,6 +13,8 @@ import maf.modular.scheme.*
 import maf.modular.scheme.modf.*
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 import maf.util.benchmarks.Timeout
+import maf.util.datastructures.SmartUnion
+import maf.core.Monad.MonadSyntaxOps
 
 /** Implements big-step semantics for an incremental Scheme analysis. * */
 trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with IncrementalSchemeSemantics with IncrementalGlobalStoreCY[SchemeExp]:
@@ -80,6 +82,18 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
             eval(fnBody).run(Set[Addr](), fnEnv).foreach(res => writeResult(res))
 
+       /*  override protected def allocateVal(exp: SchemeExp)(v: Value): M[Value] =
+            if configuration.cyclicValueInvalidation then
+                val addr = allocPtr(exp, component)
+                for
+                    _ <- write(addr, v)
+                    iFlows <- getImplicitFlows
+                    res <- baseEvalM.unit(lattice.addAddress(lattice.pointer(addr), addr))
+                yield
+                    dataFlow += (addr -> SmartUnion.sunion(dataFlow(addr), iFlows))
+                    res
+            else super.allocateVal(exp)(v) */
+
         override protected def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeCodeChange(e, _, _) if version == Old =>
                 registerComponent(e, component)
@@ -124,9 +138,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                 val a = LitAddr(exp)
                 for
                     iFlows <- getImplicitFlows
-                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddresses(_, iFlows + a)) // Attach the address to the value for flow tracking + implicit flows!.
+                    //_ = { dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) } // TODO!! (+ todo: remove iflows from value)
+                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking + implicit flows!.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
-                yield value
+                yield
+                    dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
+                    value
             else super.evalLiteralValue(literal, exp)
 
         override protected def applyClosuresM(fun: Value, args: List[(SchemeExp, Value)], cll: Position, ctx: ContextBuilder = DefaultContextBuilder): M[Value] =
@@ -150,7 +167,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
                                 // TODO should this be moved up? If call results bottom, this will otherwise not be executed, or only after a reanalysis, which may trigger further reanalysis. => not needed since iflows added afterwards
-                                cutFlows = cutFlows + (component -> (cutFlows(component) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
+                                cutFlows = cutFlows + (targetCmp -> (cutFlows(targetCmp) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
                                 updatedResult
                         else baseEvalM.fail(ArityError(cll, prs.length, arity))
                     case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
@@ -170,7 +187,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield
-                                cutFlows = cutFlows + (component -> (cutFlows(component) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
+                                cutFlows = cutFlows + (targetCmp -> (cutFlows(targetCmp) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
                                 updatedResult
                         else baseEvalM.fail(VarArityError(cll, prs.length, arity))
                     case _ => Monad[M].unit(lattice.bottom)

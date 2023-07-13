@@ -36,7 +36,9 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
     end IncrementalVisualIntra
 
-    trait Edge
+    trait Edge:
+        val source: Addr
+        val target: Addr
     case class ExplicitOrIntraCImplicit(source: Addr, target: Addr) extends Edge
     case class InterComponentImplicit(source: Addr, target: Addr) extends Edge
 
@@ -66,21 +68,22 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
             .flatMap({ case (sca, index) => val color = palette(index); sca.map(v => (v, color)) })
             .toMap
             .withDefaultValue(Colors.White)
-        // Generate the nodes. Create a mapping from addresses to graph elements (nodes).
-        val nodes: Map[Addr, GE] =
-            (addressDependenciesLog.values.flatMap(_.keySet) ++ addressDependenciesLog.values.flatMap(_.values).flatten.map(_.a).toSet)
-                .map(addr =>
-                    (addr,
-                     GE(addr.toString,
-                        if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else nodeColors(addr),
-                        if addr.isInstanceOf[LitAddr[_]] then "octagon" else "box"
-                     )
-                    )
-                )
-                .toMap
+
         // Compute the edges.
         val edges: Set[Edge] = computeEdges() // Set[(GE, GE, AdrDep)] =
           //  addressDependenciesLog.values.flatten.flatMap({ case (w, rs) => rs.map(r => (nodes(r.a), nodes(w), r)) }).toSet
+          // Generate the nodes. Create a mapping from addresses to graph elements (nodes).
+        val nodes: Map[Addr, GE] =
+          (edges.map(_.source) ++ edges.map(_.target)) // TODO: this gives an error sometimes when only relying on addressDependenciesLog...
+              .map(addr =>
+                  (addr,
+                      GE(addr.toString,
+                          if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else nodeColors(addr),
+                          if addr.isInstanceOf[LitAddr[_]] then "octagon" else "box"
+                      )
+                  )
+              )
+              .toMap
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
         val g = DotGraph[GE, GE]().G.typeclass
         // Do not show the implicit flows when there are many edges... Otherwise the graph becomes intractable.

@@ -50,21 +50,8 @@ object IncrementalRun extends App:
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
             val valB = b.store.getOrElse(addr, b.lattice.bottom)
             if valA != valB
-            then str ++ (addr.toString + "\n" + a.lattice.compare(valA, valB) + "\n") else str
-        }
-
-    def checkEqState(a: A, b: A, message: String = ""): Unit =
-        (a.store.keySet ++ b.store.keySet).foreach { addr =>
-            val valA = a.store.getOrElse(addr, a.lattice.bottom)
-            val valB = b.store.getOrElse(addr, b.lattice.bottom)
-            if valA != valB then System.err.nn.println(addr.toString + "\n" + a.lattice.compare(valA, valB))
-        }
-        assert(a.store.filterNot(_._2 == a.lattice.bottom) == b.store.filterNot(_._2 == b.lattice.bottom), message + " (store mismatch)")
-        assert(a.visited == b.visited, message + " (visited set mismatch)")
-        (a.deps.keySet ++ b.deps.keySet).foreach { dep =>
-            val dA = a.deps.getOrElse(dep, Set())
-            val dB = b.deps.getOrElse(dep, Set())
-            if dA != dB then System.err.nn.println(dep.toString + "\n" + dA.mkString(" ") + "\n" + dB.mkString(" "))
+            then str ++ (addr.toString + "\n" + a.lattice.compare(valA, valB) + "\n")
+            else str
         }
 
     class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
@@ -74,30 +61,14 @@ object IncrementalRun extends App:
             with IncrementalDataFlowVisualisation[SchemeExp]
             with IncrementalGlobalStoreCY[SchemeExp]:
         stepFocus = Set(25,26,27)
-        override def focus(a: Addr): Boolean = !a.toString.contains("PrmAddr") /* List("env@35:33[Some(ε)]",
-            "env@39:40[Some(ε)]",
-            "exp@11:29[Some(ε)]",
-            "exp@15:26[Some(ε)]",
-            "exp@35:29[Some(ε)]",
-            "exp@41:34[Some(ε)]",
-            "exp@43:29[Some(ε)]",
-            "exp@45:31[Some(ε)]",
-            "exp@47:25[Some(ε)]",
-            "exp@49:29[Some(ε)]",
-            "exp@51:28[Some(ε)]",
-            "exps@39:35[Some(ε)]",
-            "output@58:26[Some(ε)]",
-            "ret (λ@11:21 [ε])",
-            "ret (λ@15:18 [ε])",
-            "ret (λ@35:21 [ε])",
-            "ret (λ@39:27 [ε])",
-            "ret (λ@41:26 [ε])",
-            "ret (λ@43:21 [ε])",
-            "ret (λ@45:23 [ε])",
-            "ret (λ@47:17 [ε])",
-            "ret (λ@49:21 [ε])",
-            "ret (λ@51:20 [ε])",
-            "tag@41:38[Some(ε)]").contains(a.toString) */
+        override def focus(a: Addr): Boolean =  List(
+          "ret (main)",
+          "x@4:23[Some(ε)]",
+          "f@1:24[Some(ε)]",
+          "ret (λ@4:15 [ε])",
+          "_0@1:2[None]",
+          "ret (λ@2:18 [ε])"
+        ).exists(s => a.toString.contains(s))
 
         mode = Mode.Fine
         override def intraAnalysis(cmp: Component) =
@@ -150,25 +121,22 @@ object IncrementalRun extends App:
 
         val exp = GTR.reduce(text, oracle, identity, TransformationManager.allTransformations)
         log.log(exp.prettyString())
+        println(exp.prettyString())
+        println(oracle(exp).toString)
         exp
 
-    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true): Boolean = // Returns whether the analysis is fully precise.
+    // Returns a boolean indicating whether the analysis is fully precise.
+    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true): Boolean =
         try
             val a = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
-            val b = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, noOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, noOptimisations)
+            val b = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
 
-            // println(text.prettyString())
             import SimpleTimer.*
-
-            // println(text.prettyString())
 
             start()
             println(markStep("init"))
             a.analyzeWithTimeout(newTimeout())
-
-            //tick()
-            //println(markStep("Generating svg file."))
-            //a.dataFlowToImage("flows-init.dot")
+            a.dataFlowToImage("flows-init.dot")
 
             tick()
             println(markStep("rean"))
@@ -179,37 +147,40 @@ object IncrementalRun extends App:
             println(markStep("upd"))
             a.updateAnalysis(newTimeout())
 
-            //tick()
-            //println(markStep("Generating svg file."))
-            //a.dataFlowToImage("flows.dot")
-
             stop()
+            a.dataFlowToImage("flows-incr.dot")
+            b.dataFlowToImage("flows-rean.dot")
             println(markStep("Comparing analyses"))
             //a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
+            val diff = storeDiff(a, b)
+            println(diff)
             if throwAssertionViolations
             then
-                checkEqState(a, b)
-                true // Throw exceptions when things don't match.
-            else !storeDiff(a, b).contains("+-")
+                println(markError(diff))
+                assert(diff.isEmpty)
+            diff.isEmpty
         catch
             case t: Throwable =>
                 println(t.toString)
                 throw t
 
+    // Uses delta debugging to reduce a program to a minimal version that is still imprecise.
+    def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false))
+
     List(
-        //  "test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
-        //"test/changes/scheme/freeze.scm" // Nog niet precies.
+        //"test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
+        //"test/changes/scheme/freeze.scm", // Nog niet precies.
         "test/DEBUG2.scm",
-        //"logs/reduced-program.txt"
-       // "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm"
+        //"test/DEBUG2B.scm",
+        //"test/DEBUG4.scm"
     ).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            analyse(text, true, true)
-          //  reduce(text, { (text: SchemeExp) =>
-          //    !analyse(text, false, false)
-          //  } )
+            println(!analyse(text, false, true))
+            //val reduced = reduceImprecise(text)
+            //println(!analyse(reduced, true, true))
+            //println(!analyse(CSchemeParser.parseProgram(Reader.loadFile("logs/reduced-program.txt")), false, true))
         } catch {
             case e: Exception =>
                 e.printStackTrace(System.out)

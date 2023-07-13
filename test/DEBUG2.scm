@@ -1,5 +1,5 @@
 (letrec ((first (lambda ()
                   (<change>
                     ()
-                    (cons () (first))))))
+                    (cons () ()))))) ;(first)))))
   (first))
