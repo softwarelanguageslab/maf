@@ -7,6 +7,7 @@ import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.modular.scheme.LitAddr
 import maf.modular.scheme.modf.SchemeModFComponent.Main
+import maf.util.ColouredFormatting.*
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.Tarjan
@@ -114,29 +115,25 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         Tarjan.scc[Addr](store.keySet, allFlowsR)
 
-
-    // Instead of computing oldFlowsR again in refiningNeeded, let's just store it...
-    private var oldFlowsR = Map[Addr, Set[Addr]]()
-
     /** Checks whether a SCA needs to be refined. */
-    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value]): Boolean =
+    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
                 flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
             }
         }
-        //var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
-        //oldDataFlowR.foreach { case (_, wr) =>
-        //    wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-        //        oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
-        //    }
-        //}
-        val res = oldFlowsR.exists { case (w, rs) =>
-            rs.diff(flowsR(w)).nonEmpty || !lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom))
+        var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
+        oldDataFlowR.foreach { case (_, wr) =>
+            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+                oldFlowsR = oldFlowsR + (write -> SmartUnion.sunion(oldFlowsR(write), reads))
+            }
         }
-        oldFlowsR = flowsR
-        res
+        oldFlowsR.exists { case (w, rs) =>
+            // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
+            rs.diff(flowsR(w)).nonEmpty ||
+                !lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom))
+        }
 
     /**
      * Refines a SCA by putting every address to its new incoming value. Computes the values to refine each address of a SCA and then performes the
@@ -153,23 +150,27 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                     provenance += (a -> (provenance(a) - c))
                     // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
                     // REMARK: check reason + impact
-                    cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
+                    cachedWrites = cachedWrites + (c -> (cachedWrites(c) - a))
+                    //cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
                     // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
-                    dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
+                    dataFlowR = dataFlowR + (c -> (dataFlowR(c) + (a -> dataFlowR(c)(a).diff(sca))))
+                    //dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
                     acc
             }
             //val old = store.getOrElse(a, lattice.bottom)
             //if old != v then // No need for a trigger when nothing changes. TODO adding this tests causes unsoundness and errors?
             // Refine the store. TODO remove when v is bottom!
+            if configuration.checkAsserts then assert(lattice.subsumes(inter.store(a), v))
             store += (a -> v)
+            if configuration.checkAsserts then assert(store(a) == provenanceValue(a))
             // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
             // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
             trigger(AddrDependency(a))
         }
 
-    def updateSCAs(oldStore: Map[Addr, Value]): Unit =
+    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Unit =
         SCAs = computeSCAs()
-        SCAs.foreach { sca => if refiningNeeded(sca, oldStore) then refineSCA(sca) }
+        SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
 
     trait IncrementalGlobalStoreCYIntraAnalysis extends IncrementalGlobalStoreIntraAnalysis:
         intra =>
@@ -193,11 +194,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             else super.writeAddr(addr, value)
 
         override def commit(): Unit =
-            val oldStore = inter.store
+            val oldStore = inter.store // Store before the analysis of this component.
+            val oldDataFlowR = dataFlowR // Data flow information before the analysis of this component.
             super.commit()
+            // Todo: is CY more efficient before or after WI? Or should it work at the same time?
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlow)
-                if version == New then updateSCAs(oldStore)
+                if version == New then updateSCAs(oldStore, oldDataFlowR)
 
     end IncrementalGlobalStoreCYIntraAnalysis
 

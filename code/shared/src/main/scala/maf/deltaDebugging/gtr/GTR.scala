@@ -24,17 +24,9 @@ object GTR:
 
   private def reduceLevelNodes(tree: SchemeExp, lvl: Int, oracle: SchemeExp => Boolean, onOracleHit: SchemeExp => Unit, transformation: Transformation): SchemeExp =
     for(node <- tree.levelNodes(lvl))
-      var idx = 0
-      var candidateTree: Option[SchemeExp] = None
-
-      while
-        candidateTree = transformation.transformIdx(tree, node, idx)
-        candidateTree.nonEmpty
-      do
-        idx += 1
-        if candidateTree.get.size <= tree.size then
-          if oracle(candidateTree.get) then
-            onOracleHit(candidateTree.get)
-            transformation.hit(candidateTree.get, idx)
-            return reduceLevelNodes(candidateTree.get, lvl, oracle, onOracleHit, transformation)
+      for (candidateTree <- transformation.transform(tree, node))
+        if candidateTree.size < tree.size then
+          if oracle(candidateTree) then
+            onOracleHit(candidateTree)
+            return reduceLevelNodes(candidateTree, lvl, oracle, onOracleHit, transformation)
     tree

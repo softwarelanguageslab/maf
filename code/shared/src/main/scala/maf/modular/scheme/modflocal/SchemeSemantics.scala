@@ -35,7 +35,7 @@ trait SchemeSemantics:
                 res <- withEnv(_ => newEnv) { blk }
             yield res
         def lookupEnv(id: Identifier): M[Adr] =
-            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable ${id.name}@${id.idn}"))
+            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable ${id.name}@${id.idn} in $env"))
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
             withEnv(_.extend(nam, adr))(blk)
         def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
@@ -56,7 +56,7 @@ trait SchemeSemantics:
 
     type A[_]
     protected def analysisM: AnalysisM[A]
-    protected final implicit lazy val analysisM_ :  AnalysisM[A] = analysisM
+    implicit final protected lazy val analysisM_ : AnalysisM[A] = analysisM
     import analysisM_._
 
     def eval(exp: SchemeExp): A[Val] = exp match
@@ -116,7 +116,7 @@ trait SchemeSemantics:
             vls <- nontail { evalAll(rhs) }
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-                extendSto(ads.zip(vls)) >>> evalSequence(bdy) 
+                extendSto(ads.zip(vls)) >>> evalSequence(bdy)
             }
         yield res
 
@@ -175,7 +175,7 @@ trait SchemeSemantics:
         val agc = ags.length
         lattice.getClosures(fun).foldMapM { (lam, lex) =>
             for
-                _   <- guard(lam.check(agc))
+                _ <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))
                 res <- applyClosure(app, lam, ags, fvs)
             yield res
@@ -193,7 +193,7 @@ trait SchemeSemantics:
             
         }
 
-    private def argBindings(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
+    protected def argBindings(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[List[(String, Adr, Val)]] =
         for
             // fixed args
             fxa <- lam.args.zip(ags).mapM((idf, vlu) => allocVar(idf).map((idf.name, _, vlu)))
@@ -216,13 +216,13 @@ trait SchemeSemantics:
             }
         yield fxa ++ vra ++ frv
 
-    private def storeVal(exp: Exp, vlu: Val): A[Val] =
+    protected def storeVal(exp: Exp, vlu: Val): A[Val] =
         for
             adr <- allocPtr(exp)
             _ <- extendSto(adr, vlu)
         yield lattice.pointer(adr)
 
-    private def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
+    protected def allocPai(pai: Exp, car: Val, cdr: Val): A[Val] =
         storeVal(pai, lattice.cons(car, cdr))
 
     protected def allocLst(els: List[(Exp, Val)]): A[Val] = els match

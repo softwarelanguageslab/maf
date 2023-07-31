@@ -1,8 +1,5 @@
-(define (f x) (sink x))
-(define (a) (f #t))
-(define (b)
-  (define v #t)
-  (define v-s (source v))
-  (if v-s (f #t)))
-(a)
-(b)
+(letrec ((first (lambda ()
+                  (<change>
+                    ()
+                    (cons () ()))))) ;(first)))))
+  (first))
