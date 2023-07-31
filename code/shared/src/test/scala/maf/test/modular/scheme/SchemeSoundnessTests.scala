@@ -127,10 +127,12 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
                 checkSubsumption(analysis)(a, lat.op(SchemeOp.Car)(List(abs)).getOrElse(lat.bottom)) &&
                     checkSubsumption(analysis)(d, lat.op(SchemeOp.Cdr)(List(abs)).getOrElse(lat.bottom))
             case Value.Vector(siz, els, ini) =>
-                lat.subsumes(lat.op(SchemeOp.VectorLength)(List(abs)).getOrElse(lat.bottom), lat.number(siz)) &&
+                    lat.subsumes(lat.op(SchemeOp.VectorLength)(List(abs)).getOrElse(lat.bottom), lat.number(siz)) 
+                    && 
                     els.forall { case (idx, vlu) =>
                         checkSubsumption(analysis)(vlu, lat.op(SchemeOp.VectorRef)(List(abs, lat.number(idx))).getOrElse(lat.bottom))
-                    } &&
+                    } 
+                    &&
                     (els.size == siz || checkSubsumption(analysis)(ini, lat.op(SchemeOp.VectorRef)(List(abs, lat.numTop)).getOrElse(lat.bottom)))
             case v => throw new Exception(s"Unknown concrete value type: $v.")
 
@@ -144,6 +146,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             val abstractValues = analysisResults.getOrElse(idn, Set.empty)
             concreteValues.foreach { concreteValue =>
                 if !abstractValues.exists(checkSubsumption(analysis)(concreteValue, _)) then
+                    println(concreteValues)
+                    println(abstractValues)
                     val failureMsg =
                         s"""
             | Result at $idn is unsound:
