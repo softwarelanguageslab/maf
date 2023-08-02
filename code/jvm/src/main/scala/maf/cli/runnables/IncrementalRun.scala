@@ -61,14 +61,14 @@ object IncrementalRun extends App:
             with IncrementalDataFlowVisualisation[SchemeExp]
             with IncrementalGlobalStoreCY[SchemeExp]:
         stepFocus = Set(25,26,27)
-        override def focus(a: Addr): Boolean =  List(
+        override def focus(a: Addr): Boolean = !a.toString.contains("Prm") /*  List(
           "ret (main)",
           "x@4:23[Some(ε)]",
           "f@1:24[Some(ε)]",
           "ret (λ@4:15 [ε])",
           "_0@1:2[None]",
           "ret (λ@2:18 [ε])"
-        ).exists(s => a.toString.contains(s))
+        ).exists(s => a.toString.contains(s)) */
 
         mode = Mode.Fine
         override def intraAnalysis(cmp: Component) =
@@ -168,17 +168,34 @@ object IncrementalRun extends App:
     def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false))
 
     List(
-        //"test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
-        //"test/changes/scheme/freeze.scm", // Nog niet precies.
-        //"test/DEBUG2.scm",
-        //"test/DEBUG2B.scm",
-        "test/DEBUG4.scm"
-    ).foreach { bench =>
+        "test/DEBUG2.scm",
+        "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
+        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-4.scm",
+        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-5.scm",
+        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
+        "test/changes/scheme/generated/R5RS_gabriel_cpstak-5.scm",
+        "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
+        "test/changes/scheme/generated/R5RS_gambit_destruc-2.scm",
+        "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
+        "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
+        "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm",
+        "test/changes/scheme/generated/R5RS_scp1_deep-map-combine-4.scm",
+        "test/changes/scheme/generated/R5RS_scp1_merge-1.scm",
+        "test/changes/scheme/generated/R5RS_scp1_merge-3.scm",
+        "test/changes/scheme/generated/R5RS_scp1_merge-5.scm",
+        "test/changes/scheme/generated/R5RS_scp1_ring-copy-2.scm",
+        "test/changes/scheme/generated/R5RS_scp1_sales-period-4.scm",
+        "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
+        "test/changes/scheme/generated/R5RS_various_church-4.scm",
+        "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
+    ).slice(0,1).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
+            println(text)
             println(!analyse(text, false, true))
             //val reduced = reduceImprecise(text)
+            //println(reduced)
             //println(!analyse(reduced, true, true))
             //println(!analyse(CSchemeParser.parseProgram(Reader.loadFile("logs/reduced-program.txt")), false, true))
         } catch {

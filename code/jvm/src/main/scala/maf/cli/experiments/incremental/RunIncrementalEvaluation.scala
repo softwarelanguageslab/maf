@@ -62,6 +62,7 @@ object RunIncrementalEvaluation:
             |   --count n      use only n benchmarks from the benchmarking suite
             |   --stop         use to stop on errors (errors will be thrown and not be caught)
             |   --timeout      specify the timeout to be used for each run of the (incremental) analysis in minutes
+            |   --config c     specify the configuration to be used
             | Any combination of arguments can be used.
             | To run experiments, you will at least need to provide a type of experiment (performance/precision/properties),
             | a benchmarking suite (curated/generated/a specific file), and a lattice (type/cp).

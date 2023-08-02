@@ -16,7 +16,7 @@ import maf.util.graph.DotGraph
  * @tparam Expr
  *   The type of the expressions under analysis.
  */
-trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
+trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualisation[Expr]:
     inter =>
 
     val logger: NumberedLog = Logger.numbered()
@@ -103,8 +103,18 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
         table.prettyString(rowName = "Step",
                            rows = (1 until step).toList.map(_.toString),
-                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot"),
+                           columns = "Phase" :: storeCols ::: List("Bot"),
                            format = s => crop(s)
+        ) + "\n\n" +
+        table.prettyString(rowName = "Step",
+            rows = (1 until step).toList.map(_.toString),
+            columns = "Phase" :: provCols,
+            format = s => crop(s)
+        ) + "\n\n" +
+        table.prettyString(rowName = "Step",
+            rows = (1 until step).toList.map(_.toString),
+            columns = "Phase" :: depCols,
+            format = s => crop(s)
         )
 
     private def addressDependenciesToString(): String =
@@ -217,6 +227,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
     private var rSCAcount = 0
     override def refineSCA(sca: SCA): Unit =
         rSCAcount = rSCAcount + 1
+        dataFlowToImage("pre-RSCA.dot")
         var values: Map[Addr, Value] = Map()
         if mode != Step || stepSelect() then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
         super.refineSCA(sca)
@@ -227,10 +238,10 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         intra =>
         // Analysis of a component.
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            if rSCAcount >= 10
-            then
-                logger.logU(s"RSCA count = 2, aborting analysis before step $step")
-                throw new Exception("Aborting analysis!")
+            //if rSCAcount >= 10
+            //then
+            //    logger.logU(s"RSCA count = 2, aborting analysis before step $step")
+            //    throw new Exception("Aborting analysis!")
             if mode != Summary && (mode != Step || stepSelect()) then logger.logU("") // Adds a newline to the log.
             if version == Old then intraC += 1 else intraCU += 1
             repeats = repeats + (component -> (repeats(component) + 1))

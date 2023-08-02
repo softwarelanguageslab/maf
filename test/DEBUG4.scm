@@ -8,13 +8,4 @@
         ((app fun))
         '())))
 
-; Reductie van "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-4.scm". Incrementele analyse all opt niet precies.
-;(define (a b) (lambda (c) (b c)))
-;(define (d e) ((e (lambda (f) #f)) #t))
-;(define (h i)
-;  (define j (lambda (h) (h #t)))
-;  (if (d i)
-;      ((a j) i)
-;      (<change>
-;       ((a j) i)
-;       '())))
+; (letrec ((phi (lambda () (<change> #f "S"))) (_0 (let ((__or_res (phi))) (if __or_res () (phi))))) ())

@@ -22,7 +22,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         super.updateAnalysis(timeout)
 
     override def deleteComponent(cmp: Component): Unit =
-        if configuration.cyclicValueInvalidation then dataFlowR = dataFlowR - cmp
+        if configuration.cyclicValueInvalidation 
+        then 
+            dataFlowR = dataFlowR - cmp
+            litAddr = litAddr - cmp
         super.deleteComponent(cmp)
 
     /**
@@ -40,6 +43,9 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      *  Doubly indexed to allow easy deletion upon component reanalysis.
      */
     var interComponentFlow: Map[Component, Map[Component, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+
+    /** All encountered literal addresses. */
+    var litAddr: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
     /**
      * Keeps track of all inferred SCCs of addresses during an incremental update. To avoid confusion with analysis components, we call these Strongly
@@ -113,7 +119,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         // Apply the transitive inter-component dataflow to all the writes of components and add this to the explicit flow.
         val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
-        Tarjan.scc[Addr](store.keySet, allFlowsR)
+        // Also take the literal addresses into account when doing so, but remove them from the actual SCAs.
+        Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, litAddr.values.flatten.toSet), allFlowsR).map(_.filterNot(_.isInstanceOf[LitAddr[_]]))
 
     /** Checks whether a SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
@@ -140,12 +147,15 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * refinement.
      */
     def refineSCA(sca: SCA): Unit =
+        //var ignored: Set[Component] = Set()
         sca.foreach { a =>
             // Computation of the new value + remove provenance and data flow that is no longer valid.
             val v = provenance(a).foldLeft(lattice.bottom) { case (acc, (c, v)) =>
                 // Todo: does the test on literal addresses not prune away too much information?? Still doesn't seem to work + heap space errors: && !dataFlowR(c)(a).exists(_.isInstanceOf[LitAddr[_]])
                 if dataFlowR(c)(a).intersect(sca).isEmpty then lattice.join(acc, v)
                 else
+                    // Indicate that this component needs to be reanalysed, as at some point, its contribution is ignored.
+                    //ignored += c // TODO: is this always needed or only e.g., in the case where the store value was updated (and not when a flow disappeared)?
                     // Delete the provenance of non-incoming values (i.e., flows within the SCA).
                     provenance += (a -> (provenance(a) - c))
                     // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
@@ -167,6 +177,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
             trigger(AddrDependency(a))
         }
+        // Add all these components to the worklist at once (should perform better as it avoids duplicate additions).
+        //addToWorkList(ignored)
 
     def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Unit =
         SCAs = computeSCAs()
