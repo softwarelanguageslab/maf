@@ -169,11 +169,10 @@ object IncrementalRun extends App:
 
     List(
         "test/DEBUG2.scm",
-        "test/changes/scheme/reinforcingcycles/implicit-paths.scm",
+        "test/changes/scheme/generated/R5RS_gabriel_cpstak-5.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-4.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-5.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
-        "test/changes/scheme/generated/R5RS_gabriel_cpstak-5.scm",
         "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
         "test/changes/scheme/generated/R5RS_gambit_destruc-2.scm",
         "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
@@ -188,12 +187,12 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
-    ).slice(0,1).foreach { bench =>
+    ).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            println(text)
-            println(!analyse(text, false, true))
+            //println(text)
+            println(!analyse(text, false, false))
             //val reduced = reduceImprecise(text)
             //println(reduced)
             //println(!analyse(reduced, true, true))

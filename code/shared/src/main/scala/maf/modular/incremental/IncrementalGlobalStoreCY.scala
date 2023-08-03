@@ -139,7 +139,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         oldFlowsR.exists { case (w, rs) =>
             // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
             rs.diff(flowsR(w)).nonEmpty ||
-                !lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom))
+                rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom))}
+                //!lattice.subsumes(store.getOrElse(w, lattice.bottom), oldStore.getOrElse(w, lattice.bottom)) // Shouldn't this be for RS? => This is wrong: reversed.
         }
 
     /**
