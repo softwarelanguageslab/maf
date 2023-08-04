@@ -169,12 +169,8 @@ object IncrementalRun extends App:
 
     List(
         "test/DEBUG2.scm",
-        "test/changes/scheme/generated/R5RS_gabriel_cpstak-5.scm",
-        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-4.scm",
-        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_church_simple-5.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
         "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
-        "test/changes/scheme/generated/R5RS_gambit_destruc-2.scm",
         "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
         "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
         "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm",
@@ -182,17 +178,15 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_scp1_merge-1.scm",
         "test/changes/scheme/generated/R5RS_scp1_merge-3.scm",
         "test/changes/scheme/generated/R5RS_scp1_merge-5.scm",
-        "test/changes/scheme/generated/R5RS_scp1_ring-copy-2.scm",
-        "test/changes/scheme/generated/R5RS_scp1_sales-period-4.scm",
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
-    ).foreach { bench =>
+    ).slice(0,1).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            //println(text)
-            println(!analyse(text, false, false))
+            println(text)
+            println(!analyse(text, false, true))
             //val reduced = reduceImprecise(text)
             //println(reduced)
             //println(!analyse(reduced, true, true))
