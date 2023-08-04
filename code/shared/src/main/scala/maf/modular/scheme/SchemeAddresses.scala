@@ -20,10 +20,10 @@ case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddr[Con
     def idn: Identity = exp.idn
     override def toString: String = s"PtrAddr(${exp.idn.pos})${showCtx(ctx)}"
 trait ExceptionAddr[Context] extends SchemeAddr[Context]
-case class LitAddr[Context](exp: SchemeExp) extends SchemeAddr[Context]:
-    def printable = true
-    def idn: Identity = exp.idn
-    override def toString: String = s"Literal($exp@${exp.idn})"
+//case class LitAddr[Context](exp: SchemeExp) extends SchemeAddr[Context]:
+//    def printable = true
+//    def idn: Identity = exp.idn
+//    override def toString: String = s"Literal($exp@${exp.idn})"
 case class SrcAddr[Context](nam: Identifier, ctx: Context) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = nam.idn

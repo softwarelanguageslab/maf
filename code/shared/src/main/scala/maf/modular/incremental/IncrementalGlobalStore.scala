@@ -4,7 +4,7 @@ import maf.core.Expression
 import maf.language.change.CodeVersion.*
 import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
-import maf.modular.scheme.LitAddr
+//import maf.modular.scheme.LitAddr
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.Tarjan
