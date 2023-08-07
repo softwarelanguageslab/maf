@@ -317,6 +317,7 @@ object LocalStore:
 //
 
 case class RefCountingStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)], refs: Map[A, Set[A]], roots: Set[A])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean):
+    sto =>
     // for performance 
     override def hashCode = content.hashCode
     override def equals(other: Any) = other match
@@ -386,10 +387,10 @@ case class RefCountingStore[A <: Address, V](content: SmartMap[A, (V, AbstractCo
                     case Some((v2, c2))                         => (adr, (lat.join(v2, v), c2 + c))
             }
             val deltaRefs = dgc.deltaRefs.map { (a, r) =>  
-                refs.get(adr) match 
-                    case None                                   => (a, r)
-                    case Some(_) if store.refs.contains(adr)    => (a, r)
-                    case Some(addrs)                            => (a, addrs ++ r)
+                refs.get(a) match 
+                    case None                               => (a, r)
+                    case Some(_) if store.refs.contains(a)  => (a, r)
+                    case Some(addrs)                        => (a, addrs ++ r)
             }
             Delta(delta, deltaRefs)
     case class Delta(delta: SmartMap[A, (V, AbstractCount)], deltaRefs: Map[A, Set[A]]):
