@@ -84,7 +84,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
             if a1 == a2 then
-                if sto.lookupCount(a1) == CountOne then BoolLattice[B].inject(true)
+                if sto.lookupCount(a1) == CountOne 
+                then BoolLattice[B].inject(true)
                 else BoolLattice[B].top
             else BoolLattice[B].inject(false)
 
