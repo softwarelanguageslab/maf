@@ -5,7 +5,7 @@ import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
-//import maf.modular.scheme.LitAddr
+import maf.modular.scheme.LitAddr
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.benchmarks.Timeout

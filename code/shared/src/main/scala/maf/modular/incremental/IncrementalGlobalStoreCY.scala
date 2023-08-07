@@ -5,7 +5,7 @@ import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
-//import maf.modular.scheme.LitAddr
+import maf.modular.scheme.LitAddr
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.util.ColouredFormatting.*
 import maf.util.benchmarks.Timeout
@@ -25,7 +25,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         if configuration.cyclicValueInvalidation
         then
             dataFlowR = dataFlowR - cmp
-            //litAddr = litAddr - cmp
+            litAddr = litAddr - cmp
         super.deleteComponent(cmp)
 
     /**
@@ -45,7 +45,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     var interComponentFlow: Map[Component, Map[Component, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
     /** All encountered literal addresses. */
-    //var litAddr: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+    var litAddr: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
     /**
      * Keeps track of all inferred SCCs of addresses during an incremental update. To avoid confusion with analysis components, we call these Strongly
@@ -120,9 +120,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         // Also take the literal addresses into account when doing so.
-        //Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, litAddr.values.flatten.toSet), allFlowsR)
-        Tarjan.scc[Addr](store.keySet, allFlowsR)
-
+        Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, litAddr.values.flatten.toSet), allFlowsR)
 
     /** Checks whether a SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
@@ -152,8 +150,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     def refineSCA(sca: SCA): Unit =
         //var ignored: Set[Component] = Set()
         sca.foreach {
-            //case _: LitAddr[_] => // Nothing to do for literal addresses as they are not in the store. Contributions containing them however need to be ignored when refining other addresses.
-            a =>
+            case _: LitAddr[_] => // Nothing to do for literal addresses as they are not in the store. Contributions containing them however need to be ignored when refining other addresses.
+            case a =>
                 // Computation of the new value + remove provenance and data flow that is no longer valid.
                 val v = provenance(a).foldLeft(lattice.bottom) { case (acc, (c, v)) =>
                     // Todo: does the test on literal addresses not prune away too much information?? Still doesn't seem to work + heap space errors: && !dataFlowR(c)(a).exists(_.isInstanceOf[LitAddr[_]])

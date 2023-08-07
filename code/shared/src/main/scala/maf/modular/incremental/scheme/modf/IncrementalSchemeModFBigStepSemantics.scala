@@ -72,12 +72,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         import evalM._
 
         var cutFlows: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
-        //var litAddrs: Set[Addr] = Set()
+        var litAddrs: Set[Addr] = Set()
 
         override def commit(): Unit =
             // Update this here. This way it can be decided when reanalysis is needed in applyClosuresM using interComponentFlow.
             interComponentFlow = interComponentFlow + (component -> cutFlows)
-            //litAddr = litAddr + (component -> litAddrs)
+            litAddr = litAddr + (component -> litAddrs)
             super.commit()
 
         // analysis entry point
@@ -139,13 +139,15 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             // TODO: add to data flow, or add to provenance? (can't be part of SCC anyway, so best just to add to provenance?)
             // Make it part of an SCA using implicit flows! This fixes precision loss due to conditional reading of literals!
             if configuration.cyclicValueInvalidation then
-                //val a = LitAddr(exp)
-                //litAddrs += a
+                val a = LitAddr(exp)
+                litAddrs += a
                 for
                     iFlows <- getImplicitFlows
-                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddresses(_, iFlows)) // Attach the address to the value for flow tracking + implicit flows!.
+                    //_ = { dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) } // TODO!! (+ todo: remove iflows from value)
+                    value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking + implicit flows!.
+                // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield
-                    //dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
+                    dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
                     value
             else super.evalLiteralValue(literal, exp)
 

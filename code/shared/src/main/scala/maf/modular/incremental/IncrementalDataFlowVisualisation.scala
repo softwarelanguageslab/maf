@@ -2,7 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.modular.*
-//import maf.modular.scheme.LitAddr
+import maf.modular.scheme.LitAddr
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.*
@@ -78,10 +78,8 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
               .map(addr =>
                   (addr,
                       GE(addr.toString,
-                          //if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else
-                          nodeColors(addr),
-                          //if addr.isInstanceOf[LitAddr[_]] then "octagon" else
-                          "box"
+                          if addr.isInstanceOf[LitAddr[_]] then Colors.PinkOrange else nodeColors(addr),
+                          if addr.isInstanceOf[LitAddr[_]] then "octagon" else "box"
                       )
                   )
               )
