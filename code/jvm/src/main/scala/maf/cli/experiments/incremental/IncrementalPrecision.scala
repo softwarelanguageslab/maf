@@ -70,8 +70,17 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             }
         })
         if printResult
-        then
-            if l == 0 && m == 0 then print(markOK("PRECISE ")) else print(markError("IMPRECISE "))
+        then print((l, m) match {
+            case (0, 0) =>
+                markOK("PRECISE ")
+            case (_, 0) =>
+                markError("IMPRECISE ")
+            case (0, _) =>
+                markBad("UNSOUND ")
+            case _ =>
+                markError("IMPRECISE ")
+                markBad("UNSOUND ")
+        })
         table
             .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
             .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
