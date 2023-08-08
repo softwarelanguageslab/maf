@@ -14,7 +14,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
     override def deleteComponent(cmp: Component): Unit =
         super.deleteComponent(cmp)
 
-    trait Edge:
+    sealed trait Edge:
         val source: Addr
         val target: Addr
         val bidirectional: Boolean
@@ -63,24 +63,29 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
             .toMap
             .withDefaultValue(Colors.White)
 
-        def addrToNode(a: Addr): GE = a match {
+        def addrToGE(a: Addr): GE = a match {
             case _: LitAddr[_] => GE(a.toString, Colors.PinkOrange, "octagon")
             case _ => GE(a.toString, nodeColors(a), "box")
         }
+
+        def edgeToGE(e: Edge): GE =
+            val colour = e match {
+                case _: ExplicitOrIntraCImplicit => Colors.Bordeaux
+                case _: InterComponentImplicit => Colors.DarkGrey
+            }
+            val attributes = if e.bidirectional then Map("style" -> "\"dashed\"", "arrowhead" -> "none") else Map()
+            GE("", colour, attributes = attributes)
 
         // Compute the edges.
         val edges: Set[Edge] = computeEdges()
         // Generate the nodes. Create a mapping from addresses to graph elements (nodes).
         // IMPORTANT: if a node has no edges, it will be omitted...
-        val nodes: Map[Addr, GE] = (edges.map(_.source) ++ edges.map(_.target)).map(a => (a, addrToNode(a))).toMap
+        val nodes: Map[Addr, GE] = (edges.map(_.source) ++ edges.map(_.target)).map(a => (a, addrToGE(a))).toMap
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
         val g = DotGraph[GE, GE]().G.typeclass
         edges.foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
-                case (graph, ExplicitOrIntraCImplicit(s, t, true)) => g.addEdge(graph, nodes(s), GE("", Colors.Bordeaux, attributes = Map("style" -> "\"dashed\"", "arrowhead" -> "none")), nodes(t))
-                case (graph, ExplicitOrIntraCImplicit(s, t, false)) => g.addEdge(graph, nodes(s), GE("", Colors.Bordeaux), nodes(t))
-                case (graph, InterComponentImplicit(s, t, true)) => g.addEdge(graph, nodes(s), GE("", Colors.DarkGrey), nodes(t))
-                case (graph, InterComponentImplicit(s, t, false)) => g.addEdge(graph, nodes(s), GE("", Colors.DarkGrey, attributes = Map("style" -> "\"dashed\"", "arrowhead" -> "none")), nodes(t))
-            }.toFile(fileName)
+            case (graph, edge) => g.addEdge(graph, nodes(edge.source), edgeToGE(edge), nodes(edge.target))
+        }.toFile(fileName)
 
     def dataFlowToImage(fileName: String): Unit =
         flowInformationToDotGraph(fileName)
