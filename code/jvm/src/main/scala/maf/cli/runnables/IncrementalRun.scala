@@ -30,21 +30,6 @@ object IncrementalRun extends App:
 
     type A = ModAnalysis[SchemeExp] with IncrementalGlobalStoreCY[SchemeExp] with IncrementalSchemeTypeDomain
 
-    // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
-    // Useful when reducing a program when debugging the analysis.
-    def interpretProgram(file: String): Unit =
-        val prog = CSchemeParser.parseProgram(Reader.loadFile(file))
-        val i = new SchemeInterpreter((_, _) => ())
-        List(Old, New).foreach { version =>
-            try
-                print("*")
-                i.run(prog, Timeout.start(Duration(3, MINUTES)), version)
-            catch {
-                case ProgramError(e) => System.err.nn.println(e)
-            }
-        }
-        println("Done interpreting.")
-
     def storeDiff(a: A, b: A): String =
         (a.store.keySet ++ b.store.keySet).foldLeft("") { case (str, addr) =>
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
@@ -54,26 +39,6 @@ object IncrementalRun extends App:
             else str
         }
 
-    class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
-        extends BaseModFAnalysisIncremental(prg)
-            with IncrementalSchemeTypeDomain
-            with IncrementalLogging[SchemeExp]
-            with IncrementalDataFlowVisualisation[SchemeExp]
-            with IncrementalGlobalStoreCY[SchemeExp]:
-        stepFocus = Set(25,26,27)
-        override def focus(a: Addr): Boolean = !a.toString.contains("Prm") /*  List(
-          "ret (main)",
-          "x@4:23[Some(ε)]",
-          "f@1:24[Some(ε)]",
-          "ret (λ@4:15 [ε])",
-          "_0@1:2[None]",
-          "ret (λ@2:18 [ε])"
-        ).exists(s => a.toString.contains(s)) */
-
-        mode = Mode.Fine
-        override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
-
     class IncrementalSchemeModFAnalysisTypeLatticeNoLogging(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends BaseModFAnalysisIncremental(prg)
             with IncrementalSchemeTypeDomain
@@ -82,6 +47,16 @@ object IncrementalRun extends App:
 
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalVisualIntra
+
+    class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
+        extends IncrementalSchemeModFAnalysisTypeLatticeNoLogging(prg, configuration) with IncrementalLogging[SchemeExp]:
+
+        mode = Mode.Fine
+        override def focus(a: Addr): Boolean = !a.toString.contains("Prm")
+        stepFocus = Set(25, 26, 27)
+
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
 
     def newTimeout(): Timeout.T = Timeout.start(Duration(1, MINUTES))
 
@@ -192,7 +167,7 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
-    ).slice(0,7).foreach { bench =>
+    ).slice(6,7).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))

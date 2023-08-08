@@ -16,11 +16,14 @@ trait GraphElement:
     def color: Color
     def metadata: GraphMetadata
 
-    /** Should  the graph element constrain  the ranking of the node during visualisation */
+    /** Should  the graph element constrain the ranking of the node during visualisation */
     def constrain: Boolean = true
 
     /** Allows to set the shape of nodes and edges. */
     def shape: String = ""
+
+    /** Allows to specify additional attributes. */
+    def attributes: Map[String, String] = Map.empty
 
 class NoTransition extends GraphElement:
     def label = ""

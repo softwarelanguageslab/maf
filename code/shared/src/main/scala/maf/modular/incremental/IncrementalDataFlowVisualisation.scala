@@ -39,29 +39,43 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
     trait Edge:
         val source: Addr
         val target: Addr
-    case class ExplicitOrIntraCImplicit(source: Addr, target: Addr) extends Edge
-    case class InterComponentImplicit(source: Addr, target: Addr) extends Edge
+        val bidirectional: Boolean
+    case class ExplicitOrIntraCImplicit(source: Addr, target: Addr, bidirectional: Boolean = false) extends Edge
+    case class InterComponentImplicit(source: Addr, target: Addr, bidirectional: Boolean = false) extends Edge
 
     def computeEdges(): Set[Edge] =
+        // TODO: make this more efficient...
+        def bidirify[E <: Edge](edges: Set[E], make: (Addr, Addr, Boolean) => E) : Set[E] =
+            var lst = edges
+            var res: List[E] = List()
+            while lst.nonEmpty
+            do
+                val first = lst.head
+                lst = lst.tail
+                lst.find(e => e.source == first.target && e.target == first.source) match
+                    case Some(a) =>
+                        res = make(first.source, first.target, true) :: res
+                        lst = lst - a
+                    case None =>
+                        res = first :: res
+            res.toSet
         val flowsR = explicitAndIntraComponentImplicitFlowsR()
-        val transitiveInterComponentFlows = computeTransitiveInterComponentFlows()
-        val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
-        val e: Set[Edge] = flowsR.toList.flatMap {case (target, sources) => sources.map(s => ExplicitOrIntraCImplicit(s, target))}.toSet
-        val i: Set[Edge] = allFlowsR.toList.flatMap {case (target, sources) => sources.map(s => InterComponentImplicit(s, target))}.toSet
-        e ++ i
-
-    /** Computes the color of an edge based on its specifications. */
-    private def edgeColor(directFlow: Boolean, indirectFlow: Boolean): Option[Color] = (directFlow, indirectFlow) match {
-        case (true, true)  => Some(Colors.DarkBlue) // Both direct and indirect flows
-        case (true, false) => Some(Colors.Black) // Direct flows
-        case (false, true) => Some(Colors.Grey) // Indirect flows
-        case _             => Some(Colors.Red) // No flow, should not happen...
-    }
+        val interF = attachTransitiveFlowsToFlowsR(Map().withDefaultValue(Set()), computeTransitiveInterComponentFlows()) // Do not attach to explicit flows but keep separate.
+        val e: Set[ExplicitOrIntraCImplicit] = flowsR.toList.flatMap {case (target, sources) => sources.map(s => ExplicitOrIntraCImplicit(s, target))}.toSet
+        val i: Set[InterComponentImplicit] = interF.toList.flatMap {case (target, sources) => sources.map(s => InterComponentImplicit(s, target))}.toSet
+        // Less arrows: if a flow exist in both directions, make 1 bidirectional arrow instead of 2.
+        val eBidir = bidirify(e, {case (s, t, b) => ExplicitOrIntraCImplicit(s, t, b)})
+        val iBidir = bidirify(i, {case (s, t, b) => InterComponentImplicit(s, t, b)})
+        eBidir ++ iBidir
 
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
     def flowInformationToDotGraph(fileName: String): Unit =
         // Type of graph elements. One type suffices for both nodes and edges.
-        case class GE(label: String, color: Color = Colors.White, override val shape: String = "", metadata: GraphMetadata = GraphMetadataNone)
+        case class GE(label: String,
+                      color: Color = Colors.White,
+                      override val shape: String = "",
+                      metadata: GraphMetadata = GraphMetadataNone,
+                      override val attributes: Map[String, String] = Map())
             extends GraphElement
         // Colour nodes by SCA.
         val nodeColors = computeSCAs().toList.zipWithIndex
@@ -91,10 +105,10 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         // if edges.size > edgeCut then edges = edges.filter(_._3.directFlow)
         edges
             .foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
-                case (graph, ExplicitOrIntraCImplicit(s, t)) => g.addEdge(graph, nodes(s), GE("", Colors.Black), nodes(t))
-                case (graph, InterComponentImplicit(s, t)) => g.addEdge(graph, nodes(s), GE("", Colors.DarkBlue), nodes(t))
-               // case (graph, (source: GE, target: GE, adrDep: AdrDep)) =>
-               //     edgeColor(adrDep.directFlow, adrDep.indirectFlow).map(color => g.addEdge(graph, source, GE("", color), target)).getOrElse(graph)
+                case (graph, ExplicitOrIntraCImplicit(s, t, true)) => g.addEdge(graph, nodes(s), GE("", Colors.Bordeaux, attributes = Map("style" -> "\"dashed\"", "arrowhead" -> "none")), nodes(t))
+                case (graph, ExplicitOrIntraCImplicit(s, t, false)) => g.addEdge(graph, nodes(s), GE("", Colors.Bordeaux), nodes(t))
+                case (graph, InterComponentImplicit(s, t, true)) => g.addEdge(graph, nodes(s), GE("", Colors.DarkGrey), nodes(t))
+                case (graph, InterComponentImplicit(s, t, false)) => g.addEdge(graph, nodes(s), GE("", Colors.DarkGrey, attributes = Map("style" -> "\"dashed\"", "arrowhead" -> "none")), nodes(t))
             }
             .toFile(fileName)
 
@@ -102,41 +116,3 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         flowInformationToDotGraph(fileName)
         if !DotGraph.createSVG(fileName, true)
         then System.err.nn.println("Conversion failed.")
-
-/*
-class IncrementalDataFlowVisualiser[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
-
-    case class Explicit() extends GraphElement:
-        def label = ""
-        def color = Colors.Black
-        def metadata = GraphMetadataNone
-
-    case class Implicit() extends GraphElement:
-            def label = ""
-            def color = Colors.Grey
-            def metadata = GraphMetadataNone
-
-    case class Node(addr: Addr) extends GraphElement:
-        def label = addr.toString
-        def color = Colors.Black
-        def metadata = GraphMetadataNone
-
-    var flowElements: Map[Component, (Set[GraphElement], Set[(GraphElement, GraphElement, GraphElement)])]
-
-    trait IncrementalDataFlowVisualiserIntra extends IncrementalGlobalStoreCYIntraAnalysis:
-
-        var nodes: Set[GraphElement] = Set()
-        var edges: Set[(GraphElement, GraphElement, GraphElement)]
-
-        override def writeAddr(addr: Addr, value: Value): Boolean =
-            nodes += Node(addr)
-            lattice.getAddresses(value).foreach(a => edges += (a, Explicit(), addr))
-            implicitFlows.foreach(a => edges += (a, Implicit(), addr))
-            super.writeAddr(addr, value)
-
-        override def commit(): Unit =
-            flowElements += (component -> (nodes, edges))
-            super.commit()
-
-    end IncrementalDataFlowVisualiserIntra
- */
