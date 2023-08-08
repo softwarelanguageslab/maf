@@ -79,7 +79,7 @@ object ScvGraphGenerator:
                 new JVMSatSolver(this)
 
     def buildGraph(filename: String, anl: TrackTriggeredDependencies with FunctionSummaryAnalysis): Unit =
-        implicit val graph = new DotGraph[Node, Edge].G.typeclass
+        implicit val graph = new DotGraph[Node, Edge, GraphElement].G.typeclass
         var g = graph.empty
         // add all the nodes once to the graph
         g = anl.visited.foldLeft(g)((g, cmp) => g.addNode(Node(cmp.toString, Colors.Red)))
@@ -137,7 +137,7 @@ object ScvGraphGenerator:
         val sccs = Tarjan.scc(nodes, edges)
 
         // visualize the scc's
-        implicit val graph = new DotGraph[Node, Edge].G.typeclass
+        implicit val graph = new DotGraph[Node, Edge, GraphElement].G.typeclass
         var g = graph.empty
 
         sccs.zip(0 to sccs.size).foreach { case (cluster, i) =>

@@ -1,10 +1,10 @@
 package maf.util.graph
 
 /** A graph that preserves no information */
-class NoGraph[N <: GraphElement, E <: GraphElement]:
+class NoGraph[N <: GraphElement, E <: GraphElement, S <: GraphElement]:
     case class G()
     object G:
-        implicit val typeclass: Graph[G, N, E] = new Graph[G, N, E] {
+        implicit val typeclass: Graph[G, N, E, S] = new Graph[G, N, E, S] {
             def empty = G()
             def addNode(g: G, node: N) = g
             def addEdge(
@@ -14,6 +14,7 @@ class NoGraph[N <: GraphElement, E <: GraphElement]:
                 node2: N
               ) = g
             override def addEdges(g: G, l: Iterable[(N, E, N)]) = g
+            override def addSubgraph(g: G, spec: S, nodes: Set[N]): G = ??? // TODO
             def removeNode(g: G, node: N) = g
             def removeEdge(
                 g: G,
