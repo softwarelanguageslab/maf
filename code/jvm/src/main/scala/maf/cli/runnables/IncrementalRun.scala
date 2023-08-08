@@ -83,7 +83,7 @@ object IncrementalRun extends App:
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalVisualIntra
 
-    def newTimeout(): Timeout.T = Timeout.start(Duration(10, SECONDS))
+    def newTimeout(): Timeout.T = Timeout.start(Duration(1, MINUTES))
 
     // Check whether an analysis (in an incremental update) arrives in a loop with the same store).
     // Returns a tuple indicating steps in the analysis that are identical.
@@ -168,6 +168,17 @@ object IncrementalRun extends App:
     def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false))
 
     List(
+        // Different results with and without LitAddr.
+        "test/changes/scheme/generated/R5RS_gambit_matrix-1.scm",
+        "test/changes/scheme/generated/R5RS_scp1_draw-umbrella-4.scm",
+        "test/changes/scheme/generated/R5RS_scp1_draw-umbrella-5.scm",
+        "test/changes/scheme/generated/R5RS_scp1_insert-2.scm",
+        "test/changes/scheme/generated/R5RS_scp1_list-compare-n-1.scm",
+        "test/changes/scheme/generated/R5RS_scp1_list-compare-n-3.scm",
+        "test/changes/scheme/generated/R5RS_various_work-1.scm",
+        "test/changes/scheme/generated/R5RS_various_work-3.scm",
+
+        // Not precise yet.
         "test/DEBUG2.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
         "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
@@ -181,7 +192,7 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
-    ).slice(0,1).foreach { bench =>
+    ).slice(0,7).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
