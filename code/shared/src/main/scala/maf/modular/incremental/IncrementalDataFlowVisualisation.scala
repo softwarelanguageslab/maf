@@ -78,7 +78,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         // Compute a subgraph for every SCA.
         val subgraphs: List[(GE, Set[GE])] = computeSCAs().toList.zipWithIndex.map({case (sca, index) =>
           val colour = palette(index)
-          val attributes = Map("name" -> s"cluster_$index","style" -> "filled", "color" -> s"<$colour>")
+          val attributes = Map("name" -> s"cluster_$index","style" -> "\"filled,dashed\"", "fillcolor" -> s"<$colour>"
           val ge_nodes = sca.map(nodes)
           val ge_subgraph = GE("",  attributes = attributes)
           (ge_subgraph, ge_nodes)
