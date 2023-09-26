@@ -101,7 +101,7 @@ object IncrementalRun extends App:
         exp
 
     // Returns a boolean indicating whether the analysis is fully precise.
-    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true): Boolean =
+    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true, images: Boolean = false): Boolean =
         try
             val a = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
             val b = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
@@ -111,7 +111,7 @@ object IncrementalRun extends App:
             start()
             println(markStep("init"))
             a.analyzeWithTimeout(newTimeout())
-            a.dataFlowToImage("flows-init.dot")
+            if images then a.dataFlowToImage("flows-init.dot")
 
             tick()
             println(markStep("rean"))
@@ -123,8 +123,10 @@ object IncrementalRun extends App:
             a.updateAnalysis(newTimeout())
 
             stop()
-            a.dataFlowToImage("flows-incr.dot")
-            b.dataFlowToImage("flows-rean.dot")
+            if images
+            then
+                a.dataFlowToImage("flows-incr.dot")
+                b.dataFlowToImage("flows-rean.dot")
             println(markStep("Comparing analyses"))
             //a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
             val diff = storeDiff(a, b)
@@ -144,14 +146,15 @@ object IncrementalRun extends App:
 
     List(
         // Different results with and without LitAddr.
-        "test/changes/scheme/generated/R5RS_gambit_matrix-1.scm",
-        "test/changes/scheme/generated/R5RS_scp1_draw-umbrella-4.scm",
-        "test/changes/scheme/generated/R5RS_scp1_draw-umbrella-5.scm",
-        "test/changes/scheme/generated/R5RS_scp1_insert-2.scm",
-        "test/changes/scheme/generated/R5RS_scp1_list-compare-n-1.scm",
-        "test/changes/scheme/generated/R5RS_scp1_list-compare-n-3.scm",
-        "test/changes/scheme/generated/R5RS_various_work-1.scm",
-        "test/changes/scheme/generated/R5RS_various_work-3.scm",
+        // SOME IGNORE TIMEOUT?
+        //"test/changes/scheme/generated/R5RS_gambit_matrix-1.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_draw-umbrella-4.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_draw-umbrella-5.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_insert-2.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_list-compare-n-1.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_list-compare-n-3.scm",
+        //"test/changes/scheme/generated/R5RS_various_work-1.scm",
+        //"test/changes/scheme/generated/R5RS_various_work-3.scm",
 
         // Not precise yet.
         "test/DEBUG2.scm",
@@ -167,12 +170,12 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
-    ).slice(6,7).foreach { bench =>
+    ).slice(0,1).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
             println(text)
-            println(!analyse(text, false, true))
+            println(!analyse(text, false, true, true))
             //val reduced = reduceImprecise(text)
             //println(reduced)
             //println(!analyse(reduced, true, true))

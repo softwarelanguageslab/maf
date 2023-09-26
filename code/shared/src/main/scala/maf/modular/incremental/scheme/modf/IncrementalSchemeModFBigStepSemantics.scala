@@ -203,6 +203,17 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             else super.applyClosuresM(fun, args, cll, ctx)
         end applyClosuresM
 
+        /*
+        override def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): FlowEvalM[Value] =
+            for
+                i <- getImplicitFlows
+                _ = lattice.setContext(i) // TODO: should the context only be expanded within primitives?
+                r <- super.applyPrimitives(fexp, fval, args)
+                _ = lattice.setContext(Set())
+            yield r */
+
+    end IncrementalSchemeModFBigStepIntra
+
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra
 
     override def configString(): String = super.configString() + "\n  applying incremental big-step ModF Scheme semantics"

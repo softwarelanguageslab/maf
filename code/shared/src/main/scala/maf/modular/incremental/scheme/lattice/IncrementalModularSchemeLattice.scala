@@ -65,6 +65,9 @@ class IncrementalModularSchemeLattice[
     /** The actual lattice implementation for AL and A. */
     val incrementalSchemeLattice: IncrementalSchemeLattice[AL, A] = new IncrementalSchemeLattice[AL, A] {
 
+        //private var implicitFlows: Set[A] = Set()
+        //def setContext(addr: Set[A]): Unit = implicitFlows = addr
+
         /** Converts an elements from the non-annotated lattice to the annotated lattice. */
         private def annotate(als: L, sources: Sources): AL = AnnotatedElements(als, sources)
 
@@ -135,8 +138,8 @@ class IncrementalModularSchemeLattice[
         def closure(x: Closure): AL = toAL(schemeLattice.closure(x))
         def cont(x: K): AL = toAL(schemeLattice.cont(x))
         def symbol(x: String): AL = toAL(schemeLattice.symbol(x))
-        def cons(car: AL, cdr: AL): AL = AnnotatedElements(schemeLattice.cons(car.toL(), cdr.toL()), car.joinedSources(cdr))
-        def pointer(a: A): AL = toAL(schemeLattice.pointer(a))
+        def cons(car: AL, cdr: AL): AL = annotate(schemeLattice.cons(car.toL(), cdr.toL()), car.joinedSources(cdr))
+        def pointer(a: A): AL = annotate(schemeLattice.pointer(a), /* implicitFlows + */ Set(a))
         def thread(tid: TID): AL = toAL(schemeLattice.thread(tid))
         def lock(threads: Set[TID]): AL = toAL(schemeLattice.lock(threads))
         def blame(blame: Blame): AL = toAL(schemeLattice.blame(blame))
