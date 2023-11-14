@@ -152,6 +152,7 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         /* ---------------------------------- */
 
         override def writeAddr(addr: Addr, value: Value): Boolean =
+            if configuration.checkAsserts then assert(lattice.getAddresses(value).isEmpty)
             // WI: Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
             if !lattice.isBottom(value) then intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
 

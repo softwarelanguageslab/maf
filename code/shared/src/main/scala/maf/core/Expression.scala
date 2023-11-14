@@ -44,7 +44,7 @@ trait Expression extends SmartHash:
             subexpressions.length == other.subexpressions.length &&
             subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
 
-    /** Indicates whether this expression is equal to another expression when identity information of the expression is ignored. */
+    /** Indicates whether this expression is equal to another expression when identisty information of the expression is ignored. */
     def eql(other: Expression): Boolean = (hash == other.hash
         && label == other.label
         && subexpressions.length == other.subexpressions.length

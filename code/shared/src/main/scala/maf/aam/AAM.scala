@@ -16,7 +16,7 @@ case class GraphElementAAM(hsh: Int, label: String, color: Color, data: String) 
 
 case class AnalysisResult[G, V, C](dependencyGraph: G, values: Set[V], allConfs: Set[C])
 
-type AAMGraph[G] = Graph[G, GraphElementAAM, GraphElement]
+type AAMGraph[G] = Graph[G, GraphElementAAM, GraphElement, GraphElement]
 
 /** Provides functionality for a full AAM style analysis */
 trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
@@ -149,18 +149,18 @@ trait AAMAnalysis[E <: Expression] extends AnalysisEntry[E]:
         expr: Expr,
         graph: G,
         timeout: Timeout.T = Timeout.none
-      )(using Graph[G, GraphElementAAM, GraphElement]
+      )(using Graph[G, GraphElementAAM, GraphElement, GraphElement]
       ): AnalysisResult[G, Val, Conf] =
         val s0 = inject(expr)
         val (sys, graph1) = fix(timeout)(s0, graph)
         _result = Some(AnalysisResult(graph1, sys.finalStates.flatMap(extractValue(_)), sys.allConfs))
         _result.get.asInstanceOf[AnalysisResult[G, Val, Conf]]
 
-    def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf]
+    def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement, GraphElement]): AnalysisResult[G, Val, Conf]
 
     /** Runs the analysis until the given time-out passes */
     def analyzeWithTimeout(timeout: Timeout.T): Unit =
-        val g = new NoGraph[GraphElementAAM, GraphElement]
+        val g = new NoGraph[GraphElementAAM, GraphElement, GraphElement]
         analyzeWithTimeout(timeout, g.G())(using g.G.typeclass)
 
     var finished: Boolean = false

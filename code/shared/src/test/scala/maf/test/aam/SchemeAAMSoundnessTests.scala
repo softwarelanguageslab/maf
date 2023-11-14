@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 import maf.util.graph.*
 
 trait DotGraphOutput extends AAMSoundnessTests:
-    final val graph = new DotGraph[GraphElementAAM, GraphElement]()
+    final val graph = new DotGraph[GraphElementAAM, GraphElement, GraphElement]()
 
     type G = graph.G
     type N = GraphElementAAM

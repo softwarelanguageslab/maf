@@ -1,0 +1,59 @@
+name: Weekly MAF tests
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  schedule:
+    - cron: '00 8 * * 6' # Executes Saturday morning at 9 (CET).
+
+jobs:
+  execute-tests:
+    name: Test MAF
+    runs-on: self-hosted
+    timeout-minutes: 2160 # 36 hours
+    steps:
+      # Send a notification to Slack.
+      - name: Notify start
+        id: slack
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          channel: maf-logs
+          status: STARTED
+          color: warning
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      # Check out the GitHub repository.
+      - name: Checkout the repository
+        uses: actions/checkout@v2
+      # Compile the code.
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+        with:
+          java-version: openjdk@1.15
+      - name: Compile MAF
+        run: sbt compile
+      # Run _all_ tests in the repository.
+      - name: Run utility tests
+        run: sbt "maf/test"
+      # If failed, update the Slack notification.
+      - name: Notify slack fail
+        if: failure() || cancelled()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf-logs
+          status: FAILED
+          color: danger
+      # Send a notification to Slack on success.
+      - name: Notify slack success
+        if: success()
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        uses: voxmedia/github-action-slack-notify-build@v1
+        with:
+          message_id: ${{ steps.slack.outputs.message_id }}
+          channel: maf-logs
+          status: SUCCESS
+          color: good

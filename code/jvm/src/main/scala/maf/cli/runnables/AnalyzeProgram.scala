@@ -23,13 +23,14 @@ import scala.concurrent.duration.*
 import scala.language.unsafeNulls
 
 object AnalyzeProgram extends App:
-    def runAnalysis[A <: ModAnalysis[SchemeExp]](bench: String, analysis: SchemeExp => A, timeout: () => Timeout.T): A =
+    def runAnalysis[A <: ModAnalysis[SchemeExp] with GlobalStore[SchemeExp]](bench: String, analysis: SchemeExp => A, timeout: () => Timeout.T): A =
         val text = TaintSchemeParser.parseProgram(Reader.loadFile(bench))
         val a = analysis(text)
         print(s"Analysis of $bench ")
         try {
             val time = Timer.timeOnly {
                 a.analyzeWithTimeout(timeout())
+                println(a.store.filterNot(_.toString().contains("PrmAddr")).size)
                 //println(a.program.prettyString())
             }
             println(s"terminated in ${time / 1000000} ms.")
@@ -43,7 +44,7 @@ object AnalyzeProgram extends App:
         }
         a
 
-    val bench: List[String] = SchemeBenchmarkPrograms.fromFolder("test/taint")().toList
+    val bench: List[String] = List("test/DEBUG2.scm")
 
     // Used by webviz.
     def newStandardAnalysis(text: String) =

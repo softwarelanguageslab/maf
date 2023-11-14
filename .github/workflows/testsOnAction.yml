@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Run fast tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       # Send a notification to Slack.
       - name: Notify push

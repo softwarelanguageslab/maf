@@ -45,7 +45,8 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         file: String,
         inc: Analysis,
         rean: Analysis,
-        table: Table[String]
+        table: Table[String],
+        printResult: Boolean // Indicates whether the result overview (OK/NOT OK) is printed to the terminal.
       ): Table[String] =
         val cName = inc.configuration.toString
         // Both analyses normally share the same lattice, allocation schemes,... which makes it unnecessary to convert values etc.
@@ -68,20 +69,32 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
                 m += 1 // The incremental value is subsumed by the value of the full reanalysis => more precise.
             }
         })
+        if printResult
+        then print((l, m) match {
+            case (0, 0) =>
+                markOK("PRECISE ")
+            case (_, 0) =>
+                markError("IMPRECISE ")
+            case (0, _) =>
+                markBad("UNSOUND ")
+            case _ =>
+                markError("IMPRECISE ")
+                markBad("UNSOUND ")
+        })
         table
             .add(file, columnName(eqS, cName), Formatter.withPercent(e, t))
             .add(file, columnName(lpS, cName), Formatter.withPercent(l, t))
             .add(file, columnName(mpS, cName), Formatter.withPercent(m, t))
 
     def onBenchmark(file: String): Unit =
-        print(markTask(s"Testing precision: "))
+        print(markStep(s"Testing precision: "))
         val program = parse(file)
         // Initial analysis: analyse + update.
         val init = analysis(program, allOptimisations) // Allow tracking for all optimisations.
 
         // Run the initial analsyis and make sure it finishes.
         if runAnalysis(s"init ", timeOut => init.analyzeWithTimeout(timeOut)) then
-            print(markWarning("timed out."))
+            print(markWarning("TIMEOUT"))
             columns.foreach { c =>
                 resultsNoOpt = resultsNoOpt.add(file, c, infS)
                 results = results.add(file, c, infS)
@@ -94,7 +107,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         var reanTO = false
 
         if runAnalysis("rean ", timeOut => rean.analyzeWithTimeout(timeOut)) then
-            print(markWarning("timed out - "))
+            print(markWarning("TIMEOUT "))
             columns.foreach(c => results = results.add(file, c, infS))
             reanTO = true
 
@@ -104,7 +117,7 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
         var noOptTO = false
 
         if runAnalysis("noOpt ", timeOut => noOpt.updateAnalysis(timeOut)) then
-            print(markWarning("timed out - "))
+            print(markWarning("TIMEOUT "))
             columns.foreach(c => resultsNoOpt = resultsNoOpt.add(file, c, infS))
             noOptTO = true
 
@@ -116,10 +129,10 @@ trait IncrementalPrecision[E <: Expression] extends IncrementalExperiment[E] wit
             val copy = init.deepCopy()
             copy.configuration = config
             if !runAnalysis(config.toString + " ", timeOut => copy.updateAnalysis(timeOut)) then
-                results = compareAnalyses(file, copy, rean, results)
-                resultsNoOpt = compareAnalyses(file, init, noOpt, resultsNoOpt)
+                results = compareAnalyses(file, copy, rean, results, true) // Print the status for the comparison to a full reanalysis to the terminal.
+                resultsNoOpt = compareAnalyses(file, init, noOpt, resultsNoOpt, false)
             else
-                print(markWarning("timed out - "))
+                print(markWarning("TIMEOUT "))
                 propertiesS.foreach { o =>
                     results = results.add(file, columnName(o, config.toString), infS)
                     resultsNoOpt = resultsNoOpt.add(file, columnName(o, config.toString), infS)

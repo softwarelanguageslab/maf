@@ -245,7 +245,7 @@ trait GlobalStoreModActor extends SchemeModActorSemantics, SimpleMessageMailbox,
             def color = Colors.Black
             def metadata = GraphMetadataNone
 
-        val G = new DotGraph[GraphElement, GraphElement]().G.typeclass
+        val G = new DotGraph[GraphElement, GraphElement, GraphElement]().G.typeclass
         val g = G.empty
         val sends = interLens.get(_result.nn).sends
         val outputGraph = sends.foldLeft(g) {

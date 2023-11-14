@@ -31,8 +31,8 @@ trait AAMTesterT:
     def run(name: String): Unit =
         val content = Reader.loadFile(name)
         val program = parseProgram(content)
-        val graph = new DotGraph[GraphElementAAM, GraphElement]()
-        given gInst: Graph[graph.G, GraphElementAAM, GraphElement] = graph.G.typeclass
+        val graph = new DotGraph[GraphElementAAM, GraphElement, GraphElement]()
+        given gInst: Graph[graph.G, GraphElementAAM, GraphElement, GraphElement] = graph.G.typeclass
         println(s"input program ${program.prettyString(0)}")
         val theAnalysis = analysis(program)
 

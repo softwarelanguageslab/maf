@@ -15,6 +15,7 @@ import maf.util.benchmarks.Timer
 import maf.util.benchmarks.Statistics
 import maf.cli.experiments.aam.AAMAnalyses
 import maf.language.racket.ASchemeRacketLoader
+import maf.modular.scheme.monadic.SimpleModFAnalysis
 
 object Repl:
     val about: String = """
@@ -39,7 +40,8 @@ object Repl:
       "aam" -> "AAM-style analysis",
       "ci" -> "context-insensitive analysis",
       "actor" -> "default analysis for actors",
-      "mirror" -> "actor analysis with mirrors"
+      "mirror" -> "actor analysis with mirrors",
+      "modfMonad" -> "default modf analysis with state as case class"
     )
 
     private val parserHelp: Map[String, String] = Map(
@@ -53,7 +55,8 @@ object Repl:
       "modfFS" -> SchemeAnalyses.modFFlowSensitive,
       "ci" -> SchemeAnalyses.contextInsensitiveAnalysis,
       "actor" -> SchemeAnalyses.modActorAnalysis,
-      "mirror" -> SchemeAnalyses.modActorWithMirrors
+      "mirror" -> SchemeAnalyses.modActorWithMirrors,
+      "modfMonad" -> ((exp) => new SimpleModFAnalysis(exp))
     )
 
     private def printHelp(): Unit =
@@ -251,14 +254,15 @@ object Repl:
             // setup the parser
             val parser = setupParser(options.parser)
             // setup the loader
-            val loader = setupLoader(parser, options.module.isDefined)
+            val loader =
+                if options.module.isDefined then Some(setupLoader(parser, options.module.isDefined))
+                else None
             // setup the analysis
             val analysisFactory = setupAnalysis(options.analysis.get)
             // setup the loader of the file/module
-            if options.module.isDefined then
-                // either run the file or the repl
-                if options.interactive then runRepl(parser, analysisFactory)
-                else
-                    // retrieve the file or module name
-                    val path = options.filename.getOrElse(options.module.get)
-                    runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, Some(loader))
+            // either run the file or the repl
+            if options.interactive then runRepl(parser, analysisFactory)
+            else
+                // retrieve the file or module name
+                val path = options.filename.getOrElse(options.module.get)
+                runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, loader)

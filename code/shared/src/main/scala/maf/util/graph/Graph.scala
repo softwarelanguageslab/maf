@@ -16,11 +16,14 @@ trait GraphElement:
     def color: Color
     def metadata: GraphMetadata
 
-    /** Should  the graph element constrain  the ranking of the node during visualisation */
+    /** Should  the graph element constrain the ranking of the node during visualisation */
     def constrain: Boolean = true
 
     /** Allows to set the shape of nodes and edges. */
     def shape: String = ""
+
+    /** Allows to specify additional attributes. */
+    def attributes: Map[String, String] = Map.empty
 
 class NoTransition extends GraphElement:
     def label = ""
@@ -41,7 +44,7 @@ object EmptyGraphElement
 /**
  * A graph with nodes of type N and edges of type E. Edges have a specific type because they may contain information (i.e., they can be annotated).
  */
-trait Graph[G, N <: GraphElement, E <: GraphElement]:
+trait Graph[G, N <: GraphElement, E <: GraphElement, S <: GraphElement]:
 
     /** The empty graph */
     def empty: G
@@ -56,6 +59,9 @@ trait Graph[G, N <: GraphElement, E <: GraphElement]:
         edge: E,
         node2: N
       ): G
+
+    /** Add a subgraph containing of a given set of nodes and of a given style. */
+    def addSubgraph(g: G, spec: S, nodes: Set[N]): G
 
     /** Add multiple edges at a time */
     def addEdges(g: G, l: Iterable[(N, E, N)]): G =
@@ -85,12 +91,12 @@ trait Graph[G, N <: GraphElement, E <: GraphElement]:
     def findNodeById(g: G, id: Int): Option[N] = None
 
 object Graph:
-    def apply[G, N <: GraphElement, E <: GraphElement]()(implicit g: Graph[G, N, E]): Graph[G, N, E] =
+    def apply[G, N <: GraphElement, E <: GraphElement, S <: GraphElement]()(implicit g: Graph[G, N, E, S]): Graph[G, N, E, S] =
         g
 
-    implicit class GraphOps[G, N <: GraphElement, E <: GraphElement](
+    implicit class GraphOps[G, N <: GraphElement, E <: GraphElement, S <: GraphElement](
         g: G
-      )(implicit ev: Graph[G, N, E]):
+      )(implicit ev: Graph[G, N, E, S]):
         def addNode(node: N): G = ev.addNode(g, node)
         def addEdge(
             node1: N,
@@ -98,6 +104,7 @@ object Graph:
             node2: N
           ): G = ev.addEdge(g, node1, edge, node2)
         def addEdges(l: Iterable[(N, E, N)]): G = ev.addEdges(g, l)
+        def addSubgraph(spec: S, nodes: Set[N]): G = ev.addSubgraph(g, spec, nodes)
         def removeNode(node: N): G = ev.removeNode(g, node)
         def removeEdge(
             node1: N,

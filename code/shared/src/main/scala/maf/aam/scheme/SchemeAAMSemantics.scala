@@ -37,7 +37,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
     // TODO: check if this is actually used?
     lazy val initialStore: Sto
 
-    override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement]): AnalysisResult[G, Val, Conf] =
+    override def analyzeWithTimeout[G](timeout: Timeout.T, graph: G)(using Graph[G, GraphElementAAM, GraphElement, GraphElement]): AnalysisResult[G, Val, Conf] =
         analyze(prog, graph, timeout)
 
     /** An instantation of the <code>SchemeInterpreterBridge</code> trait to support the builtin MAF Scheme primitives */
