@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeLambda.ReplaceNthExpensiveFunction
+import maf.deltaDebugging.treeDD.transformations.schemeLambda.ReplaceNthExpensiveFunction
 import maf.language.scheme.{SchemeBegin, SchemeLet, SchemeParser}
 
 class ReplaceNthExpensiveFunctionTest extends AnyFlatSpecTransformations:

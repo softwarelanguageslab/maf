@@ -1,42 +1,34 @@
 package maf.deltaDebugging.nonTreeDD
 
+import maf.deltaDebugging.nonTreeDD.AST.*
+import maf.deltaDebugging.nonTreeDD.Interpreter.*
+
 object Main {
-  case class ListChange(s: String, id: Int = ListChange.newID()) extends Change
-  object ListChange {
-    private var ID = 0
-    def newID(): Int = {
-      ID = ID + 1
-      ID
-    }
-  }
 
-  case class ListTestCase(override val changes: List[ListChange]) extends TestCase[ListChange](changes)
+  type Program = List[Instruction]
+  val program: List[Instruction] =
+    List(
+      SetConstant(Reg1, 10),
+      SetConstant(Reg2, 0),
 
-  val testCasePass: ListTestCase = ListTestCase(List()) //baseline, or trivial test case that passes the test
-  val testCaseFail: ListTestCase = ListTestCase(List(
-    ListChange("define"),
-    ListChange("/"),
-    ListChange("+"),
-    ListChange("-"),
-    ListChange("++"),
-    ListChange("--"),
-    ListChange("set!"), //set! is considered buggy
-    ListChange("let")))
+      Set(Reg3, Mul(Reg1, Reg2)),
+      Set(Reg4, Plus(Reg1, Reg2)),
+      Set(Reg5, Div(Reg1, Reg2)),
+      Set(Reg6, Sub(Reg1, Reg2)),
 
-
-  object ListDeltaDebugger extends DeltaDebugger[ListChange, ListTestCase](ListTestCase.apply, noSetBangs)
-
-  val noSetBangs: ListTestCase => Boolean = (c: ListTestCase) => {
-    c.changes.find(c => c.s == "set!") match {
-      case Some(_) => false
-      case None => true
-    }
-  }
+      SetConstant(RegReturn, 200) //ok
+    )
 
   def main(args: Array[String]): Unit = {
-    println()
-    println("")
-    println("simplifying case: " + testCaseFail)
-    println("simplified case: " + ListDeltaDebugger.ddmin(testCaseFail))
+    val oracle: Program => Boolean = p => {
+      try
+        Interpreter.eval(p)
+        false
+      catch
+        case _: Throwable => true
+    }
+
+    val reduced = DeltaDebugger.ddmin(program, oracle)
+    println(reduced)
   }
 }

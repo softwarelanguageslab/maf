@@ -1,8 +1,8 @@
 package maf.test.deltaDebugging.gtr
 
-import maf.deltaDebugging.gtr.transformations.*
-import maf.deltaDebugging.gtr.transformations.generics.{DeleteChildSimple, ReplaceByChild}
-import maf.deltaDebugging.gtr.variants.JumpyGTR
+import maf.deltaDebugging.treeDD.transformations.*
+import maf.deltaDebugging.treeDD.transformations.generics.{DeleteChildSimple, ReplaceByChild}
+import maf.deltaDebugging.treeDD.variants.JumpyGTR
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

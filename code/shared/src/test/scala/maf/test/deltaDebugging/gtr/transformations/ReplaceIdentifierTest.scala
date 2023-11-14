@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.generics.ReplaceByValue
-import maf.deltaDebugging.gtr.transformations.schemeIdentifier.ReplaceIdentifier
+import maf.deltaDebugging.treeDD.transformations.generics.ReplaceByValue
+import maf.deltaDebugging.treeDD.transformations.schemeIdentifier.ReplaceIdentifier
 import org.scalatest.flatspec.AnyFlatSpec
 import maf.language.scheme.{SchemeBegin, SchemeFuncall, SchemeLet, SchemeParser}
 

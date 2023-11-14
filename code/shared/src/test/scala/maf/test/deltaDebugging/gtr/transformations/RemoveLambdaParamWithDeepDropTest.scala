@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.schemeLambda.RemoveLambdaParamWithDeepDrop
+import maf.deltaDebugging.treeDD.transformations.schemeLambda.RemoveLambdaParamWithDeepDrop
 import maf.language.scheme.{SchemeBegin, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 

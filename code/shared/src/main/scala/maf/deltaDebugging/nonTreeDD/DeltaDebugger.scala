@@ -1,47 +1,40 @@
 package maf.deltaDebugging.nonTreeDD
 
-abstract class DeltaDebugger[C <: Change, T <: TestCase[C]]
-(factory: List[C] => T, test: T => Boolean) {
+import maf.deltaDebugging.nonTreeDD.AST.Instruction
 
-  val x: Int = 10
+object DeltaDebugger:
+  type Program = List[Instruction]
 
-  def ddmin(caseToMinimize: T): T = {
-    ddmin2(caseToMinimize, 2)
-  }
+  def ddmin(program: Program, oracle: Program => Boolean): Program =
+      ddmin2(program, oracle, 2)
 
-  private def ddmin2(caseToMinimize: T, n: Int): T = { //n indicates the number of subsets
-    val subsets: List[T] = makeSubsets(caseToMinimize, n)
-    val complements: List[T] = findComplements(caseToMinimize, subsets)
+  private def ddmin2(program: Program, oracle: Program => Boolean, n: Int): Program = //n indicates the number of subsets
+    val subsets: List[Program] = makeSubsets(program, n)
+    val complements: List[Program] = findComplements(program, subsets)
 
-    subsets.find(testCase => !test(testCase)) match {
-      case Some(subset) => ddmin2(subset, 2) //reduce to subset
+    subsets.find(testCase => oracle(testCase)) match
+      case Some(subset) => ddmin2(subset, oracle, 2) //reduce to subset
       case None =>
-        complements.find(testCase => !test(testCase)) match {
+        complements.find(testCase => oracle(testCase)) match
           case Some(complement) =>
-            ddmin2(complement, Math.max(n - 1, 2)) //reduce to complement
+            ddmin2(complement, oracle, Math.max(n - 1, 2)) //reduce to complement
           case None =>
-            if n < caseToMinimize.changes.length then
-              ddmin2(caseToMinimize, Math.min(caseToMinimize.changes.length, 2 * n))
-            else caseToMinimize
-        }
-    }
-  }
+            if n < program.length then
+              ddmin2(program, oracle, Math.min(program.length, 2 * n))
+            else program
 
-  private def makeSubsets(c: T, n: Int): List[T] = {
-    val subsetSize: Int = c.changes.length / n
+  private def makeSubsets(program: List[Instruction], n: Int): List[List[Instruction]] =
+    val subsetSize: Int = program.length / n
     var i: Int = 0
-    var res: List[T] = List()
+    var res: List[List[Instruction]] = List()
 
-    while c.changes.slice(i, i + subsetSize).nonEmpty do //while there is still a slice to collect
-      val x: T = factory(c.changes.slice(i, i + subsetSize))
+    while program.slice(i, i + subsetSize).nonEmpty do //while there is still a slice to collect
+      val x: List[Instruction] = program.slice(i, i + subsetSize)
       res = res.::(x) //collect it
       i = i + subsetSize //repeat
     res
-  }
 
-  private def findComplements(c: T, subsets: List[T]): List[T] = {
+  private def findComplements(program: List[Instruction], subsets: List[List[Instruction]]): List[List[Instruction]] =
     subsets.map(subset => {
-      factory(c.changes.filterNot(c => subset.changes.contains(c)))
+      program.filterNot(c => subset.contains(c))
     })
-  }
-}

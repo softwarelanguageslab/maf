@@ -2,9 +2,9 @@ package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.incremental.*
-import maf.deltaDebugging.gtr.GTR
-import maf.deltaDebugging.gtr.GTR.*
-import maf.deltaDebugging.gtr.transformations.TransformationManager
+import maf.deltaDebugging.treeDD.variants.GTR
+import maf.deltaDebugging.treeDD.variants.GTR.*
+import maf.deltaDebugging.treeDD.transformations.TransformationManager
 import maf.language.CScheme.*
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
@@ -94,7 +94,7 @@ object IncrementalRun extends App:
         val log = Logger.raw("reduced-program")
         import SimpleTimer.*
 
-        val exp = GTR.reduce(text, oracle, identity, TransformationManager.allTransformations)
+        val exp = GTR.reduce(text, oracle, TransformationManager.allTransformations)
         log.log(exp.prettyString())
         println(exp.prettyString())
         println(oracle(exp).toString)

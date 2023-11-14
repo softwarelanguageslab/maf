@@ -4,6 +4,8 @@ import maf.core.Identity
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.interpreter.ConcreteValues.Value
 import maf.language.scheme.interpreter.{ConcreteValues, FileIO}
+import maf.modular.{AnalysisResults, ModAnalysis}
+import maf.modular.scheme.SchemeDomain
 import maf.test.SlowTest
 import maf.test.deltaDebugging.soundnessDD.implementation.DD
 import maf.test.modular.scheme.SchemeSoundnessTests
@@ -14,7 +16,7 @@ import scala.concurrent.duration.{Duration, SECONDS}
 
 trait SoundnessDDTester extends SchemeSoundnessTests:
   override def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(2, SECONDS))
-  override def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(5, SECONDS)) //remember: concrete run may not halt
+  override def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(3, SECONDS)) //remember: concrete run may not halt
 
   protected def compareResults(
                                 analysis: Analysis,
@@ -35,7 +37,6 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
     }
     ""
   
-
   def evalProgram(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] =
     var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
     val timeout = concreteTimeout(benchmark)
@@ -105,8 +106,3 @@ trait SoundnessDDTester extends SchemeSoundnessTests:
       (None, (evalRunTime, analysisRuntime))
     else (Some(compareResults(anl.get, concreteResults.get)), (evalRunTime, analysisRuntime))
   }
-
-  /* Subclass Responsibility
-  override def onBenchmark(benchmark: Benchmark): Unit =
-    ...
-  */

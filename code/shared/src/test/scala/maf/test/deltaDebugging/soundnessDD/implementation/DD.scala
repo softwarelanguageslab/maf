@@ -1,7 +1,7 @@
 package maf.test.deltaDebugging.soundnessDD.implementation
 
-import maf.deltaDebugging.gtr.*
-import maf.deltaDebugging.gtr.transformations.*
+import maf.deltaDebugging.treeDD.*
+import maf.deltaDebugging.treeDD.transformations.*
 import maf.language.scheme.{SchemeExp, SchemeParser}
 import maf.test.deltaDebugging.soundnessDD.SoundnessDDTester
 import org.scalatest.Assertions.fail
@@ -11,8 +11,7 @@ object DD:
   def reduce(program: SchemeExp,
              soundnessTester: DDTester,
              benchmark: String): Unit =
-
-      val reduced: SchemeExp = GTRParallel.reduce(
+      val reduced: SchemeExp = SchemeReduce.reduce(
         program,
         p => {
           soundnessTester.runCompareAndtimeWithMaxSteps(p, benchmark, maxSteps) match
@@ -26,7 +25,7 @@ object DD:
               false
         },
         identity,
-        TransformationManager.genericTransformations
+        TransformationManager.allTransformations
       )
 
       val parsedAgain = SchemeParser.parse(reduced.prettyString()).head //parse again, to generate file-related information (e.g. bug is at offset 20-25)

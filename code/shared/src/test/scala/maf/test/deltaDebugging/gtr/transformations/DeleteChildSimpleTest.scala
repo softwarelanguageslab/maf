@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.gtr.transformations
 
-import maf.deltaDebugging.gtr.transformations.generics.DeleteChildSimple
+import maf.deltaDebugging.treeDD.transformations.generics.DeleteChildSimple
 import maf.language.scheme.{SchemeBegin, SchemeExp, SchemeFuncall, SchemeLambdaExp, SchemeLettishExp, SchemeParser}
 import org.scalatest.flatspec.AnyFlatSpec
 
