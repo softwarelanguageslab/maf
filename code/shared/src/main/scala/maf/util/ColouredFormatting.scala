@@ -1,5 +1,5 @@
 package maf.util
-import io.AnsiColor.*
+import scala.io.AnsiColor.*
 
 object ColouredFormatting {
     // Wrapper for easily accessing https://www.scala-lang.org/api/2.13.5/scala/io/AnsiColor.html
