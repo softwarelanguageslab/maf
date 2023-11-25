@@ -178,12 +178,13 @@ object Repl:
         val exp = loader(filename)
         def runSingle(): Long =
             val anl = makeAnalysis(exp)
-            val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
+            val (elapsed, _) = Timer.time { anl.analyze() } //anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
             // Do not print results if we are in perfomance testing mode
             if !performance then
                 if !anl.finished then println("Analysis timed out")
                 anl.printResult
                 println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
+                anl.save("res.json")
             // Print a dot graph if the dot option has been enabled
             if dot then anl.toDot(filename.replace("/", "_").nn + ".dot")
             elapsed

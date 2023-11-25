@@ -14,6 +14,8 @@ import maf.util._
 import maf.core.IdentityMonad.given
 import maf.core.Monad.MonadIterableOps
 import maf.core.Monad.MonadSyntaxOps
+import maf.save.SaveModF
+import maf.save.Savable
 
 trait BaseEvalM[M[_]] extends Monad[M] with MonadError[M, Error] with MonadJoin[M]
 
@@ -413,5 +415,6 @@ abstract class SimpleSchemeModFAnalysis(prg: SchemeExp, override val name: Optio
     extends ModAnalysis[SchemeExp](prg)
     with StandardSchemeModFComponents
     with SchemeModFSemanticsM
-    with BigStepModFSemantics:
+    with BigStepModFSemantics
+    with SaveModF:
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra

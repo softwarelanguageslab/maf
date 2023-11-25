@@ -57,6 +57,7 @@ object SchemeAnalyses:
         prg: SchemeExp
       ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString = "no-sensitivity"
+        override val analysisName: String = "modf"
     }
 
     //def contextInsensitiveAnalysisRacket(

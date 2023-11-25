@@ -18,6 +18,9 @@ case class Metric(name: String, result: Double)
 
 /** Super type of all analyses in MAF, provides basic entry points to the analysis */
 trait AnalysisEntry[Exp <: Expression]:
+    /** The name of the analysis */
+    val analysisName: String = "None"
+
     /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
     def finished: Boolean
 
@@ -39,6 +42,17 @@ trait AnalysisEntry[Exp <: Expression]:
 
     /** Method that defines how to print the result of the analysis */
     def printResult: Unit = println(result)
+
+    /**
+     * This saves the current analysis to a file
+     *
+     * @note
+     *   This method is not currently implemented and should be overridden, this method so the save implementation can gradually be added
+     *
+     * @param filename
+     *   The file to save to
+     */
+    def save(filename: String): Unit = System.err.nn.println("Save functionallity is not implemented for this analysis")
 
     /**
      * Method that renders a Dot graph of the components and the dependencies between them and writes it to a file
@@ -167,5 +181,4 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     // Print analysis information.
 
     def configString(): String = "Modular analysis"
-
 }
