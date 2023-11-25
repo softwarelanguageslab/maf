@@ -12,11 +12,10 @@ import maf.language.scheme.SchemeExp
 class Savable[T](val value: T)(using val encoder: Encoder[T])
 
 trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
-    given Encoder[Save[Expr]] with
-        override def write(writer: Writer, value: Save[Expr]): Writer =
-            writer.writeMapStart()
-            for (key, value) <- saveInfo do writer.writeMapMember(key, value.value)(using summon[Encoder[String]], value.encoder)
-            writer.writeMapClose()
+    given MapEncoder[Save[Expr]] with
+        override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
+            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using summon[Encoder[String]], value.encoder)
+            writer
 
     /**
      * This saves the current analysis to a file
