@@ -5,43 +5,68 @@ import io.bullet.borer.Writer
 
 trait EncapsulatedEncoder[T] extends Encoder[T]:
     override def write(writer: Writer, value: T): Writer = writeEncapsulated(writer, value)
-    def writeEncapsulated(writer: Writer, value: T): Writer
-    def writeMembe[T: Encoder, U: Encoder](writer: Writer, key: T, value: U): Writer = writer.writeMember(key, value)
-    extension (writer: Writer)
-        def writeMember[T: Encoder, U: Encoder](key: T, value: U): Writer
-        def writeMember[T: Encoder](value: T): Writer
+    protected val writeOpenKey = true
+    protected def writeEncapsulated(writer: Writer, value: T): Writer
+    protected def writeKey(writer: Writer): Writer
+    protected def writeKey[T: Encoder](writer: Writer, key: T): Writer
+    protected def writeValue[T: Encoder](writer: Writer, value: T): Writer
+    protected def openEncapsulation(writer: Writer): Writer
+    protected def openEncapsulation(writer: Writer, amount: Int): Writer
+    protected def closeEncapsulation(writer: Writer): Writer
 
-trait MapEncoder[T] extends EncapsulatedEncoder[T]:
+    extension (writer: Writer)
+        def close(): Writer = closeEncapsulation(writer)
+        def writeMember[T: Encoder, U: Encoder](key: T, value: U): Writer =
+            writeKey(writer, key)
+            writeValue(writer, value)
+        def writeMember[T: Encoder](value: T): Writer =
+            writeKey(writer)
+            writeValue(writer, value)
+        def open(): Writer =
+            if writeOpenKey then writeKey(writer)
+            openEncapsulation(writer)
+        def open(amount: Int): Writer =
+            if writeOpenKey then writeKey(writer)
+            openEncapsulation(writer, amount)
+
+trait MapEncapsulatedEncoder[T] extends EncapsulatedEncoder[T]:
     final override def write(writer: Writer, value: T): Writer =
         writer.writeMapStart()
         super.write(writer, value)
         writer.writeMapClose()
 
+trait MapMemberEncoder[T] extends EncapsulatedEncoder[T]:
     private var id = -1
-    extension (writer: Writer)
-        override def writeMember[A: Encoder, B: Encoder](key: A, value: B): Writer =
-            writer.writeMapMember(key, value)
+    override protected def writeKey(writer: Writer): Writer =
+        id += 1
+        writeKey(writer, id.toString())
+    override protected def writeKey[T: Encoder](writer: Writer, key: T): Writer = writer.write(key)
+    override protected def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
+    override protected def openEncapsulation(writer: Writer): Writer = writer.writeMapStart()
+    override protected def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeMapOpen(amount)
+    override protected def closeEncapsulation(writer: Writer): Writer = writer.writeMapClose()
+trait MapEncoder[T] extends MapEncapsulatedEncoder[T] with MapMemberEncoder[T]
 
-        override def writeMember[T: Encoder](value: T): Writer =
-            id += 1
-            writer.writeMember(id.toString(), value)
-
-trait ArrayEncoder[T] extends EncapsulatedEncoder[T]:
+trait ArrayEncapsulatedEncoder[T] extends EncapsulatedEncoder[T]:
     final override def write(writer: Writer, value: T): Writer =
         writer.writeArrayStart()
         super.write(writer, value)
         writer.writeArrayClose()
 
-    extension (writer: Writer)
-        override def writeMember[A: Encoder, B: Encoder](key: A, value: B): Writer =
-            writer.write(value)
-
-        override def writeMember[T: Encoder](value: T): Writer =
-            writer.write(value)
+trait ArrayMemberEncoder[T] extends EncapsulatedEncoder[T]:
+    override protected def writeKey(writer: Writer): Writer = writer
+    override protected def writeKey[T: Encoder](writer: Writer, key: T): Writer = writer
+    override protected def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
+    override protected def openEncapsulation(writer: Writer): Writer = writer.writeArrayStart()
+    override protected def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeArrayOpen(amount)
+    override protected def closeEncapsulation(writer: Writer): Writer = writer.writeArrayClose()
+trait ArrayEncoder[T] extends ArrayEncapsulatedEncoder[T] with ArrayMemberEncoder[T]
 
 trait ArrayKeyEncoder[T] extends ArrayEncoder[T]:
-    extension (writer: Writer)
-        override def writeMember[A: Encoder, B: Encoder](key: A, value: B): Writer =
-            writer.writeArrayOpen(2)
-            writer.write(key).write(value)
-            writer.writeArrayClose()
+    private var id = -1
+    override protected val writeOpenKey: Boolean = false
+    override protected def writeKey(writer: Writer): Writer =
+        id += 1
+        writeKey(writer, id.toString())
+    override protected def writeKey[T: Encoder](writer: Writer, key: T): Writer = openEncapsulation(writer, 2).write(key)
+    override protected def writeValue[T: Encoder](writer: Writer, value: T): Writer = closeEncapsulation(writer.write(value))
