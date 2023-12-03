@@ -55,4 +55,3 @@ trait SaveStandardSchemeComponents
             val context = component.ctx
             if lambda.name.isDefined then writer.writeMapMember("name", lambda.name.get)
             writer.writeMapMember("position", lambda.idn.pos)
-            writer.writeMapMember("result", returnValue(component))

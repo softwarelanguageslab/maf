@@ -31,4 +31,11 @@ trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
     def saveInfo: Map[String, Savable[_]] =
         Map("name" -> Savable(analysisName))
 
-trait SaveModF extends Save[SchemeExp] with SaveStandardSchemeComponents with SaveModularDomain with SaveAddrDep
+trait SaveModF
+    extends Save[SchemeExp]
+    with SaveStandardSchemeComponents
+    with SaveModularDomain
+    with SaveAddrDep
+    with SaveSchemeAddr
+    with SaveGlobalStore[SchemeExp]
+    with SaveModularSchemeLattices

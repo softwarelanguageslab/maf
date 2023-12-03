@@ -8,13 +8,53 @@ import maf.language.scheme.SchemeExp
 import maf.modular.scheme.ModularSchemeDomain
 import maf.lattice.HMap
 import io.bullet.borer.Writer
+import maf.lattice.HMapKey
+import maf.language.scheme.lattices.ModularSchemeLattice
+import scala.reflect.ClassTag
+import maf.lattice.AbstractWrapType
+import maf.lattice.AbstractType
+import maf.lattice.AbstractSetType
+import io.bullet.borer.LowPrioEncoders
+import maf.core.Address
 import EncapsulatedEncoder.*
 
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
     given valueEncoder: Encoder[Value]
 
+trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp]:
+    override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: EncapsulatedEncoder[_]): Writer =
+        type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
+        if !value.isInstanceOf[SchemeLattice#Value] then return super.encodeHMapPair(writer, key, value)
+        writer.open()
+        def writeValue[T: Encoder](value: T) = writer.writeMember("value", value)
+        def openValueArray(amount: Int) = writer.write("value").writeArrayOpen(amount)
+
+        writer.writeMember("type", value.asInstanceOf[ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]#Value].typeName)
+        value match {
+            case int: SchemeLattice#Int   => writeValue(int.i.toString())
+            case bool: SchemeLattice#Bool => writeValue(bool.b.toString())
+            case str: SchemeLattice#Str   => writeValue(str.s.toString())
+            case prim: SchemeLattice#Prim => writeValue(prim.prims)
+            case clo: SchemeLattice#Clo   => clo.closures.foreach((clo) => writeValue(clo.toString))
+            case pointer: SchemeLattice#Pointer =>
+                openValueArray(pointer.ptrs.size)
+                pointer.ptrs.foreach(writer.write(_))
+                writer.writeArrayClose()
+            case _ => super.encodeHMapPair(writer, key, value)
+        }
+        writer.close()
+
 trait SaveModularDomain extends SaveValue[SchemeExp] with ModularSchemeDomain:
-    override given valueEncoder: ArrayEncoder[HMap] with
-        override def writeEncapsulated(writer: Writer, value: HMap): Writer =
-            value.contents.foreach((key, value) => writer.writeMember(value.toString()))
+    def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: EncapsulatedEncoder[_]): Writer =
+        System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
+        writer
+
+    override given valueEncoder: ArrayEncapsulatedEncoder[HMap] with MapMemberEncoder[HMap] with
+        override protected val writeOpenKey = false
+        override def writeEncapsulated(writer: Writer, hmap: HMap): Writer =
+            hmap.contents.foreach((key, value) => encodeHMapPair(writer, key, value))
             writer
+
+trait SaveGlobalStore[Expr <: Expression] extends SaveValue[Expr] with SaveAddr[Expr] with SaveMapToArray with GlobalStore[Expr]:
+    override def saveInfo: Map[String, Savable[_]] =
+        super.saveInfo + ("store" -> Savable(store))
