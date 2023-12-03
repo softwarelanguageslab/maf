@@ -9,6 +9,8 @@ import maf.core.Address
 import maf.modular.scheme.VarAddr
 import maf.modular.ReturnAddr
 import io.bullet.borer.Encoder
+import maf.modular.scheme.PrmAddr
+import maf.modular.scheme.PtrAddr
 import EncapsulatedEncoder.*
 
 trait SaveAddrDep extends SaveDependency with SavePosition[SchemeExp] with SaveSchemeAddr:
@@ -52,5 +54,10 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponen
             case ReturnAddr(cmp, idn) =>
                 writer.writeMember("type", "returnAddr")
                 writer.writeMember("component", cmp.asInstanceOf[Component])
+            case PrmAddr(nam) =>
+                writer.writeMember("name", nam)
+                writer.writeMember("type", "prmAddr")
+            case PtrAddr(exp, ctx) =>
+                writer.writeMember("type", "ptrAddr")
             case _ => super.encodeAddress(writer, address)
         }
