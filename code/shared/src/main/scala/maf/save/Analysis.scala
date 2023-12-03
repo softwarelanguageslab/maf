@@ -8,13 +8,14 @@ import maf.modular.ModAnalysis
 import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
+import EncapsulatedEncoder.*
 
 class Savable[T](val value: T)(using val encoder: Encoder[T])
 
 trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
     given MapEncoder[Save[Expr]] with
         override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
-            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using summon[Encoder[String]], value.encoder)
+            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using summon[Encoder[String]], value.encoder, this)
             writer
 
     /**

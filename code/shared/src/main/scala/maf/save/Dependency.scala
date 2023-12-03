@@ -9,6 +9,7 @@ import maf.core.Address
 import maf.modular.scheme.VarAddr
 import maf.modular.ReturnAddr
 import io.bullet.borer.Encoder
+import EncapsulatedEncoder.*
 
 trait SaveAddrDep extends SaveDependency with SavePosition[SchemeExp] with SaveSchemeAddr:
     override def encodeDependency(writer: Writer, dependency: Dependency): Writer =

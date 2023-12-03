@@ -12,6 +12,7 @@ import maf.modular.AnalysisResults
 import maf.modular.Dependency
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents
+import EncapsulatedEncoder.*
 
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
     given MapEncoder[Position] with

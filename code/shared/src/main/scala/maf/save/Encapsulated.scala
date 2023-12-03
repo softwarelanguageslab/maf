@@ -14,20 +14,21 @@ trait EncapsulatedEncoder[T] extends Encoder[T]:
     protected def openEncapsulation(writer: Writer, amount: Int): Writer
     protected def closeEncapsulation(writer: Writer): Writer
 
+object EncapsulatedEncoder:
     extension (writer: Writer)
-        def close(): Writer = closeEncapsulation(writer)
-        def writeMember[T: Encoder, U: Encoder](key: T, value: U): Writer =
-            writeKey(writer, key)
-            writeValue(writer, value)
-        def writeMember[T: Encoder](value: T): Writer =
-            writeKey(writer)
-            writeValue(writer, value)
-        def open(): Writer =
-            if writeOpenKey then writeKey(writer)
-            openEncapsulation(writer)
-        def open(amount: Int): Writer =
-            if writeOpenKey then writeKey(writer)
-            openEncapsulation(writer, amount)
+        def close()(using encoder: EncapsulatedEncoder[_]): Writer = encoder.closeEncapsulation(writer)
+        def writeMember[T: Encoder, U: Encoder](key: T, value: U)(using encoder: EncapsulatedEncoder[_]): Writer =
+            encoder.writeKey(writer, key)
+            encoder.writeValue(writer, value)
+        def writeMember[T: Encoder](value: T)(using encoder: EncapsulatedEncoder[_]): Writer =
+            encoder.writeKey(writer)
+            encoder.writeValue(writer, value)
+        def open()(using encoder: EncapsulatedEncoder[_]): Writer =
+            if encoder.writeOpenKey then encoder.writeKey(writer)
+            encoder.openEncapsulation(writer)
+        def open(amount: Int)(using encoder: EncapsulatedEncoder[_]): Writer =
+            if encoder.writeOpenKey then encoder.writeKey(writer)
+            encoder.openEncapsulation(writer, amount)
 
 trait MapEncapsulatedEncoder[T] extends EncapsulatedEncoder[T]:
     final override def write(writer: Writer, value: T): Writer =

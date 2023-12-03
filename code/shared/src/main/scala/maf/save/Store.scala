@@ -8,6 +8,7 @@ import maf.language.scheme.SchemeExp
 import maf.modular.scheme.ModularSchemeDomain
 import maf.lattice.HMap
 import io.bullet.borer.Writer
+import EncapsulatedEncoder.*
 
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
     given valueEncoder: Encoder[Value]
