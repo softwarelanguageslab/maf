@@ -21,7 +21,7 @@ import EncapsulatedEncoder.*
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
     given valueEncoder: Encoder[Value]
 
-trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp]:
+trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents:
     override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: EncapsulatedEncoder[_]): Writer =
         type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
         if !value.isInstanceOf[SchemeLattice#Value] then return super.encodeHMapPair(writer, key, value)
@@ -35,7 +35,14 @@ trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeEx
             case bool: SchemeLattice#Bool => writeValue(bool.b.toString())
             case str: SchemeLattice#Str   => writeValue(str.s.toString())
             case prim: SchemeLattice#Prim => writeValue(prim.prims)
-            case clo: SchemeLattice#Clo   => clo.closures.foreach((clo) => writeValue(clo.toString))
+            case clo: SchemeLattice#Clo =>
+                writer.write("value")
+                writer.open(2)
+                clo.closures.foreach((clo) =>
+                    writer.writeMember("expression", clo._1)
+                    writer.writeMember("address", clo._2.toString())
+                )
+                writer.close()
             case pointer: SchemeLattice#Pointer =>
                 openValueArray(pointer.ptrs.size)
                 pointer.ptrs.foreach(writer.write(_))

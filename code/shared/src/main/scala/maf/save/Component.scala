@@ -13,6 +13,18 @@ import maf.modular.Dependency
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents
 import EncapsulatedEncoder.*
+import io.bullet.borer.derivation.MapBasedCodecs
+import maf.language.scheme.SchemeLambdaExp
+import maf.core.Identifier
+import maf.core.Identity
+import maf.core.IdentityData
+import maf.language.scheme.SchemeFuncall
+import maf.language.scheme.SchemeLambda
+import io.bullet.borer.derivation.ArrayBasedCodecs
+import maf.language.scheme.SchemeVarArgLambda
+import maf.language.scheme.SchemeIf
+import maf.language.scheme.SchemeLet
+import maf.language.scheme.SchemeVar
 
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
     given MapEncoder[Position] with
@@ -44,6 +56,39 @@ trait SaveStandardSchemeComponents
     with AnalysisResults[SchemeExp]
     with SaveValue[SchemeExp]
     with SavePosition[SchemeExp]:
+
+    given MapEncoder[SchemeExp] with
+        def writeEncapsulated(writer: Writer, exp: SchemeExp): Writer =
+            val stringEncoder = summon[Encoder[String]]
+            exp match
+                case funcall: SchemeFuncall =>
+                    writer.writeMember("type", "funcall")(using stringEncoder, stringEncoder, this)
+                    writer.writeMember("expression", funcall)(using summon[Encoder[String]], summon[Encoder[SchemeFuncall]], this)
+                case variable: SchemeVar =>
+                    writer.writeMember("type", "var")(using stringEncoder, stringEncoder, this)
+                    writer.writeMember("expression", variable)(using summon[Encoder[String]], summon[Encoder[SchemeVar]], this)
+                case lambda: SchemeLambda =>
+                    writer.writeMember("type", "lambda")(using stringEncoder, stringEncoder, this)
+                    writer.writeMember("expression", lambda)(using summon[Encoder[String]], summon[Encoder[SchemeLambda]], this)
+                case argLambda: SchemeVarArgLambda =>
+                    writer.writeMember("type", "argLambda")(using stringEncoder, stringEncoder, this)
+                    writer.writeMember("expression", argLambda)(using summon[Encoder[String]], summon[Encoder[SchemeVarArgLambda]], this)
+                case _ =>
+                    System.err.nn.println("The schemeexpression with type `" + exp.getClass + "` could not be encoded")
+                    writer
+
+    given Encoder[SchemeFuncall] = MapBasedCodecs.deriveEncoder[SchemeFuncall]
+    given Encoder[SchemeVar] = MapBasedCodecs.deriveEncoder[SchemeVar]
+    given Encoder[SchemeLambda] = MapBasedCodecs.deriveEncoder[SchemeLambda]
+    given Encoder[SchemeVarArgLambda] = MapBasedCodecs.deriveEncoder[SchemeVarArgLambda]
+    given Encoder[SchemeLambdaExp] = MapBasedCodecs.deriveEncoder[SchemeLambdaExp]
+    given Encoder[Identifier] = MapBasedCodecs.deriveEncoder[Identifier]
+    given Encoder[Identity] = MapBasedCodecs.deriveAllEncoders[Identity]
+    given Encoder[IdentityData] with
+        def write(writer: Writer, value: IdentityData): Writer =
+            System.err.nn.println("IdentityData could not be encoded")
+            writer
+
     override given componentEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
             if component.equals(initialComponent) then writer.write("main")
@@ -53,5 +98,4 @@ trait SaveStandardSchemeComponents
         override def writeEncapsulated(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
             val (lambda, env) = component.clo
             val context = component.ctx
-            if lambda.name.isDefined then writer.writeMapMember("name", lambda.name.get)
-            writer.writeMapMember("position", lambda.idn.pos)
+            writer.writeMember("lambda", lambda)(using summon[Encoder[String]], summon[Encoder[SchemeLambdaExp]], this)
