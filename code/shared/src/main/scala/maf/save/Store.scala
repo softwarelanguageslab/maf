@@ -17,12 +17,13 @@ import maf.lattice.AbstractSetType
 import io.bullet.borer.LowPrioEncoders
 import maf.core.Address
 import EncapsulatedEncoder.*
+import maf.core.Environment
 
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
     def valueEncoder[T]: AbstractEncoder[T] = encoder
     given valueEncoder: Encoder[Value]
 
-trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents:
+trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents with SaveEnvironment[SchemeExp]:
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
     given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
         override val encoder = valueEncoder[(HMapKey, SchemeLattice#Value)]
@@ -41,7 +42,7 @@ trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeEx
                     writer.open("value", 2)
                     clo.closures.foreach((clo) =>
                         writer.writeMember("expression", clo._1)
-                        writer.writeMember("address", clo._2.toString())
+                        writer.writeMember("address", clo._2.asInstanceOf[Environment[Address]])
                     )
                     writer.close()
                 case pointer: SchemeLattice#Pointer =>

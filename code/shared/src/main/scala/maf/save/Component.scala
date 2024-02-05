@@ -25,6 +25,10 @@ import maf.language.scheme.SchemeVarArgLambda
 import maf.language.scheme.SchemeIf
 import maf.language.scheme.SchemeLet
 import maf.language.scheme.SchemeVar
+import maf.core.BasicEnvironment
+import maf.core.Environment
+import maf.core.WrappedEnv
+import maf.core.NestedEnv
 
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
     def positionEncoder[T]: AbstractEncoder[T] = encoder
@@ -53,12 +57,30 @@ trait SaveStandardSchemeComponentID extends StandardSchemeModFComponents with Sa
             val (lambda, _) = component.clo
             writer.write(lambda.idn.pos)
 
+trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]:
+    def environmentEncoder[T]: AbstractEncoder[T] = encoder
+    given [T <: Address]: EncapsulatedEncoder[Environment[T]] with
+        override val encoder: AbstractEncoder[Environment[T]] = environmentEncoder
+        override protected def writeEncapsulated(writer: Writer, env: Environment[T]): Writer =
+            env match {
+                case BasicEnvironment(content) =>
+                    writer.writeMember("content", content.asInstanceOf[Map[String, Address]])
+                case NestedEnv(content, rst) =>
+                    writer.writeMember("content", content.asInstanceOf[Map[String, Address]])
+                    if rst.isDefined then writer.writeMember("rst", rst.get.asInstanceOf[Address])
+                    writer
+                case _ =>
+                    System.err.nn.println("The environemnt with type `" + env.getClass + "` could not be encoded")
+                    writer
+            }
+
 trait SaveStandardSchemeComponents
     extends SaveComponents[SchemeExp]
     with StandardSchemeModFComponents
     with AnalysisResults[SchemeExp]
     with SaveValue[SchemeExp]
-    with SavePosition[SchemeExp]:
+    with SavePosition[SchemeExp]
+    with SaveEnvironment[SchemeExp]:
 
     given EncapsulatedEncoder[SchemeExp] with
         override val encoder = componentEncoder[SchemeExp]
@@ -105,3 +127,4 @@ trait SaveStandardSchemeComponents
             val (lambda, env) = component.clo
             val context = component.ctx
             writer.writeMember("lambda", lambda)
+            writer.writeMember("environment", env)
