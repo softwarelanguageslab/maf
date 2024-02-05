@@ -13,9 +13,11 @@ import EncapsulatedEncoder.*
 class Savable[T](val value: T)(using val encoder: Encoder[T])
 
 trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
-    given MapEncoder[Save[Expr]] with
+    def encoder[T]: AbstractEncoder[T]
+    given EncapsulatedEncoder[Save[Expr]] with
+        override val encoder = Save.this.encoder[Save[Expr]]
         override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
-            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using summon[Encoder[String]], value.encoder, this)
+            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using summon[Encoder[String]], value.encoder, encoder)
             writer
 
     /**
@@ -38,4 +40,5 @@ trait SaveModF
     with SaveAddrDep
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
-    with SaveModularSchemeLattices
+    with SaveModularSchemeLattices:
+    override def encoder[T]: AbstractEncoder[T] = new MapEncoder[T]

@@ -21,6 +21,7 @@ trait SaveAddrDep extends SaveDependency with SavePosition[SchemeExp] with SaveS
         }
 
 trait SaveDependency extends SaveMapToArray with SaveStandardSchemeComponentID:
+    def dependencyEncoder[T]: AbstractEncoder[T] = encoder
     override def saveInfo: Map[String, Savable[_]] =
         import componentIDEncoder.given
         super.saveInfo + ("dependencies" -> Savable(deps))
@@ -31,21 +32,19 @@ trait SaveDependency extends SaveMapToArray with SaveStandardSchemeComponentID:
     given dependencyEncoder: Encoder[Dependency] = encodeDependency _
 
 trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
-    def encodeAddress(writer: Writer, address: Address): Writer =
+    def addressEncoder[T]: AbstractEncoder[T] = encoder
+    def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder[Address]): Writer =
         System.err.nn.println("The address with type `" + address.getClass + "` could not be encoded")
         writer
 
-    trait AddrEncoder extends EncapsulatedEncoder[Address]:
-        override def write(writer: Writer, address: Address): Writer =
-            writer.writeMember("position", address.idn.pos)
-            super.write(writer, address)
-
-    trait AddrMapEncoder extends AddrEncoder with MapEncoder[Address]
-    given addressEncoder: AddrMapEncoder with
-        override def writeEncapsulated(writer: Writer, value: Address): Writer = encodeAddress(writer, value)
+    given EncapsulatedEncoder[Address] with
+        override val encoder = addressEncoder[Address]
+        override def writeEncapsulated(writer: Writer, value: Address): Writer =
+            writer.writeMember("position", value.idn.pos)
+            encodeAddress(writer, value)
 
 trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponentID:
-    override def encodeAddress(writer: Writer, address: Address): Writer =
+    override def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder[Address]): Writer =
         import componentIDEncoder.given
         address match {
             case VarAddr(id, ctx) =>
