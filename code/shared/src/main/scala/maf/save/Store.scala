@@ -20,13 +20,13 @@ import EncapsulatedEncoder.*
 import maf.core.Environment
 
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
-    def valueEncoder[T]: AbstractEncoder[T] = encoder
+    def getValueEncoder: AbstractEncoder = getEncoder
     given valueEncoder: Encoder[Value]
 
 trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents with SaveEnvironment[SchemeExp]:
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
     given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
-        override val encoder = valueEncoder[(HMapKey, SchemeLattice#Value)]
+        override val encoder = getValueEncoder
         override protected def writeEncapsulated(writer: Writer, hMapPair: (HMapKey, SchemeLattice#Value)): Writer =
             val (key, value) = hMapPair
             def writeValue[T: Encoder](value: T) = writer.writeMember("value", value)
@@ -54,18 +54,18 @@ trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeEx
                     writer
             }
 
-    override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder[_]): Writer =
+    override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder): Writer =
         if value.isInstanceOf[SchemeLattice#Value] then writer.writeMember((key, value.asInstanceOf[SchemeLattice#Value]))
         else return super.encodeHMapPair(writer, key, value)
 
 trait SaveModularDomain extends SaveValue[SchemeExp] with ModularSchemeDomain:
-    def hMapEncoder[T]: AbstractEncoder[T] = new ArrayEncoder[T]
-    def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder[_]): Writer =
+    def getHMapEncoder: AbstractEncoder = new ArrayEncoder
+    def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder): Writer =
         System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
         writer
 
     override given valueEncoder: EncapsulatedEncoder[HMap] with
-        override val encoder = hMapEncoder[HMap]
+        override val encoder = getHMapEncoder
         override def writeEncapsulated(writer: Writer, hmap: HMap): Writer =
             hmap.contents.foreach((key, value) => encodeHMapPair(writer, key, value))
             writer

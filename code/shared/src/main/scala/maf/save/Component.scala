@@ -33,9 +33,9 @@ import maf.modular.scv.ScvContextSensitivity
 import maf.modular.scheme.modf.NoContext
 
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
-    def positionEncoder[T]: AbstractEncoder[T] = encoder
+    def getPositionEncoder: AbstractEncoder = getEncoder
     given EncapsulatedEncoder[Position] with
-        override val encoder = positionEncoder[Position]
+        override val encoder = getPositionEncoder
         override def writeEncapsulated(writer: Writer, pos: Position): Writer =
             writer.writeMember("line", pos.line)
             writer.writeMember("col", pos.line)
@@ -43,7 +43,7 @@ trait SavePosition[Expr <: Expression] extends Save[Expr]:
             writer
 
 trait SaveComponents[Expr <: Expression] extends Save[Expr]:
-    def componentEncoder[T]: AbstractEncoder[T] = encoder
+    def getComponentEncoder: AbstractEncoder = getEncoder
     override def saveInfo: Map[String, Savable[_]] = super.saveInfo + ("components" -> Savable(visited))
 
     given componentEncoder: Encoder[Component]
@@ -60,9 +60,9 @@ trait SaveStandardSchemeComponentID extends StandardSchemeModFComponents with Sa
             writer.write(lambda.idn.pos)
 
 trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]:
-    def environmentEncoder[T]: AbstractEncoder[T] = encoder
+    def getEnvironmentEncoder: AbstractEncoder = getEncoder
     given [T <: Address]: EncapsulatedEncoder[Environment[T]] with
-        override val encoder: AbstractEncoder[Environment[T]] = environmentEncoder
+        override val encoder: AbstractEncoder = getEnvironmentEncoder
         override protected def writeEncapsulated(writer: Writer, env: Environment[T]): Writer =
             env match {
                 case BasicEnvironment(content) =>
@@ -78,7 +78,7 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
 
 trait SaveContext[Expr <: Expression] extends Save[Expr]:
     type Context
-    def contextEncoder[T]: AbstractEncoder[T] = encoder
+    def getContextEncoder: AbstractEncoder = getEncoder
     given contextEncoder: Encoder[Context]
 
 trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
@@ -96,7 +96,7 @@ trait SaveStandardSchemeComponents
     with SaveContext[SchemeExp]:
 
     given EncapsulatedEncoder[SchemeExp] with
-        override val encoder = componentEncoder[SchemeExp]
+        override val encoder = getComponentEncoder
         def writeEncapsulated(writer: Writer, exp: SchemeExp): Writer =
             val stringEncoder = summon[Encoder[String]]
             exp match
@@ -116,7 +116,7 @@ trait SaveStandardSchemeComponents
                     System.err.nn.println("The schemeexpression with type `" + exp.getClass + "` could not be encoded")
                     writer
 
-    private val compEncoder = componentEncoder[SchemeExp]
+    private val compEncoder = getComponentEncoder
     given Encoder[SchemeFuncall] = AbstractEncoder.deriveEncoder[SchemeFuncall](compEncoder)
     given Encoder[SchemeVar] = AbstractEncoder.deriveEncoder[SchemeVar](compEncoder)
     given Encoder[SchemeLambda] = AbstractEncoder.deriveEncoder[SchemeLambda](compEncoder)
@@ -135,7 +135,7 @@ trait SaveStandardSchemeComponents
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])
 
     given [T]: EncapsulatedEncoder[SchemeModFComponent.Call[T]] with
-        override val encoder = componentEncoder[SchemeModFComponent.Call[T]]
+        override val encoder = getComponentEncoder
         override def writeEncapsulated(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
             val (lambda, env) = component.clo
             val context = component.ctx
