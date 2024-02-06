@@ -40,5 +40,6 @@ trait SaveModF
     with SaveAddrDep
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
-    with SaveModularSchemeLattices:
+    with SaveModularSchemeLattices
+    with SaveNoContext[SchemeExp]:
     override def encoder[T]: AbstractEncoder[T] = new MapEncoder[T]

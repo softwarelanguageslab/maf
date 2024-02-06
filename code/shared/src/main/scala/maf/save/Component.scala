@@ -29,6 +29,8 @@ import maf.core.BasicEnvironment
 import maf.core.Environment
 import maf.core.WrappedEnv
 import maf.core.NestedEnv
+import maf.modular.scv.ScvContextSensitivity
+import maf.modular.scheme.modf.NoContext
 
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
     def positionEncoder[T]: AbstractEncoder[T] = encoder
@@ -74,13 +76,24 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
                     writer
             }
 
+trait SaveContext[Expr <: Expression] extends Save[Expr]:
+    type Context
+    def contextEncoder[T]: AbstractEncoder[T] = encoder
+    given contextEncoder: Encoder[Context]
+
+trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
+    type Context = NoContext.type
+    override given contextEncoder: Encoder[Context] with
+        override def write(writer: Writer, context: Context): Writer = writer.write("ε")
+
 trait SaveStandardSchemeComponents
     extends SaveComponents[SchemeExp]
     with StandardSchemeModFComponents
     with AnalysisResults[SchemeExp]
     with SaveValue[SchemeExp]
     with SavePosition[SchemeExp]
-    with SaveEnvironment[SchemeExp]:
+    with SaveEnvironment[SchemeExp]
+    with SaveContext[SchemeExp]:
 
     given EncapsulatedEncoder[SchemeExp] with
         override val encoder = componentEncoder[SchemeExp]
@@ -128,3 +141,4 @@ trait SaveStandardSchemeComponents
             val context = component.ctx
             writer.writeMember("lambda", lambda)
             writer.writeMember("environment", env)
+            writer.writeMember("context", context.asInstanceOf[Context])
