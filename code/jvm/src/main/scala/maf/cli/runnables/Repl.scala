@@ -184,7 +184,7 @@ object Repl:
                 if !anl.finished then println("Analysis timed out")
                 anl.printResult
                 println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
-                anl.save("res.json")
+                anl.load("res.json")
             // Print a dot graph if the dot option has been enabled
             if dot then anl.toDot(filename.replace("/", "_").nn + ".dot")
             elapsed

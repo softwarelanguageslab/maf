@@ -9,8 +9,28 @@ import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
 import EncapsulatedEncoder.*
+import io.bullet.borer.Reader
+import maf.save.EncapsulatedDecoder.*
 
-class Savable[T](val value: T)(using val encoder: Encoder[T])
+case class Savable[T](val value: T)(using val encoder: Encoder[T])
+case class Loadable[T](val load: (T) => Unit)(using val decoder: Decoder[T])
+
+trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
+    def getDecoder: AbstractDecoder = new MapDecoder
+
+    given EncapsulatedDecoder[Load[Expr]] with
+        override val decoder: AbstractDecoder = Load.this.getDecoder
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Load[Expr] =
+            for (key, value) <- loadInfo do reader.readMember(key)(using value.decoder, decoder)
+            for (key, value) <- loadInfo do value.load(reader.getMember(key))
+            return Load.this
+
+    override def load(filename: String): Unit =
+        val bytes = Files.readAllBytes(Paths.get(filename))
+        if bytes != null then Json.decode(bytes).to[Load[Expr]].value
+
+    def loadInfo: Map[String, Loadable[_]] =
+        Map("name" -> Loadable((name: String) => println(name)))
 
 trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
     def getEncoder: AbstractEncoder
@@ -43,3 +63,5 @@ trait SaveModF
     with SaveModularSchemeLattices
     with SaveNoContext[SchemeExp]:
     override def getEncoder: AbstractEncoder = new MapEncoder
+
+trait LoadModF extends Load[SchemeExp]

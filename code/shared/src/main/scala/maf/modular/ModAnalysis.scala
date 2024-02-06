@@ -46,13 +46,18 @@ trait AnalysisEntry[Exp <: Expression]:
     /**
      * This saves the current analysis to a file
      *
-     * @note
-     *   This method is not currently implemented and should be overridden, this method so the save implementation can gradually be added
-     *
      * @param filename
      *   The file to save to
      */
-    def save(filename: String): Unit = System.err.nn.println("Save functionallity is not implemented for this analysis")
+    def save(filename: String): Unit = System.err.nn.println("Save functionality is not implemented for this analysis")
+
+    /**
+     * Load an analysis from a given file
+     *
+     * @param filename
+     *   The file to load the analysis from
+     */
+    def load(filename: String): Unit = System.err.nn.println("Load functionality is not implemented for this analysis")
 
     /**
      * Method that renders a Dot graph of the components and the dependencies between them and writes it to a file

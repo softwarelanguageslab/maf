@@ -4,6 +4,9 @@ import io.bullet.borer.Encoder
 import io.bullet.borer.Writer
 import io.bullet.borer.derivation.MapBasedCodecs
 import io.bullet.borer.derivation.ArrayBasedCodecs
+import io.bullet.borer.Decoder
+import io.bullet.borer.Reader
+import scala.collection.mutable.HashMap
 
 trait AbstractEncoder:
     val mapBasedEncoder: Boolean
@@ -81,3 +84,82 @@ class ArrayKeyEncoder extends ArrayEncoder:
         writeKey(writer, id.toString())
     override def writeKey[T: Encoder](writer: Writer, key: T): Writer = openEncapsulation(writer, 2).write(key)
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = closeEncapsulation(writer.write(value))
+
+trait AbstractDecoder:
+    val mapBasedDecoder: Boolean
+    val writeOpenKey = true
+    def readKey(reader: Reader): Unit
+    def readKey(reader: Reader, key: String): Unit
+    def readValue[T: Decoder](reader: Reader): () => T
+    def getValue[T](key: String): T
+    def openEncapsulation(reader: Reader): Unit
+    def openEncapsulation(reader: Reader, amount: Int): Unit
+    def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit
+
+object AbstractDecoder:
+    inline def deriveDecoder[T](decoder: AbstractDecoder): Decoder[T] =
+        if decoder.mapBasedDecoder then MapBasedCodecs.deriveDecoder[T] else ArrayBasedCodecs.deriveDecoder[T]
+    inline def deriveAllDecoders[T](decoder: AbstractDecoder): Decoder[T] =
+        if decoder.mapBasedDecoder then MapBasedCodecs.deriveAllDecoders[T] else ArrayBasedCodecs.deriveAllDecoders[T]
+
+trait EncapsulatedDecoder[T] extends Decoder[T]:
+    def decoder: AbstractDecoder
+    protected given AbstractDecoder = decoder
+    override def read(reader: Reader): T =
+        decoder.openEncapsulation(reader)
+        val res = readEncapsulated(reader)(using decoder)
+        decoder.closeEncapsulation(reader, true, res)
+        res
+    protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T
+
+object EncapsulatedDecoder:
+    extension (reader: Reader)
+        def readMember[T: Decoder](key: String)(using decoder: AbstractDecoder): () => T =
+            decoder.readKey(reader, key)
+            decoder.readValue[T](reader)
+        def getMember[T](key: String)(using decoder: AbstractDecoder): T = decoder.getValue[T](key)
+
+class MapDecoder extends AbstractDecoder:
+    protected val values = new HashMap[String, Any]()
+    protected val keys = new HashMap[String, Decoder[_]]()
+    protected var decodeKey: Option[String] = None
+    protected var currentKey: Option[String] = None
+
+    override val mapBasedDecoder: Boolean = true
+    protected def readDecodeKey(reader: Reader): Unit =
+        if decodeKey.isDefined then return
+        decodeKey = Some(reader.readString())
+    override def readKey(reader: Reader): Unit =
+        readDecodeKey(reader)
+        this.currentKey = decodeKey
+    override def readKey(reader: Reader, key: String): Unit =
+        readDecodeKey(reader)
+        this.currentKey = Some(key)
+    override def readValue[T: Decoder](reader: Reader): () => T =
+        if decodeKey.isEmpty then throw new KeyException("Trying to read a value before reading a key.")
+
+        if decodeKey == currentKey then
+            val res = reader.read[T]()
+            values.addOne((currentKey.get, res))
+            if reader.hasString then decodeKey = Some(reader.readString())
+            if decodeKey.isDefined && keys.contains(decodeKey.get) then
+                currentKey = decodeKey
+                val decoder = keys.remove(decodeKey.get).get
+                readValue(reader)(using decoder)
+            currentKey = None
+            return () => res
+        else
+            keys.addOne((currentKey.get, summon[Decoder[T]]))
+            val key = currentKey.get
+            currentKey = None
+            return () =>
+                if !values.contains(key) then throw new KeyException("Key '" + key + "' is not found.")
+                values.get(key).get.asInstanceOf[T]
+    override def getValue[T](key: String): T =
+        if !values.contains(key) then throw new KeyException("Key '" + key + "' is not found.")
+        values.get(key).get.asInstanceOf[T]
+    override def openEncapsulation(reader: Reader): Unit = reader.readMapStart()
+    override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readMapOpen(amount)
+    override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+
+    case class KeyException(msg: String) extends Exception(msg)
