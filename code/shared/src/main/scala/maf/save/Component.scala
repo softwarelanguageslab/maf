@@ -42,6 +42,14 @@ trait SavePosition[Expr <: Expression] extends Save[Expr]:
             if !pos.tag.show.isEmpty() then writer.writeMember("tag", pos.tag.show)
             writer
 
+    val posEncoder = getPositionEncoder
+    given Encoder[Identifier] = AbstractEncoder.deriveEncoder[Identifier](posEncoder)
+    given Encoder[Identity] = AbstractEncoder.deriveAllEncoders[Identity](posEncoder)
+    given Encoder[IdentityData] with
+        def write(writer: Writer, value: IdentityData): Writer =
+            System.err.nn.println("IdentityData could not be encoded")
+            writer
+
 trait SaveComponents[Expr <: Expression] extends Save[Expr]:
     def getComponentEncoder: AbstractEncoder = getEncoder
     override def saveInfo: Map[String, Savable[_]] = super.saveInfo + ("components" -> Savable(visited))
@@ -122,12 +130,6 @@ trait SaveStandardSchemeComponents
     given Encoder[SchemeLambda] = AbstractEncoder.deriveEncoder[SchemeLambda](compEncoder)
     given Encoder[SchemeVarArgLambda] = AbstractEncoder.deriveEncoder[SchemeVarArgLambda](compEncoder)
     given Encoder[SchemeLambdaExp] = AbstractEncoder.deriveEncoder[SchemeLambdaExp](compEncoder)
-    given Encoder[Identifier] = AbstractEncoder.deriveEncoder[Identifier](compEncoder)
-    given Encoder[Identity] = AbstractEncoder.deriveAllEncoders[Identity](compEncoder)
-    given Encoder[IdentityData] with
-        def write(writer: Writer, value: IdentityData): Writer =
-            System.err.nn.println("IdentityData could not be encoded")
-            writer
 
     override given componentEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
