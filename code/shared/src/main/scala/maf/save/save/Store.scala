@@ -21,6 +21,7 @@ import maf.core.Environment
 
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
     def getValueEncoder: AbstractEncoder = getEncoder
+    def getValueKeyEncoder: AbstractEncoder = getKeyEncoder
     given valueEncoder: Encoder[Value]
 
 trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents with SaveEnvironment[SchemeExp]:
@@ -44,7 +45,7 @@ trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeEx
             writer
 
     given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
-        override val encoder = getValueEncoder
+        override val encoder = getValueKeyEncoder
         override protected def writeEncapsulated(writer: Writer, hMapPair: (HMapKey, SchemeLattice#Value)): Writer =
             val (key, value) = hMapPair
 

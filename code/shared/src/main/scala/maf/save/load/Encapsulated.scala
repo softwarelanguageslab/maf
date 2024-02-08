@@ -12,11 +12,15 @@ import scala.util.{Failure, Success}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait AbstractDecoder:
+    protected val values = new HashMap[String, Any]()
+    protected var currentKey: Option[String] = None
     val mapBasedDecoder: Boolean
     def readKey(reader: Reader): Unit
     def readKey(reader: Reader, key: String): Unit
     def readValue[T: Decoder](reader: Reader): Future[T]
-    def getValue[T](key: String): T
+    def getValue[T](key: String): T =
+        if !values.contains(key) then throw new AbstractDecoder.KeyException("Key '" + key + "' is not found.")
+        values.get(key).get.asInstanceOf[T]
     def openEncapsulation(reader: Reader): Unit
     def openEncapsulation(reader: Reader, amount: Int): Unit
     def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit
@@ -26,6 +30,7 @@ object AbstractDecoder:
         if decoder.mapBasedDecoder then CompactMapBasedCodecs.deriveDecoder[T] else ArrayBasedCodecs.deriveDecoder[T]
     inline def deriveAllDecoders[T](decoder: AbstractDecoder): Decoder[T] =
         if decoder.mapBasedDecoder then CompactMapBasedCodecs.deriveAllDecoders[T] else ArrayBasedCodecs.deriveAllDecoders[T]
+    case class KeyException(msg: String) extends Exception(msg)
 
 trait EncapsulatedDecoder[T] extends Decoder[T]:
     def decoder: AbstractDecoder
@@ -59,10 +64,8 @@ object EncapsulatedDecoder:
         def getMember[T](key: String)(using decoder: AbstractDecoder): T = decoder.getValue[T](key)
 
 class MapDecoder extends AbstractDecoder:
-    protected val values = new HashMap[String, Any]()
     protected val keys = new HashMap[String, Decoder[_]]()
     protected var decodeKey: Option[String] = None
-    protected var currentKey: Option[String] = None
 
     override val mapBasedDecoder: Boolean = true
     protected def readDecodeKey(reader: Reader): Unit =
@@ -74,7 +77,7 @@ class MapDecoder extends AbstractDecoder:
         readDecodeKey(reader)
         this.currentKey = Some(key)
     override def readValue[T: Decoder](reader: Reader): Future[T] =
-        if currentKey.isEmpty then throw new KeyException("Trying to read a value before reading a key.")
+        if currentKey.isEmpty then throw new AbstractDecoder.KeyException("Trying to read a value before reading a key.")
         val promise = Promise[T]()
 
         if decodeKey == currentKey then
@@ -92,11 +95,49 @@ class MapDecoder extends AbstractDecoder:
         else keys.addOne((currentKey.get, summon[Decoder[T]]))
         currentKey = None
         promise.future
-    override def getValue[T](key: String): T =
-        if !values.contains(key) then throw new KeyException("Key '" + key + "' is not found.")
-        values.get(key).get.asInstanceOf[T]
     override def openEncapsulation(reader: Reader): Unit = reader.readMapStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readMapOpen(amount)
     override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
 
-    case class KeyException(msg: String) extends Exception(msg)
+class ArrayDecoder extends AbstractDecoder:
+    protected var id = -1
+
+    override val mapBasedDecoder: Boolean = false
+    override def readKey(reader: Reader): Unit = return
+    override def readKey(reader: Reader, key: String): Unit =
+        currentKey = Some(key)
+        return
+    override def readValue[T: Decoder](reader: Reader): Future[T] =
+        val key = if currentKey.isDefined then currentKey.get else id.toString()
+        currentKey = None
+        val promise = Promise[T]()
+        if reader.hasBreak then return promise.future
+        id += 1
+        val res = reader.read[T]()
+        values.addOne(key, res)
+        promise.success(res)
+        promise.future
+    override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
+    override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
+    override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+
+class ArrayKeyDecoder extends MapDecoder:
+    protected var key: Option[Any] = None
+    def readKey[T: Decoder](reader: Reader): Unit =
+        this.key = Some(reader.read[T]())
+    def readKeyValue[T: Decoder](reader: Reader): Future[(Any, T)] =
+        if key.isEmpty then throw new AbstractDecoder.KeyException("Trying to read a value before reading a key.")
+        val promise = Promise[(Any, T)]()
+        val res = reader.read[T]()
+        key = None
+        promise.success((key, res))
+        promise.future
+    override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
+    override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
+    override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+
+object ArrayKeyDecoder:
+    extension (reader: Reader)
+        def readMember[K: Decoder, V: Decoder]()(using decoder: ArrayKeyDecoder): Future[(K, V)] =
+            decoder.readKey[K](reader)
+            decoder.readKeyValue[V](reader).asInstanceOf[Future[(K, V)]]

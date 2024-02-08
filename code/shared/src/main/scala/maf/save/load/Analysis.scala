@@ -14,6 +14,7 @@ case class Loadable[T](val load: (T) => Unit)(using val decoder: Decoder[T])
 
 trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
     def getDecoder: AbstractDecoder
+    def getKeyDecoder: AbstractDecoder
 
     given EncapsulatedDecoder[Load[Expr]] with
         override val decoder: AbstractDecoder = Load.this.getDecoder
@@ -36,3 +37,4 @@ trait LoadModF
     with LoadNoContext[SchemeExp]
     with LoadSchemeAddr:
     def getDecoder: AbstractDecoder = new MapDecoder
+    def getKeyDecoder: AbstractDecoder = new MapDecoder

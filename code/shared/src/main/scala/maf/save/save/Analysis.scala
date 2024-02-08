@@ -14,6 +14,7 @@ case class Savable[T](val value: T)(using val encoder: Encoder[T])
 
 trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
     def getEncoder: AbstractEncoder
+    def getKeyEncoder: AbstractEncoder
     given EncapsulatedEncoder[Save[Expr]] with
         override val encoder = Save.this.getEncoder
         override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
@@ -43,3 +44,4 @@ trait SaveModF
     with SaveModularSchemeLattices
     with SaveNoContext[SchemeExp]:
     override def getEncoder: AbstractEncoder = new MapEncoder
+    override def getKeyEncoder: AbstractEncoder = new MapEncoder

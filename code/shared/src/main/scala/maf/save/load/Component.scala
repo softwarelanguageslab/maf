@@ -35,6 +35,7 @@ import maf.core.Position.PTag
 
 trait LoadComponents[Expr <: Expression] extends Load[Expr]:
     def getComponentDecoder: AbstractDecoder = getDecoder
+    def getComponentKeyDecoder: AbstractDecoder = getKeyDecoder
     override def loadInfo: Map[String, Loadable[_]] =
         super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
             visited.foreach((component) => if component != initialComponent then println(component.asInstanceOf[SchemeModFComponent.Call[_]].clo))
@@ -68,7 +69,7 @@ trait LoadStandardSchemeComponents
     given Decoder[SchemeLambdaExp] = AbstractDecoder.deriveDecoder[SchemeLambdaExp](compDecoder)
 
     given EncapsulatedDecoder[SchemeExp] with
-        override val decoder = getComponentDecoder
+        override val decoder = getComponentKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): SchemeExp =
             val expression = reader.readMembers[SchemeExp](
               Array(
@@ -113,8 +114,9 @@ trait LoadPosition[Expr <: Expression] extends Load[Expr]:
 
 trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]:
     def getEnvironmentDecoder: AbstractDecoder = getDecoder
+    def getEnvironmentKeyDecoder: AbstractDecoder = getKeyDecoder
     given [T <: Address]: EncapsulatedDecoder[Environment[T]] with
-        override def decoder: AbstractDecoder = getEnvironmentDecoder
+        override def decoder: AbstractDecoder = getEnvironmentKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Environment[T] =
             return reader
                 .readMembers[Environment[T]](

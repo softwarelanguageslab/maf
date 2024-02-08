@@ -17,10 +17,11 @@ import maf.core.Identifier
 
 trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
     def getAddressDecoder: AbstractDecoder = getDecoder
+    def getAddressKeyDecoder: AbstractDecoder = getKeyDecoder
     def addressDecoders = List[(String, Decoder[_ <: Address])]()
 
     given EncapsulatedDecoder[Address] with
-        override def decoder: AbstractDecoder = getAddressDecoder
+        override def decoder: AbstractDecoder = getAddressKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Address =
             reader.readMembers(addressDecoders.toArray).value.get.get
 

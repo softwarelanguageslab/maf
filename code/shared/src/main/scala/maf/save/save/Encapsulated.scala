@@ -86,11 +86,7 @@ class ArrayEncoder extends AbstractEncoder:
     override def closeEncapsulation(writer: Writer): Writer = writer.writeArrayClose()
 
 class ArrayKeyEncoder extends ArrayEncoder:
-    private var id = -1
     override val writeOpenKey: Boolean = false
-    override def writeKey(writer: Writer): Writer =
-        id += 1
-        writeKey(writer, id.toString())
     override def writeKey(writer: Writer, key: String): Writer = writer.write(key)
     def writeKey[T: Encoder](writer: Writer, key: T): Writer = writer.write(key)
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)

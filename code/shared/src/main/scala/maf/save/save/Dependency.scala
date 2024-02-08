@@ -36,12 +36,13 @@ trait SaveDependency extends SaveMapToArray with SaveStandardSchemeComponentID:
 
 trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
     def getAddressEncoder: AbstractEncoder = getEncoder
+    def getAddressKeyEncoder: AbstractEncoder = getKeyEncoder
     def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
         System.err.nn.println("The address with type `" + address.getClass + "` could not be encoded")
         writer
 
     given EncapsulatedEncoder[Address] with
-        override val encoder = getAddressEncoder
+        override val encoder = getAddressKeyEncoder
         override def writeEncapsulated(writer: Writer, value: Address): Writer = encodeAddress(writer, value)
 
 trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponentID with SaveContext[SchemeExp]:

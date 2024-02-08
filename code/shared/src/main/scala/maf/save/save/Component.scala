@@ -50,6 +50,7 @@ trait SavePosition[Expr <: Expression] extends Save[Expr]:
 
 trait SaveComponents[Expr <: Expression] extends Save[Expr]:
     def getComponentEncoder: AbstractEncoder = getEncoder
+    def getComponentKeyEncoder: AbstractEncoder = getKeyEncoder
     override def saveInfo: Map[String, Savable[_]] = super.saveInfo + ("components" -> Savable(visited))
 
     given componentEncoder: Encoder[Component]
@@ -67,6 +68,7 @@ trait SaveStandardSchemeComponentID extends StandardSchemeModFComponents with Sa
 
 trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]:
     def getEnvironmentEncoder: AbstractEncoder = getEncoder
+    def getEnvironmentKeyEncoder: AbstractEncoder = getKeyEncoder
     given Encoder[BasicEnvironment[Address]] with
         override def write(writer: Writer, env: BasicEnvironment[Address]): Writer = writer.write(env.content)
 
@@ -78,7 +80,7 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
             writer
 
     given EncapsulatedEncoder[Environment[Address]] with
-        override val encoder: AbstractEncoder = getEnvironmentEncoder
+        override val encoder: AbstractEncoder = getEnvironmentKeyEncoder
         override protected def writeEncapsulated(writer: Writer, env: Environment[Address]): Writer =
             env match {
                 case basicEnv @ BasicEnvironment(_) =>
@@ -110,7 +112,7 @@ trait SaveStandardSchemeComponents
     with SaveContext[SchemeExp]:
 
     given EncapsulatedEncoder[SchemeExp] with
-        override val encoder = getComponentEncoder
+        override val encoder = getComponentKeyEncoder
         def writeEncapsulated(writer: Writer, exp: SchemeExp): Writer =
             exp match
                 case funcall: SchemeFuncall        => writer.writeMember("funcall", funcall)
