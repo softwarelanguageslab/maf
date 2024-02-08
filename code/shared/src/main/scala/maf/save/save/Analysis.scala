@@ -17,7 +17,7 @@ trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
     given EncapsulatedEncoder[Save[Expr]] with
         override val encoder = Save.this.getEncoder
         override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
-            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using summon[Encoder[String]], value.encoder, encoder)
+            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using value.encoder, encoder)
             writer
 
     /**
