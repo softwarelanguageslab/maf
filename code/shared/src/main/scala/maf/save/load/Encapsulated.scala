@@ -122,15 +122,15 @@ class ArrayDecoder extends AbstractDecoder:
     override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
 
 class ArrayKeyDecoder extends MapDecoder:
-    protected var key: Option[Any] = None
+    var key: Option[Any] = None
     def readKey[T: Decoder](reader: Reader): Unit =
         this.key = Some(reader.read[T]())
     def readKeyValue[T: Decoder](reader: Reader): Future[(Any, T)] =
         if key.isEmpty then throw new AbstractDecoder.KeyException("Trying to read a value before reading a key.")
         val promise = Promise[(Any, T)]()
         val res = reader.read[T]()
+        promise.success((key.get, res))
         key = None
-        promise.success((key, res))
         promise.future
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)

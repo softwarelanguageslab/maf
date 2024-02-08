@@ -17,10 +17,10 @@ import maf.core.Identifier
 import maf.util.Writer.write
 
 trait SaveAddrDep extends SaveDependency with SavePosition[SchemeExp] with SaveSchemeAddr:
-    override def encodeDependency(writer: Writer, dependency: Dependency): Writer =
+    override def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
         dependency match {
-            case AddrDependency(_) => writer.write(dependency.asInstanceOf[AddrDependency].addr)
-            case _                 => super.encodeDependency(writer, dependency)
+            case AddrDependency(addr) => writer.writeMember("addrDependency", addr)
+            case _                    => super.encodeDependency(writer, dependency)
         }
 
 trait SaveDependency extends SaveMapToArray with SaveStandardSchemeComponentID:
@@ -29,10 +29,12 @@ trait SaveDependency extends SaveMapToArray with SaveStandardSchemeComponentID:
         import componentIDEncoder.given
         super.saveInfo + ("dependencies" -> Savable(deps))
 
-    def encodeDependency(writer: Writer, dependency: Dependency): Writer =
+    def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
         System.err.nn.println("The dependency with type `" + dependency.getClass + "` could not be encoded")
         writer
-    given dependencyEncoder: Encoder[Dependency] = encodeDependency _
+    given EncapsulatedEncoder[Dependency] with
+        override val encoder: AbstractEncoder = getDependencyEncoder
+        override protected def writeEncapsulated(writer: Writer, value: Dependency): Writer = encodeDependency(writer, value)
 
 trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
     def getAddressEncoder: AbstractEncoder = getEncoder

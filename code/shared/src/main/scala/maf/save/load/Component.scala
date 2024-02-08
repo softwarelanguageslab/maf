@@ -32,13 +32,18 @@ import io.bullet.borer.Reader
 import maf.save.EncapsulatedDecoder.*
 import maf.core.Position
 import maf.core.Position.PTag
+import scala.collection.mutable.HashMap
 
-trait LoadComponents[Expr <: Expression] extends Load[Expr]:
+trait LoadComponents[Expr <: Expression] extends Load[Expr] with LoadComponentID[Expr]:
     def getComponentDecoder: AbstractDecoder = getDecoder
     def getComponentKeyDecoder: AbstractDecoder = getKeyDecoder
+    def addComponent(component: Component): Unit
     override def loadInfo: Map[String, Loadable[_]] =
         super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
-            visited.foreach((component) => if component != initialComponent then println(component.asInstanceOf[SchemeModFComponent.Call[_]].clo))
+            visited.foreach((component) =>
+                addComponent(component)
+                if component != initialComponent then println(component.asInstanceOf[SchemeModFComponent.Call[_]].clo)
+            )
         ))
 
     given componentDecoder: Decoder[Component]
@@ -49,6 +54,9 @@ trait LoadStandardSchemeComponents
     with LoadContext[SchemeExp]
     with LoadPosition[SchemeExp]
     with LoadEnvironment[SchemeExp]:
+    override def addComponent(component: SchemeModFComponent): Unit =
+        if component != initialComponent then components.addOne(component.asInstanceOf[SchemeModFComponent.Call[Context]].clo._1.idn.pos, component)
+
     override given componentDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
@@ -138,3 +146,18 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
             return new NestedEnv(content.value.get.get.asInstanceOf[Map[String, T]],
                                  if rst.isCompleted then Some(rst.value.get.get.asInstanceOf[K]) else None
             )
+
+trait LoadComponentID[Expr <: Expression] extends LoadPosition[Expr]:
+    var components = HashMap[Position, Component]()
+    given componentIDDecoder: Decoder[Component]
+
+trait LoadStandardSchemeComponentID extends LoadComponentID[SchemeExp] with LoadContext[SchemeExp]:
+    given componentIDDecoder: Decoder[Component] with
+        override def read(reader: Reader): Component =
+            if reader.tryReadString("main") then return initialComponent
+            else reader.read[SchemeModFComponent.Call[Context]]().asInstanceOf[Component]
+
+    given schemeComponentIDDecoder[T]: Decoder[SchemeModFComponent.Call[Context]] with
+        override def read(reader: Reader): SchemeModFComponent.Call[Context] =
+            val pos = reader.read[Position]()
+            return components(pos).asInstanceOf[SchemeModFComponent.Call[Context]]
