@@ -18,13 +18,42 @@ import io.bullet.borer.LowPrioEncoders
 import maf.core.Address
 import EncapsulatedEncoder.*
 import maf.core.Environment
+import maf.lattice.{ConcreteLattice, ConstantPropagation}
+import maf.lattice.Concrete
 
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
     def getValueEncoder: AbstractEncoder = getEncoder
     def getValueKeyEncoder: AbstractEncoder = getKeyEncoder
     given valueEncoder: Encoder[Value]
 
-trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents with SaveEnvironment[SchemeExp]:
+trait SaveLattice[Expr <: Expression] extends Save[Expr]:
+    def getLatticeEncoder: AbstractEncoder = getEncoder
+    def getLatticeKeyEncoder: AbstractEncoder = getKeyEncoder
+
+    type Lattice[T] = ConstantPropagation.L[T] | Concrete.L[T]
+    given latticeEncoder[P[T] <: Lattice[T], T: Encoder]: EncapsulatedEncoder[P[T]] with
+        override val encoder: AbstractEncoder = getLatticeKeyEncoder
+        override protected def writeEncapsulated(writer: Writer, lattice: P[T]): Writer =
+            lattice match
+                case constant: ConstantPropagation.L[T] =>
+                    writer.writeMember[ConstantPropagation.L[T]]("constant", constant)(using constantLatticeEncoder, encoder)
+                case _ => System.err.nn.println("The lattice of type `" + lattice.getClass + "` could not be encoded")
+            writer
+
+    given constantLatticeEncoder[T: Encoder]: Encoder[ConstantPropagation.L[T]] with
+        override def write(writer: Writer, lattice: ConstantPropagation.L[T]): Writer =
+            lattice match
+                case ConstantPropagation.Top         => writer.write("top")
+                case ConstantPropagation.Constant(a) => writer.write[T](a)
+                case ConstantPropagation.Bottom      => writer.write("bottom")
+            writer
+
+trait SaveModularSchemeLattices
+    extends SaveModularDomain
+    with SaveAddr[SchemeExp]
+    with SaveStandardSchemeComponents
+    with SaveEnvironment[SchemeExp]
+    with SaveLattice[SchemeExp]:
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
 
     given EncapsulatedArrayEncoder[SchemeLattice#Clo]() with
@@ -50,9 +79,9 @@ trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeEx
             val (key, value) = hMapPair
 
             value match {
-                case int: SchemeLattice#Int         => writer.writeMember("int", int.i.toString())
-                case bool: SchemeLattice#Bool       => writer.writeMember("boolean", bool.b.toString())
-                case str: SchemeLattice#Str         => writer.writeMember("string", str.s.toString())
+                case int: SchemeLattice#Int         => writer.writeMember("int", int.i.asInstanceOf[Lattice[BigInt]])
+                case bool: SchemeLattice#Bool       => writer.writeMember("boolean", bool.b.asInstanceOf[Lattice[Boolean]])
+                case str: SchemeLattice#Str         => writer.writeMember("string", str.s.asInstanceOf[Lattice[String]])
                 case prim: SchemeLattice#Prim       => writer.writeMember("primitive", prim.prims)
                 case clo: SchemeLattice#Clo         => writer.writeMember("closure", clo)
                 case pointer: SchemeLattice#Pointer => writer.writeMember("pointer", pointer)
