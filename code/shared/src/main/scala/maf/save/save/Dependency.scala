@@ -47,25 +47,39 @@ trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
 trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponentID with SaveContext[SchemeExp]:
     given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(getAddressEncoder)
     given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(getAddressEncoder)
+
+    given EncapsulatedEncoder[VarAddr[Context]] with
+        override val encoder = getAddressEncoder
+        override def writeEncapsulated(writer: Writer, address: VarAddr[Context]): Writer =
+            import componentIDEncoder.given
+            writer.writeMember("id", address.id)
+            if address.ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", address.ctx.asInstanceOf[Option[Context]].get)
+            writer
+
+    given EncapsulatedEncoder[ReturnAddr[Context]] with
+        override val encoder = getAddressEncoder
+        override def writeEncapsulated(writer: Writer, address: ReturnAddr[Context]): Writer =
+            import componentIDEncoder.given
+            writer.writeMember("component", address.cmp.asInstanceOf[Component])
+            writer.writeMember("identity", address.idn)
+
+    given EncapsulatedEncoder[PtrAddr[Context]] with
+        override val encoder = getAddressEncoder
+        override def writeEncapsulated(writer: Writer, address: PtrAddr[Context]): Writer =
+            writer.writeMember("expression", address.exp.asInstanceOf[SchemeValue])
+            if address.ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", address.ctx.asInstanceOf[Option[Context]].get)
+            writer
+
     override def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
         import componentIDEncoder.given
         address match {
-            case VarAddr(id, ctx) =>
-                writer.open("varAddr")
-                writer.writeMember("id", id)
-                if ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", ctx.asInstanceOf[Option[Context]].get)
-                writer.close()
-            case ReturnAddr(cmp, idn) =>
-                writer.open("returnAddr")
-                writer.writeMember("component", cmp.asInstanceOf[Component])
-                writer.writeMember("identity", idn)
-                writer.close()
+            case varAddr @ VarAddr(_, _) =>
+                writer.writeMember("varAddr", varAddr.asInstanceOf[VarAddr[Context]])
+            case returnAddr @ ReturnAddr(_, _) =>
+                writer.writeMember("returnAddr", returnAddr.asInstanceOf[ReturnAddr[Context]])
             case PrmAddr(nam) =>
                 writer.writeMember("prmAddr", nam)
-            case PtrAddr(exp, ctx) =>
-                writer.open("ptrAddr")
-                writer.writeMember("expression", exp.asInstanceOf[SchemeValue])
-                if ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", ctx.asInstanceOf[Option[Context]].get)
-                writer.close()
+            case ptrAddr @ PtrAddr(_, _) =>
+                writer.writeMember("ptrAddr", ptrAddr.asInstanceOf[PtrAddr[Context]])
             case _ => super.encodeAddress(writer, address)
         }

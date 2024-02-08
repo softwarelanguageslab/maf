@@ -35,6 +35,11 @@ trait EncapsulatedEncoder[T] extends Encoder[T]:
         writeEncapsulated(writer, value)
         encoder.closeEncapsulation(writer)
     protected def writeEncapsulated(writer: Writer, value: T): Writer
+trait EncapsulatedArrayEncoder[T](length: Int = 0) extends EncapsulatedEncoder[T]:
+    override def write(writer: Writer, value: T): Writer =
+        if length == 0 then writer.writeArrayStart() else writer.writeArrayOpen(length)
+        writeEncapsulated(writer, value)
+        writer.writeArrayClose()
 
 object EncapsulatedEncoder:
     extension (writer: Writer)

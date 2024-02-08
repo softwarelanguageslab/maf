@@ -33,6 +33,7 @@ import maf.modular.scv.ScvContextSensitivity
 import maf.modular.scheme.modf.NoContext
 import maf.core.Position
 import maf.core.Position.PTag
+import scala.collection.immutable.HashMap
 
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
     def getPositionEncoder: AbstractEncoder = getEncoder
@@ -66,17 +67,24 @@ trait SaveStandardSchemeComponentID extends StandardSchemeModFComponents with Sa
 
 trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]:
     def getEnvironmentEncoder: AbstractEncoder = getEncoder
-    given [T <: Address]: EncapsulatedEncoder[Environment[T]] with
+    given Encoder[BasicEnvironment[Address]] with
+        override def write(writer: Writer, env: BasicEnvironment[Address]): Writer = writer.write(env.content)
+
+    given EncapsulatedEncoder[NestedEnv[Address, Address]] with
         override val encoder: AbstractEncoder = getEnvironmentEncoder
-        override protected def writeEncapsulated(writer: Writer, env: Environment[T]): Writer =
+        override protected def writeEncapsulated(writer: Writer, env: NestedEnv[Address, Address]): Writer =
+            writer.writeMember("content", env.content)
+            if env.rst.isDefined then writer.writeMember("rst", env.rst.get)
+            writer
+
+    given EncapsulatedEncoder[Environment[Address]] with
+        override val encoder: AbstractEncoder = getEnvironmentEncoder
+        override protected def writeEncapsulated(writer: Writer, env: Environment[Address]): Writer =
             env match {
-                case BasicEnvironment(content) =>
-                    writer.writeMember("BasicEnvironment", content.asInstanceOf[Map[String, Address]])
-                case NestedEnv(content, rst) =>
-                    writer.open("NestedEnvironment")
-                    writer.writeMember("content", content.asInstanceOf[Map[String, Address]])
-                    if rst.isDefined then writer.writeMember("rst", rst.get.asInstanceOf[Address])
-                    writer.close()
+                case basicEnv @ BasicEnvironment(_) =>
+                    writer.writeMember("basicEnvironment", basicEnv)
+                case nestedEnv @ NestedEnv(_, _) =>
+                    writer.writeMember("nestedEnvironment", nestedEnv.asInstanceOf[NestedEnv[Address, Address]])
                 case _ =>
                     System.err.nn.println("The environemnt with type `" + env.getClass + "` could not be encoded")
                     writer

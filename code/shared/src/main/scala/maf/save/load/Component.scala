@@ -118,7 +118,7 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Environment[T] =
             return reader
                 .readMembers[Environment[T]](
-                  Array(("BasicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("NestedEnv", summon[Decoder[NestedEnv[T, T]]]))
+                  Array(("basicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("nestedEnv", summon[Decoder[NestedEnv[T, T]]]))
                 )
                 .value
                 .get

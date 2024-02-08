@@ -25,30 +25,36 @@ trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]
 
 trait SaveModularSchemeLattices extends SaveModularDomain with SaveAddr[SchemeExp] with SaveStandardSchemeComponents with SaveEnvironment[SchemeExp]:
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
+
+    given EncapsulatedArrayEncoder[SchemeLattice#Clo]() with
+        override val encoder = getValueEncoder
+        override protected def writeEncapsulated(writer: Writer, closure: SchemeLattice#Clo): Writer =
+            closure.closures.foreach((clo) =>
+                encoder.openEncapsulation(writer)
+                writer.writeMember("expression", clo._1)
+                writer.writeMember("address", clo._2.asInstanceOf[Environment[Address]])
+                encoder.closeEncapsulation(writer)
+            )
+            writer
+
+    given EncapsulatedArrayEncoder[SchemeLattice#Pointer]() with
+        override val encoder = getValueEncoder
+        override protected def writeEncapsulated(writer: Writer, pointer: SchemeLattice#Pointer): Writer =
+            pointer.ptrs.foreach(writer.write(_))
+            writer
+
     given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
         override val encoder = getValueEncoder
         override protected def writeEncapsulated(writer: Writer, hMapPair: (HMapKey, SchemeLattice#Value)): Writer =
             val (key, value) = hMapPair
-            def writeValue[T: Encoder](value: T) = writer.writeMember("value", value)
-            def openValueArray(amount: Int) = writer.write("value").writeArrayOpen(amount)
 
-            writer.writeMember("type", value.typeName)
             value match {
-                case int: SchemeLattice#Int   => writeValue(int.i.toString())
-                case bool: SchemeLattice#Bool => writeValue(bool.b.toString())
-                case str: SchemeLattice#Str   => writeValue(str.s.toString())
-                case prim: SchemeLattice#Prim => writeValue(prim.prims)
-                case clo: SchemeLattice#Clo =>
-                    writer.open("value", 2)
-                    clo.closures.foreach((clo) =>
-                        writer.writeMember("expression", clo._1)
-                        writer.writeMember("address", clo._2.asInstanceOf[Environment[Address]])
-                    )
-                    writer.close()
-                case pointer: SchemeLattice#Pointer =>
-                    openValueArray(pointer.ptrs.size)
-                    pointer.ptrs.foreach(writer.write(_))
-                    writer.writeArrayClose()
+                case int: SchemeLattice#Int         => writer.writeMember("int", int.i.toString())
+                case bool: SchemeLattice#Bool       => writer.writeMember("boolean", bool.b.toString())
+                case str: SchemeLattice#Str         => writer.writeMember("string", str.s.toString())
+                case prim: SchemeLattice#Prim       => writer.writeMember("primitive", prim.prims)
+                case clo: SchemeLattice#Clo         => writer.writeMember("closure", clo)
+                case pointer: SchemeLattice#Pointer => writer.writeMember("pointer", pointer)
                 case _ =>
                     System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
                     writer
