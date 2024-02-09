@@ -40,10 +40,8 @@ trait LoadComponents[Expr <: Expression] extends Load[Expr] with LoadComponentID
     def addComponent(component: Component): Unit
     override def loadInfo: Map[String, Loadable[_]] =
         super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
-            visited.foreach((component) =>
-                addComponent(component)
-                if component != initialComponent then println(component.asInstanceOf[SchemeModFComponent.Call[_]].clo)
-            )
+            visited.foreach((component) => addComponent(component))
+            this.visited = visited
         ))
 
     given componentDecoder: Decoder[Component]

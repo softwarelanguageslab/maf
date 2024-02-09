@@ -198,7 +198,10 @@ object Repl:
         val exp = loader(filename)
         def runSingle(): Long =
             val anl = makeAnalysis(exp)
-            if loadFile.isDefined then anl.load(loadFile.get)
+            if loadFile.isDefined then
+                anl.load(loadFile.get)
+                print("loaded result: ")
+                anl.printResult
             val (elapsed, _) = Timer.time { anl.analyze() } //anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
             // Do not print results if we are in perfomance testing mode
             if !performance then

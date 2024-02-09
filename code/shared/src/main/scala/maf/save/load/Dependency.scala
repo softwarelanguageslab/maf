@@ -27,7 +27,7 @@ trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadCompone
     def getDependencyDecoder: AbstractDecoder = getDecoder
     def getDependencyKeyDecoder: AbstractDecoder = getKeyDecoder
     override def loadInfo: Map[String, Loadable[_]] =
-        super.loadInfo + ("dependencies" -> Loadable((deps: Map[Dependency, Set[Component]]) => deps.foreach(println(_))))
+        super.loadInfo + ("dependencies" -> Loadable((deps: Map[Dependency, Set[Component]]) => this.deps = deps))
     def dependencyDecoders = Set[(String, Decoder[_ <: Dependency])]()
 
     given EncapsulatedDecoder[Dependency] with

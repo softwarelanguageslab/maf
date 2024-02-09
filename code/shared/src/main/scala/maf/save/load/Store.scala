@@ -115,4 +115,4 @@ trait LoadModularDomain extends LoadValue[SchemeExp] with ModularSchemeDomain:
             return new HMap(reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map())((hMap) => hMap + reader.readMember[(HMapKey, Any)]().value.get.get))
 
 trait LoadGlobalStore[Expr <: Expression] extends LoadValue[Expr] with LoadAddr[Expr] with LoadMapToArray with GlobalStore[Expr]:
-    override def loadInfo: Map[String, Loadable[?]] = super.loadInfo + ("store" -> Loadable((store: Map[Addr, Value]) => println(store)))
+    override def loadInfo = super.loadInfo + ("store" -> Loadable((store: Map[Addr, Value]) => this.store = store))
