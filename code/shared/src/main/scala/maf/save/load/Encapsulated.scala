@@ -41,11 +41,19 @@ trait EncapsulatedDecoder[T] extends Decoder[T]:
         decoder.closeEncapsulation(reader, true, res)
         res
     protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T
+trait EncapsulatedArrayDecoder[T](length: Int = 0) extends EncapsulatedDecoder[T]:
+    override def read(reader: Reader): T =
+        if length == 0 then reader.readArrayStart() else reader.readArrayOpen(length)
+        val res = readEncapsulated(reader)(using decoder)
+        reader.readArrayClose(true, res)
 
 object EncapsulatedDecoder:
     extension (reader: Reader)
         def readMember[T: Decoder](key: String)(using decoder: AbstractDecoder): Future[T] =
             decoder.readKey(reader, key)
+            decoder.readValue[T](reader)
+        def readMember[T: Decoder]()(using decoder: AbstractDecoder): Future[T] =
+            decoder.readKey(reader)
             decoder.readValue[T](reader)
         def readMembers[T](keys: Array[(String, Decoder[_ <: T])])(using decoder: AbstractDecoder): Future[T] =
             val promise = Promise[T]()
@@ -60,7 +68,10 @@ object EncapsulatedDecoder:
                     case Failure(e)     => promise.failure(e.asInstanceOf[Throwable])
                 }
             return promise.future
-
+        def readUntilBeforeBreak[T](zero: T)(f: T => T): T =
+            var res = zero
+            while !reader.hasBreak do res = f(res)
+            return res
         def getMember[T](key: String)(using decoder: AbstractDecoder): T = decoder.getValue[T](key)
 
 class MapDecoder extends AbstractDecoder:
