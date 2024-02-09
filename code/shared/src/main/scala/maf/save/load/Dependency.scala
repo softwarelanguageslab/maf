@@ -31,7 +31,7 @@ trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadCompone
     def dependencyDecoders = Set[(String, Decoder[_ <: Dependency])]()
 
     given EncapsulatedDecoder[Dependency] with
-        override def decoder: AbstractDecoder = getDependencyKeyDecoder
+        override def decoder: AbstractDecoder = getDependencyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Dependency =
             reader.readMembers(dependencyDecoders.toArray).value.get.get
 
