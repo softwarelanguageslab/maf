@@ -33,7 +33,7 @@ trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadCompone
     given EncapsulatedDecoder[Dependency] with
         override def decoder: AbstractDecoder = getDependencyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Dependency =
-            reader.readMembers(dependencyDecoders.toArray).value.get.get
+            return reader.readMembers(dependencyDecoders.toArray).value
 
 trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
     def getAddressDecoder: AbstractDecoder = getDecoder
@@ -43,7 +43,7 @@ trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
     given EncapsulatedDecoder[Address] with
         override def decoder: AbstractDecoder = getAddressKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Address =
-            reader.readMembers(addressDecoders.toArray).value.get.get
+            reader.readMembers(addressDecoders.toArray).value
 
 trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] with LoadComponentID[SchemeExp]:
     given Decoder[SchemeValue] = AbstractDecoder.deriveDecoder(getAddressDecoder)
@@ -61,16 +61,14 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): ReturnAddr[Component] =
             val component = reader.readMember[Component]("component")
             val identity = reader.readMember[Identity]("identity")
-            return new ReturnAddr[Component](component.value.get.get, identity.value.get.get)
+            return new ReturnAddr[Component](component.value, identity.value)
 
     given EncapsulatedDecoder[VarAddr[Context]] with
         override def decoder: AbstractDecoder = getAddressDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): VarAddr[Context] =
             val name = reader.readMember[Identifier]("id")
             val context = reader.readMember[Context]("context")
-            return new VarAddr[Context](name.value.get.get,
-                                        if context.isCompleted then Some(context.value.get.get).asInstanceOf[Context] else None.asInstanceOf[Context]
-            )
+            return new VarAddr[Context](name.value, if context.hasValue then Some(context.value).asInstanceOf[Context] else None.asInstanceOf[Context])
 
     given Decoder[PrmAddr] with
         override def read(reader: Reader): PrmAddr = new PrmAddr(reader.read[String]())
@@ -80,6 +78,6 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): PtrAddr[Context] =
             val expression = reader.readMember[SchemeValue]("expression")
             val context = reader.readMember[Context]("context")
-            return new PtrAddr[Context](expression.value.get.get,
-                                        if context.isCompleted then Some(context.value.get.get).asInstanceOf[Context] else None.asInstanceOf[Context]
+            return new PtrAddr[Context](expression.value,
+                                        if context.hasValue then Some(context.value).asInstanceOf[Context] else None.asInstanceOf[Context]
             )

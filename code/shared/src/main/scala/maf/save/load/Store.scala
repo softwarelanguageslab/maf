@@ -32,7 +32,7 @@ trait LoadLattice[Expr <: Expression] extends Load[Expr]:
     given latticeDecoder[P[T] <: Lattice[T], T: Decoder]: EncapsulatedDecoder[P[T]] with
         override def decoder: AbstractDecoder = getLatticeKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using d: AbstractDecoder): P[T] =
-            reader.readMembers[P[T]](latticeDecoders.toArray.asInstanceOf[Array[(String, io.bullet.borer.Decoder[? <: P[T]])]]).value.get.get
+            reader.readMembers[P[T]](latticeDecoders.toArray.asInstanceOf[Array[(String, io.bullet.borer.Decoder[? <: P[T]])]]).value
 
     given constantLatticeDecoder[T: Decoder]: Decoder[ConstantPropagation.L[T]] with
         override def read(reader: Reader): ConstantPropagation.L[T] =
@@ -80,7 +80,7 @@ trait LoadModularSchemeLattices
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (SchemeLambdaExp, Env) =
             val expression = reader.readMember[SchemeLambdaExp]("expression")
             val address = reader.readMember[Env]("address")
-            return (expression.value.get.get, address.value.get.get)
+            return (expression.value, address.value)
 
     given EncapsulatedArrayDecoder[(HMapKey, SchemeLattice#Clo)]() with
         override def decoder: AbstractDecoder = getValueDecoder
@@ -107,12 +107,12 @@ trait LoadModularDomain extends LoadValue[SchemeExp] with ModularSchemeDomain:
     given EncapsulatedDecoder[(HMapKey, Any)] with
         override def decoder: AbstractDecoder = getValueKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, Any) =
-            reader.readMembers(hMapDecoders.toArray).value.get.get
+            reader.readMembers(hMapDecoders.toArray).value
 
     override given valueDecoder: EncapsulatedDecoder[HMap] with
         override def decoder: AbstractDecoder = getHMapDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): HMap =
-            return new HMap(reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map())((hMap) => hMap + reader.readMember[(HMapKey, Any)]().value.get.get))
+            return new HMap(reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map())((hMap) => hMap + reader.readMember[(HMapKey, Any)]().value))
 
 trait LoadGlobalStore[Expr <: Expression] extends LoadValue[Expr] with LoadAddr[Expr] with LoadMapToArray with GlobalStore[Expr]:
     override def loadInfo = super.loadInfo + ("store" -> Loadable((store: Map[Addr, Value]) => this.store = store))

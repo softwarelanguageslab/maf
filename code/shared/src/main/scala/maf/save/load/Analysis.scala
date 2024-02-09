@@ -19,7 +19,7 @@ trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
     given EncapsulatedDecoder[Load[Expr]] with
         override val decoder: AbstractDecoder = Load.this.getDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Load[Expr] =
-            for (key, value) <- loadInfo do value.load(reader.readMember(key)(using value.decoder, decoder).value.get.get)
+            for (key, value) <- loadInfo do value.load(reader.readMember(key)(using value.decoder, decoder).value)
             return Load.this
 
     override def load(filename: String): Unit =

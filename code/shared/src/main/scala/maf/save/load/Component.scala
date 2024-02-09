@@ -66,7 +66,7 @@ trait LoadStandardSchemeComponents
             val lambda = reader.readMember[SchemeLambdaExp]("lambda")
             val environment = reader.readMember[Environment[Address]]("environment")
             val context = reader.readMember[Context]("context")
-            return new SchemeModFComponent.Call[Context]((lambda.value.get.get, environment.value.get.get), context.value.get.get)
+            return new SchemeModFComponent.Call[Context]((lambda.value, environment.value), context.value)
     private val compDecoder = getComponentDecoder
     given Decoder[SchemeFuncall] = AbstractDecoder.deriveDecoder[SchemeFuncall](compDecoder)
     given Decoder[SchemeVar] = AbstractDecoder.deriveDecoder[SchemeVar](compDecoder)
@@ -85,7 +85,7 @@ trait LoadStandardSchemeComponents
                 ("argLambda", summon[Decoder[SchemeVarArgLambda]])
               )
             )
-            expression.value.get.get
+            expression.value
 
 trait LoadContext[Expr <: Expression] extends Load[Expr]:
     type Context
@@ -129,8 +129,6 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
                   Array(("basicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("nestedEnv", summon[Decoder[NestedEnv[T, T]]]))
                 )
                 .value
-                .get
-                .get
 
     given [T <: Address]: Decoder[BasicEnvironment[T]] with
         override def read(reader: Reader): BasicEnvironment[T] = return new BasicEnvironment(
@@ -141,9 +139,7 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): NestedEnv[T, K] =
             val content = reader.readMember[Map[String, Address]]("content")
             val rst = reader.readMember[Address]("rst")
-            return new NestedEnv(content.value.get.get.asInstanceOf[Map[String, T]],
-                                 if rst.isCompleted then Some(rst.value.get.get.asInstanceOf[K]) else None
-            )
+            return new NestedEnv(content.value.asInstanceOf[Map[String, T]], if rst.hasValue then Some(rst.value.asInstanceOf[K]) else None)
 
 trait LoadComponentID[Expr <: Expression] extends LoadPosition[Expr]:
     var components = HashMap[Position, Component]()

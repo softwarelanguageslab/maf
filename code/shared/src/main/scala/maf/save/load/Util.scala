@@ -10,5 +10,7 @@ trait LoadMapToArray:
         override val decoder: ArrayKeyDecoder = new ArrayKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Map[K, V] =
             val elements = mutable.Set[(K, V)]()
-            while !reader.hasBreak do elements.add(reader.readMember[K, V]()(using keyDecoder, valueDecoder, decoder).value.get.get)
+            while !reader.hasBreak do
+                val res = reader.readMember[K, V]()(using keyDecoder, valueDecoder, decoder)
+                elements.add(res.key, res.value)
             return elements.toMap
