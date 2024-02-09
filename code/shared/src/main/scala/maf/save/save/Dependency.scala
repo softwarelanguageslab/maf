@@ -16,17 +16,16 @@ import maf.language.scheme.SchemeValue
 import maf.core.Identifier
 import maf.util.Writer.write
 
-trait SaveAddrDep extends SaveDependency with SavePosition[SchemeExp] with SaveSchemeAddr:
+trait SaveAddrDep extends SaveDependency[SchemeExp] with SavePosition[SchemeExp] with SaveSchemeAddr:
     override def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
         dependency match {
             case AddrDependency(addr) => writer.writeMember("addrDependency", addr)
             case _                    => super.encodeDependency(writer, dependency)
         }
 
-trait SaveDependency extends SaveMapToArray with SaveStandardSchemeComponentID:
+trait SaveDependency[Expr <: Expression] extends SaveMapToArray with SaveComponentID[Expr]:
     def getDependencyEncoder: AbstractEncoder = getEncoder
     override def saveInfo: Map[String, Savable[_]] =
-        import componentIDEncoder.given
         super.saveInfo + ("dependencies" -> Savable(deps))
 
     def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =

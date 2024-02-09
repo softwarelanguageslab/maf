@@ -42,6 +42,7 @@ trait SaveModF
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
     with SaveModularSchemeLattices
-    with SaveNoContext[SchemeExp]:
+    with SaveNoContext[SchemeExp]
+    with SaveStandardSchemeComponentID:
     override def getEncoder: AbstractEncoder = new MapEncoder
     override def getKeyEncoder: AbstractEncoder = new MapEncoder

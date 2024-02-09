@@ -55,7 +55,10 @@ trait SaveComponents[Expr <: Expression] extends Save[Expr]:
 
     given componentEncoder: Encoder[Component]
 
-trait SaveStandardSchemeComponentID extends StandardSchemeModFComponents with SavePosition[SchemeExp]:
+trait SaveComponentID[Expr <: Expression] extends SavePosition[Expr]:
+    given componentIDEncoder: Encoder[Component]
+
+trait SaveStandardSchemeComponentID extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
     given componentIDEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
             if component.equals(initialComponent) then writer.write("main")
