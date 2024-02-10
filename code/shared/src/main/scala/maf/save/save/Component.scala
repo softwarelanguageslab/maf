@@ -35,10 +35,22 @@ import maf.core.Position
 import maf.core.Position.PTag
 import scala.collection.immutable.HashMap
 
+/**
+ * Trait to encode positions.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
+    /**
+     * Get the encoder that will be used to encode positions.
+     *
+     * This will influence how positions will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getPositionEncoder: AbstractEncoder = getEncoder
 
-    val posEncoder = getPositionEncoder
+    private val posEncoder = getPositionEncoder
     given Encoder[Position] = AbstractEncoder.deriveAllEncoders[Position](posEncoder)
     given Encoder[PTag] = AbstractEncoder.deriveAllEncoders[PTag](posEncoder)
     given Encoder[Identifier] = AbstractEncoder.deriveEncoder[Identifier](posEncoder)
@@ -48,29 +60,104 @@ trait SavePosition[Expr <: Expression] extends Save[Expr]:
             System.err.nn.println("IdentityData could not be encoded")
             writer
 
+/**
+ * The base trait for encoding components.
+ *
+ * @note
+ *   This trait gives the methods needed to encode components, but does not implement them yet, other traits like [[SaveStandardSchemeComponents]] or
+ *   [[SaveStandardSchemeComponentID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components
+ *   are used in your analysis.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait SaveComponents[Expr <: Expression] extends Save[Expr]:
+    /**
+     * Get the encoder that will be used to encode components.
+     *
+     * This will influence how components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getComponentEncoder: AbstractEncoder = getEncoder
+
+    /**
+     * Get the encoder that will be used to encode components.
+     *
+     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
+     * and should therefore not be used here.
+     *
+     * This will influence how components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getComponentKeyEncoder: AbstractEncoder = getKeyEncoder
     override def saveInfo: Map[String, Savable[_]] = super.saveInfo + ("components" -> Savable(visited))
 
+    /** Encodes a component. */
     given componentEncoder: Encoder[Component]
 
+/**
+ * Base trait for encoding components only by their ID, and not in their entirety.
+ *
+ * @note
+ *   This trait gives the methods needed to encode components using their ID, instead of saving it entirely, but no implementation. Other traits like
+ *   [[SaveStandardSchemeComponentID]] should be mixed in to give the implementation based on what ID you want to use and what components your
+ *   analysis uses.
+ *
+ * @note
+ *   Because this trait only encodes the component IDs, the entire component should be encoded somewhere else if you want to decode this again.
+ *
+ * @tparam T
+ *   The type of the value the needs to be saved
+ */
 trait SaveComponentID[Expr <: Expression] extends SavePosition[Expr]:
+    /** Encodes a component by their ID */
     given componentIDEncoder: Encoder[Component]
 
-trait SaveStandardSchemeComponentID extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
-    given componentIDEncoder: Encoder[Component] with
+/**
+ * Trait that encodes components using their position.
+ *
+ * Implementation of [[SaveComponentID]]
+ *
+ * @note
+ *   Because this trait only encodes the component position, the entire component should be encoded somewhere else if you want to decode this again.
+ */
+trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
+    /** Encodes a component by their position */
+    override given componentIDEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
             if component.equals(initialComponent) then writer.write("main")
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])(schemeComponentIDEncoder)
 
+    /** Encodes a scheme component using their position */
     given schemeComponentIDEncoder[T]: Encoder[SchemeModFComponent.Call[T]] with
         def write(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
             val (lambda, _) = component.clo
             writer.write(lambda.idn.pos)
 
+/**
+ * Trait to encode environments.
+ *
+ * @tparam T
+ *   The type of the value the needs to be saved
+ */
 trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]:
+    /**
+     * Get the encoder that will be used to encode environments.
+     *
+     * This will influence how environments will be encodes, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getEnvironmentEncoder: AbstractEncoder = getEncoder
+
+    /**
+     * Get the encoder that will be used to encode environments.
+     *
+     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
+     * and should therefore not be used here.
+     *
+     * This will influence how environments will be encodes, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getEnvironmentKeyEncoder: AbstractEncoder = getKeyEncoder
     given Encoder[BasicEnvironment[Address]] with
         override def write(writer: Writer, env: BasicEnvironment[Address]): Writer = writer.write(env.content)
@@ -95,16 +182,49 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
                     writer
             }
 
+/**
+ * Base trait for saving context.
+ *
+ * @note
+ *   This trait gives the methods needed to encode context, but not the implementation. Other traits like [[SaveNoContext]] should be mixed in. The
+ *   exact trait that is mixed in depends on the Context that you are using in your analysis.
+ *
+ * @tparam T
+ *   The type of the value the needs to be saved
+ */
 trait SaveContext[Expr <: Expression] extends Save[Expr]:
+    /** The type of context that should be encoded. */
     type Context
+
+    /**
+     * Get the encoder that will be used to encode context.
+     *
+     * This will influence how context will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getContextEncoder: AbstractEncoder = getEncoder
+
+    /** Encodes context */
     given contextEncoder: Encoder[Context]
 
+/**
+ * Trait to encode the context for an analysis with no context.
+ *
+ * This will just write 'ε' when asked to write the context.
+ *
+ * @tparam T
+ *   The type of the value the needs to be saved
+ */
 trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
-    type Context = NoContext.type
+    override type Context = NoContext.type
     override given contextEncoder: Encoder[Context] with
         override def write(writer: Writer, context: Context): Writer = writer.write("ε")
 
+/**
+ * Trait to encode standard scheme components.
+ *
+ * This is an implementation of [[SaveComponents]].
+ */
 trait SaveStandardSchemeComponents
     extends SaveComponents[SchemeExp]
     with StandardSchemeModFComponents

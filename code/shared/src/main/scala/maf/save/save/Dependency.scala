@@ -16,29 +16,133 @@ import maf.language.scheme.SchemeValue
 import maf.core.Identifier
 import maf.util.Writer.write
 
-trait SaveAddrDep extends SaveDependency[SchemeExp] with SavePosition[SchemeExp] with SaveSchemeAddr:
-    override def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
+/**
+ * Trait to encode address dependencies.
+ *
+ * This is an implementation of [[SaveDependency]].
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
+trait SaveAddrDep[Expr <: Expression] extends SaveDependency[Expr] with SavePosition[Expr] with SaveAddr[Expr]:
+    override protected def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
         dependency match {
             case AddrDependency(addr) => writer.writeMember("addrDependency", addr)
             case _                    => super.encodeDependency(writer, dependency)
         }
 
+/**
+ * Base trait for encoding dependencies.
+ *
+ * @note
+ *   This trait gives the methods needed to encode dependencies, but not the implementation. Other traits like [[SaveAddrDep]] should be mixed in. The
+ *   exact trait that is mixed in depends on the dependencies that you are using in your analysis.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait SaveDependency[Expr <: Expression] extends SaveMapToArray with SaveComponentID[Expr]:
+    /**
+     * Get the encoder that will be used to encode dependencies.
+     *
+     * This will influence how dependencies will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getDependencyEncoder: AbstractEncoder = getEncoder
     override def saveInfo: Map[String, Savable[_]] =
         super.saveInfo + ("dependencies" -> Savable(deps))
 
-    def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
+    /**
+     * Encodes a dependency.
+     *
+     * This method allows for expanding the dependencies that can be encoded by overriding it, and allowing you to add new dependencies by simply
+     * mixin in another trait that overrides this method. If you want to add a new encodable dependency you can override this method like this:
+     * {{{
+     * override def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
+     *     dependency match {
+     *         case < Dependency >(...) => < encode dependency >
+     *         case _               => super.encodeDependency(writer, dependency)
+     *     }
+     * }}}
+     * This is just an example and the actual implementation can also be done differently.
+     *
+     * @note
+     *   This method should not be called directly, but should instead only be called from an encoder.
+     *
+     * @param writer
+     *   The writer to write to
+     * @param dependency
+     *   The dependency to encode
+     * @param encoder
+     *   Implicit argument that encodes the dependency
+     * @return
+     *   The used writer
+     */
+    protected def encodeDependency(writer: Writer, dependency: Dependency)(using AbstractEncoder): Writer =
         System.err.nn.println("The dependency with type `" + dependency.getClass + "` could not be encoded")
         writer
+
     given EncapsulatedEncoder[Dependency] with
         override val encoder: AbstractEncoder = getDependencyEncoder
         override protected def writeEncapsulated(writer: Writer, value: Dependency): Writer = encodeDependency(writer, value)
 
+/**
+ * Base trait for encoding addresses.
+ *
+ * @note
+ *   This trait gives the methods needed to encode addresses, but not the implementation. Other traits like [[SaveSchemeAddr]] should be mixed in. The
+ *   exact trait that is mixed in depends on the addresses that you are using in your analysis.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
+    /**
+     * Get the encoder that will be used to encode addresses.
+     *
+     * This will influence how addresses will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getAddressEncoder: AbstractEncoder = getEncoder
+
+    /**
+     * Get the encoder that will be used to encode addresses.
+     *
+     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
+     * and should therefore not be used here.
+     *
+     * This will influence how addresses will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
     def getAddressKeyEncoder: AbstractEncoder = getKeyEncoder
-    def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
+
+    /**
+     * Encodes an address.
+     *
+     * This method allows for expanding the addresses that can be encoded by overriding it, and allowing you to add new addresses by simply mixin in
+     * another trait that overrides this method. If you want to add a new encodable address you can override this method like this:
+     * {{{
+     * override def encodeAddress(writer: Writer, address: Address)(using AbstractEncoder): Writer =
+     *     address match {
+     *         case < Address >(...) => < encode address >
+     *         case _               => super.encodeDependency(writer, address)
+     *     }
+     * }}}
+     * This is just an example and the actual implementation can also be done differently.
+     *
+     * @note
+     *   This method should not be called directly, but should instead only be called from an encoder.
+     *
+     * @param writer
+     *   The writer to write to
+     * @param address
+     *   The address to encode
+     * @param encoder
+     *   Implicit argument that encodes the address
+     * @return
+     *   The used writer
+     */
+    protected def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
         System.err.nn.println("The address with type `" + address.getClass + "` could not be encoded")
         writer
 
@@ -46,7 +150,12 @@ trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
         override val encoder = getAddressKeyEncoder
         override def writeEncapsulated(writer: Writer, value: Address): Writer = encodeAddress(writer, value)
 
-trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponentID with SaveContext[SchemeExp]:
+/**
+ * Trait to encode scheme addresses.
+ *
+ * This is an implementation of [[SaveAddr]].
+ */
+trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponentPosition with SaveContext[SchemeExp]:
     given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(getAddressEncoder)
     given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(getAddressEncoder)
 
@@ -72,7 +181,7 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponen
             if address.ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", address.ctx.asInstanceOf[Option[Context]].get)
             writer
 
-    override def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
+    override protected def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
         import componentIDEncoder.given
         address match {
             case varAddr @ VarAddr(_, _) =>
