@@ -194,7 +194,7 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
  */
 trait SaveContext[Expr <: Expression] extends Save[Expr]:
     /** The type of context that should be encoded. */
-    type Context
+    type EncodeContext
 
     /**
      * Get the encoder that will be used to encode context.
@@ -205,7 +205,7 @@ trait SaveContext[Expr <: Expression] extends Save[Expr]:
     def getContextEncoder: AbstractEncoder = getEncoder
 
     /** Encodes context */
-    given contextEncoder: Encoder[Context]
+    given contextEncoder: Encoder[EncodeContext]
 
 /**
  * Trait to encode the context for an analysis with no context.
@@ -216,9 +216,9 @@ trait SaveContext[Expr <: Expression] extends Save[Expr]:
  *   The type of the value the needs to be saved
  */
 trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
-    override type Context = NoContext.type
-    override given contextEncoder: Encoder[Context] with
-        override def write(writer: Writer, context: Context): Writer = writer.write("ε")
+    override type EncodeContext = NoContext.type
+    override given contextEncoder: Encoder[EncodeContext] with
+        override def write(writer: Writer, context: EncodeContext): Writer = writer.write("ε")
 
 /**
  * Trait to encode standard scheme components.
@@ -265,4 +265,4 @@ trait SaveStandardSchemeComponents
             val context = component.ctx
             writer.writeMember("lambda", lambda)
             writer.writeMember("environment", env)
-            writer.writeMember("context", context.asInstanceOf[Context])
+            writer.writeMember("context", context.asInstanceOf[EncodeContext])

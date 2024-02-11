@@ -50,10 +50,10 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
     given Decoder[maf.language.sexp.Value] = AbstractDecoder.deriveAllDecoders(getAddressDecoder)
     override def addressDecoders =
         super.addressDecoders ++ List(
-          ("varAddr", summon[Decoder[VarAddr[Context]]]),
+          ("varAddr", summon[Decoder[VarAddr[DecodeContext]]]),
           ("prmAddr", summon[Decoder[PrmAddr]]),
           ("returnAddr", summon[Decoder[ReturnAddr[Component]]]),
-          ("ptrAddr", summon[Decoder[PtrAddr[Context]]])
+          ("ptrAddr", summon[Decoder[PtrAddr[DecodeContext]]])
         )
 
     given EncapsulatedDecoder[ReturnAddr[Component]] with
@@ -63,21 +63,25 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
             val identity = reader.readMember[Identity]("identity")
             return new ReturnAddr[Component](component.value, identity.value)
 
-    given EncapsulatedDecoder[VarAddr[Context]] with
+    given EncapsulatedDecoder[VarAddr[DecodeContext]] with
         override def decoder: AbstractDecoder = getAddressDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): VarAddr[Context] =
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): VarAddr[DecodeContext] =
             val name = reader.readMember[Identifier]("id")
-            val context = reader.readMember[Context]("context")
-            return new VarAddr[Context](name.value, if context.hasValue then Some(context.value).asInstanceOf[Context] else None.asInstanceOf[Context])
+            val context = reader.readMember[DecodeContext]("context")
+            return new VarAddr[DecodeContext](
+              name.value,
+              if context.hasValue then Some(context.value).asInstanceOf[DecodeContext] else None.asInstanceOf[DecodeContext]
+            )
 
     given Decoder[PrmAddr] with
         override def read(reader: Reader): PrmAddr = new PrmAddr(reader.read[String]())
 
-    given EncapsulatedDecoder[PtrAddr[Context]] with
+    given EncapsulatedDecoder[PtrAddr[DecodeContext]] with
         override def decoder: AbstractDecoder = getAddressDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): PtrAddr[Context] =
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): PtrAddr[DecodeContext] =
             val expression = reader.readMember[SchemeValue]("expression")
-            val context = reader.readMember[Context]("context")
-            return new PtrAddr[Context](expression.value,
-                                        if context.hasValue then Some(context.value).asInstanceOf[Context] else None.asInstanceOf[Context]
+            val context = reader.readMember[DecodeContext]("context")
+            return new PtrAddr[DecodeContext](
+              expression.value,
+              if context.hasValue then Some(context.value).asInstanceOf[DecodeContext] else None.asInstanceOf[DecodeContext]
             )

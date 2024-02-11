@@ -53,20 +53,21 @@ trait LoadStandardSchemeComponents
     with LoadPosition[SchemeExp]
     with LoadEnvironment[SchemeExp]:
     override def addComponent(component: SchemeModFComponent): Unit =
-        if component != initialComponent then components.addOne(component.asInstanceOf[SchemeModFComponent.Call[Context]].clo._1.idn.pos, component)
+        if component != initialComponent then
+            components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
 
     override given componentDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
-            else reader.read[SchemeModFComponent.Call[Context]]()
+            else reader.read[SchemeModFComponent.Call[DecodeContext]]()
 
-    given EncapsulatedDecoder[SchemeModFComponent.Call[Context]] with
+    given EncapsulatedDecoder[SchemeModFComponent.Call[DecodeContext]] with
         override val decoder = getComponentDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): SchemeModFComponent.Call[Context] =
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): SchemeModFComponent.Call[DecodeContext] =
             val lambda = reader.readMember[SchemeLambdaExp]("lambda")
             val environment = reader.readMember[Environment[Address]]("environment")
-            val context = reader.readMember[Context]("context")
-            return new SchemeModFComponent.Call[Context]((lambda.value, environment.value), context.value)
+            val context = reader.readMember[DecodeContext]("context")
+            return new SchemeModFComponent.Call[DecodeContext]((lambda.value, environment.value), context.value)
     private val compDecoder = getComponentDecoder
     given Decoder[SchemeFuncall] = AbstractDecoder.deriveDecoder[SchemeFuncall](compDecoder)
     given Decoder[SchemeVar] = AbstractDecoder.deriveDecoder[SchemeVar](compDecoder)
@@ -88,14 +89,14 @@ trait LoadStandardSchemeComponents
             expression.value
 
 trait LoadContext[Expr <: Expression] extends Load[Expr]:
-    type Context
+    type DecodeContext
     def getContextDecoder: AbstractDecoder = getDecoder
-    given contextDecoder: Decoder[Context]
 
+    given contextDecoder: Decoder[DecodeContext]
 trait LoadNoContext[Expr <: Expression] extends LoadContext[Expr]:
-    type Context = NoContext.type
-    override given contextDecoder: Decoder[Context] with
-        override def read(reader: Reader): Context =
+    override type DecodeContext = NoContext.type
+    override given contextDecoder: Decoder[DecodeContext] with
+        override def read(reader: Reader): DecodeContext =
             if !reader.tryReadString("ε") then return reader.unexpectedDataItem("ε")
             NoContext
 
@@ -104,7 +105,7 @@ trait LoadPosition[Expr <: Expression] extends Load[Expr]:
     given Decoder[Position] = AbstractDecoder.deriveAllDecoders[Position](getPositionDecoder)
     given Decoder[PTag] = AbstractDecoder.deriveAllDecoders[PTag](getPositionDecoder)
 
-    val posDecoder = getPositionDecoder
+    private val posDecoder = getPositionDecoder
     given Decoder[Identifier] = AbstractDecoder.deriveDecoder[Identifier](posDecoder)
     given Decoder[Identity] = AbstractDecoder.deriveAllDecoders[Identity](posDecoder)
     given Decoder[IdentityData] with
@@ -149,9 +150,9 @@ trait LoadStandardSchemeComponentID extends LoadComponentID[SchemeExp] with Load
     given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
-            else reader.read[SchemeModFComponent.Call[Context]]().asInstanceOf[Component]
+            else reader.read[SchemeModFComponent.Call[DecodeContext]]().asInstanceOf[Component]
 
-    given schemeComponentIDDecoder[T]: Decoder[SchemeModFComponent.Call[Context]] with
-        override def read(reader: Reader): SchemeModFComponent.Call[Context] =
+    given schemeComponentIDDecoder[T]: Decoder[SchemeModFComponent.Call[DecodeContext]] with
+        override def read(reader: Reader): SchemeModFComponent.Call[DecodeContext] =
             val pos = reader.read[Position]()
-            return components(pos).asInstanceOf[SchemeModFComponent.Call[Context]]
+            return components(pos).asInstanceOf[SchemeModFComponent.Call[DecodeContext]]

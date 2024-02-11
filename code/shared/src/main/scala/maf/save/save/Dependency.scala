@@ -159,38 +159,40 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponen
     given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(getAddressEncoder)
     given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(getAddressEncoder)
 
-    given EncapsulatedEncoder[VarAddr[Context]] with
+    given EncapsulatedEncoder[VarAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
-        override def writeEncapsulated(writer: Writer, address: VarAddr[Context]): Writer =
+        override def writeEncapsulated(writer: Writer, address: VarAddr[EncodeContext]): Writer =
             import componentIDEncoder.given
             writer.writeMember("id", address.id)
-            if address.ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", address.ctx.asInstanceOf[Option[Context]].get)
+            if address.ctx.asInstanceOf[Option[EncodeContext]].isDefined then
+                writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
             writer
 
-    given EncapsulatedEncoder[ReturnAddr[Context]] with
+    given EncapsulatedEncoder[ReturnAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
-        override def writeEncapsulated(writer: Writer, address: ReturnAddr[Context]): Writer =
+        override def writeEncapsulated(writer: Writer, address: ReturnAddr[EncodeContext]): Writer =
             import componentIDEncoder.given
             writer.writeMember("component", address.cmp.asInstanceOf[Component])
             writer.writeMember("identity", address.idn)
 
-    given EncapsulatedEncoder[PtrAddr[Context]] with
+    given EncapsulatedEncoder[PtrAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
-        override def writeEncapsulated(writer: Writer, address: PtrAddr[Context]): Writer =
+        override def writeEncapsulated(writer: Writer, address: PtrAddr[EncodeContext]): Writer =
             writer.writeMember("expression", address.exp.asInstanceOf[SchemeValue])
-            if address.ctx.asInstanceOf[Option[Context]].isDefined then writer.writeMember("context", address.ctx.asInstanceOf[Option[Context]].get)
+            if address.ctx.asInstanceOf[Option[EncodeContext]].isDefined then
+                writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
             writer
 
     override protected def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
         import componentIDEncoder.given
         address match {
             case varAddr @ VarAddr(_, _) =>
-                writer.writeMember("varAddr", varAddr.asInstanceOf[VarAddr[Context]])
+                writer.writeMember("varAddr", varAddr.asInstanceOf[VarAddr[EncodeContext]])
             case returnAddr @ ReturnAddr(_, _) =>
-                writer.writeMember("returnAddr", returnAddr.asInstanceOf[ReturnAddr[Context]])
+                writer.writeMember("returnAddr", returnAddr.asInstanceOf[ReturnAddr[EncodeContext]])
             case PrmAddr(nam) =>
                 writer.writeMember("prmAddr", nam)
             case ptrAddr @ PtrAddr(_, _) =>
-                writer.writeMember("ptrAddr", ptrAddr.asInstanceOf[PtrAddr[Context]])
+                writer.writeMember("ptrAddr", ptrAddr.asInstanceOf[PtrAddr[EncodeContext]])
             case _ => super.encodeAddress(writer, address)
         }
