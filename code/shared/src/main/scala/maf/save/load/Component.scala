@@ -34,9 +34,43 @@ import maf.core.Position
 import maf.core.Position.PTag
 import scala.collection.mutable.HashMap
 
+/**
+ * The base trait for decoding components.
+ *
+ * @note
+ *   This trait gives the methods needed to decode components, but does not implement them yet, other traits like [[LoadStandardSchemeComponents]] or
+ *   [[LoadStandardSchemeComponentID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components
+ *   are used in your analysis.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait LoadComponents[Expr <: Expression] extends Load[Expr] with LoadComponentID[Expr]:
+    /**
+     * Get the decoder that will be used to decode components.
+     *
+     * This will influence how components will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     def getComponentDecoder: AbstractDecoder = getDecoder
+
+    /**
+     * Get the decoder that will be used to decode components.
+     *
+     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
+     * this key, and should therefore not be used here.
+     *
+     * This will influence how components will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     def getComponentKeyDecoder: AbstractDecoder = getKeyDecoder
+
+    /**
+     * Register a loaded component, this is necessary if you also want to load components by their ID.
+     *
+     * @param component
+     *   The component to register
+     */
     def addComponent(component: Component): Unit
     override def loadInfo: Map[String, Loadable[_]] =
         super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
@@ -88,11 +122,47 @@ trait LoadStandardSchemeComponents
             )
             expression.value
 
+/**
+ * The base trait for decoding context.
+ *
+ * @note
+ *   This trait gives the methods needed to decode context, but does not implement them yet, other traits like [[LoadNoContext]] should be mixed in
+ *   for the implementation. The trait that should be mixed in depends on the kind of context that is used in your analysis.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait LoadContext[Expr <: Expression] extends Load[Expr]:
+    /** The type of context that should be decoded. */
     type DecodeContext
+
+    /**
+     * Get the decoder that will be used to decode context.
+     *
+     * This will influence how context will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     def getContextDecoder: AbstractDecoder = getDecoder
 
+    /**
+     * Get the decoder that will be used to decode context.
+     *
+     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
+     * this key, and should therefore not be used here.
+     *
+     * This will influence how context will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     given contextDecoder: Decoder[DecodeContext]
+
+/**
+ * Trait to decode the context for an analysis with no context.
+ *
+ * This will expect 'ε' when reading context.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait LoadNoContext[Expr <: Expression] extends LoadContext[Expr]:
     override type DecodeContext = NoContext.type
     override given contextDecoder: Decoder[DecodeContext] with
@@ -100,7 +170,19 @@ trait LoadNoContext[Expr <: Expression] extends LoadContext[Expr]:
             if !reader.tryReadString("ε") then return reader.unexpectedDataItem("ε")
             NoContext
 
+/**
+ * Trait to decode positions.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait LoadPosition[Expr <: Expression] extends Load[Expr]:
+    /**
+     * Get the decoder that will be used to decode positions.
+     *
+     * This will influence how positions will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     def getPositionDecoder: AbstractDecoder = getDecoder
     given Decoder[Position] = AbstractDecoder.deriveAllDecoders[Position](getPositionDecoder)
     given Decoder[PTag] = AbstractDecoder.deriveAllDecoders[PTag](getPositionDecoder)
@@ -119,8 +201,30 @@ trait LoadPosition[Expr <: Expression] extends Load[Expr]:
             System.err.nn.println("IdentityData could not be decoded")
             return IdnData
 
+/**
+ * Trait to decode environments.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]:
+    /**
+     * Get the decoder that will be used to decode environments.
+     *
+     * This will influence how environments will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     def getEnvironmentDecoder: AbstractDecoder = getDecoder
+
+    /**
+     * Get the decoder that will be used to decode environments.
+     *
+     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
+     * this key, and should therefore not be used here.
+     *
+     * This will influence how environments will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
     def getEnvironmentKeyDecoder: AbstractDecoder = getKeyDecoder
     given [T <: Address]: EncapsulatedDecoder[Environment[T]] with
         override def decoder: AbstractDecoder = getEnvironmentKeyDecoder
@@ -142,10 +246,34 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
             val rst = reader.readMember[Address]("rst")
             return new NestedEnv(content.value.asInstanceOf[Map[String, T]], if rst.hasValue then Some(rst.value.asInstanceOf[K]) else None)
 
+/**
+ * The base trait for decoding components only by their ID.
+ *
+ * @note
+ *   This trait gives the methods needed to decode context, but does not implement them yet, other traits like [[LoadStandardSchemeComponentID]]
+ *   should be mixed in for the implementation. The trait that should be mixed in depends on the kind of context that is used in your analysis.
+ *
+ * @note
+ *   Because this trait only decodes the component IDs, the entire component should have already been decoded and placed in [[components]], so the ID
+ *   can be mapped to an actual component.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
 trait LoadComponentID[Expr <: Expression] extends LoadPosition[Expr]:
+    /** Map that connects component IDs to the component. */
     var components = HashMap[Position, Component]()
     given componentIDDecoder: Decoder[Component]
 
+/**
+ * Trait that decodes components using their position.
+ *
+ * Implementation of [[LoadComponentID]].
+ *
+ * @note
+ *   Because this trait only decodes the component positions, the entire component should have already been decoded and placed in [[components]], so
+ *   the position can be mapped to an actual component.
+ */
 trait LoadStandardSchemeComponentID extends LoadComponentID[SchemeExp] with LoadContext[SchemeExp]:
     given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
