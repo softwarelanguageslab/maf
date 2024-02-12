@@ -134,6 +134,12 @@ trait SaveModularSchemeLattices
             pointer.ptrs.foreach(writer.write(_))
             writer
 
+    given EncapsulatedEncoder[SchemeLattice#Cons]() with
+        override val encoder = getValueEncoder
+        override protected def writeEncapsulated(writer: Writer, cons: SchemeLattice#Cons): Writer =
+            writer.writeMember("car", cons.car)
+            writer.writeMember("cdr", cons.cdr)
+
     given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
         override val encoder = getValueKeyEncoder
         override protected def writeEncapsulated(writer: Writer, hMapPair: (HMapKey, SchemeLattice#Value)): Writer =
@@ -143,9 +149,13 @@ trait SaveModularSchemeLattices
                 case int: SchemeLattice#Int         => writer.writeMember("int", int.i.asInstanceOf[Lattice[BigInt]])
                 case bool: SchemeLattice#Bool       => writer.writeMember("boolean", bool.b.asInstanceOf[Lattice[Boolean]])
                 case str: SchemeLattice#Str         => writer.writeMember("string", str.s.asInstanceOf[Lattice[String]])
+                case symbol: SchemeLattice#Symbol   => writer.writeMember("symbol", symbol.s.asInstanceOf[Lattice[String]])
                 case prim: SchemeLattice#Prim       => writer.writeMember("primitive", prim.prims)
                 case clo: SchemeLattice#Clo         => writer.writeMember("closure", clo)
                 case pointer: SchemeLattice#Pointer => writer.writeMember("pointer", pointer)
+                case cons: SchemeLattice#Cons       => writer.writeMember("cons", cons)
+                case modularLattice.Nil             => writer.writeMember("nil", "")
+                case modularLattice.Void            => writer.writeMember("void", "")
                 case _ =>
                     System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
                     writer
