@@ -110,7 +110,11 @@ trait LoadModularSchemeLattices
       ("string", summon[Decoder[(HMapKey, SchemeLattice#Str)]]),
       ("primitive", summon[Decoder[(HMapKey, SchemeLattice#Prim)]]),
       ("closure", summon[Decoder[(HMapKey, SchemeLattice#Clo)]]),
-      ("pointer", summon[Decoder[(HMapKey, SchemeLattice#Pointer)]])
+      ("pointer", summon[Decoder[(HMapKey, SchemeLattice#Pointer)]]),
+      ("symbol", summon[Decoder[(HMapKey, SchemeLattice#Symbol)]]),
+      ("cons", summon[Decoder[(HMapKey, SchemeLattice#Cons)]]),
+      ("nil", summon[Decoder[(HMapKey, modularLattice.Nil.type)]]),
+      ("void", summon[Decoder[(HMapKey, modularLattice.Void.type)]]),
     )
 
     given Decoder[(HMapKey, SchemeLattice#Int)] with
@@ -127,6 +131,11 @@ trait LoadModularSchemeLattices
         override def read(reader: Reader): (HMapKey, SchemeLattice#Str) =
             val lattice = reader.read[Lattice[String]]()
             return (modularLattice.StrT, new modularLattice.Str(lattice.asInstanceOf[LoadModularSchemeLattices.this.modularLatticeWrapper.S]))
+
+    given Decoder[(HMapKey, SchemeLattice#Symbol)] with
+        override def read(reader: Reader): (HMapKey, SchemeLattice#Symbol) =
+            val lattice = reader.read[Lattice[String]]()
+            return (modularLattice.SymbolT, new modularLattice.Symbol(lattice.asInstanceOf[LoadModularSchemeLattices.this.modularLatticeWrapper.Sym]))
 
     given Decoder[(HMapKey, SchemeLattice#Prim)] with
         override def read(reader: Reader): (HMapKey, SchemeLattice#Prim) =
@@ -156,6 +165,19 @@ trait LoadModularSchemeLattices
             return (modularLattice.PointerT,
                     new modularLattice.Pointer(reader.readUntilBeforeBreak[Set[Address]](Set(), (pointers) => pointers + (reader.read[Address]())))
             )
+
+    given EncapsulatedDecoder[(HMapKey, SchemeLattice#Cons)]() with
+        override def decoder: AbstractDecoder = getValueDecoder
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, SchemeLattice#Cons) =
+            val car = reader.readMember[SchemeLattice#L]("car")
+            val cdr = reader.readMember[SchemeLattice#L]("cdr")
+            return (modularLattice.ConsT, new modularLattice.Cons(car.value, cdr.value))
+
+    given Decoder[(HMapKey, modularLattice.Nil.type)] with
+        override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) = return (modularLattice.NilT, modularLattice.Nil)
+
+    given Decoder[(HMapKey, modularLattice.Void.type)] with
+        override def read(reader: Reader): (HMapKey, modularLattice.Void.type) = return (modularLattice.VoidT, modularLattice.Void)
 
 /**
  * Base trait for decoding values as [[ModularSchemeLattice modular scheme lattices]], as defined in [[ModularSchemeDomain]].
