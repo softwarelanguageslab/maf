@@ -45,7 +45,7 @@ import scala.collection.mutable.HashMap
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait LoadComponents[Expr <: Expression] extends Load[Expr] with LoadComponentID[Expr]:
+trait LoadComponents[Expr <: Expression] extends Load[Expr]:
     /**
      * Get the decoder that will be used to decode components.
      *
@@ -65,18 +65,8 @@ trait LoadComponents[Expr <: Expression] extends Load[Expr] with LoadComponentID
      */
     def getComponentKeyDecoder: AbstractDecoder = getKeyDecoder
 
-    /**
-     * Register a loaded component, this is necessary if you also want to load components by their ID.
-     *
-     * @param component
-     *   The component to register
-     */
-    def addComponent(component: Component): Unit
     override def loadInfo: Map[String, Loadable[_]] =
-        super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
-            visited.foreach((component) => addComponent(component))
-            this.visited = visited
-        ))
+        super.loadInfo + ("components" -> Loadable((visited: Set[Component]) => this.visited = visited))
 
     given componentDecoder: Decoder[Component]
 
@@ -86,10 +76,6 @@ trait LoadStandardSchemeComponents
     with LoadContext[SchemeExp]
     with LoadPosition[SchemeExp]
     with LoadEnvironment[SchemeExp]:
-    override def addComponent(component: SchemeModFComponent): Unit =
-        if component != initialComponent then
-            components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
-
     override given componentDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
@@ -260,13 +246,29 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait LoadComponentID[Expr <: Expression] extends LoadPosition[Expr]:
+trait LoadComponentID[Expr <: Expression] extends LoadComponents[Expr] with LoadPosition[Expr]:
     /** Map that connects component IDs to the component. */
     var components = HashMap[Position, Component]()
+
+    /**
+     * Register a loaded component, this allows you to also reference components using their ID using the [[components]] map.
+     *
+     * @param component
+     *   The component to register
+     */
+    def addComponent(component: Component): Unit
     given componentIDDecoder: Decoder[Component]
 
+    override def loadInfo: Map[String, Loadable[_]] =
+        val loadInfoMap = super.loadInfo
+        val components = loadInfoMap("components").asInstanceOf[Loadable[Set[Component]]]
+        loadInfoMap + ("components" -> Loadable((visited: Set[Component]) =>
+            visited.foreach((component) => addComponent(component))
+            components.load(visited)
+        )(using components.decoder))
+
 /**
- * Trait that decodes components using their position.
+ * Trait that decodes standard scheme components using their position.
  *
  * Implementation of [[LoadComponentID]].
  *
@@ -275,6 +277,10 @@ trait LoadComponentID[Expr <: Expression] extends LoadPosition[Expr]:
  *   the position can be mapped to an actual component.
  */
 trait LoadStandardSchemeComponentID extends LoadComponentID[SchemeExp] with LoadContext[SchemeExp]:
+    override def addComponent(component: Component): Unit =
+        if component != initialComponent then
+            components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
+
     given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
