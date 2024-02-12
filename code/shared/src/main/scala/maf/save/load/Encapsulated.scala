@@ -592,6 +592,8 @@ class ArrayDecoder extends AbstractDecoder:
  * }}}
  */
 class ArrayKeyDecoder extends MapDecoder:
+    override protected val mapBasedDecoder: Boolean = false
+
     /** The key that was read, and which value should now be read. */
     protected var key: Option[Any] = None
 
