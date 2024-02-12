@@ -285,7 +285,7 @@ trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] wit
         if component != initialComponent then
             components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
 
-    given componentIDDecoder: Decoder[Component] with
+    override given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
             else reader.read[SchemeModFComponent.Call[DecodeContext]]().asInstanceOf[Component]
@@ -294,3 +294,38 @@ trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] wit
         override def read(reader: Reader): SchemeModFComponent.Call[DecodeContext] =
             val pos = reader.read[Position]()
             return components(pos).asInstanceOf[SchemeModFComponent.Call[DecodeContext]]
+
+/**
+ * Trait that decodes standard scheme components using an integer ID.
+ *
+ * Implementation of [[LoadComponentID]].
+ *
+ * @note
+ *   Because this trait only decodes the component ID, the entire component should have already been decoded and placed in [[components]], so the ID
+ *   can be mapped to an actual component.
+ */
+trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
+    override type ID = Int
+    override def addComponent(component: Component): Unit = return
+
+    override given componentIDDecoder: Decoder[Component] with
+        override def read(reader: Reader): Component =
+            val id = reader.readInt()
+            return components(id)
+
+    private given EncapsulatedDecoder[Set[Component]] with
+        override def decoder: AbstractDecoder = getComponentKeyDecoder
+        override protected def readEncapsulated(reader: Reader)(using decoder: AbstractDecoder): Set[Component] =
+            reader.readUntilBeforeBreak(
+              Set[Component](),
+              (components: Set[Component]) =>
+                  val component = reader.readMember[Component]()(using componentDecoder, decoder)
+                  val key = component.key.toInt
+                  LoadComponentIntID.this.components.addOne((key, component.value))
+                  components + (component.value)
+            )
+
+    override def loadInfo: Map[String, Loadable[?]] =
+        val loadInfoMap = super.loadInfo
+        val component = loadInfoMap("components").asInstanceOf[Loadable[Set[Component]]]
+        return loadInfoMap + ("components" -> Loadable(component.load))
