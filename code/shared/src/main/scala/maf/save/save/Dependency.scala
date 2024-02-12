@@ -164,11 +164,11 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp]
                 writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
             writer
 
-    given EncapsulatedEncoder[ReturnAddr[EncodeContext]] with
+    given EncapsulatedEncoder[ReturnAddr[Component]] with
         override val encoder = getAddressEncoder
-        override def writeEncapsulated(writer: Writer, address: ReturnAddr[EncodeContext]): Writer =
-            writer.writeMember("component", address.cmp.asInstanceOf[Component])(using componentIDEncoder, encoder)
+        override def writeEncapsulated(writer: Writer, address: ReturnAddr[Component]): Writer =
             writer.writeMember("identity", address.idn)
+            writer.writeMember("component", address.cmp)(using componentIDEncoder, encoder)
 
     given EncapsulatedEncoder[PtrAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
@@ -183,7 +183,7 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp]
             case varAddr @ VarAddr(_, _) =>
                 writer.writeMember("varAddr", varAddr.asInstanceOf[VarAddr[EncodeContext]])
             case returnAddr @ ReturnAddr(_, _) =>
-                writer.writeMember("returnAddr", returnAddr.asInstanceOf[ReturnAddr[EncodeContext]])
+                writer.writeMember("returnAddr", returnAddr.asInstanceOf[ReturnAddr[Component]])
             case PrmAddr(nam) =>
                 writer.writeMember("prmAddr", nam)
             case ptrAddr @ PtrAddr(_, _) =>
