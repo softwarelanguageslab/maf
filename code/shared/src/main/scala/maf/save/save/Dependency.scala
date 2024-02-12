@@ -155,14 +155,13 @@ trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
  *
  * This is an implementation of [[SaveAddr]].
  */
-trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponentPosition with SaveContext[SchemeExp]:
+trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp] with SaveContext[SchemeExp]:
     given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(getAddressEncoder)
     given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(getAddressEncoder)
 
     given EncapsulatedEncoder[VarAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: VarAddr[EncodeContext]): Writer =
-            import componentIDEncoder.given
             writer.writeMember("id", address.id)
             if address.ctx.asInstanceOf[Option[EncodeContext]].isDefined then
                 writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
@@ -171,7 +170,6 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponen
     given EncapsulatedEncoder[ReturnAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: ReturnAddr[EncodeContext]): Writer =
-            import componentIDEncoder.given
             writer.writeMember("component", address.cmp.asInstanceOf[Component])
             writer.writeMember("identity", address.idn)
 
@@ -184,7 +182,6 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveStandardSchemeComponen
             writer
 
     override protected def encodeAddress(writer: Writer, address: Address)(using encoder: AbstractEncoder): Writer =
-        import componentIDEncoder.given
         address match {
             case varAddr @ VarAddr(_, _) =>
                 writer.writeMember("varAddr", varAddr.asInstanceOf[VarAddr[EncodeContext]])

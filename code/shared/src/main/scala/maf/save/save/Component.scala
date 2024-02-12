@@ -33,7 +33,7 @@ import maf.modular.scv.ScvContextSensitivity
 import maf.modular.scheme.modf.NoContext
 import maf.core.Position
 import maf.core.Position.PTag
-import scala.collection.immutable.HashMap
+import scala.collection.mutable.HashMap
 
 /**
  * Trait to encode positions.
@@ -112,6 +112,34 @@ trait SaveComponents[Expr <: Expression] extends Save[Expr]:
 trait SaveComponentID[Expr <: Expression] extends SavePosition[Expr]:
     /** Encodes a component by their ID */
     given componentIDEncoder: Encoder[Component]
+
+/**
+ * Trait that encodes components using an autoincreasing integer ID.
+ *
+ * Implementation of [[SaveComponentID]]
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
+trait SaveComponentIntID[Expr <: Expression] extends SaveComponents[Expr] with SaveComponentID[Expr]:
+    private val components = HashMap[Component, Int]()
+    private var id = 0
+    override def saveInfo: Map[String, Savable[?]] =
+        val saveInfoMap = super.saveInfo
+        val component = saveInfoMap("components").asInstanceOf[Savable[Set[Component]]]
+        return saveInfoMap + ("components" -> Savable(component.value))
+
+    private given EncapsulatedEncoder[Set[Component]] with
+        override val encoder: AbstractEncoder = getComponentKeyEncoder
+        override protected def writeEncapsulated(writer: Writer, components: Set[Component]): Writer =
+            for (component <- components) do
+                SaveComponentIntID.this.components.addOne((component, id))
+                writer.writeMember(id.toString(), component)(using componentEncoder, encoder)
+                id += 1
+            writer
+
+    override given componentIDEncoder: Encoder[Component] with
+        override def write(writer: Writer, component: Component): Writer = writer.write(components(component))
 
 /**
  * Trait that encodes components using their position.
