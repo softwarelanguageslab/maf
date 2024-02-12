@@ -247,8 +247,11 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
  *   The type of expression used in the analysis
  */
 trait LoadComponentID[Expr <: Expression] extends LoadComponents[Expr] with LoadPosition[Expr]:
+    /* The type of ID that will be used to load components */
+    type ID
+
     /** Map that connects component IDs to the component. */
-    var components = HashMap[Position, Component]()
+    var components = HashMap[ID, Component]()
 
     /**
      * Register a loaded component, this allows you to also reference components using their ID using the [[components]] map.
@@ -276,7 +279,8 @@ trait LoadComponentID[Expr <: Expression] extends LoadComponents[Expr] with Load
  *   Because this trait only decodes the component positions, the entire component should have already been decoded and placed in [[components]], so
  *   the position can be mapped to an actual component.
  */
-trait LoadStandardSchemeComponentID extends LoadComponentID[SchemeExp] with LoadContext[SchemeExp]:
+trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] with LoadContext[SchemeExp]:
+    override type ID = Position
     override def addComponent(component: Component): Unit =
         if component != initialComponent then
             components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)

@@ -85,7 +85,7 @@ trait LoadModF
     with LoadSchemeAddr
     with LoadDependency[SchemeExp]
     with LoadAddrDependency[SchemeExp]
-    with LoadStandardSchemeComponentID
+    with LoadStandardSchemeComponentPosition
     with LoadGlobalStore[SchemeExp]
     with LoadModularSchemeLattices:
     def getDecoder: AbstractDecoder = new MapDecoder
