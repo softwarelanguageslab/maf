@@ -33,6 +33,12 @@ import maf.save.EncapsulatedDecoder.*
 import maf.core.Position
 import maf.core.Position.PTag
 import scala.collection.mutable.HashMap
+import maf.language.scheme.SchemeValue
+import maf.language.scheme.SchemeLetrec
+import maf.language.scheme.SchemeAssert
+import maf.language.scheme.SchemeSet
+import maf.language.scheme.SchemeBegin
+import maf.language.scheme.SchemeLetStar
 
 /**
  * The base trait for decoding components.
@@ -89,11 +95,20 @@ trait LoadStandardSchemeComponents
             val context = reader.readMember[DecodeContext]("context")
             return new SchemeModFComponent.Call[DecodeContext]((lambda.value, environment.value), context.value)
     private val compDecoder = getComponentDecoder
+    given Decoder[SchemeValue] = AbstractDecoder.deriveDecoder(compDecoder)
+    given Decoder[maf.language.sexp.Value] = AbstractDecoder.deriveAllDecoders(compDecoder)
     given Decoder[SchemeFuncall] = AbstractDecoder.deriveDecoder[SchemeFuncall](compDecoder)
     given Decoder[SchemeVar] = AbstractDecoder.deriveDecoder[SchemeVar](compDecoder)
     given Decoder[SchemeLambda] = AbstractDecoder.deriveDecoder[SchemeLambda](compDecoder)
     given Decoder[SchemeVarArgLambda] = AbstractDecoder.deriveDecoder[SchemeVarArgLambda](compDecoder)
     given Decoder[SchemeLambdaExp] = AbstractDecoder.deriveDecoder[SchemeLambdaExp](compDecoder)
+    given Decoder[SchemeLetrec] = AbstractDecoder.deriveDecoder[SchemeLetrec](compDecoder)
+    given Decoder[SchemeAssert] = AbstractDecoder.deriveDecoder[SchemeAssert](compDecoder)
+    given Decoder[SchemeLet] = AbstractDecoder.deriveDecoder[SchemeLet](compDecoder)
+    given Decoder[SchemeIf] = AbstractDecoder.deriveDecoder[SchemeIf](compDecoder)
+    given Decoder[SchemeSet] = AbstractDecoder.deriveDecoder[SchemeSet](compDecoder)
+    given Decoder[SchemeBegin] = AbstractDecoder.deriveDecoder[SchemeBegin](compDecoder)
+    given Decoder[SchemeLetStar] = AbstractDecoder.deriveDecoder[SchemeLetStar](compDecoder)
 
     given EncapsulatedDecoder[SchemeExp] with
         override val decoder = getComponentKeyDecoder
@@ -103,7 +118,15 @@ trait LoadStandardSchemeComponents
                 ("funcall", summon[Decoder[SchemeFuncall]]),
                 ("var", summon[Decoder[SchemeVar]]),
                 ("lambda", summon[Decoder[SchemeLambda]]),
-                ("argLambda", summon[Decoder[SchemeVarArgLambda]])
+                ("argLambda", summon[Decoder[SchemeVarArgLambda]]),
+                ("value", summon[Decoder[SchemeValue]]),
+                ("letrec", summon[Decoder[SchemeLetrec]]),
+                ("assert", summon[Decoder[SchemeAssert]]),
+                ("let", summon[Decoder[SchemeLet]]),
+                ("schemeIf", summon[Decoder[SchemeIf]]),
+                ("set", summon[Decoder[SchemeSet]]),
+                ("begin", summon[Decoder[SchemeBegin]]),
+                ("letStar", summon[Decoder[SchemeLetStar]]),
               )
             )
             expression.value

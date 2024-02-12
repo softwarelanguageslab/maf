@@ -114,9 +114,7 @@ trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
  *
  * This is an implementation of [[LoadAddr]].
  */
-trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] with LoadComponentID[SchemeExp]:
-    given Decoder[SchemeValue] = AbstractDecoder.deriveDecoder(getAddressDecoder)
-    given Decoder[maf.language.sexp.Value] = AbstractDecoder.deriveAllDecoders(getAddressDecoder)
+trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] with LoadComponentID[SchemeExp] with LoadStandardSchemeComponents:
     override def addressDecoders =
         super.addressDecoders ++ List(
           ("varAddr", summon[Decoder[VarAddr[DecodeContext]]]),
@@ -127,8 +125,8 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
 
     given EncapsulatedDecoder[ReturnAddr[Component]] with
         override def decoder: AbstractDecoder = getAddressDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): ReturnAddr[Component] =
-            val component = reader.readMember[Component]("component")
+        override protected def readEncapsulated(reader: Reader)(using decoder: AbstractDecoder): ReturnAddr[Component] =
+            val component = reader.readMember[Component]("component")(using componentIDDecoder, decoder)
             val identity = reader.readMember[Identity]("identity")
             return new ReturnAddr[Component](component.value, identity.value)
 
@@ -148,7 +146,7 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
     given EncapsulatedDecoder[PtrAddr[DecodeContext]] with
         override def decoder: AbstractDecoder = getAddressDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): PtrAddr[DecodeContext] =
-            val expression = reader.readMember[SchemeValue]("expression")
+            val expression = reader.readMember[SchemeExp]("expression")
             val context = reader.readMember[DecodeContext]("context")
             return new PtrAddr[DecodeContext](
               expression.value,
