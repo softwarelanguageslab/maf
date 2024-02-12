@@ -34,6 +34,12 @@ import maf.modular.scheme.modf.NoContext
 import maf.core.Position
 import maf.core.Position.PTag
 import scala.collection.mutable.HashMap
+import maf.language.scheme.SchemeLetrec
+import maf.language.scheme.SchemeAssert
+import maf.language.scheme.SchemeValue
+import maf.language.scheme.SchemeSet
+import maf.language.scheme.SchemeBegin
+import maf.language.scheme.SchemeLetStar
 
 /**
  * Trait to encode positions.
@@ -270,16 +276,33 @@ trait SaveStandardSchemeComponents
                 case variable: SchemeVar           => writer.writeMember("var", variable)
                 case lambda: SchemeLambda          => writer.writeMember("lambda", lambda)
                 case argLambda: SchemeVarArgLambda => writer.writeMember("argLambda", argLambda)
+                case value: SchemeValue            => writer.writeMember("value", value)
+                case letrec: SchemeLetrec          => writer.writeMember("letrec", letrec)
+                case assert: SchemeAssert          => writer.writeMember("assert", assert)
+                case let: SchemeLet                => writer.writeMember("let", let)
+                case schemeIf: SchemeIf            => writer.writeMember("schemeIf", schemeIf)
+                case set: SchemeSet                => writer.writeMember("set", set)
+                case begin: SchemeBegin            => writer.writeMember("begin", begin)
+                case letStar: SchemeLetStar        => writer.writeMember("letStar", letStar)
                 case _ =>
-                    System.err.nn.println("The schemeexpression with type `" + exp.getClass + "` could not be encoded")
+                    System.err.nn.println("The scheme expression with type `" + exp.getClass + "` could not be encoded")
                     writer
 
     private val compEncoder = getComponentEncoder
+    given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(compEncoder)
+    given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(compEncoder)
     given Encoder[SchemeFuncall] = AbstractEncoder.deriveEncoder[SchemeFuncall](compEncoder)
     given Encoder[SchemeVar] = AbstractEncoder.deriveEncoder[SchemeVar](compEncoder)
     given Encoder[SchemeLambda] = AbstractEncoder.deriveEncoder[SchemeLambda](compEncoder)
     given Encoder[SchemeVarArgLambda] = AbstractEncoder.deriveEncoder[SchemeVarArgLambda](compEncoder)
     given Encoder[SchemeLambdaExp] = AbstractEncoder.deriveEncoder[SchemeLambdaExp](compEncoder)
+    given Encoder[SchemeLetrec] = AbstractEncoder.deriveEncoder[SchemeLetrec](compEncoder)
+    given Encoder[SchemeAssert] = AbstractEncoder.deriveEncoder[SchemeAssert](compEncoder)
+    given Encoder[SchemeLet] = AbstractEncoder.deriveEncoder[SchemeLet](compEncoder)
+    given Encoder[SchemeIf] = AbstractEncoder.deriveEncoder[SchemeIf](compEncoder)
+    given Encoder[SchemeSet] = AbstractEncoder.deriveEncoder[SchemeSet](compEncoder)
+    given Encoder[SchemeBegin] = AbstractEncoder.deriveEncoder[SchemeBegin](compEncoder)
+    given Encoder[SchemeLetStar] = AbstractEncoder.deriveEncoder[SchemeLetStar](compEncoder)
 
     override given componentEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =

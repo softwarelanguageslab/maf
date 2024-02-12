@@ -155,10 +155,7 @@ trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
  *
  * This is an implementation of [[SaveAddr]].
  */
-trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp] with SaveContext[SchemeExp]:
-    given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(getAddressEncoder)
-    given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(getAddressEncoder)
-
+trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp] with SaveContext[SchemeExp] with SaveStandardSchemeComponents:
     given EncapsulatedEncoder[VarAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: VarAddr[EncodeContext]): Writer =
@@ -170,13 +167,13 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp]
     given EncapsulatedEncoder[ReturnAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: ReturnAddr[EncodeContext]): Writer =
-            writer.writeMember("component", address.cmp.asInstanceOf[Component])
+            writer.writeMember("component", address.cmp.asInstanceOf[Component])(using componentIDEncoder, encoder)
             writer.writeMember("identity", address.idn)
 
     given EncapsulatedEncoder[PtrAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: PtrAddr[EncodeContext]): Writer =
-            writer.writeMember("expression", address.exp.asInstanceOf[SchemeValue])
+            writer.writeMember("expression", address.exp.asInstanceOf[SchemeExp])
             if address.ctx.asInstanceOf[Option[EncodeContext]].isDefined then
                 writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
             writer
