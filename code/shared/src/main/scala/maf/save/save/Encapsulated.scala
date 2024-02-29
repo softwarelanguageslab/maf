@@ -127,7 +127,7 @@ trait AbstractEncoder:
      * @return
      *   The used writer
      */
-    def closeEncapsulation(writer: Writer): Writer
+    def closeEncapsulation(writer: Writer): Writer = writer.writeBreak()
 
 object AbstractEncoder:
     /**
@@ -259,7 +259,7 @@ trait EncapsulatedArrayEncoder[T](length: Int = 0) extends EncapsulatedEncoder[T
     override def write(writer: Writer, value: T): Writer =
         if length == 0 then writer.writeArrayStart() else writer.writeArrayOpen(length)
         writeEncapsulated(writer, value)
-        writer.writeArrayClose()
+        writer.writeBreak()
 
 /**
  * Object with extension methods for [[borer.Writer]].
@@ -387,7 +387,6 @@ class MapEncoder extends AbstractEncoder:
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
     override def openEncapsulation(writer: Writer): Writer = writer.writeMapStart()
     override def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeMapOpen(amount)
-    override def closeEncapsulation(writer: Writer): Writer = writer.writeMapClose()
 
 /**
  * Encoder that uses arrays to encode values.
@@ -402,7 +401,6 @@ class ArrayEncoder extends AbstractEncoder:
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
     override def openEncapsulation(writer: Writer): Writer = writer.writeArrayStart()
     override def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeArrayOpen(amount)
-    override def closeEncapsulation(writer: Writer): Writer = writer.writeArrayClose()
 
 /**
  * Encoder that uses arrays to encode values, but preserves keys.
