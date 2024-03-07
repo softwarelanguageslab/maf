@@ -9,6 +9,8 @@ import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
 import EncapsulatedEncoder.*
+import maf.save.save.SaveSchemeExpressions
+import maf.save.save.SaveRecursiveSchemeExpressionsIntID
 
 /**
  * Contains info about the top-level objects that need to be saved.
@@ -78,6 +80,8 @@ trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
 /** The trait used to save the modF analysis. */
 trait SaveModF
     extends Save[SchemeExp]
+    with SaveSchemeExpressions
+    with SaveRecursiveSchemeExpressionsIntID
     with SaveStandardSchemeComponents
     with SaveModularDomain
     with SaveAddrDep[SchemeExp]

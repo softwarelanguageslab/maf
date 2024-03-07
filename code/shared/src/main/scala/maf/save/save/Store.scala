@@ -122,7 +122,7 @@ trait SaveModularSchemeLattices
         override protected def writeEncapsulated(writer: Writer, closure: SchemeLattice#Clo): Writer =
             closure.closures.foreach((clo) =>
                 encoder.openEncapsulation(writer)
-                writer.writeMember("expression", clo._1)
+                writer.writeMember("expression", clo._1.asInstanceOf[SchemeExp])
                 writer.writeMember("address", clo._2.asInstanceOf[Environment[Address]])
                 encoder.closeEncapsulation(writer)
             )
