@@ -73,8 +73,7 @@ trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
      *     super.saveInfo + ("< key >" -> Savable(< saveValue >))
      * }}}
      */
-    def saveInfo: Map[String, Savable[_]] =
-        Map("name" -> Savable(analysisName))
+    def saveInfo: List[(String, Savable[_])] = List(("name", Savable(analysisName)))
 
 /** The trait used to save the modF analysis. */
 trait SaveModF

@@ -96,10 +96,13 @@ trait SaveComponents[Expr <: Expression] extends Save[Expr]:
      * encoder.
      */
     def getComponentKeyEncoder: AbstractEncoder = getKeyEncoder
-    override def saveInfo: Map[String, Savable[_]] = super.saveInfo + ("components" -> Savable(visited))
+    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("components", Savable(visited)))
 
     /** Encodes a component. */
     given componentEncoder: Encoder[Component]
+
+    /** Encodes a set of components */
+    protected given componentSetEncoder: Encoder[Set[Component]]
 
 /**
  * Base trait for encoding components only by their ID, and not in their entirety.
@@ -130,12 +133,8 @@ trait SaveComponentID[Expr <: Expression] extends SavePosition[Expr]:
 trait SaveComponentIntID[Expr <: Expression] extends SaveComponents[Expr] with SaveComponentID[Expr]:
     private val components = HashMap[Component, Int]()
     private var id = 0
-    override def saveInfo: Map[String, Savable[?]] =
-        val saveInfoMap = super.saveInfo
-        val component = saveInfoMap("components").asInstanceOf[Savable[Set[Component]]]
-        return saveInfoMap + ("components" -> Savable(component.value))
 
-    private given EncapsulatedEncoder[Set[Component]] with
+    override protected given componentSetEncoder: EncapsulatedEncoder[Set[Component]] with
         override val encoder: AbstractEncoder = getComponentKeyEncoder
         override protected def writeEncapsulated(writer: Writer, components: Set[Component]): Writer =
             for (component <- components) do
@@ -155,7 +154,17 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveComponents[Expr] with S
  * @note
  *   Because this trait only encodes the component position, the entire component should be encoded somewhere else if you want to decode this again.
  */
-trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
+trait SaveStandardSchemeComponentPosition extends SaveComponents[SchemeExp] with SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
+    override type Component = SchemeModFComponent
+
+    /**
+     * Get the encoder that will be used to encode a set of components.
+     *
+     * This will influence how a set of components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an
+     * [[ArrayEncoder array-based]] encoder.
+     */
+    def getComponentSetEncoder: AbstractEncoder = new ArrayEncoder
+
     /** Encodes a component by their position */
     override given componentIDEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
@@ -167,6 +176,12 @@ trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] wit
         def write(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
             val (lambda, _) = component.clo
             writer.write(lambda.idn.pos)
+
+    override protected given componentSetEncoder: EncapsulatedEncoder[Set[Component]] with
+        override val encoder: AbstractEncoder = getComponentSetEncoder
+        override protected def writeEncapsulated(writer: Writer, components: Set[Component]): Writer =
+            for (component <- components) do writer.writeMember(component)
+            writer
 
 /**
  * Trait to encode environments.

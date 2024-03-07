@@ -232,5 +232,5 @@ trait SaveModularDomain extends SaveValue[SchemeExp] with ModularSchemeDomain:
  * depending on the values that are used in your analysis.
  */
 trait SaveGlobalStore[Expr <: Expression] extends SaveValue[Expr] with SaveAddr[Expr] with SaveMapToArray with GlobalStore[Expr]:
-    override def saveInfo: Map[String, Savable[_]] =
-        super.saveInfo + ("store" -> Savable(store))
+    override def saveInfo: List[(String, Savable[_])] =
+        return super.saveInfo ++ List(("store" -> Savable(store)))

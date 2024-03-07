@@ -49,8 +49,8 @@ trait SaveDependency[Expr <: Expression] extends SaveMapToArray with SaveCompone
      * encoder.
      */
     def getDependencyEncoder: AbstractEncoder = getEncoder
-    override def saveInfo: Map[String, Savable[_]] =
-        super.saveInfo + ("dependencies" -> Savable(deps))
+    override def saveInfo: List[(String, Savable[_])] =
+        super.saveInfo ++ List(("dependencies" -> Savable(deps)))
 
     /**
      * Encodes a dependency.
