@@ -80,12 +80,12 @@ trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
 trait LoadModF
     extends Load[SchemeExp]
     with LoadComponents[SchemeExp]
+    with LoadComponentIntID[SchemeExp]
     with LoadStandardSchemeComponents
     with LoadNoContext[SchemeExp]
     with LoadSchemeAddr
     with LoadDependency[SchemeExp]
     with LoadAddrDependency[SchemeExp]
-    with LoadComponentIntID[SchemeExp]
     with LoadGlobalStore[SchemeExp]
     with LoadModularSchemeLattices:
     def getDecoder: AbstractDecoder = new MapDecoder

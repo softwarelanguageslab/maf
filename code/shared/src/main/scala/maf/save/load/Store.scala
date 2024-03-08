@@ -16,6 +16,7 @@ import maf.lattice.ConstantPropagation
 import maf.language.scheme.lattices.SchemeLattice
 import maf.language.scheme.SchemeLambdaExp
 import maf.core.Address
+import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
 
 /**
  * The base trait for decoding [[AbstractDomain.Value values]].
@@ -100,11 +101,12 @@ trait LoadLattice[Expr <: Expression] extends Load[Expr]:
 trait LoadModularSchemeLattices
     extends LoadModularDomain
     with LoadAddr[SchemeExp]
-    with LoadStandardSchemeComponents
+    with LoadExpressions[SchemeExp]
+    with BaseSchemeModFSemanticsM
     with LoadEnvironment[SchemeExp]
     with LoadLattice[SchemeExp]:
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
-    override def hMapDecoders = super.hMapDecoders + (
+    override def hMapDecoders = super.hMapDecoders ++ Set(
       ("int", summon[Decoder[(HMapKey, SchemeLattice#Int)]]),
       ("boolean", summon[Decoder[(HMapKey, SchemeLattice#Bool)]]),
       ("string", summon[Decoder[(HMapKey, SchemeLattice#Str)]]),
@@ -144,7 +146,7 @@ trait LoadModularSchemeLattices
     given EncapsulatedDecoder[(SchemeLambdaExp, Env)] with
         override def decoder: AbstractDecoder = getValueDecoder
         override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (SchemeLambdaExp, Env) =
-            val expression = reader.readMember[SchemeLambdaExp]("expression")
+            val expression = reader.readMember[SchemeExp]("expression").asInstanceOf[ReadValue[String, SchemeLambdaExp]]
             val address = reader.readMember[Env]("address")
             return (expression.value, address.value)
 

@@ -45,8 +45,8 @@ import maf.language.scheme.SchemeLetStar
  *
  * @note
  *   This trait gives the methods needed to decode components, but does not implement them yet, other traits like [[LoadStandardSchemeComponents]] or
- *   [[LoadStandardSchemeComponentID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components
- *   are used in your analysis.
+ *   [[LoadComponentIntID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components are used in
+ *   your analysis.
  *
  * @tparam Expr
  *   The type of expression used in the analysis
@@ -71,18 +71,49 @@ trait LoadComponents[Expr <: Expression] extends Load[Expr]:
      */
     def getComponentKeyDecoder: AbstractDecoder = getKeyDecoder
 
-    override def loadInfo: Map[String, Loadable[_]] =
-        super.loadInfo + ("components" -> Loadable((visited: Set[Component]) => this.visited = visited))
-
     given componentDecoder: Decoder[Component]
 
+/**
+ * The base trait for decoding components.
+ *
+ * This trait is used to add [[actualComponentDecoder]], this given cannot be added into [[LoadComponents]] because this would cause an ambigious
+ * implicit with [[componentEncoder]].
+ *
+ * @note
+ *   This trait gives the methods needed to decode components, but does not implement them yet, other traits like [[LoadStandardSchemeComponents]] or
+ *   [[LoadComponentIntID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components are used in
+ *   your analysis.
+ * @note
+ *   This trait should not be used, rather, [[LoadExpressions]] should be extended.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
+trait LoadActualComps[Expr <: Expression] extends LoadComponents[Expr]:
+    /** Encodes the actual component. */
+    given actualComponentDecoder: Decoder[Component]
+
+/**
+ * Load components normally.
+ *
+ * Implementation of [[LoadComponents]]
+ */
+trait LoadActualComponents[Expr <: Expression] extends LoadActualComps[Expr]:
+    override given componentDecoder: Decoder[Component] = actualComponentDecoder
+
+/**
+ * Load standard scheme components
+ *
+ * Implementation of [[LoadComponents]]
+ */
 trait LoadStandardSchemeComponents
-    extends LoadComponents[SchemeExp]
+    extends LoadActualComps[SchemeExp]
     with StandardSchemeModFComponents
     with LoadContext[SchemeExp]
     with LoadPosition[SchemeExp]
-    with LoadEnvironment[SchemeExp]:
-    override given componentDecoder: Decoder[Component] with
+    with LoadEnvironment[SchemeExp]
+    with LoadExpressions[SchemeExp]:
+    override given actualComponentDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
             else reader.read[SchemeModFComponent.Call[DecodeContext]]()
@@ -259,8 +290,8 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
  * The base trait for decoding components only by their ID.
  *
  * @note
- *   This trait gives the methods needed to decode context, but does not implement them yet, other traits like [[LoadStandardSchemeComponentID]]
- *   should be mixed in for the implementation. The trait that should be mixed in depends on the kind of context that is used in your analysis.
+ *   This trait gives the methods needed to decode context, but does not implement them yet, other traits like [[LoadComponentIntID]] should be mixed
+ *   in for the implementation. The trait that should be mixed in depends on the kind of context that is used in your analysis.
  *
  * @note
  *   Because this trait only decodes the component IDs, the entire component should have already been decoded and placed in [[components]], so the ID
@@ -269,7 +300,7 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait LoadComponentID[Expr <: Expression] extends LoadComponents[Expr] with LoadPosition[Expr]:
+trait LoadComponentID[Expr <: Expression] extends LoadActualComps[Expr] with LoadPosition[Expr]:
     /* The type of ID that will be used to load components */
     type ID
 
@@ -283,15 +314,15 @@ trait LoadComponentID[Expr <: Expression] extends LoadComponents[Expr] with Load
      *   The component to register
      */
     def addComponent(component: Component): Unit
+    override given componentDecoder: Decoder[Component] = componentIDDecoder
     given componentIDDecoder: Decoder[Component]
+    protected given componentSetDecoder: Decoder[Set[Component]]
 
     override def loadInfo: Map[String, Loadable[_]] =
-        val loadInfoMap = super.loadInfo
-        val components = loadInfoMap("components").asInstanceOf[Loadable[Set[Component]]]
-        loadInfoMap + ("components" -> Loadable((visited: Set[Component]) =>
+        super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
             visited.foreach((component) => addComponent(component))
-            components.load(visited)
-        )(using components.decoder))
+            this.visited = visited
+        ))
 
 /**
  * Trait that decodes standard scheme components using their position.
@@ -307,6 +338,11 @@ trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] wit
     override def addComponent(component: Component): Unit =
         if component != initialComponent then
             components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
+
+    override protected given componentSetDecoder: EncapsulatedDecoder[Set[Component]] with
+        override def decoder: AbstractDecoder = getComponentDecoder
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Set[Component] =
+            return reader.readUntilBeforeBreak(Set[Component](), (components: Set[Component]) => components + reader.readMember[Component]().value)
 
     override given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
@@ -333,13 +369,15 @@ trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
 
     override given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
-            val id = reader.readInt()
-            return components(id)
+            if reader.hasInt then
+                val id = reader.readInt()
+                return components(id)
+            else return reader.read[Component]()(using actualComponentDecoder)
 
-    private given EncapsulatedDecoder[Set[Component]] with
+    override protected given componentSetDecoder: EncapsulatedDecoder[Set[Component]] with
         override def decoder: AbstractDecoder = getComponentKeyDecoder
         override protected def readEncapsulated(reader: Reader)(using decoder: AbstractDecoder): Set[Component] =
-            reader.readUntilBeforeBreak(
+            return reader.readUntilBeforeBreak(
               Set[Component](),
               (components: Set[Component]) =>
                   val component = reader.readMember[Component]()(using componentDecoder, decoder)
@@ -347,8 +385,3 @@ trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
                   LoadComponentIntID.this.components.addOne((key, component.value))
                   components + (component.value)
             )
-
-    override def loadInfo: Map[String, Loadable[?]] =
-        val loadInfoMap = super.loadInfo
-        val component = loadInfoMap("components").asInstanceOf[Loadable[Set[Component]]]
-        return loadInfoMap + ("components" -> Loadable(component.load))

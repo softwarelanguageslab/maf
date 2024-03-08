@@ -41,7 +41,7 @@ trait LoadAddrDependency[Expr <: Expression] extends LoadDependency[Expr] with L
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadComponentID[Expr]:
+trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadComponents[Expr]:
     /**
      * Get the decoder that will be used to decode dependencies.
      *
@@ -114,7 +114,7 @@ trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
  *
  * This is an implementation of [[LoadAddr]].
  */
-trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] with LoadComponentID[SchemeExp] with LoadStandardSchemeComponents:
+trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] with LoadComponents[SchemeExp] with LoadExpressions[SchemeExp]:
     override def addressDecoders =
         super.addressDecoders ++ List(
           ("varAddr", summon[Decoder[VarAddr[DecodeContext]]]),
@@ -126,7 +126,7 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
     given EncapsulatedDecoder[ReturnAddr[Component]] with
         override def decoder: AbstractDecoder = getAddressDecoder
         override protected def readEncapsulated(reader: Reader)(using decoder: AbstractDecoder): ReturnAddr[Component] =
-            val component = reader.readMember[Component]("component")(using componentIDDecoder, decoder)
+            val component = reader.readMember[Component]("component")
             val identity = reader.readMember[Identity]("identity")
             return new ReturnAddr[Component](component.value, identity.value)
 
