@@ -115,9 +115,16 @@ trait LoadModularSchemeLattices
       ("pointer", summon[Decoder[(HMapKey, SchemeLattice#Pointer)]]),
       ("symbol", summon[Decoder[(HMapKey, SchemeLattice#Symbol)]]),
       ("cons", summon[Decoder[(HMapKey, SchemeLattice#Cons)]]),
-      ("nil", summon[Decoder[(HMapKey, modularLattice.Nil.type)]]),
+      ("nil", nilLatticeDecoder),
       ("void", summon[Decoder[(HMapKey, modularLattice.Void.type)]]),
+      ("ERROR", errorDecoder)
     )
+
+    private given errorDecoder: Decoder[(HMapKey, modularLattice.Nil.type)] with
+        override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) =
+            val error = reader.read[String]()
+            System.err.nn.println("The lattice was not correctly encoded and had error: `" + error + "`, using `nil` instead.")
+            return (modularLattice.NilT, modularLattice.Nil)
 
     given Decoder[(HMapKey, SchemeLattice#Int)] with
         override def read(reader: Reader): (HMapKey, SchemeLattice#Int) =
@@ -175,7 +182,7 @@ trait LoadModularSchemeLattices
             val cdr = reader.readMember[SchemeLattice#L]("cdr")
             return (modularLattice.ConsT, new modularLattice.Cons(car.value, cdr.value))
 
-    given Decoder[(HMapKey, modularLattice.Nil.type)] with
+    given nilLatticeDecoder: Decoder[(HMapKey, modularLattice.Nil.type)] with
         override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) = return (modularLattice.NilT, modularLattice.Nil)
 
     given Decoder[(HMapKey, modularLattice.Void.type)] with

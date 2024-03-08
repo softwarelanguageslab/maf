@@ -158,7 +158,7 @@ trait SaveModularSchemeLattices
                 case modularLattice.Void            => writer.writeMember("void", "")
                 case _ =>
                     System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
-                    writer
+                    writer.writeMember("ERROR", "Unknown type: " + key.getClass.toString())
             }
 
     override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder): Writer =
