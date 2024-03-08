@@ -73,8 +73,7 @@ trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
      *     super.loadInfo + ("< key >" -> Loadable[< loadType >]((< loaded object >: < SaveType >) => < put loaded object into analysis >))
      * }}}
      */
-    def loadInfo: Map[String, Loadable[_]] =
-        Map("name" -> Loadable((name: String) => println(name)))
+    def loadInfo: List[(String, Loadable[_])] = List(("name", Loadable((name: String) => ())))
 
 /** The trait used to load the modF analysis. */
 trait LoadModF

@@ -318,11 +318,11 @@ trait LoadComponentID[Expr <: Expression] extends LoadActualComps[Expr] with Loa
     given componentIDDecoder: Decoder[Component]
     protected given componentSetDecoder: Decoder[Set[Component]]
 
-    override def loadInfo: Map[String, Loadable[_]] =
-        super.loadInfo + ("components" -> Loadable((visited: Set[Component]) =>
+    override def loadInfo: List[(String, Loadable[_])] =
+        super.loadInfo ++ List(("components" -> Loadable((visited: Set[Component]) =>
             visited.foreach((component) => addComponent(component))
             this.visited = visited
-        ))
+        )))
 
 /**
  * Trait that decodes standard scheme components using their position.

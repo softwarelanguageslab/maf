@@ -221,4 +221,4 @@ trait LoadModularDomain extends LoadValue[SchemeExp] with ModularSchemeDomain:
  * depending on the values that are used in your analysis.
  */
 trait LoadGlobalStore[Expr <: Expression] extends LoadValue[Expr] with LoadAddr[Expr] with LoadMapToArray with GlobalStore[Expr]:
-    override def loadInfo = super.loadInfo + ("store" -> Loadable((store: Map[Addr, Value]) => this.store = store))
+    override def loadInfo = super.loadInfo ++ List(("store", Loadable((store: Map[Addr, Value]) => this.store = store)))
