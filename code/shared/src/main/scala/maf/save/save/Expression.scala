@@ -71,7 +71,7 @@ trait SaveExpressions[Expr <: Expression] extends Save[Expr]:
  *   [[SaveExpressionIntID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components are used
  *   in your analysis.
  * @note
- *   This trait should not be extended, rather, [[SaveExpressions]] should be extended.
+ *   This trait should not be used, rather, [[SaveExpressions]] should be extended.
  *
  * @tparam Expr
  *   The type of expression used in the analysis

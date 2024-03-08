@@ -78,6 +78,8 @@ trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
 /** The trait used to load the modF analysis. */
 trait LoadModF
     extends Load[SchemeExp]
+    with LoadExpressionIntID[SchemeExp]
+    with LoadSchemeExpressions
     with LoadComponents[SchemeExp]
     with LoadComponentIntID[SchemeExp]
     with LoadStandardSchemeComponents
