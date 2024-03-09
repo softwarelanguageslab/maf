@@ -15,6 +15,7 @@ import EncapsulatedEncoder.*
 import maf.language.scheme.SchemeValue
 import maf.core.Identifier
 import maf.util.Writer.write
+import maf.save.save.SaveExpressions
 
 /**
  * Trait to encode address dependencies.
@@ -41,7 +42,7 @@ trait SaveAddrDep[Expr <: Expression] extends SaveDependency[Expr] with SavePosi
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait SaveDependency[Expr <: Expression] extends SaveMapToArray with SaveComponentID[Expr]:
+trait SaveDependency[Expr <: Expression] extends SaveMapToArray with SaveComponents[Expr]:
     /**
      * Get the encoder that will be used to encode dependencies.
      *
@@ -155,7 +156,7 @@ trait SaveAddr[Expr <: Expression] extends Save[Expr] with SavePosition[Expr]:
  *
  * This is an implementation of [[SaveAddr]].
  */
-trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp] with SaveContext[SchemeExp] with SaveStandardSchemeComponents:
+trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponents[SchemeExp] with SaveContext[SchemeExp] with SaveExpressions[SchemeExp]:
     given EncapsulatedEncoder[VarAddr[EncodeContext]] with
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: VarAddr[EncodeContext]): Writer =
@@ -168,7 +169,7 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponentID[SchemeExp]
         override val encoder = getAddressEncoder
         override def writeEncapsulated(writer: Writer, address: ReturnAddr[Component]): Writer =
             writer.writeMember("identity", address.idn)
-            writer.writeMember("component", address.cmp)(using componentIDEncoder, encoder)
+            writer.writeMember("component", address.cmp)
 
     given EncapsulatedEncoder[PtrAddr[EncodeContext]] with
         override val encoder = getAddressEncoder

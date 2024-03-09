@@ -97,13 +97,15 @@ trait SaveComponents[Expr <: Expression] extends Save[Expr]:
      * encoder.
      */
     def getComponentKeyEncoder: AbstractEncoder = getKeyEncoder
-    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("components", Savable(visited)))
 
     /** Encodes a component. */
     given componentEncoder: Encoder[Component]
 
-    /** Encodes a set of components */
-    protected given componentSetEncoder: Encoder[Set[Component]]
+protected trait SaveActualComps[Expr <: Expression] extends SaveComponents[Expr]:
+    given actualComponentEncoder: Encoder[Component]
+
+trait SaveActualComponents[Expr <: Expression] extends SaveActualComps[Expr]:
+    override given componentEncoder: Encoder[Component] = actualComponentEncoder
 
 /**
  * Base trait for encoding components only by their ID, and not in their entirety.
@@ -119,9 +121,14 @@ trait SaveComponents[Expr <: Expression] extends Save[Expr]:
  * @tparam T
  *   The type of the value the needs to be saved
  */
-trait SaveComponentID[Expr <: Expression] extends SavePosition[Expr]:
+trait SaveComponentID[Expr <: Expression] extends SaveComponents[Expr] with SavePosition[Expr]:
     /** Encodes a component by their ID */
     given componentIDEncoder: Encoder[Component]
+    override given componentEncoder: Encoder[Component] = componentIDEncoder
+
+    /** Encodes a set of components */
+    protected given componentSetEncoder: Encoder[Set[Component]]
+    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("components", Savable(visited)))
 
 /**
  * Trait that encodes components using an autoincreasing integer ID.
@@ -131,7 +138,7 @@ trait SaveComponentID[Expr <: Expression] extends SavePosition[Expr]:
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait SaveComponentIntID[Expr <: Expression] extends SaveComponents[Expr] with SaveComponentID[Expr]:
+trait SaveComponentIntID[Expr <: Expression] extends SaveActualComps[Expr] with SaveComponentID[Expr]:
     private val components = HashMap[Component, Int]()
     private var id = 0
 
@@ -140,7 +147,7 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveComponents[Expr] with S
         override protected def writeEncapsulated(writer: Writer, components: Set[Component]): Writer =
             for (component <- components) do
                 SaveComponentIntID.this.components.addOne((component, id))
-                writer.writeMember(id.toString(), component)(using componentEncoder, encoder)
+                writer.writeMember(id.toString(), component)(using actualComponentEncoder, encoder)
                 id += 1
             writer
 
@@ -155,7 +162,7 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveComponents[Expr] with S
  * @note
  *   Because this trait only encodes the component position, the entire component should be encoded somewhere else if you want to decode this again.
  */
-trait SaveStandardSchemeComponentPosition extends SaveComponents[SchemeExp] with SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
+trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
     override type Component = SchemeModFComponent
 
     /**
@@ -276,7 +283,7 @@ trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
  * This is an implementation of [[SaveComponents]].
  */
 trait SaveStandardSchemeComponents
-    extends SaveComponents[SchemeExp]
+    extends SaveActualComps[SchemeExp]
     with StandardSchemeModFComponents
     with AnalysisResults[SchemeExp]
     with SaveValue[SchemeExp]
@@ -286,7 +293,7 @@ trait SaveStandardSchemeComponents
     with SaveExpressions[SchemeExp]:
     override type Component = SchemeModFComponent
 
-    override given componentEncoder: Encoder[Component] with
+    override given actualComponentEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
             if component.equals(initialComponent) then writer.write("main")
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])

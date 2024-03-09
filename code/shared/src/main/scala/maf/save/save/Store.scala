@@ -20,6 +20,7 @@ import EncapsulatedEncoder.*
 import maf.core.Environment
 import maf.lattice.{ConcreteLattice, ConstantPropagation}
 import maf.lattice.Concrete
+import maf.save.save.SaveExpressions
 
 /**
  * Base trait for encoding [[AbstractDomain.Value values]].
@@ -111,7 +112,7 @@ trait SaveLattice[Expr <: Expression] extends Save[Expr]:
 trait SaveModularSchemeLattices
     extends SaveModularDomain
     with SaveAddr[SchemeExp]
-    with SaveStandardSchemeComponents
+    with SaveExpressions[SchemeExp]
     with SaveEnvironment[SchemeExp]
     with SaveLattice[SchemeExp]:
     /** Generic modular scheme lattice that is used for typechecking of nested class inside of this. */

@@ -82,13 +82,13 @@ trait SaveModF
     extends Save[SchemeExp]
     with SaveSchemeExpressions
     with SaveRecursiveSchemeExpressionsIntID
+    with SaveComponentIntID[SchemeExp]
     with SaveStandardSchemeComponents
     with SaveModularDomain
     with SaveAddrDep[SchemeExp]
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
     with SaveModularSchemeLattices
-    with SaveNoContext[SchemeExp]
-    with SaveComponentIntID[SchemeExp]:
+    with SaveNoContext[SchemeExp]:
     override def getEncoder: AbstractEncoder = new MapEncoder
     override def getKeyEncoder: AbstractEncoder = new MapEncoder
