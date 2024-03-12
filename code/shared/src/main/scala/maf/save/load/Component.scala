@@ -39,6 +39,11 @@ import maf.language.scheme.SchemeAssert
 import maf.language.scheme.SchemeSet
 import maf.language.scheme.SchemeBegin
 import maf.language.scheme.SchemeLetStar
+import maf.core.worklist.WorkList
+import maf.modular.worklist.SequentialWorklistAlgorithm
+import maf.modular.worklist.FIFOWorklistAlgorithm
+import scala.collection.immutable.Queue
+import maf.core.worklist.FIFOWorkList
 
 /**
  * The base trait for decoding components.
@@ -349,3 +354,28 @@ trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
                   LoadComponentIntID.this.components.addOne((key, component.value))
                   components + (component.value)
             )
+
+trait LoadWorklist[Expr <: Expression] extends Load[Expr]:
+    /**
+     * Get the decoder that will be used to decode the worklist.
+     *
+     * This will influence how the worklist will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
+     * decoder.
+     */
+    def getWorklistDecoder: AbstractDecoder = new ArrayDecoder
+    type WorklistComponent
+    given worklistDecoder: Decoder[List[WorklistComponent]]
+    def setWorklist(worklist: List[WorklistComponent]): Unit
+    override def loadInfo: List[(String, Loadable[_])] =
+        super.loadInfo ++ List(("worklist" -> Loadable((worklist: List[WorklistComponent]) => setWorklist(worklist))))
+
+trait LoadSequentialWorklist[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] with LoadWorklist[Expr] with LoadComponents[Expr]:
+    type WorklistComponent = Component
+    given worklistDecoder: EncapsulatedDecoder[List[WorklistComponent]] with
+        override def decoder: AbstractDecoder = getWorklistDecoder
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): List[WorklistComponent] =
+            reader.readUntilBeforeBreak(List[Component](), (lst: List[Component]) => lst ++ List(reader.read[Component]()))
+
+trait LoadFIFOWorklist[Expr <: Expression] extends LoadSequentialWorklist[Expr] with FIFOWorklistAlgorithm[Expr]:
+    def setWorklist(worklist: List[WorklistComponent]): Unit =
+        workList = new FIFOWorkList[WorklistComponent](Queue(), Set()).addAll(worklist)
