@@ -41,6 +41,9 @@ import maf.language.scheme.SchemeSet
 import maf.language.scheme.SchemeBegin
 import maf.language.scheme.SchemeLetStar
 import maf.save.save.SaveExpressions
+import maf.core.worklist.WorkList
+import maf.modular.worklist.SequentialWorklistAlgorithm
+import maf.modular.worklist.FIFOWorklistAlgorithm
 
 /**
  * Trait to encode positions.
@@ -306,3 +309,27 @@ trait SaveStandardSchemeComponents
             writer.writeMember("lambda", lambda.asInstanceOf[SchemeExp])
             writer.writeMember("environment", env)
             writer.writeMember("context", context.asInstanceOf[EncodeContext])
+
+trait SaveWorklist[Expr <: Expression] extends Save[Expr]:
+    /**
+     * Get the encoder that will be used to encode the worklist.
+     *
+     * This will influence how the worklist will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
+     * encoder.
+     */
+    def getWorklistEncoder: AbstractEncoder = new ArrayEncoder
+
+    type WorklistComponent
+    given worklistEncoder: Encoder[WorkList[WorklistComponent]]
+    def getWorklist: WorkList[WorklistComponent]
+    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("worklist", Savable(getWorklist)))
+
+trait SaveSequentialWorklist[Expr <: Expression] extends SaveWorklist[Expr] with SequentialWorklistAlgorithm[Expr] with SaveComponents[Expr]:
+    type WorklistComponent = Component
+    override def getWorklist: WorkList[Component] = workList
+    override given worklistEncoder: EncapsulatedEncoder[WorkList[Component]] with
+        override val encoder: AbstractEncoder = getWorklistEncoder
+        override protected def writeEncapsulated(writer: Writer, worklist: WorkList[Component]): Writer =
+            val worklistList = workList.toList
+            worklistList.foreach(writer.writeMember(_))
+            writer

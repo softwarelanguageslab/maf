@@ -89,6 +89,7 @@ trait SaveModF
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
     with SaveModularSchemeLattices
+    with SaveSequentialWorklist[SchemeExp]
     with SaveNoContext[SchemeExp]:
     override def getEncoder: AbstractEncoder = new MapEncoder
     override def getKeyEncoder: AbstractEncoder = new MapEncoder
