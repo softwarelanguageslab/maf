@@ -70,6 +70,16 @@ trait AnalysisEntry[Exp <: Expression]:
     def load(filename: String): Unit = System.err.nn.println("Load functionality is not implemented for this analysis")
 
     /**
+     * Load the given elements of an analysis from a given file
+     *
+     * @param filename
+     *   The file to load the analysis from
+     * @param load
+     *   The elements to load
+     */
+    def load(filename: String, load: Set[String]): Unit = System.err.nn.println("Load functionality is not implemented for this analysis")
+
+    /**
      * Method that renders a Dot graph of the components and the dependencies between them and writes it to a file
      *
      * @param filename
