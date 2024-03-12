@@ -52,6 +52,16 @@ trait AnalysisEntry[Exp <: Expression]:
     def save(filename: String): Unit = System.err.nn.println("Save functionality is not implemented for this analysis")
 
     /**
+     * This saves the current analysis to a file, but only the elements that are in save
+     *
+     * @param filename
+     *   The file to save to
+     * @param save
+     *   The elements to save
+     */
+    def save(filename: String, save: Set[String]): Unit = System.err.nn.println("Save functionality is not implemented for this analysis")
+
+    /**
      * Load an analysis from a given file
      *
      * @param filename

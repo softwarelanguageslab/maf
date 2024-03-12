@@ -54,14 +54,27 @@ trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
     def getKeyEncoder: AbstractEncoder
 
     /** Encode an analysis. */
-    given EncapsulatedEncoder[Save[Expr]] with
+    given analysisEncoder: EncapsulatedEncoder[Save[Expr]] with
         override val encoder = Save.this.getEncoder
         override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
             for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using value.encoder, encoder)
             writer
 
+    private var save = Set[String]()
+    private given excludedAnalysisEncoder: EncapsulatedEncoder[Save[Expr]] with
+        override val encoder = Save.this.getEncoder
+        override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
+            for (key, value) <- saveInfo do if save.contains(key) then writer.writeMember(key, value.value)(using value.encoder, encoder)
+            writer
+
     override def save(filename: String): Unit =
-        val res = Json.encode(this).toByteArray
+        val res = Json.encode(this)(using analysisEncoder).toByteArray
+        Files.write(Paths.get(filename), res)
+
+    override def save(filename: String, save: Set[String]): Unit =
+        this.save = save
+        val res = Json.encode(this)(using excludedAnalysisEncoder).toByteArray
+        this.save = Set[String]()
         Files.write(Paths.get(filename), res)
 
     /**
