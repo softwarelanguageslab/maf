@@ -10,6 +10,7 @@ import io.bullet.borer.Reader
 import maf.save.EncapsulatedDecoder.*
 import scala.collection.mutable.HashMap
 import maf.modular.AnalysisEntry
+import maf.modular.ModAnalysis
 
 /**
  * Contains info about the top-level objects that need to be loaded.
@@ -96,9 +97,14 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
      */
     def loadInfo: List[(String, Loadable[_])] = List(("name", Loadable((name: String) => ())))
 
+trait LoadInitialized[Expr <: Expression] extends ModAnalysis[Expr] with Load[Expr]:
+    override def loadInfo: List[(String, Loadable[?])] =
+        super.loadInfo ++ List(("initialized", Loadable((initialized: Boolean) => analysisInitialized = initialized)))
+
 /** The trait used to load the modF analysis. */
 trait LoadModF
     extends Load[SchemeExp]
+    with LoadInitialized[SchemeExp]
     with LoadExpressionIntID[SchemeExp]
     with LoadSchemeExpressions
     with LoadComponents[SchemeExp]
