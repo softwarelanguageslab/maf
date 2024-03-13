@@ -44,6 +44,7 @@ import maf.save.save.SaveExpressions
 import maf.core.worklist.WorkList
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.modular.ModAnalysis
 
 /**
  * Trait to encode positions.
@@ -81,7 +82,7 @@ trait SavePosition[Expr <: Expression] extends Save[Expr]:
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait SaveComponents[Expr <: Expression] extends Save[Expr]:
+trait SaveComponents[Expr <: Expression] extends ModAnalysis[Expr] with Save[Expr]:
     /**
      * Get the encoder that will be used to encode components.
      *

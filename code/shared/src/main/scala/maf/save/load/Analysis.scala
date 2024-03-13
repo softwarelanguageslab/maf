@@ -3,13 +3,13 @@ package maf.save
 import io.bullet.borer.Decoder
 import io.bullet.borer.Json
 import maf.core.Expression
-import maf.modular.ModAnalysis
 import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
 import io.bullet.borer.Reader
 import maf.save.EncapsulatedDecoder.*
 import scala.collection.mutable.HashMap
+import maf.modular.AnalysisEntry
 
 /**
  * Contains info about the top-level objects that need to be loaded.
@@ -32,7 +32,7 @@ case class Loadable[T](val load: (T) => Unit)(using val decoder: Decoder[T])
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait Load[Expr <: Expression] extends ModAnalysis[Expr]:
+trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
     /**
      * Get the decoder that will be used to decode your analysis.
      *

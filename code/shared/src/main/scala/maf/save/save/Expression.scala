@@ -25,6 +25,7 @@ import maf.save.ArrayEncoder
 import maf.language.scheme.SchemeVar
 import maf.language.scheme.SchemeValue
 import maf.language.scheme.SchemeLambdaExp
+import maf.modular.ModAnalysis
 
 /**
  * The base trait for encoding expressions.
@@ -95,7 +96,7 @@ trait SaveActualExprs[Expr <: Expression] extends SaveExpressions[Expr]:
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait SaveExpressionID[Expr <: Expression] extends Save[Expr] with SaveActualExprs[Expr]:
+trait SaveExpressionID[Expr <: Expression] extends ModAnalysis[Expr] with Save[Expr] with SaveActualExprs[Expr]:
     override given expressionEncoder: Encoder[Expr] = expressionIDEncoder
     override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("expressions" -> Savable(visited.map(expr(_)))))
 

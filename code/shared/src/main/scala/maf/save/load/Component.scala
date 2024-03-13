@@ -44,6 +44,7 @@ import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import scala.collection.immutable.Queue
 import maf.core.worklist.FIFOWorkList
+import maf.modular.ModAnalysis
 
 /**
  * The base trait for decoding components.
@@ -56,7 +57,7 @@ import maf.core.worklist.FIFOWorkList
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait LoadComponents[Expr <: Expression] extends Load[Expr]:
+trait LoadComponents[Expr <: Expression] extends ModAnalysis[Expr] with Load[Expr]:
     /**
      * Get the decoder that will be used to decode components.
      *

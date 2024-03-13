@@ -4,13 +4,13 @@ import io.bullet.borer.{Encoder, Writer}
 import io.bullet.borer.Json
 import maf.util.Writer.write
 import maf.core.Expression
-import maf.modular.ModAnalysis
 import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
 import EncapsulatedEncoder.*
 import maf.save.save.SaveSchemeExpressions
 import maf.save.save.SaveRecursiveSchemeExpressionsIntID
+import maf.modular.AnalysisEntry
 
 /**
  * Contains info about the top-level objects that need to be saved.
@@ -33,7 +33,7 @@ case class Savable[T](val value: T)(using val encoder: Encoder[T])
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait Save[Expr <: Expression] extends ModAnalysis[Expr]:
+trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
     /**
      * Get the encoder that will be used to encode your analysis.
      *
