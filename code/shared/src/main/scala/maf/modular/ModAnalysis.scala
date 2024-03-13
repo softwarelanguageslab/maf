@@ -173,6 +173,8 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
 
     // flag to indicate if the analysis has already been initialized (see method `init`)
     private var initialized: Boolean = false
+    def analysisInitialized = initialized
+    def analysisInitialized_=(init: Boolean) = initialized = init
 
     /* Runs the analysis with a timeout. Implementation should be provided by the worklist algorithm. */
     protected def run(timeout: Timeout.T): Unit

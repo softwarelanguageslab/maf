@@ -11,6 +11,7 @@ import EncapsulatedEncoder.*
 import maf.save.save.SaveSchemeExpressions
 import maf.save.save.SaveRecursiveSchemeExpressionsIntID
 import maf.modular.AnalysisEntry
+import maf.modular.ModAnalysis
 
 /**
  * Contains info about the top-level objects that need to be saved.
@@ -90,9 +91,13 @@ trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
      */
     def saveInfo: List[(String, Savable[_])] = List(("name", Savable(analysisName)))
 
+trait SaveInitialized[Expr <: Expression] extends ModAnalysis[Expr] with Save[Expr]:
+    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("initialized", Savable(analysisInitialized)))
+
 /** The trait used to save the modF analysis. */
 trait SaveModF
     extends Save[SchemeExp]
+    with SaveInitialized[SchemeExp]
     with SaveSchemeExpressions
     with SaveRecursiveSchemeExpressionsIntID
     with SaveComponentIntID[SchemeExp]
