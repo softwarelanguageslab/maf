@@ -27,10 +27,11 @@ import scala.reflect.ClassTag
  * @tparam V
  *   The type of the value
  */
-class ReadValue[K, V]():
+class ReadValue[K, V](private val forceRead: (key: Option[K]) => Unit):
     protected var _key: Option[K] = None
     protected var _value: Option[V] = None
     protected var _updateValue: Option[ReadValue[K, V]] = None
+    protected var _forceRead: Option[(key: Option[K]) => Unit] = Some(forceRead)
 
     /**
      * Create a new key-value pair with a key and a value.
@@ -41,7 +42,7 @@ class ReadValue[K, V]():
      *   The value of the key-value pair
      */
     def this(_key: K, _value: V) =
-        this()
+        this((key: Option[K]) => ())
         this._key = Some(_key)
         this._value = Some(_value)
 
@@ -51,20 +52,27 @@ class ReadValue[K, V]():
      * @param _key
      *   The key of the key-value pair
      */
-    def this(_key: K) =
-        this()
+    def this(_key: K, forceRead: (key: Option[K]) => Unit) =
+        this(forceRead)
         this._key = Some(_key)
 
     /** Check if this has a value. */
     def hasValue: Boolean = _value.isDefined
 
     /**
-     * Returns the value.
+     * Returns the value, or tries to find if if there is none yet.
+     *
+     * @note
+     *   If there is no value yet, it will first try to find it anyway, discarding any other values that haven't been read yet. If a value can still
+     *   not be found, an error will be thrown.
      *
      * @throws NoSuchElementException
      *   If there is no value
      */
     def value: V =
+        if _value.isEmpty && _forceRead.isDefined then
+            if _key.isDefined then _forceRead.get(Some(_key.get))
+            else _forceRead.get(None)
         if _value.isEmpty then
             if _key.isDefined then throw new NoSuchElementException(s"The key '${key}' does not have a value.")
             else throw new NoSuchElementException("This element does not have a value.")
@@ -79,12 +87,17 @@ class ReadValue[K, V]():
     def hasKey: Boolean = _key.isDefined
 
     /**
-     * Returns the key.
+     * Returns the key, or tries to find it if there is no key yet.
+     *
+     * @note
+     *   If there is no key yet, it will first try to find it anyway, discarding any other key-value pairs that haven't been read yet. If a key can
+     *   still not be found, an error will be thrown.
      *
      * @throws NoSuchElementException
      *   If there is no key
      */
     def key: K =
+        if _key.isEmpty && _forceRead.isDefined then _forceRead.get(None)
         if _key.isEmpty then throw new NoSuchElementException("This element does not have a key.")
         _key.get
 
@@ -197,12 +210,23 @@ trait AbstractDecoder:
     /**
      * Returns an already read value using a given key.
      *
+     * @param key
+     *   The key for which to get the value
+     *
      * @throws NoSuchElementException
      *   If this key hasn't been read yet, and therefore doesn't have a value.
      */
     def getValue[T](key: String): T =
         if !values.contains(key) then throw new NoSuchElementException(s"The key '${key}' does not have a value.")
         values.get(key).get.asInstanceOf[T]
+
+    /**
+     * Returns whether or not a given key has a value yet.
+     *
+     * @param key
+     *   The key to check if it has a value
+     */
+    def hasValue(key: String): Boolean = values.contains(key)
 
     /**
      * Opens either a new map or a new array, based on the decoder that is used.
@@ -246,6 +270,26 @@ trait AbstractDecoder:
      */
     def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit
 
+    /**
+     * Read a key-value pair.
+     *
+     * This will read until it finds the specified key, discarding any other elements that it cannot decode.
+     *
+     * @param reader
+     *   The reader used read
+     * @param key
+     *   The key to find
+     */
+    def forceReadValue(reader: Reader, key: String): Unit
+
+    /**
+     * Read the first element that you can, discarding any other elements.
+     *
+     * @param reader
+     *   The reader used read
+     */
+    def forceReadValue(reader: Reader): Unit
+
 object AbstractDecoder:
     /**
      * Automatically derive an decoder for type T.
@@ -280,6 +324,9 @@ object AbstractDecoder:
      */
     inline def deriveAllDecoders[T](decoder: AbstractDecoder): Decoder[T] =
         if decoder.mapBasedDecoder then CompactMapBasedCodecs.deriveAllDecoders[T] else ArrayBasedCodecs.deriveAllDecoders[T]
+    def forceRead(reader: Reader, decoder: AbstractDecoder, key: Option[String]) =
+        if key.isDefined then decoder.forceReadValue(reader, key.get)
+        else decoder.forceReadValue(reader)
 
 /**
  * Trait used to decode an instance of type T.
@@ -324,6 +371,12 @@ trait EncapsulatedDecoder[T] extends Decoder[T]:
     override def read(reader: Reader): T =
         decoder.openEncapsulation(reader)
         val res = readEncapsulated(reader)(using decoder)
+        // Read all remaining elements, since these where not read they will be ignored
+        EncapsulatedDecoder.readUntilBeforeBreak(reader)(None,
+                                                         (none: None.type) =>
+                                                             reader.skipElement()
+                                                             None
+        )
         decoder.closeEncapsulation(reader, true, res)
         res
 
@@ -446,7 +499,7 @@ object EncapsulatedDecoder:
          *   empty and will be filled in later.
          */
         def readMembers[T](keys: Array[(String, Decoder[_ <: T])])(using decoder: AbstractDecoder): ReadValue[String, T] =
-            val res = new ReadValue[String, T]()
+            val res = new ReadValue[String, T](AbstractDecoder.forceRead(reader, decoder, _))
             for (key, valueDecoder) <- keys do
                 decoder.readKey(reader, key)
                 val value = decoder.readValue[T](reader)(using valueDecoder.asInstanceOf[Decoder[T]])
@@ -481,7 +534,9 @@ object EncapsulatedDecoder:
          * @throws NoSuchElementException
          *   If this key hasn't been read yet, and therefore doesn't have a value.
          */
-        def getMember[T](key: String)(using decoder: AbstractDecoder): T = decoder.getValue[T](key)
+        def getMember[T](key: String)(using decoder: AbstractDecoder): T =
+            if !decoder.hasValue(key) then decoder.forceReadValue(reader, key)
+            decoder.getValue[T](key)
 
 /**
  * Decoder that uses maps to decode values.
@@ -532,19 +587,36 @@ class MapDecoder extends AbstractDecoder:
             if reader.hasString then decodeKey = Some(reader.readString())
             if decodeKey.isDefined && keys.contains(decodeKey.get) then
                 currentKey = decodeKey
-                val valueDecoder = keys.remove(decodeKey.get).get
-                val res = readValue(reader)(using valueDecoder.decoder)
-                valueDecoder.value.value = res.value
+                val valueDecoder = keys.get(currentKey.get).get
+                readValue(reader)(using valueDecoder.decoder)
             currentKey = None
-            return new ReadValue[String, T](key, res)
+            if keys.contains(key) then
+                val valueDecoder = keys.remove(key).get.asInstanceOf[ValueDecoder[T]]
+                valueDecoder.value.value = res
+                return valueDecoder.value
+            else return new ReadValue[String, T](key, res)
         else
-            val readValue = new ReadValue[String, T](currentKey.get)
+            val readValue = new ReadValue[String, T](currentKey.get, AbstractDecoder.forceRead(reader, this, _))
             keys.addOne((currentKey.get, ValueDecoder(readValue, summon[Decoder[T]])))
             currentKey = None
             return readValue
     override def openEncapsulation(reader: Reader): Unit = reader.readMapStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readMapOpen(amount)
     override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+    override def forceReadValue(reader: Reader, key: String): Unit =
+        while decodeKey.isDefined && !values.contains(key.asInstanceOf[String]) do forceReadValue(reader)
+    override def forceReadValue(reader: Reader): Unit =
+        val tmpCurrentKey = currentKey
+        readDecodeKey(reader)
+        while decodeKey.isDefined && !keys.contains(decodeKey.get) do
+            reader.skipElement()
+            decodeKey = None
+            readDecodeKey(reader)
+        if !decodeKey.isDefined then return
+        val valueDecoder = keys.get(decodeKey.get).get
+        currentKey = decodeKey
+        readValue(reader)(using valueDecoder.decoder)
+        currentKey = tmpCurrentKey
 
 /**
  * Decoder that uses arrays to decode values.
@@ -572,6 +644,8 @@ class ArrayDecoder extends AbstractDecoder:
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
     override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+    override def forceReadValue(reader: Reader, key: String): Unit = return
+    override def forceReadValue(reader: Reader): Unit = reader.skipElement()
 
 /**
  * Decoder that uses arrays to decode values, but preserves keys.
@@ -596,6 +670,7 @@ class ArrayKeyDecoder extends MapDecoder:
 
     /** The key that was read, and which value should now be read. */
     protected var key: Option[Any] = None
+    protected val keyValues = new HashMap[Any, Any]()
 
     /**
      * Read a key from the given reader.
@@ -640,10 +715,31 @@ class ArrayKeyDecoder extends MapDecoder:
         val res = reader.read[T]()
         val tmpKey = key
         key = None
+        keyValues.addOne((tmpKey.get, res))
         return ReadValue(tmpKey.get.asInstanceOf[V], res)
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
     override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+
+    /**
+     * Returns an already read value using a given key.
+     *
+     * @throws NoSuchElementException
+     *   If this key hasn't been read yet, and therefore doesn't have a value.
+     */
+    def getValue[T](key: Any): T =
+        if !keyValues.contains(key) then
+            if key.isInstanceOf[String] then return super.getValue(key.asInstanceOf[String])
+            else throw new NoSuchElementException(s"The key '${key}' does not have a value.")
+        return keyValues.get(key).get.asInstanceOf[T]
+
+    /**
+     * Returns whether or not a given key has a value yet.
+     *
+     * @param key
+     *   The key to check if it has a value
+     */
+    def hasValue(key: Any): Boolean = keyValues.contains(key) || (key.isInstanceOf[String] && super.hasValue(key.asInstanceOf[String]))
 
 /**
  * Object with an extension method for [[borer.Reader]].
