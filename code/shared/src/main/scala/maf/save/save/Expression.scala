@@ -122,7 +122,6 @@ trait SaveExpressionIntID[Expr <: Expression] extends SaveExpressionID[Expr] wit
         override val encoder = getExpressionKeyEncoder
         def writeEncapsulated(writer: Writer, exprs: Set[Expr]): Writer =
             for (expr <- exprs) do
-                println(id)
                 writer.writeMember(id.toString, expr)(using actualExpressionEncoder, encoder)
                 expressions.addOne((expr, id))
                 id += 1
@@ -145,6 +144,9 @@ trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] wi
     private val expressions = HashMap[SchemeExp, Int]()
     private var id = 0
 
+    /** The max height of the AST before you encode it normally. */
+    val maxASTHeight: Int
+
     override protected given expressionSetEncoder: EncapsulatedEncoder[Set[SchemeExp]] with
         override val encoder = getExpressionKeyEncoder
 
@@ -156,31 +158,32 @@ trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] wi
         given recursiveExpressionEncoder: Encoder[SchemeExp] with
             override def write(writer: Writer, expr: SchemeExp): Writer =
                 if expressions.contains(expr) then return writer
-                expr match
-                    case funcall: SchemeFuncall =>
-                        writer.write(funcall.args)
-                        writer.write(funcall.f)(using recursiveExpressionEncoder)
-                    case lambda: SchemeLambda          => writer.write(lambda.body)
-                    case argLambda: SchemeVarArgLambda => writer.write(argLambda.body)
-                    case letrec: SchemeLetrec =>
-                        for (binding <- letrec.bindings) writer.write(binding._2)
-                        writer.write(letrec.body)
-                    case assert: SchemeAssert => writer.write(assert.exp)
-                    case let: SchemeLet =>
-                        for (binding <- let.bindings) writer.write(binding._2)
-                        writer.write(let.body)
-                    case schemeIf: SchemeIf =>
-                        writer.write(schemeIf.cond)
-                        writer.write(schemeIf.cons)
-                        writer.write(schemeIf.alt)
-                    case set: SchemeSet =>
-                        writer.write(set.value)
-                    case begin: SchemeBegin =>
-                        writer.write(begin.exps)
-                    case letStar: SchemeLetStar =>
-                        for (binding <- letStar.bindings) writer.write(binding._2)
-                        writer.write(letStar.body)
-                    case _ => writer
+                if expr.height > maxASTHeight then
+                    expr match
+                        case funcall: SchemeFuncall =>
+                            writer.write(funcall.args)
+                            writer.write(funcall.f)(using recursiveExpressionEncoder)
+                        case lambda: SchemeLambda          => writer.write(lambda.body)
+                        case argLambda: SchemeVarArgLambda => writer.write(argLambda.body)
+                        case letrec: SchemeLetrec =>
+                            for (binding <- letrec.bindings) writer.write(binding._2)
+                            writer.write(letrec.body)
+                        case assert: SchemeAssert => writer.write(assert.exp)
+                        case let: SchemeLet =>
+                            for (binding <- let.bindings) writer.write(binding._2)
+                            writer.write(let.body)
+                        case schemeIf: SchemeIf =>
+                            writer.write(schemeIf.cond)
+                            writer.write(schemeIf.cons)
+                            writer.write(schemeIf.alt)
+                        case set: SchemeSet =>
+                            writer.write(set.value)
+                        case begin: SchemeBegin =>
+                            writer.write(begin.exps)
+                        case letStar: SchemeLetStar =>
+                            for (binding <- letStar.bindings) writer.write(binding._2)
+                            writer.write(letStar.body)
+                        case _ => ()
 
                 writer.writeMember(id.toString(), expr)(using actualExpressionEncoder, encoder)
                 expressions.addOne(expr, id)

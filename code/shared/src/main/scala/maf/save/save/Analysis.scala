@@ -106,3 +106,4 @@ trait SaveModF
     with SaveNoContext[SchemeExp]:
     override def getEncoder: AbstractEncoder = new MapEncoder
     override def getKeyEncoder: AbstractEncoder = new MapEncoder
+    override val maxASTHeight = 3
