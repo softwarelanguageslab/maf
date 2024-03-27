@@ -141,6 +141,12 @@ trait SaveModularSchemeLattices
             writer.writeMember("car", cons.car)
             writer.writeMember("cdr", cons.cdr)
 
+    given EncapsulatedEncoder[SchemeLattice#Vec]() with SaveMapToArray with
+        override val encoder = getValueEncoder
+        override protected def writeEncapsulated(writer: Writer, vec: SchemeLattice#Vec): Writer =
+            writer.writeMember("size", vec.size.asInstanceOf[Lattice[BigInt]])
+            writer.writeMember("elements", vec.elements.asInstanceOf[Map[Lattice[BigInt], SchemeLattice#L]])
+
     given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
         override val encoder = getValueKeyEncoder
         override protected def writeEncapsulated(writer: Writer, hMapPair: (HMapKey, SchemeLattice#Value)): Writer =
@@ -155,6 +161,7 @@ trait SaveModularSchemeLattices
                 case clo: SchemeLattice#Clo         => writer.writeMember("closure", clo)
                 case pointer: SchemeLattice#Pointer => writer.writeMember("pointer", pointer)
                 case cons: SchemeLattice#Cons       => writer.writeMember("cons", cons)
+                case vec: SchemeLattice#Vec         => writer.writeMember("vector", vec)
                 case modularLattice.Nil             => writer.writeMember("nil", "")
                 case modularLattice.Void            => writer.writeMember("void", "")
                 case _ =>
