@@ -115,6 +115,7 @@ trait LoadModularSchemeLattices
       ("pointer", summon[Decoder[(HMapKey, SchemeLattice#Pointer)]]),
       ("symbol", summon[Decoder[(HMapKey, SchemeLattice#Symbol)]]),
       ("cons", summon[Decoder[(HMapKey, SchemeLattice#Cons)]]),
+      ("vector", summon[Decoder[(HMapKey, SchemeLattice#Vec)]]),
       ("nil", nilLatticeDecoder),
       ("void", summon[Decoder[(HMapKey, modularLattice.Void.type)]]),
       ("ERROR", errorDecoder)
@@ -181,6 +182,17 @@ trait LoadModularSchemeLattices
             val car = reader.readMember[SchemeLattice#L]("car")
             val cdr = reader.readMember[SchemeLattice#L]("cdr")
             return (modularLattice.ConsT, new modularLattice.Cons(car.value, cdr.value))
+
+    given EncapsulatedDecoder[(HMapKey, SchemeLattice#Vec)] with LoadMapToArray with
+        override def decoder: AbstractDecoder = getValueDecoder
+        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, SchemeLattice#Vec) =
+            val size = reader.readMember[Lattice[BigInt]]("size").value.asInstanceOf[LoadModularSchemeLattices.this.modularLatticeWrapper.I]
+            val elements =
+                reader
+                    .readMember[Map[Lattice[BigInt], SchemeLattice#L]]("elements")
+                    .value
+                    .asInstanceOf[Map[LoadModularSchemeLattices.this.modularLatticeWrapper.I, SchemeLattice#L]]
+            return (modularLattice.VecT, new modularLattice.Vec(size, elements))
 
     given nilLatticeDecoder: Decoder[(HMapKey, modularLattice.Nil.type)] with
         override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) = return (modularLattice.NilT, modularLattice.Nil)
