@@ -123,7 +123,7 @@ trait LoadModularSchemeLattices
 
     private given errorDecoder: Decoder[(HMapKey, modularLattice.Nil.type)] with
         override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) =
-            val error = reader.read[String]()
+            val error = reader.readString()
             System.err.nn.println("The lattice was not correctly encoded and had error: `" + error + "`, using `nil` instead.")
             return (modularLattice.NilT, modularLattice.Nil)
 
@@ -195,10 +195,14 @@ trait LoadModularSchemeLattices
             return (modularLattice.VecT, new modularLattice.Vec(size, elements))
 
     given nilLatticeDecoder: Decoder[(HMapKey, modularLattice.Nil.type)] with
-        override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) = return (modularLattice.NilT, modularLattice.Nil)
+        override def read(reader: Reader): (HMapKey, modularLattice.Nil.type) =
+            reader.readString()
+            return (modularLattice.NilT, modularLattice.Nil)
 
     given Decoder[(HMapKey, modularLattice.Void.type)] with
-        override def read(reader: Reader): (HMapKey, modularLattice.Void.type) = return (modularLattice.VoidT, modularLattice.Void)
+        override def read(reader: Reader): (HMapKey, modularLattice.Void.type) =
+            reader.readString()
+            return (modularLattice.VoidT, modularLattice.Void)
 
 /**
  * Base trait for decoding values as [[ModularSchemeLattice modular scheme lattices]], as defined in [[ModularSchemeDomain]].
