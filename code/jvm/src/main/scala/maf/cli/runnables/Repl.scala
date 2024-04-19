@@ -199,9 +199,8 @@ object Repl:
         def runSingle(): Long =
             val anl = makeAnalysis(exp)
             if loadFile.isDefined then
-                anl.load(loadFile.get)
-                print("loaded result: ")
-                anl.printResult
+                val (elapsed, _) = Timer.time { anl.load(loadFile.get) } //anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
+                println(s"load time: ${elapsed / 1000000}")
             val (elapsed, _) = Timer.time { anl.analyze() } //anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
             // Do not print results if we are in perfomance testing mode
             if !performance then
