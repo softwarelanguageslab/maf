@@ -416,7 +416,5 @@ abstract class SimpleSchemeModFAnalysis(prg: SchemeExp, override val name: Optio
     extends ModAnalysis[SchemeExp](prg)
     with StandardSchemeModFComponents
     with SchemeModFSemanticsM
-    with BigStepModFSemantics
-    with SaveModF
-    with LoadModF:
+    with BigStepModFSemantics:
     override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra
