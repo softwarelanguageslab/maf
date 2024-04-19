@@ -7,7 +7,6 @@ import maf.core.Expression
 import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
-import EncapsulatedEncoder.*
 import maf.save.save.SaveSchemeExpressions
 import maf.save.save.SaveRecursiveSchemeExpressionsIntID
 import maf.modular.AnalysisEntry
@@ -35,38 +34,19 @@ case class Savable[T](val value: T)(using val encoder: Encoder[T])
  *   The type of expression used in the analysis
  */
 trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
-    /**
-     * Get the encoder that will be used to encode your analysis.
-     *
-     * This will influence how the analysis will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getEncoder: AbstractEncoder
-
-    /**
-     * Get the encoder that will be used to encode your analysis.
-     *
-     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
-     * and should therefore not be used here.
-     *
-     * This will influence how the analysis will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getKeyEncoder: AbstractEncoder
-
     /** Encode an analysis. */
-    given analysisEncoder: EncapsulatedEncoder[Save[Expr]] with
-        override val encoder = Save.this.getEncoder
-        override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
-            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using value.encoder, encoder)
-            writer
+    given analysisEncoder: MapEncoder[Save[Expr]] with
+        override def write(writer: Writer, value: Save[Expr]): Writer =
+            writer.start()
+            for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using value.encoder)
+            writer.close()
 
     private var save = Set[String]()
-    private given excludedAnalysisEncoder: EncapsulatedEncoder[Save[Expr]] with
-        override val encoder = Save.this.getEncoder
-        override def writeEncapsulated(writer: Writer, value: Save[Expr]): Writer =
-            for (key, value) <- saveInfo do if save.contains(key) then writer.writeMember(key, value.value)(using value.encoder, encoder)
-            writer
+    private given excludedAnalysisEncoder: MapEncoder[Save[Expr]] with
+        override def write(writer: Writer, value: Save[Expr]): Writer =
+            writer.start()
+            for (key, value) <- saveInfo do if save.contains(key) then writer.writeMember(key, value.value)(using value.encoder)
+            writer.close()
 
     override def save(filename: String): Unit =
         val res = Json.encode(this)(using analysisEncoder).toByteArray
@@ -106,9 +86,6 @@ trait SaveModF
     with SaveAddrDep[SchemeExp]
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
-    with SaveModularSchemeLattices
     with SaveSequentialWorklist[SchemeExp]
     with SaveNoContext[SchemeExp]:
-    override def getEncoder: AbstractEncoder = new MapEncoder
-    override def getKeyEncoder: AbstractEncoder = new MapEncoder
     override val maxASTHeight = 3

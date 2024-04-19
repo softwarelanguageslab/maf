@@ -6,9 +6,7 @@ import maf.save.AbstractEncoder
 import io.bullet.borer.Encoder
 import maf.save.Savable
 import scala.collection.mutable.HashMap
-import maf.save.EncapsulatedEncoder
 import io.bullet.borer.Writer
-import EncapsulatedEncoder.*
 import maf.language.scheme.SchemeExp
 import maf.language.scheme.SchemeFuncall
 import maf.language.scheme.SchemeLambda
@@ -26,6 +24,8 @@ import maf.language.scheme.SchemeVar
 import maf.language.scheme.SchemeValue
 import maf.language.scheme.SchemeLambdaExp
 import maf.modular.ModAnalysis
+import maf.save.MapEncoder
+import io.bullet.borer.derivation.CompactMapBasedCodecs
 
 /**
  * The base trait for encoding expressions.
@@ -39,25 +39,6 @@ import maf.modular.ModAnalysis
  *   The type of expression used in the analysis
  */
 trait SaveExpressions[Expr <: Expression] extends Save[Expr]:
-    /**
-     * Get the encoder that will be used to encode expressions.
-     *
-     * This will influence how context will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getExpressionEncoder: AbstractEncoder = getEncoder
-
-    /**
-     * Get the encoder that will be used to encode expression.
-     *
-     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
-     * and should therefore not be used here.
-     *
-     * This will influence how components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getExpressionKeyEncoder: AbstractEncoder = getKeyEncoder
-
     /** Encodes an expression */
     given expressionEncoder: Encoder[Expr]
 
@@ -72,7 +53,7 @@ trait SaveExpressions[Expr <: Expression] extends Save[Expr]:
  *   [[SaveExpressionIntID]] should be mixed in for the implementation. The trait that should be mixed in depends on the kind of components are used
  *   in your analysis.
  * @note
- *   This trait should not be used, rather, [[SaveExpressions]] should be extended.
+ *   This trait should not be used, rather, [[SaveExpressions]] or [[SaveActualExpressions]] should be extended.
  *
  * @tparam Expr
  *   The type of expression used in the analysis
@@ -118,14 +99,14 @@ trait SaveExpressionIntID[Expr <: Expression] extends SaveExpressionID[Expr] wit
     private val expressions = HashMap[Expr, Int]()
     private var id = 0
 
-    override protected given expressionSetEncoder: EncapsulatedEncoder[Set[Expr]] with
-        override val encoder = getExpressionKeyEncoder
-        def writeEncapsulated(writer: Writer, exprs: Set[Expr]): Writer =
+    override protected given expressionSetEncoder: MapEncoder[Set[Expr]] with
+        override def write(writer: Writer, exprs: Set[Expr]): Writer =
+            writer.start()
             for (expr <- exprs) do
-                writer.writeMember(id.toString, expr)(using actualExpressionEncoder, encoder)
+                writer.writeMember(id.toString, expr)(using actualExpressionEncoder)
                 expressions.addOne((expr, id))
                 id += 1
-            writer
+            writer.close()
 
     override protected given expressionIDEncoder: Encoder[Expr] with
         override def write(writer: Writer, expr: Expr): Writer =
@@ -147,9 +128,7 @@ trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] wi
     /** The max height of the AST before you encode it normally. */
     val maxASTHeight: Int
 
-    override protected given expressionSetEncoder: EncapsulatedEncoder[Set[SchemeExp]] with
-        override val encoder = getExpressionKeyEncoder
-
+    override protected given expressionSetEncoder: MapEncoder[Set[SchemeExp]] with
         given Encoder[List[SchemeExp]] with
             override def write(writer: Writer, exprs: List[SchemeExp]): Writer =
                 for (expr <- exprs) writer.write(expr)(using recursiveExpressionEncoder)
@@ -185,14 +164,15 @@ trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] wi
                             writer.write(letStar.body)
                         case _ => ()
 
-                writer.writeMember(id.toString(), expr)(using actualExpressionEncoder, encoder)
+                writer.writeMember(id.toString(), expr)(using actualExpressionEncoder)
                 expressions.addOne(expr, id)
                 id += 1
                 writer
 
-        def writeEncapsulated(writer: Writer, exprs: Set[SchemeExp]): Writer =
+        override def write(writer: Writer, exprs: Set[SchemeExp]): Writer =
+            writer.start()
             for (expr <- exprs) do writer.write(expr)(using recursiveExpressionEncoder)
-            writer
+            writer.close()
 
     override protected given expressionIDEncoder: Encoder[SchemeExp] with
         override def write(writer: Writer, expr: SchemeExp): Writer =
@@ -213,9 +193,9 @@ trait SaveActualExpressions[Expr <: Expression] extends SaveActualExprs[Expr]:
  * Implementation of [[SaveExpressions]].
  */
 trait SaveSchemeExpressions extends SaveActualExprs[SchemeExp] with SaveSchemeSubExpressions with SavePosition[SchemeExp]:
-    override protected given actualExpressionEncoder: EncapsulatedEncoder[SchemeExp] with
-        override val encoder = getExpressionKeyEncoder
-        def writeEncapsulated(writer: Writer, exp: SchemeExp): Writer =
+    override protected given actualExpressionEncoder: MapEncoder[SchemeExp] with
+        override def write(writer: Writer, exp: SchemeExp): Writer =
+            writer.start()
             exp match
                 case funcall: SchemeFuncall        => writer.writeMember("funcall", funcall)
                 case variable: SchemeVar           => writer.writeMember("var", variable)
@@ -232,6 +212,7 @@ trait SaveSchemeExpressions extends SaveActualExprs[SchemeExp] with SaveSchemeSu
                 case _ =>
                     System.err.nn.println("The scheme expression with type `" + exp.getClass + "` could not be encoded")
                     writer
+            writer.close()
 
 /**
  * Save Scheme subexpressions.
@@ -239,18 +220,17 @@ trait SaveSchemeExpressions extends SaveActualExprs[SchemeExp] with SaveSchemeSu
  * Implementation of [[SaveExpressions]].
  */
 trait SaveSchemeSubExpressions extends SaveExpressions[SchemeExp] with SavePosition[SchemeExp]:
-    private val compEncoder = getExpressionEncoder
-    given Encoder[SchemeValue] = AbstractEncoder.deriveEncoder(compEncoder)
-    given Encoder[maf.language.sexp.Value] = AbstractEncoder.deriveAllEncoders(compEncoder)
-    given Encoder[SchemeFuncall] = AbstractEncoder.deriveEncoder[SchemeFuncall](compEncoder)
-    given Encoder[SchemeVar] = AbstractEncoder.deriveEncoder[SchemeVar](compEncoder)
-    given Encoder[SchemeLambda] = AbstractEncoder.deriveEncoder[SchemeLambda](compEncoder)
-    given Encoder[SchemeVarArgLambda] = AbstractEncoder.deriveEncoder[SchemeVarArgLambda](compEncoder)
-    given Encoder[SchemeLambdaExp] = AbstractEncoder.deriveEncoder[SchemeLambdaExp](compEncoder)
-    given Encoder[SchemeLetrec] = AbstractEncoder.deriveEncoder[SchemeLetrec](compEncoder)
-    given Encoder[SchemeAssert] = AbstractEncoder.deriveEncoder[SchemeAssert](compEncoder)
-    given Encoder[SchemeLet] = AbstractEncoder.deriveEncoder[SchemeLet](compEncoder)
-    given Encoder[SchemeIf] = AbstractEncoder.deriveEncoder[SchemeIf](compEncoder)
-    given Encoder[SchemeSet] = AbstractEncoder.deriveEncoder[SchemeSet](compEncoder)
-    given Encoder[SchemeBegin] = AbstractEncoder.deriveEncoder[SchemeBegin](compEncoder)
-    given Encoder[SchemeLetStar] = AbstractEncoder.deriveEncoder[SchemeLetStar](compEncoder)
+    given Encoder[SchemeValue] = CompactMapBasedCodecs.deriveEncoder[SchemeValue]
+    given Encoder[maf.language.sexp.Value] = CompactMapBasedCodecs.deriveAllEncoders[maf.language.sexp.Value]
+    given Encoder[SchemeFuncall] = CompactMapBasedCodecs.deriveEncoder[SchemeFuncall]
+    given Encoder[SchemeVar] = CompactMapBasedCodecs.deriveEncoder[SchemeVar]
+    given Encoder[SchemeLambda] = CompactMapBasedCodecs.deriveEncoder[SchemeLambda]
+    given Encoder[SchemeVarArgLambda] = CompactMapBasedCodecs.deriveEncoder[SchemeVarArgLambda]
+    given Encoder[SchemeLambdaExp] = CompactMapBasedCodecs.deriveEncoder[SchemeLambdaExp]
+    given Encoder[SchemeLetrec] = CompactMapBasedCodecs.deriveEncoder[SchemeLetrec]
+    given Encoder[SchemeAssert] = CompactMapBasedCodecs.deriveEncoder[SchemeAssert]
+    given Encoder[SchemeLet] = CompactMapBasedCodecs.deriveEncoder[SchemeLet]
+    given Encoder[SchemeIf] = CompactMapBasedCodecs.deriveEncoder[SchemeIf]
+    given Encoder[SchemeSet] = CompactMapBasedCodecs.deriveEncoder[SchemeSet]
+    given Encoder[SchemeBegin] = CompactMapBasedCodecs.deriveEncoder[SchemeBegin]
+    given Encoder[SchemeLetStar] = CompactMapBasedCodecs.deriveEncoder[SchemeLetStar]

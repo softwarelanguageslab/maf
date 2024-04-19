@@ -29,10 +29,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
  *   Some encoders like [[ArrayEncoder]] will also not encode your key, because arrays do not require keys like maps do, if the key does need to be
  *   stored, you should use an encoder that writes them down like [[MapEncoder]] or [[ArrayKeyEncoder]] if you want to use an array.
  */
-trait AbstractEncoder:
-    /** Does this encoder use maps or array to encode the data. */
-    protected val mapBasedEncoder: Boolean
-
+trait AbstractEncoder[T] extends Encoder[T]:
     /**
      * Write a generated key to the given writer.
      *
@@ -129,144 +126,6 @@ trait AbstractEncoder:
      */
     def closeEncapsulation(writer: Writer): Writer = writer.writeBreak()
 
-object AbstractEncoder:
-    /**
-     * Automatically derive an encoder for type T.
-     *
-     * This will derive an encoder for type T, this encoder will either be [[CompactMapBasedCodecs map-based]] or [[ArrayBasedCodecs array-based]]
-     * based on the type of the provided encoder.
-     *
-     * @note
-     *   T must be a case class, enum, sealed abstract class or sealed trait
-     *
-     * @param encoder
-     *   The type of encoder that should be used to encode T
-     * @tparam T
-     *   The type to derive encoders for
-     */
-    inline def deriveEncoder[T](encoder: AbstractEncoder): Encoder[T] =
-        if encoder.mapBasedEncoder then CompactMapBasedCodecs.deriveEncoder[T] else ArrayBasedCodecs.deriveEncoder[T]
-
-    /**
-     * Automatically derive all encoders for type T.
-     *
-     * This will derive an encoder for the type T and all subtypes of type T, these encoders will either be [[CompactMapBasedCodecs map-based]] or
-     * [[ArrayBasedCodecs array-based]] based on the type of the provided encoder.
-     *
-     * @note
-     *   T must be a case object, case class, sealed trait or sealed abstract class.
-     *
-     * @param encoder
-     *   The type of encoder that should be used to encode T
-     * @tparam T
-     *   The type to derive encoders for
-     */
-    inline def deriveAllEncoders[T](encoder: AbstractEncoder): Encoder[T] =
-        if encoder.mapBasedEncoder then CompactMapBasedCodecs.deriveAllEncoders[T] else ArrayBasedCodecs.deriveAllEncoders[T]
-
-/**
- * Trait used to encode an instance of type T.
- *
- * This trait will write a value of type T but encapsulate it either in an array or a map, based on the encoder that is given. In order to implement
- * this class, you should overwrite the [[encoder]] variable to decide on the type of encoder you want to use, and the [[writeEncapsulated]] method
- * which will implement the actual writing of the value.
- *
- * {{{
- * given EncapsulatedEncoder[< T >] with
- *     override val encoder: AbstractEncoder = < getEncoder >
- *     override protected def writeEncapsulated(writer: Writer, value: < T >): Writer = < encode value >
- * }}}
- *
- * @note
- *   Since this class already opens a map/array, you should not do this anymore unless you are writing a nested map/array.
- *
- * @example
- *   If you implement it as a given, you can use it implicitly in your code
- * {{{
- * override protected def writeEncapsulated(writer: Writer, value: < ... >): Writer =
- *     ...
- *     // Will use the implicit Encoder[T]
- *     writer.writeMember[T]("< key >", < value >)
- *     ...
- * }}}
- *
- * @tparam T
- *   The type to encode
- */
-trait EncapsulatedEncoder[T] extends Encoder[T]:
-    /** The encoder used to write this value, this will specify how this value will be written (e.g. in a map or in an array). */
-    val encoder: AbstractEncoder
-
-    /**
-     * The encoder used to write this value, this will specify how this value will be written (e.g. in a map or in an array).
-     *
-     * This is an given because a lot of method require this encoder to be added implicitly, adding the implicit here, makes it that you don't have to
-     * specify this anymore.
-     */
-    protected given AbstractEncoder = encoder
-    override def write(writer: Writer, value: T): Writer =
-        encoder.openEncapsulation(writer)
-        writeEncapsulated(writer, value)
-        encoder.closeEncapsulation(writer)
-
-    /**
-     * Write a given value encapsulated in a map/array based on the [[encoder]].
-     *
-     * @note
-     *   This should not be called directly, but only through the [[write]] method.
-     *
-     * @param writer
-     *   The writer used to write the value
-     * @param value
-     *   The value that should be written
-     */
-    protected def writeEncapsulated(writer: Writer, value: T): Writer
-
-/**
- * Trait used to encode an instance of type T.
- *
- * This trait will write a value of type T but encapsulate it either in an array. In order to implement this class, you should overwrite the
- * [[encoder]] variable to decide on the type of encoder you want to use, and the [[writeEncapsulated]] method which will implement the actual writing
- * of the value.
- *
- * {{{
- * given EncapsulatedEncoder[< T >] with
- *     override val encoder: AbstractEncoder = < getEncoder >
- *     override protected def writeEncapsulated(writer: Writer, value: < T >): Writer = < encode value >
- * }}}
- *
- * @note
- *   Since this class already opens an array, you should not do this anymore unless you are writing a nested map/array.
- *
- * @note
- *   Using `writer.writeMember`, `writer.openEncapsulation`, ... can still use either a map or an array, it is only the top-level encapsulation that
- *   is an array.
- *
- * @example
- *   If you implement it as a given, you can use it implicitly in your code
- * {{{
- * override protected def writeEncapsulated(writer: Writer, value: < ... >): Writer =
- *     ...
- *     // Will use the implicit Encoder[T]
- *     writer.writeMember[T]("< key >", < value >)
- *     ...
- * }}}
- *
- * @tparam T
- *   The type to encode
- */
-trait EncapsulatedArrayEncoder[T](length: Int = 0) extends EncapsulatedEncoder[T]:
-    override def write(writer: Writer, value: T): Writer =
-        if length == 0 then writer.writeArrayStart() else writer.writeArrayOpen(length)
-        writeEncapsulated(writer, value)
-        writer.writeBreak()
-
-/**
- * Object with extension methods for [[borer.Writer]].
- *
- * These extension methods should be used when using an [[EncapsulatedEncoder]].
- */
-object EncapsulatedEncoder:
     extension (writer: Writer)
         /**
          * Close the encapsulation.
@@ -276,7 +135,7 @@ object EncapsulatedEncoder:
          * @param encoder
          *   Implicit argument that decides how to close the encapsulation
          */
-        def close()(using encoder: AbstractEncoder): Writer = encoder.closeEncapsulation(writer)
+        def close(): Writer = closeEncapsulation(writer)
 
         /**
          * Write a key-value pair.
@@ -292,9 +151,9 @@ object EncapsulatedEncoder:
          * @tparam T
          *   The type of the value that should be written, this type should have an encoder
          */
-        def writeMember[T: Encoder](key: String, value: T)(using encoder: AbstractEncoder): Writer =
-            encoder.writeKey(writer, key)
-            encoder.writeValue(writer, value)
+        def writeMember[T: Encoder](key: String, value: T): Writer =
+            writeKey(writer, key)
+            writeValue(writer, value)
 
         /**
          * Write a value.
@@ -309,9 +168,13 @@ object EncapsulatedEncoder:
          * @tparam T
          *   The type of the value that should be written, this type should have an encoder
          */
-        def writeMember[T: Encoder](value: T)(using encoder: AbstractEncoder): Writer =
-            encoder.writeKey(writer)
-            encoder.writeValue(writer, value)
+        def writeMember[T: Encoder](value: T): Writer =
+            writeKey(writer)
+            writeValue(writer, value)
+
+        /** [TODO: description] */
+        def start() =
+            openEncapsulation(writer)
 
         /**
          * Open the encapsulation.
@@ -322,9 +185,9 @@ object EncapsulatedEncoder:
          * @param encoder
          *   Implicit argument that decides how to open the encapsulation
          */
-        def open()(using encoder: AbstractEncoder): Writer =
-            encoder.writeKey(writer)
-            encoder.openEncapsulation(writer)
+        def open(): Writer =
+            writeKey(writer)
+            openEncapsulation(writer)
 
         /**
          * Open the encapsulation with a key.
@@ -336,9 +199,9 @@ object EncapsulatedEncoder:
          * @param encoder
          *   Implicit argument that decides how to open the encapsulation
          */
-        def open(key: String)(using encoder: AbstractEncoder): Writer =
-            encoder.writeKey(writer, key)
-            encoder.openEncapsulation(writer)
+        def open(key: String): Writer =
+            writeKey(writer, key)
+            openEncapsulation(writer)
 
         /**
          * Open the encapsulation.
@@ -351,9 +214,9 @@ object EncapsulatedEncoder:
          * @param encoder
          *   Implicit argument that decides how to open the encapsulation
          */
-        def open(amount: Int)(using encoder: AbstractEncoder): Writer =
-            encoder.writeKey(writer)
-            encoder.openEncapsulation(writer, amount)
+        def open(amount: Int): Writer =
+            writeKey(writer)
+            openEncapsulation(writer, amount)
 
         /**
          * Open the encapsulation with a key.
@@ -367,19 +230,30 @@ object EncapsulatedEncoder:
          * @param encoder
          *   Implicit argument that decides how to open the encapsulation
          */
-        def open(key: String, amount: Int)(using encoder: AbstractEncoder): Writer =
-            encoder.writeKey(writer, key)
-            encoder.openEncapsulation(writer)
+        def open(key: String, amount: Int): Writer =
+            writeKey(writer, key)
+            openEncapsulation(writer)
 
 /**
  * Encoder that uses maps to encode values.
  *
  * This encoder uses maps to encode values and will therefore always use keys, if no key is provided, an auto-increasing ID will be used instead.
+ *
+ * @example
+ * {{{
+ * given MapEncoder[T]
+ *     override protected def write(writer: Writer, value: T): Writer =
+ *           writer.start()
+ *           < encode value >
+ *           writer.close()
+ * }}}
+ *
+ * @tparam T
+ *   The type to encode
  */
-class MapEncoder extends AbstractEncoder:
+trait MapEncoder[T] extends AbstractEncoder[T]:
     /** Used to generate IDs if no key is provided */
     private var id = -1
-    val mapBasedEncoder = true
     override def writeKey(writer: Writer): Writer =
         id += 1
         writeKey(writer, id.toString())
@@ -393,9 +267,20 @@ class MapEncoder extends AbstractEncoder:
  *
  * This encoder uses arrays to encode values and will not write any keys, if you want an array-based encoder that saves keys, you should use
  * [[ArrayKeyEncoder]].
+ *
+ * @example
+ * {{{
+ * given ArrayEncoder[T]
+ *     override protected def write(writer: Writer, value: T): Writer =
+ *           writer.start()
+ *           < encode value >
+ *           writer.close()
+ * }}}
+ *
+ * @tparam T
+ *   The type to encode
  */
-class ArrayEncoder extends AbstractEncoder:
-    override val mapBasedEncoder = false
+trait ArrayEncoder[T] extends AbstractEncoder[T]:
     override def writeKey(writer: Writer): Writer = writer
     override def writeKey(writer: Writer, key: String): Writer = writer
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
@@ -419,8 +304,20 @@ class ArrayEncoder extends AbstractEncoder:
  *     ...
  * ]
  * }}}
+ *
+ * @example
+ * {{{
+ * given ArrayKeyEncoder[T]
+ *     override protected def write(writer: Writer, value: T): Writer =
+ *           writer.start()
+ *           < encode value >
+ *           writer.close()
+ * }}}
+ *
+ * @tparam T
+ *   The type to encode
  */
-class ArrayKeyEncoder extends ArrayEncoder:
+trait ArrayKeyEncoder[T] extends ArrayEncoder[T]:
     override def writeKey(writer: Writer, key: String): Writer = writer.write(key)
 
     /**
@@ -443,13 +340,6 @@ class ArrayKeyEncoder extends ArrayEncoder:
     def writeKey[T: Encoder](writer: Writer, key: T): Writer = writer.write(key)
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
 
-/**
- * Object with an extension method for [[borer.Writer]].
- *
- * This extension method allows you to write a key-value pair where the key is not a String, and should only be used when using an
- * [[ArrayKeyEncoder]].
- */
-object ArrayKeyEncoder:
     extension (writer: Writer)
         /**
          * Write a key-value pair.
@@ -467,6 +357,6 @@ object ArrayKeyEncoder:
          * @tparam U
          *   The type of the value that should be written, this type should have an encoder
          */
-        def writeMember[T: Encoder, U: Encoder](key: T, value: U)(using encoder: ArrayKeyEncoder): Writer =
-            encoder.writeKey(writer, key)
-            encoder.writeValue(writer, value)
+        def writeMember[T: Encoder, U: Encoder](key: T, value: U): Writer =
+            writeKey(writer, key)
+            writeValue(writer, value)

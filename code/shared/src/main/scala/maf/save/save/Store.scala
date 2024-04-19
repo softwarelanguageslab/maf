@@ -16,7 +16,6 @@ import maf.lattice.AbstractType
 import maf.lattice.AbstractSetType
 import io.bullet.borer.LowPrioEncoders
 import maf.core.Address
-import EncapsulatedEncoder.*
 import maf.core.Environment
 import maf.lattice.{ConcreteLattice, ConstantPropagation}
 import maf.lattice.Concrete
@@ -33,24 +32,6 @@ import maf.save.save.SaveExpressions
  *   The type of expression used in the analysis
  */
 trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]:
-    /**
-     * Get the encoder that will be used to encode values.
-     *
-     * This will influence how values will be encoded, this can be e.g. a [[maf.save.MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getValueEncoder: AbstractEncoder = getEncoder
-
-    /**
-     * Get the encoder that will be used to encode values.
-     *
-     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
-     * and should therefore not be used here.
-     *
-     * This will influence how values will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]] encoder.
-     */
-    def getValueKeyEncoder: AbstractEncoder = getKeyEncoder
-
     /** Encodes a value */
     given valueEncoder: Encoder[Value]
 
@@ -62,38 +43,19 @@ trait SaveValue[Expr <: Expression] extends Save[Expr] with AbstractDomain[Expr]
  */
 trait SaveLattice[Expr <: Expression] extends Save[Expr]:
     /**
-     * Get the encoder that will be used to encode lattices.
-     *
-     * This will influence how lattices will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getLatticeEncoder: AbstractEncoder = getEncoder
-
-    /**
-     * Get the encoder that will be used to encode lattices.
-     *
-     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
-     * and should therefore not be used here.
-     *
-     * This will influence how lattices will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getLatticeKeyEncoder: AbstractEncoder = getKeyEncoder
-
-    /**
      * The types of lattices that can be encoded by this trait.
      *
      * This is used to specify the givens, if this was not used, this given could be used for every class with a single abstract type.
      */
     type Lattice[T] = ConstantPropagation.L[T] | Concrete.L[T]
-    given latticeEncoder[P[T] <: Lattice[T], T: Encoder]: EncapsulatedEncoder[P[T]] with
-        override val encoder: AbstractEncoder = getLatticeKeyEncoder
-        override protected def writeEncapsulated(writer: Writer, lattice: P[T]): Writer =
+    given latticeEncoder[P[T] <: Lattice[T], T: Encoder]: MapEncoder[P[T]] with
+        override def write(writer: Writer, lattice: P[T]): Writer =
+            writer.start()
             lattice match
                 case constant: ConstantPropagation.L[T] =>
-                    writer.writeMember("constant", constant)(using constantLatticeEncoder, encoder)
+                    writer.writeMember("constant", constant)(using constantLatticeEncoder)
                 case _ => System.err.nn.println("The lattice of type `" + lattice.getClass + "` could not be encoded")
-            writer
+            writer.close()
 
     /** Encodes [[ConstantPropagation.L constant lattices]]. */
     given constantLatticeEncoder[T: Encoder]: Encoder[ConstantPropagation.L[T]] with
@@ -105,51 +67,59 @@ trait SaveLattice[Expr <: Expression] extends Save[Expr]:
             writer
 
 /**
- * Trait to encode [[ModularSchemeLattice modular scheme lattices]].
+ * Trait for encoding values as [[ModularSchemeLattice modular scheme lattices]], as defined in [[ModularSchemeDomain]].
  *
- * Implementation of [[SaveModularDomain]]
+ * Implementation of [[SaveValue]].
  */
-trait SaveModularSchemeLattices
-    extends SaveModularDomain
+trait SaveModularDomain
+    extends SaveValue[SchemeExp]
+    with ModularSchemeDomain
     with SaveAddr[SchemeExp]
     with SaveExpressions[SchemeExp]
     with SaveEnvironment[SchemeExp]
     with SaveLattice[SchemeExp]:
     /** Generic modular scheme lattice that is used for typechecking of nested class inside of this. */
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
+    override given valueEncoder: ArrayEncoder[HMap] with
+        override def write(writer: Writer, hmap: HMap): Writer =
+            writer.start()
+            hmap.contents.foreach((key, value) => writer.writeMember((key, value)))
+            writer.close()
 
-    given EncapsulatedArrayEncoder[SchemeLattice#Clo]() with
-        override val encoder = getValueEncoder
-        override protected def writeEncapsulated(writer: Writer, closure: SchemeLattice#Clo): Writer =
+    given MapEncoder[SchemeLattice#Clo]() with
+        override def write(writer: Writer, closure: SchemeLattice#Clo): Writer =
+            writer.writeArrayOpen(closure.closures.size)
             closure.closures.foreach((clo) =>
-                encoder.openEncapsulation(writer)
+                writer.start()
                 writer.writeMember("expression", clo._1.asInstanceOf[SchemeExp])
                 writer.writeMember("address", clo._2.asInstanceOf[Environment[Address]])
-                encoder.closeEncapsulation(writer)
+                writer.close()
             )
-            writer
+            writer.writeArrayClose()
 
-    given EncapsulatedArrayEncoder[SchemeLattice#Pointer]() with
-        override val encoder = getValueEncoder
-        override protected def writeEncapsulated(writer: Writer, pointer: SchemeLattice#Pointer): Writer =
+    given ArrayEncoder[SchemeLattice#Pointer]() with
+        override def write(writer: Writer, pointer: SchemeLattice#Pointer): Writer =
+            writer.start()
             pointer.ptrs.foreach(writer.write(_))
-            writer
+            writer.close()
 
-    given EncapsulatedEncoder[SchemeLattice#Cons]() with
-        override val encoder = getValueEncoder
-        override protected def writeEncapsulated(writer: Writer, cons: SchemeLattice#Cons): Writer =
+    given MapEncoder[SchemeLattice#Cons]() with
+        override def write(writer: Writer, cons: SchemeLattice#Cons): Writer =
+            writer.start()
             writer.writeMember("car", cons.car)
             writer.writeMember("cdr", cons.cdr)
+            writer.close()
 
-    given EncapsulatedEncoder[SchemeLattice#Vec]() with SaveMapToArray with
-        override val encoder = getValueEncoder
-        override protected def writeEncapsulated(writer: Writer, vec: SchemeLattice#Vec): Writer =
+    given MapEncoder[SchemeLattice#Vec]() with SaveMapToArray with
+        override def write(writer: Writer, vec: SchemeLattice#Vec): Writer =
+            writer.start()
             writer.writeMember("size", vec.size.asInstanceOf[Lattice[BigInt]])
             writer.writeMember("elements", vec.elements.asInstanceOf[Map[Lattice[BigInt], SchemeLattice#L]])
+            writer.close()
 
-    given EncapsulatedEncoder[(HMapKey, SchemeLattice#Value)] with
-        override val encoder = getValueKeyEncoder
-        override protected def writeEncapsulated(writer: Writer, hMapPair: (HMapKey, SchemeLattice#Value)): Writer =
+    given MapEncoder[(HMapKey, Any)] with
+        override def write(writer: Writer, hMapPair: (HMapKey, Any)): Writer =
+            writer.start()
             val (key, value) = hMapPair
 
             value match {
@@ -168,69 +138,7 @@ trait SaveModularSchemeLattices
                     System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
                     writer.writeMember("ERROR", "Unknown type: " + key.getClass.toString())
             }
-
-    override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder): Writer =
-        if value.isInstanceOf[SchemeLattice#Value] then writer.writeMember((key, value.asInstanceOf[SchemeLattice#Value]))
-        else return super.encodeHMapPair(writer, key, value)
-
-/**
- * Base trait for encoding values as [[ModularSchemeLattice modular scheme lattices]], as defined in [[ModularSchemeDomain]].
- *
- * Implementation of [[SaveValue]].
- *
- * @note
- *   This trait gives the methods needed to encode values, but not the implementation. Other traits like [[SaveModularSchemeLattices]] should be mixed
- *   in. The exact trait that is mixed in depends on the values that you are using in your analysis.
- */
-trait SaveModularDomain extends SaveValue[SchemeExp] with ModularSchemeDomain:
-    /**
-     * Get the encoder that will be used to encode an hMap.
-     *
-     * This will influence how an hMap will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     *
-     * @note
-     *   This is an [[ArrayEncoder array encoder]] by default
-     */
-    def getHMapEncoder: AbstractEncoder = new ArrayEncoder
-
-    /**
-     * Encodes an hMap pair.
-     *
-     * This method allows for expanding the hMap pairs that can be encoded by overriding it, and allowing you to add new hMap pairs by simply mixin in
-     * another trait that overrides this method. If you want to add a new encodable hMap pair you can override this method like this:
-     * {{{
-     * override def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using AbstractEncoder): Writer =
-     *     address match {
-     *         case < ... >(...) => < encode hMap pair >
-     *         case _               => super.encodeHMapPair(writer, key, value)
-     *     }
-     * }}}
-     * This is just an example and the actual implementation can also be done differently.
-     *
-     * @note
-     *   This method should not be called directly, but should instead only be called from an encoder.
-     *
-     * @param writer
-     *   The writer to write to
-     * @param key
-     *   The key used in the hMap
-     * @param value
-     *   The value that is associated to the key
-     * @param encoder
-     *   Implicit argument that encodes the hMap pair
-     * @return
-     *   The used writer
-     */
-    def encodeHMapPair(writer: Writer, key: HMapKey, value: Any)(using encoder: AbstractEncoder): Writer =
-        System.err.nn.println("The lattice with type `" + key.getClass + "` could not be encoded")
-        writer
-
-    override given valueEncoder: EncapsulatedEncoder[HMap] with
-        override val encoder = getHMapEncoder
-        override def writeEncapsulated(writer: Writer, hmap: HMap): Writer =
-            hmap.contents.foreach((key, value) => encodeHMapPair(writer, key, value))
-            writer
+            writer.close()
 
 /**
  * Trait to encode the global store.

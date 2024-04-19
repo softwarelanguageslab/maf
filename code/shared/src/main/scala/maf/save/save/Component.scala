@@ -12,7 +12,6 @@ import maf.modular.AnalysisResults
 import maf.modular.Dependency
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.StandardSchemeModFComponents
-import EncapsulatedEncoder.*
 import io.bullet.borer.derivation.MapBasedCodecs
 import maf.language.scheme.SchemeLambdaExp
 import maf.core.Identifier
@@ -45,6 +44,7 @@ import maf.core.worklist.WorkList
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.modular.worklist.FIFOWorklistAlgorithm
 import maf.modular.ModAnalysis
+import io.bullet.borer.derivation.CompactMapBasedCodecs
 
 /**
  * Trait to encode positions.
@@ -53,19 +53,10 @@ import maf.modular.ModAnalysis
  *   The type of expression used in the analysis
  */
 trait SavePosition[Expr <: Expression] extends Save[Expr]:
-    /**
-     * Get the encoder that will be used to encode positions.
-     *
-     * This will influence how positions will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getPositionEncoder: AbstractEncoder = getEncoder
-
-    private val posEncoder = getPositionEncoder
-    given Encoder[Position] = AbstractEncoder.deriveAllEncoders[Position](posEncoder)
-    given Encoder[PTag] = AbstractEncoder.deriveAllEncoders[PTag](posEncoder)
-    given Encoder[Identifier] = AbstractEncoder.deriveEncoder[Identifier](posEncoder)
-    given Encoder[Identity] = AbstractEncoder.deriveAllEncoders[Identity](posEncoder)
+    given Encoder[Position] = CompactMapBasedCodecs.deriveAllEncoders[Position]
+    given Encoder[PTag] = CompactMapBasedCodecs.deriveAllEncoders[PTag]
+    given Encoder[Identifier] = CompactMapBasedCodecs.deriveEncoder[Identifier]
+    given Encoder[Identity] = CompactMapBasedCodecs.deriveAllEncoders[Identity]
     given Encoder[IdentityData] with
         def write(writer: Writer, value: IdentityData): Writer =
             System.err.nn.println("IdentityData could not be encoded")
@@ -83,25 +74,6 @@ trait SavePosition[Expr <: Expression] extends Save[Expr]:
  *   The type of expression used in the analysis
  */
 trait SaveComponents[Expr <: Expression] extends ModAnalysis[Expr] with Save[Expr]:
-    /**
-     * Get the encoder that will be used to encode components.
-     *
-     * This will influence how components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getComponentEncoder: AbstractEncoder = getEncoder
-
-    /**
-     * Get the encoder that will be used to encode components.
-     *
-     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
-     * and should therefore not be used here.
-     *
-     * This will influence how components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getComponentKeyEncoder: AbstractEncoder = getKeyEncoder
-
     /** Encodes a component. */
     given componentEncoder: Encoder[Component]
 
@@ -146,14 +118,14 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveActualComps[Expr] with 
     private val components = HashMap[Component, Int]()
     private var id = 0
 
-    override protected given componentSetEncoder: EncapsulatedEncoder[Set[Component]] with
-        override val encoder: AbstractEncoder = getComponentKeyEncoder
-        override protected def writeEncapsulated(writer: Writer, components: Set[Component]): Writer =
+    override protected given componentSetEncoder: MapEncoder[Set[Component]] with
+        override def write(writer: Writer, components: Set[Component]): Writer =
+            writer.start()
             for (component <- components) do
                 SaveComponentIntID.this.components.addOne((component, id))
-                writer.writeMember(id.toString(), component)(using actualComponentEncoder, encoder)
+                writer.writeMember(id.toString(), component)(using actualComponentEncoder)
                 id += 1
-            writer
+            writer.close()
 
     override given componentIDEncoder: Encoder[Component] with
         override def write(writer: Writer, component: Component): Writer = writer.write(components(component))
@@ -167,33 +139,27 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveActualComps[Expr] with 
  *   Because this trait only encodes the component position, the entire component should be encoded somewhere else if you want to decode this again.
  */
 trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
-    override type Component = SchemeModFComponent
-
-    /**
-     * Get the encoder that will be used to encode a set of components.
-     *
-     * This will influence how a set of components will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an
-     * [[ArrayEncoder array-based]] encoder.
-     */
-    def getComponentSetEncoder: AbstractEncoder = new ArrayEncoder
-
     /** Encodes a component by their position */
     override given componentIDEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
+            writer.start()
             if component.equals(initialComponent) then writer.write("main")
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])(schemeComponentIDEncoder)
+            writer.close()
 
     /** Encodes a scheme component using their position */
     given schemeComponentIDEncoder[T]: Encoder[SchemeModFComponent.Call[T]] with
         def write(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
+            writer.start()
             val (lambda, _) = component.clo
             writer.write(lambda.idn.pos)
+            writer.close()
 
-    override protected given componentSetEncoder: EncapsulatedEncoder[Set[Component]] with
-        override val encoder: AbstractEncoder = getComponentSetEncoder
-        override protected def writeEncapsulated(writer: Writer, components: Set[Component]): Writer =
+    override protected given componentSetEncoder: ArrayEncoder[Set[Component]] with
+        override def write(writer: Writer, components: Set[Component]): Writer =
+            writer.start()
             for (component <- components) do writer.writeMember(component)
-            writer
+            writer.close()
 
 /**
  * Trait to encode environments.
@@ -202,37 +168,19 @@ trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] wit
  *   The type of the value the needs to be saved
  */
 trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]:
-    /**
-     * Get the encoder that will be used to encode environments.
-     *
-     * This will influence how environments will be encodes, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getEnvironmentEncoder: AbstractEncoder = getEncoder
-
-    /**
-     * Get the encoder that will be used to encode environments.
-     *
-     * This encoder is used to encode objects where the key is important, when you e.g. encode a type in the key, some encoders might remove this key,
-     * and should therefore not be used here.
-     *
-     * This will influence how environments will be encodes, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getEnvironmentKeyEncoder: AbstractEncoder = getKeyEncoder
     given Encoder[BasicEnvironment[Address]] with
         override def write(writer: Writer, env: BasicEnvironment[Address]): Writer = writer.write(env.content)
 
-    given EncapsulatedEncoder[NestedEnv[Address, Address]] with
-        override val encoder: AbstractEncoder = getEnvironmentEncoder
-        override protected def writeEncapsulated(writer: Writer, env: NestedEnv[Address, Address]): Writer =
+    given MapEncoder[NestedEnv[Address, Address]] with
+        override def write(writer: Writer, env: NestedEnv[Address, Address]): Writer =
+            writer.start()
             writer.writeMember("content", env.content)
             if env.rst.isDefined then writer.writeMember("rst", env.rst.get)
-            writer
+            writer.close()
 
-    given EncapsulatedEncoder[Environment[Address]] with
-        override val encoder: AbstractEncoder = getEnvironmentKeyEncoder
-        override protected def writeEncapsulated(writer: Writer, env: Environment[Address]): Writer =
+    given MapEncoder[Environment[Address]] with
+        override def write(writer: Writer, env: Environment[Address]): Writer =
+            writer.start()
             env match {
                 case basicEnv @ BasicEnvironment(_) =>
                     writer.writeMember("basicEnvironment", basicEnv)
@@ -242,6 +190,7 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
                     System.err.nn.println("The environemnt with type `" + env.getClass + "` could not be encoded")
                     writer
             }
+            writer.close()
 
 /**
  * Base trait for saving context.
@@ -256,14 +205,6 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
 trait SaveContext[Expr <: Expression] extends Save[Expr]:
     /** The type of context that should be encoded. */
     type EncodeContext
-
-    /**
-     * Get the encoder that will be used to encode context.
-     *
-     * This will influence how context will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getContextEncoder: AbstractEncoder = getEncoder
 
     /** Encodes context */
     given contextEncoder: Encoder[EncodeContext]
@@ -302,24 +243,17 @@ trait SaveStandardSchemeComponents
             if component.equals(initialComponent) then writer.write("main")
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])
 
-    given [T]: EncapsulatedEncoder[SchemeModFComponent.Call[T]] with
-        override val encoder = getComponentEncoder
-        override def writeEncapsulated(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
+    given [T]: MapEncoder[SchemeModFComponent.Call[T]] with
+        override def write(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
+            writer.start()
             val (lambda, env) = component.clo
             val context = component.ctx
             writer.writeMember("lambda", lambda.asInstanceOf[SchemeExp])
             writer.writeMember("environment", env)
             writer.writeMember("context", context.asInstanceOf[EncodeContext])
+            writer.close()
 
 trait SaveWorklist[Expr <: Expression] extends Save[Expr]:
-    /**
-     * Get the encoder that will be used to encode the worklist.
-     *
-     * This will influence how the worklist will be encoded, this can be e.g. a [[MapEncoder map-based]] encoder or an [[ArrayEncoder array-based]]
-     * encoder.
-     */
-    def getWorklistEncoder: AbstractEncoder = new ArrayEncoder
-
     type WorklistComponent
     given worklistEncoder: Encoder[WorkList[WorklistComponent]]
     def getWorklist: WorkList[WorklistComponent]
@@ -328,9 +262,9 @@ trait SaveWorklist[Expr <: Expression] extends Save[Expr]:
 trait SaveSequentialWorklist[Expr <: Expression] extends SaveWorklist[Expr] with SequentialWorklistAlgorithm[Expr] with SaveComponents[Expr]:
     type WorklistComponent = Component
     override def getWorklist: WorkList[Component] = workList
-    override given worklistEncoder: EncapsulatedEncoder[WorkList[Component]] with
-        override val encoder: AbstractEncoder = getWorklistEncoder
-        override protected def writeEncapsulated(writer: Writer, worklist: WorkList[Component]): Writer =
+    override given worklistEncoder: ArrayEncoder[WorkList[Component]] with
+        override def write(writer: Writer, worklist: WorkList[Component]): Writer =
+            writer.start()
             val worklistList = workList.toList
             worklistList.foreach(writer.writeMember(_))
-            writer
+            writer.close()
