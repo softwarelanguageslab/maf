@@ -29,7 +29,6 @@ import maf.modular.scv.ScvContextSensitivity
 import maf.modular.scheme.modf.NoContext
 import io.bullet.borer.Decoder
 import io.bullet.borer.Reader
-import maf.save.EncapsulatedDecoder.*
 import maf.core.Position
 import maf.core.Position.PTag
 import scala.collection.mutable.HashMap
@@ -45,6 +44,7 @@ import maf.modular.worklist.FIFOWorklistAlgorithm
 import scala.collection.immutable.Queue
 import maf.core.worklist.FIFOWorkList
 import maf.modular.ModAnalysis
+import io.bullet.borer.derivation.CompactMapBasedCodecs
 
 /**
  * The base trait for decoding components.
@@ -58,25 +58,6 @@ import maf.modular.ModAnalysis
  *   The type of expression used in the analysis
  */
 trait LoadComponents[Expr <: Expression] extends ModAnalysis[Expr] with Load[Expr]:
-    /**
-     * Get the decoder that will be used to decode components.
-     *
-     * This will influence how components will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getComponentDecoder: AbstractDecoder = getDecoder
-
-    /**
-     * Get the decoder that will be used to decode components.
-     *
-     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
-     * this key, and should therefore not be used here.
-     *
-     * This will influence how components will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getComponentKeyDecoder: AbstractDecoder = getKeyDecoder
-
     given componentDecoder: Decoder[Component]
 
 /**
@@ -124,12 +105,13 @@ trait LoadStandardSchemeComponents
             if reader.tryReadString("main") then return initialComponent
             else reader.read[SchemeModFComponent.Call[DecodeContext]]()
 
-    given EncapsulatedDecoder[SchemeModFComponent.Call[DecodeContext]] with
-        override val decoder = getComponentDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): SchemeModFComponent.Call[DecodeContext] =
+    given MapDecoder[SchemeModFComponent.Call[DecodeContext]] with
+        override def read(reader: Reader): SchemeModFComponent.Call[DecodeContext] =
+            reader.start()
             val lambda = reader.readMember[SchemeExp]("lambda").asInstanceOf[ReadValue[String, SchemeLambdaExp]]
             val environment = reader.readMember[Environment[Address]]("environment")
             val context = reader.readMember[DecodeContext]("context")
+            reader.close()
             return new SchemeModFComponent.Call[DecodeContext]((lambda.value, environment.value), context.value)
 
 /**
@@ -145,14 +127,6 @@ trait LoadStandardSchemeComponents
 trait LoadContext[Expr <: Expression] extends Load[Expr]:
     /** The type of context that should be decoded. */
     type DecodeContext
-
-    /**
-     * Get the decoder that will be used to decode context.
-     *
-     * This will influence how context will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getContextDecoder: AbstractDecoder = getDecoder
 
     /**
      * Get the decoder that will be used to decode context.
@@ -178,7 +152,7 @@ trait LoadNoContext[Expr <: Expression] extends LoadContext[Expr]:
     override given contextDecoder: Decoder[DecodeContext] with
         override def read(reader: Reader): DecodeContext =
             if !reader.tryReadString("ε") then return reader.unexpectedDataItem("ε")
-            NoContext
+            return NoContext
 
 /**
  * Trait to decode positions.
@@ -187,19 +161,11 @@ trait LoadNoContext[Expr <: Expression] extends LoadContext[Expr]:
  *   The type of expression used in the analysis
  */
 trait LoadPosition[Expr <: Expression] extends Load[Expr]:
-    /**
-     * Get the decoder that will be used to decode positions.
-     *
-     * This will influence how positions will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getPositionDecoder: AbstractDecoder = getDecoder
-    given Decoder[Position] = AbstractDecoder.deriveAllDecoders[Position](getPositionDecoder)
-    given Decoder[PTag] = AbstractDecoder.deriveAllDecoders[PTag](getPositionDecoder)
+    given Decoder[Position] = CompactMapBasedCodecs.deriveAllDecoders[Position]
+    given Decoder[PTag] = CompactMapBasedCodecs.deriveAllDecoders[PTag]
 
-    private val posDecoder = getPositionDecoder
-    given Decoder[Identifier] = AbstractDecoder.deriveDecoder[Identifier](posDecoder)
-    given Decoder[Identity] = AbstractDecoder.deriveAllDecoders[Identity](posDecoder)
+    given Decoder[Identifier] = CompactMapBasedCodecs.deriveDecoder[Identifier]
+    given Decoder[Identity] = CompactMapBasedCodecs.deriveAllDecoders[Identity]
     given Decoder[IdentityData] with
         private object IdnData extends IdentityData {
             // TODO:
@@ -218,42 +184,27 @@ trait LoadPosition[Expr <: Expression] extends Load[Expr]:
  *   The type of expression used in the analysis
  */
 trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]:
-    /**
-     * Get the decoder that will be used to decode environments.
-     *
-     * This will influence how environments will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getEnvironmentDecoder: AbstractDecoder = getDecoder
-
-    /**
-     * Get the decoder that will be used to decode environments.
-     *
-     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
-     * this key, and should therefore not be used here.
-     *
-     * This will influence how environments will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getEnvironmentKeyDecoder: AbstractDecoder = getKeyDecoder
-    given [T <: Address]: EncapsulatedDecoder[Environment[T]] with
-        override def decoder: AbstractDecoder = getEnvironmentKeyDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Environment[T] =
-            return reader
+    given [T <: Address]: MapDecoder[Environment[T]] with
+        override def read(reader: Reader): Environment[T] =
+            reader.start()
+            val value = reader
                 .readMembers[Environment[T]](
                   Array(("basicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("nestedEnv", summon[Decoder[NestedEnv[T, T]]]))
                 )
                 .value
+            reader.close()
+            return value
 
     given [T <: Address]: Decoder[BasicEnvironment[T]] with
         override def read(reader: Reader): BasicEnvironment[T] = return new BasicEnvironment(
           reader.read[Map[String, Address]]().asInstanceOf[Map[String, T]]
         )
-    given [T <: Address, K <: Address]: EncapsulatedDecoder[NestedEnv[T, K]] with
-        override def decoder: AbstractDecoder = getEnvironmentDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): NestedEnv[T, K] =
+    given [T <: Address, K <: Address]: MapDecoder[NestedEnv[T, K]] with
+        override def read(reader: Reader): NestedEnv[T, K] =
+            reader.start()
             val content = reader.readMember[Map[String, Address]]("content")
             val rst = reader.readMember[Address]("rst")
+            reader.close()
             return new NestedEnv(content.value.asInstanceOf[Map[String, T]], if rst.hasValue then Some(rst.value.asInstanceOf[K]) else None)
 
 /**
@@ -309,10 +260,13 @@ trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] wit
         if component != initialComponent then
             components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
 
-    override protected given componentSetDecoder: EncapsulatedDecoder[Set[Component]] with
-        override def decoder: AbstractDecoder = getComponentDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Set[Component] =
-            return reader.readUntilBeforeBreak(Set[Component](), (components: Set[Component]) => components + reader.readMember[Component]().value)
+    override protected given componentSetDecoder: MapDecoder[Set[Component]] with
+        override def read(reader: Reader): Set[Component] =
+            reader.start()
+            val components =
+                reader.readUntilBeforeBreak(Set[Component](), (components: Set[Component]) => components + reader.readMember[Component]().value)
+            reader.close()
+            return components
 
     override given componentIDDecoder: Decoder[Component] with
         override def read(reader: Reader): Component =
@@ -344,26 +298,21 @@ trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
                 return components(id)
             else return reader.read[Component]()(using actualComponentDecoder)
 
-    override protected given componentSetDecoder: EncapsulatedDecoder[Set[Component]] with
-        override def decoder: AbstractDecoder = getComponentKeyDecoder
-        override protected def readEncapsulated(reader: Reader)(using decoder: AbstractDecoder): Set[Component] =
-            return reader.readUntilBeforeBreak(
+    override protected given componentSetDecoder: MapDecoder[Set[Component]] with
+        override def read(reader: Reader): Set[Component] =
+            reader.start()
+            val components = reader.readUntilBeforeBreak(
               Set[Component](),
               (components: Set[Component]) =>
-                  val component = reader.readMember[Component]()(using componentDecoder, decoder)
+                  val component = reader.readMember[Component]()(using componentDecoder)
                   val key = component.key.toInt
                   LoadComponentIntID.this.components.addOne((key, component.value))
                   components + (component.value)
             )
+            reader.close()
+            return components
 
 trait LoadWorklist[Expr <: Expression] extends Load[Expr]:
-    /**
-     * Get the decoder that will be used to decode the worklist.
-     *
-     * This will influence how the worklist will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getWorklistDecoder: AbstractDecoder = new ArrayDecoder
     type WorklistComponent
     given worklistDecoder: Decoder[List[WorklistComponent]]
     def setWorklist(worklist: List[WorklistComponent]): Unit
@@ -372,10 +321,12 @@ trait LoadWorklist[Expr <: Expression] extends Load[Expr]:
 
 trait LoadSequentialWorklist[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] with LoadWorklist[Expr] with LoadComponents[Expr]:
     type WorklistComponent = Component
-    given worklistDecoder: EncapsulatedDecoder[List[WorklistComponent]] with
-        override def decoder: AbstractDecoder = getWorklistDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): List[WorklistComponent] =
-            reader.readUntilBeforeBreak(List[Component](), (lst: List[Component]) => lst ++ List(reader.read[Component]()))
+    given worklistDecoder: ArrayDecoder[List[WorklistComponent]] with
+        override def read(reader: Reader): List[WorklistComponent] =
+            reader.start()
+            val worklistComponents = reader.readUntilBeforeBreak(List[Component](), (lst: List[Component]) => lst ++ List(reader.read[Component]()))
+            reader.close()
+            return worklistComponents
 
 trait LoadFIFOWorklist[Expr <: Expression] extends LoadSequentialWorklist[Expr] with FIFOWorklistAlgorithm[Expr]:
     def setWorklist(worklist: List[WorklistComponent]): Unit =

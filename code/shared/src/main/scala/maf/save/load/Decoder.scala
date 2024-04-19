@@ -130,7 +130,7 @@ class ReadValue[K, V](private val forceRead: (key: Option[K]) => Unit):
  *   Some decoders like [[ArrayDecoder]] will also not decode your key, because arrays do not require keys like maps do, if the key does need to be
  *   stored, you should use an decoder that writes them down like [[MapDecoder]] or [[ArrayKeyDecoder]] if you want to use an array.
  */
-trait AbstractDecoder:
+trait AbstractDecoder[T] extends Decoder[T]:
     /** The values that have already been decoded, with their key. */
     protected val values = new HashMap[String, Any]()
 
@@ -140,9 +140,6 @@ trait AbstractDecoder:
      * This is the key that is given through [[readKey]].
      */
     protected var currentKey: Option[String] = None
-
-    /** Does this decoder use maps or array to decode the data. */
-    protected val mapBasedDecoder: Boolean
 
     /**
      * Read a key from the given reader.
@@ -268,7 +265,7 @@ trait AbstractDecoder:
      * @tparam T
      *   The type of the object that was encoded inside of the array/map
      */
-    def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit
+    def closeEncapsulation[T](reader: Reader): Unit
 
     /**
      * Read a key-value pair.
@@ -290,155 +287,9 @@ trait AbstractDecoder:
      */
     def forceReadValue(reader: Reader): Unit
 
-object AbstractDecoder:
-    /**
-     * Automatically derive an decoder for type T.
-     *
-     * This will derive an decoder for type T, this decoder will either be [[CompactMapBasedCodecs map-based]] or [[ArrayBasedCodecs array-based]]
-     * based on the type of the provided decoder.
-     *
-     * @note
-     *   T must be a case class, enum, sealed abstract class or sealed trait
-     *
-     * @param decoder
-     *   The type of decoder that should be used to decode T
-     * @tparam T
-     *   The type to derive decoders for
-     */
-    inline def deriveDecoder[T](decoder: AbstractDecoder): Decoder[T] =
-        if decoder.mapBasedDecoder then CompactMapBasedCodecs.deriveDecoder[T] else ArrayBasedCodecs.deriveDecoder[T]
-
-    /**
-     * Automatically derive all decoders for type T.
-     *
-     * This will derive an decoder for the type T and all subtypes of type T, these decoders will either be [[CompactMapBasedCodecs map-based]] or
-     * [[ArrayBasedCodecs array-based]] based on the type of the provided decoder.
-     *
-     * @note
-     *   T must be a case object, case class, sealed trait or sealed abstract class.
-     *
-     * @param decoder
-     *   The type of decoder that should be used to decode T
-     * @tparam T
-     *   The type to derive decoders for
-     */
-    inline def deriveAllDecoders[T](decoder: AbstractDecoder): Decoder[T] =
-        if decoder.mapBasedDecoder then CompactMapBasedCodecs.deriveAllDecoders[T] else ArrayBasedCodecs.deriveAllDecoders[T]
-    def forceRead(reader: Reader, decoder: AbstractDecoder, key: Option[String]) =
-        if key.isDefined then decoder.forceReadValue(reader, key.get)
-        else decoder.forceReadValue(reader)
-
-/**
- * Trait used to decode an instance of type T.
- *
- * This trait will read a value of type T encapsulated in either an array or a map, based on the decoder that is given. In order to implement this
- * class, you should overwrite the [[decoder]] variable to decide on the type of decoder you want to use, and the [[readEncapsulated]] method which
- * will implement the actual reading of the value.
- *
- * {{{
- * given EncapsulatedDecoder[< T >] with
- *     override def decoder: AbstractDecoder = < getDecoder >
- *     override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T = < decode value >
- * }}}
- *
- * @note
- *   Since this class already opens a map/array, you should not do this anymore unless you are reading a nested map/array.
- *
- * @example
- *   If you implement it as a given, you can use it implicitly in your code
- * {{{
- * override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T =
- *     ...
- *     // Will use the implicit Decoder[T]
- *     reader.readMember[T]("< key >", < value >)
- *     ...
- * }}}
- *
- * @tparam T
- *   The type to decode
- */
-trait EncapsulatedDecoder[T] extends Decoder[T]:
-    /** The decoder used to read this value, this will specify how this value will be written (e.g. in a map or in an array). */
-    def decoder: AbstractDecoder
-
-    /**
-     * The decoder used to read this value, this will specify how this value will be written (e.g. in a map or in an array).
-     *
-     * This is an given because a lot of method require this decoder to be added implicitly, adding the implicit here, makes it that you don't have to
-     * specify this anymore.
-     */
-    protected given AbstractDecoder = decoder
-    override def read(reader: Reader): T =
-        decoder.openEncapsulation(reader)
-        val res = readEncapsulated(reader)(using decoder)
-        // Read all remaining elements, since these where not read they will be ignored
-        EncapsulatedDecoder.readUntilBeforeBreak(reader)(None,
-                                                         (none: None.type) =>
-                                                             reader.skipElement()
-                                                             None
-        )
-        decoder.closeEncapsulation(reader, true, res)
-        res
-
-    /**
-     * Read a value encapsulated in a map/array based on the [[decoder]].
-     *
-     * @note
-     *   This should not be called directly, but only through the [[read]] method.
-     *
-     * @param reader
-     *   The reader used to read the value
-     * @param decoder
-     *   Implicit argument used to decode the value
-     * @returns
-     *   The returned value
-     */
-    protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T
-
-/**
- * Trait used to decode an instance of type T.
- *
- * This trait will read a value of type T encapsulated in an array. In order to implement this class, you should overwrite the [[decoder]] variable to
- * decide on the type of decoder you want to use, and the [[readEncapsulated]] method which will implement the actual reading of the value.
- *
- * {{{
- * given EncapsulatedDecoder[< T >] with
- *     override def decoder: AbstractDecoder = < getDecoder >
- *     override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T = < decode value >
- * }}}
- *
- * @note
- *   Since this class already opens an array, you should not do this anymore unless you are reading a nested map/array.
- *
- * @note
- *   Using `reader.readMember`, `reader.openEncapsulation`, ... can still use either a map or an array, it is only the top-level encapsulation that is
- *   an array.
- *
- * @example
- *   If you implement it as a given, you can use it implicitly in your code
- * {{{
- * override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): T =
- *     ...
- *     // Will use the implicit Decoder[T]
- *     reader.readMember[T]("< key >", < value >)
- *     ...
- * }}}
- *
- * @tparam T
- *   The type to decode
- */
-trait EncapsulatedArrayDecoder[T](length: Int = 0) extends EncapsulatedDecoder[T]:
-    override def read(reader: Reader): T =
-        if length == 0 then reader.readArrayStart() else reader.readArrayOpen(length)
-        val res = readEncapsulated(reader)(using decoder)
-        reader.readArrayClose(true, res)
-
-/**
- * Object with extension methods for [[borer.Reader]].
- *
- * These extension methods should be used when using an [[EncapsulatedDecoder]].
- */
-object EncapsulatedDecoder:
+    def forceRead(reader: Reader, key: Option[String]) =
+        if key.isDefined then forceReadValue(reader, key.get)
+        else forceReadValue(reader)
     extension (reader: Reader)
         /**
          * Read a key-value pair.
@@ -456,9 +307,9 @@ object EncapsulatedDecoder:
          *   The key-value pair that is read, if the key cannot be read yet because it appears later in the file, the value will be empty and will be
          *   filled in later.
          */
-        def readMember[T: Decoder](key: String)(using decoder: AbstractDecoder): ReadValue[String, T] =
-            decoder.readKey(reader, key)
-            decoder.readValue[T](reader)
+        def readMember[T: Decoder](key: String): ReadValue[String, T] =
+            readKey(reader, key)
+            readValue[T](reader)
 
         /**
          * Read a key-value pair.
@@ -475,9 +326,9 @@ object EncapsulatedDecoder:
          * @returns
          *   The key-value pair that is read.
          */
-        def readMember[T: Decoder]()(using decoder: AbstractDecoder): ReadValue[String, T] =
-            decoder.readKey(reader)
-            decoder.readValue[T](reader)
+        def readMember[T: Decoder](): ReadValue[String, T] =
+            readKey(reader)
+            readValue[T](reader)
 
         /**
          * Read one of the given key-value pairs.
@@ -498,11 +349,11 @@ object EncapsulatedDecoder:
          *   The key-value pair that is read, if none of the keys can be read because it appears later in the file, the key and the value will be
          *   empty and will be filled in later.
          */
-        def readMembers[T](keys: Array[(String, Decoder[_ <: T])])(using decoder: AbstractDecoder): ReadValue[String, T] =
-            val res = new ReadValue[String, T](AbstractDecoder.forceRead(reader, decoder, _))
+        def readMembers[T](keys: Array[(String, Decoder[_ <: T])]): ReadValue[String, T] =
+            val res = new ReadValue[String, T](forceRead(reader, _))
             for (key, valueDecoder) <- keys do
-                decoder.readKey(reader, key)
-                val value = decoder.readValue[T](reader)(using valueDecoder.asInstanceOf[Decoder[T]])
+                readKey(reader, key)
+                val value = readValue[T](reader)(using valueDecoder.asInstanceOf[Decoder[T]])
                 if value.hasValue then return value
                 value.updateValue = res
             return res
@@ -534,16 +385,41 @@ object EncapsulatedDecoder:
          * @throws NoSuchElementException
          *   If this key hasn't been read yet, and therefore doesn't have a value.
          */
-        def getMember[T](key: String)(using decoder: AbstractDecoder): T =
-            if !decoder.hasValue(key) then decoder.forceReadValue(reader, key)
-            decoder.getValue[T](key)
+        def getMember[T](key: String): T =
+            if !hasValue(key) then forceReadValue(reader, key)
+            getValue[T](key)
+
+        /** [TODO: description] */
+        def start(): Unit =
+            openEncapsulation(reader)
+
+        /** [TODO: description] */
+        def close(): Unit =
+            readUntilBeforeBreak(None,
+                                 (none: None.type) =>
+                                     forceReadValue(reader)
+                                     None
+            )
+            closeEncapsulation(reader)
 
 /**
  * Decoder that uses maps to decode values.
  *
  * This decoder uses maps to decode values and therefore requires keys to be present.
+ *
+ * @example
+ * {{{
+ * given MapDecoder[T]
+ *     override protected def read(reader: Reader): T =
+ *           reader.start()
+ *           < decode value >
+ *           reader.close()
+ * }}}
+ *
+ * @tparam T
+ *   The type to encode
  */
-class MapDecoder extends AbstractDecoder:
+trait MapDecoder[T] extends AbstractDecoder[T]:
     /**
      * Stores a key-value pair and a decoder that can be used to decode this value.
      *
@@ -561,8 +437,6 @@ class MapDecoder extends AbstractDecoder:
 
     /** The key that was read, and which value should now be read. */
     protected var decodeKey: Option[String] = None
-
-    override protected val mapBasedDecoder: Boolean = true
 
     /** Read the next key for which the value should be decoded, if there isn't currently a value being decoded */
     protected def readDecodeKey(reader: Reader): Unit =
@@ -596,13 +470,13 @@ class MapDecoder extends AbstractDecoder:
                 return valueDecoder.value
             else return new ReadValue[String, T](key, res)
         else
-            val readValue = new ReadValue[String, T](currentKey.get, AbstractDecoder.forceRead(reader, this, _))
+            val readValue = new ReadValue[String, T](currentKey.get, forceRead(reader, _))
             keys.addOne((currentKey.get, ValueDecoder(readValue, summon[Decoder[T]])))
             currentKey = None
             return readValue
     override def openEncapsulation(reader: Reader): Unit = reader.readMapStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readMapOpen(amount)
-    override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+    override def closeEncapsulation[T](reader: Reader): Unit = reader.readBreak()
     override def forceReadValue(reader: Reader, key: String): Unit =
         while decodeKey.isDefined && !values.contains(key.asInstanceOf[String]) do forceReadValue(reader)
     override def forceReadValue(reader: Reader): Unit =
@@ -623,12 +497,22 @@ class MapDecoder extends AbstractDecoder:
  *
  * This decoder uses arrays to decode values and does not require keys, if you want an array-based decoder that saves keys, you should use
  * [[ArrayKeyDecoder]].
+ *
+ * @example
+ * {{{
+ * given ArrayDecoder[T]
+ *     override protected def read(reader: Reader): T =
+ *           reader.start()
+ *           < decode value >
+ *           reader.close()
+ * }}}
+ *
+ * @tparam T
+ *   The type to encode
  */
-class ArrayDecoder extends AbstractDecoder:
+trait ArrayDecoder[T] extends AbstractDecoder[T]:
     /** Used to generate IDs if no key is provided, this is used to store the values. */
     protected var id = -1
-
-    override protected val mapBasedDecoder: Boolean = false
     override def readKey(reader: Reader): String = return ""
     override def readKey(reader: Reader, key: String): String =
         currentKey = Some(key)
@@ -643,8 +527,8 @@ class ArrayDecoder extends AbstractDecoder:
         return ReadValue[String, T](key, res)
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
-    override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
-    override def forceReadValue(reader: Reader, key: String): Unit = return
+    override def closeEncapsulation[T](reader: Reader): Unit = reader.readBreak()
+    override def forceReadValue(reader: Reader, key: String): Unit = reader.skipElement()
     override def forceReadValue(reader: Reader): Unit = reader.skipElement()
 
 /**
@@ -664,10 +548,20 @@ class ArrayDecoder extends AbstractDecoder:
  *     ...
  * ]
  * }}}
+ *
+ * @example
+ * {{{
+ * given ArrayKeyDecoder[T]
+ *     override protected def read(reader: Reader): T =
+ *           reader.start()
+ *           < decode value >
+ *           reader.close()
+ * }}}
+ *
+ * @tparam T
+ *   The type to encode
  */
-class ArrayKeyDecoder extends MapDecoder:
-    override protected val mapBasedDecoder: Boolean = false
-
+trait ArrayKeyDecoder[T] extends MapDecoder[T]:
     /** The key that was read, and which value should now be read. */
     protected var key: Option[Any] = None
     protected val keyValues = new HashMap[Any, Any]()
@@ -719,7 +613,7 @@ class ArrayKeyDecoder extends MapDecoder:
         return ReadValue(tmpKey.get.asInstanceOf[V], res)
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
-    override def closeEncapsulation[T](reader: Reader, unbounded: Boolean, res: T): Unit = reader.readMapClose(unbounded, res)
+    override def closeEncapsulation[T](reader: Reader): Unit = reader.readBreak()
 
     /**
      * Returns an already read value using a given key.
@@ -740,13 +634,6 @@ class ArrayKeyDecoder extends MapDecoder:
      *   The key to check if it has a value
      */
     def hasValue(key: Any): Boolean = keyValues.contains(key) || (key.isInstanceOf[String] && super.hasValue(key.asInstanceOf[String]))
-
-/**
- * Object with an extension method for [[borer.Reader]].
- *
- * This extension method allows you to read a key-value pair where the key is not a String, and should only be used when using an [[ArrayKeyDecoder]].
- */
-object ArrayKeyDecoder:
     extension (reader: Reader)
         /**
          * Reads a key-value pair.
@@ -760,6 +647,6 @@ object ArrayKeyDecoder:
          * @tparam U
          *   The type of the value that should be read, this type should have an decoder
          */
-        def readMember[K: Decoder, V: Decoder]()(using decoder: ArrayKeyDecoder): ReadValue[K, V] =
-            decoder.readKey[K](reader)
-            decoder.readKeyValue[K, V](reader)
+        def readMember[K: Decoder, V: Decoder](): ReadValue[K, V] =
+            readKey[K](reader)
+            readKeyValue[K, V](reader)

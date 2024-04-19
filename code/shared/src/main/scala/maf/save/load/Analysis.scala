@@ -7,7 +7,6 @@ import java.nio.file.Paths
 import java.nio.file.Files
 import maf.language.scheme.SchemeExp
 import io.bullet.borer.Reader
-import maf.save.EncapsulatedDecoder.*
 import scala.collection.mutable.HashMap
 import maf.modular.AnalysisEntry
 import maf.modular.ModAnalysis
@@ -34,25 +33,6 @@ case class Loadable[T](val load: (T) => Unit)(using val decoder: Decoder[T])
  *   The type of expression used in the analysis
  */
 trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
-    /**
-     * Get the decoder that will be used to decode your analysis.
-     *
-     * This will influence how the analysis will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getDecoder: AbstractDecoder
-
-    /**
-     * Get the decoder that will be used to decode your analysis.
-     *
-     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
-     * this key, and should therefore not be used here.
-     *
-     * This will influence how the analysis will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getKeyDecoder: AbstractDecoder
-
     /** Decode an analysis. */
     given analysisDecoder: Decoder[Load[Expr]] with
         override def read(reader: Reader): Load[Expr] =
@@ -63,17 +43,18 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
             return Load.this
 
     private var load = Set[String]()
-    private given excludedAnalysisDecoder: EncapsulatedDecoder[Load[Expr]] with
-        override val decoder: AbstractDecoder = Load.this.getDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): Load[Expr] =
+    private given excludedAnalysisDecoder: MapDecoder[Load[Expr]] with
+        override def read(reader: Reader): Load[Expr] =
+            reader.start()
             val loaded = HashMap[String, Boolean]()
             for (key, value) <- loadInfo do
                 if load.contains(key) then
-                    val result = reader.readMember(key)(using value.decoder, decoder)
+                    val result = reader.readMember(key)(using value.decoder)
                     if result.hasValue then
                         value.load(result.value)
                         loaded.addOne((key, true))
             for (key, value) <- loadInfo do if load.contains(key) && !loaded.contains(key) then value.load(reader.getMember(key))
+            reader.close()
             return Load.this
 
     override def load(filename: String): Unit =
@@ -115,6 +96,4 @@ trait LoadModF
     with LoadDependency[SchemeExp]
     with LoadAddrDependency[SchemeExp]
     with LoadGlobalStore[SchemeExp]
-    with LoadModularSchemeLattices:
-    def getDecoder: AbstractDecoder = new MapDecoder
-    def getKeyDecoder: AbstractDecoder = new MapDecoder
+    with LoadModularSchemeLattices

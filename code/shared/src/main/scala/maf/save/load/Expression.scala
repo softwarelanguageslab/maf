@@ -1,7 +1,5 @@
 package maf.save
 
-import maf.save.EncapsulatedDecoder.*
-
 import maf.core.Expression
 import io.bullet.borer.Decoder
 import maf.language.scheme.SchemeExp
@@ -20,6 +18,7 @@ import maf.language.scheme.SchemeLetStar
 import maf.language.scheme.SchemeAssert
 import io.bullet.borer.Reader
 import scala.collection.mutable.HashMap
+import io.bullet.borer.derivation.CompactMapBasedCodecs
 
 /**
  * The base trait for decoding expressions.
@@ -33,25 +32,6 @@ import scala.collection.mutable.HashMap
  *   The type of expression used in the analysis
  */
 trait LoadExpressions[Expr <: Expression] extends Load[Expr]:
-    /**
-     * Get the decoder that will be used to decode expressions.
-     *
-     * This will influence how expressions will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getExpressionDecoder: AbstractDecoder = getDecoder
-
-    /**
-     * Get the decoder that will be used to decode expressions.
-     *
-     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
-     * this key, and should therefore not be used here.
-     *
-     * This will influence how expressions will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getExpressionKeyDecoder: AbstractDecoder = getKeyDecoder
-
     given expressionDecoder: Decoder[Expr]
 
 /**
@@ -90,43 +70,44 @@ trait LoadExpressionID[Expr <: Expression] extends Load[Expr] with LoadActualExp
 
 trait LoadExpressionIntID[Expr <: Expression] extends LoadExpressionID[Expr]:
     private val expressions: HashMap[Int, Expr] = HashMap[Int, Expr]()
-    override protected given expressionSetDecoder: EncapsulatedDecoder[Set[Expr]] with
-        override def decoder: AbstractDecoder = getExpressionKeyDecoder
-        override protected def readEncapsulated(reader: Reader)(using decoder: AbstractDecoder): Set[Expr] =
-            return reader.readUntilBeforeBreak(
+    override protected given expressionSetDecoder: MapDecoder[Set[Expr]] with
+        override def read(reader: Reader): Set[Expr] =
+            reader.start()
+            val expressions = reader.readUntilBeforeBreak(
               Set[Expr](),
               (expressions: Set[Expr]) =>
-                  val expression = reader.readMember[Expr]()(using actualExpressionDecoder, decoder)
+                  val expression = reader.readMember[Expr]()(using actualExpressionDecoder)
                   val key = expression.key.toInt
                   LoadExpressionIntID.this.expressions.addOne((key, expression.value))
                   expressions + (expression.value)
             )
+            reader.close()
+            return expressions
     override protected given expressionIDDecoder: Decoder[Expr] with
         override def read(reader: Reader): Expr =
             if reader.hasInt then return expressions(reader.readInt())
             else reader.read[Expr]()(using actualExpressionDecoder)
 
 trait LoadSchemeSubExpressions extends LoadExpressions[SchemeExp] with LoadPosition[SchemeExp]:
-    private val compDecoder = getExpressionDecoder
-    given Decoder[SchemeValue] = AbstractDecoder.deriveDecoder(compDecoder)
-    given Decoder[maf.language.sexp.Value] = AbstractDecoder.deriveAllDecoders(compDecoder)
-    given Decoder[SchemeFuncall] = AbstractDecoder.deriveDecoder[SchemeFuncall](compDecoder)
-    given Decoder[SchemeVar] = AbstractDecoder.deriveDecoder[SchemeVar](compDecoder)
-    given Decoder[SchemeLambda] = AbstractDecoder.deriveDecoder[SchemeLambda](compDecoder)
-    given Decoder[SchemeVarArgLambda] = AbstractDecoder.deriveDecoder[SchemeVarArgLambda](compDecoder)
-    given Decoder[SchemeLambdaExp] = AbstractDecoder.deriveDecoder[SchemeLambdaExp](compDecoder)
-    given Decoder[SchemeLetrec] = AbstractDecoder.deriveDecoder[SchemeLetrec](compDecoder)
-    given Decoder[SchemeAssert] = AbstractDecoder.deriveDecoder[SchemeAssert](compDecoder)
-    given Decoder[SchemeLet] = AbstractDecoder.deriveDecoder[SchemeLet](compDecoder)
-    given Decoder[SchemeIf] = AbstractDecoder.deriveDecoder[SchemeIf](compDecoder)
-    given Decoder[SchemeSet] = AbstractDecoder.deriveDecoder[SchemeSet](compDecoder)
-    given Decoder[SchemeBegin] = AbstractDecoder.deriveDecoder[SchemeBegin](compDecoder)
-    given Decoder[SchemeLetStar] = AbstractDecoder.deriveDecoder[SchemeLetStar](compDecoder)
+    given Decoder[SchemeValue] = CompactMapBasedCodecs.deriveDecoder
+    given Decoder[maf.language.sexp.Value] = CompactMapBasedCodecs.deriveAllDecoders
+    given Decoder[SchemeFuncall] = CompactMapBasedCodecs.deriveDecoder[SchemeFuncall]
+    given Decoder[SchemeVar] = CompactMapBasedCodecs.deriveDecoder[SchemeVar]
+    given Decoder[SchemeLambda] = CompactMapBasedCodecs.deriveDecoder[SchemeLambda]
+    given Decoder[SchemeVarArgLambda] = CompactMapBasedCodecs.deriveDecoder[SchemeVarArgLambda]
+    given Decoder[SchemeLambdaExp] = CompactMapBasedCodecs.deriveDecoder[SchemeLambdaExp]
+    given Decoder[SchemeLetrec] = CompactMapBasedCodecs.deriveDecoder[SchemeLetrec]
+    given Decoder[SchemeAssert] = CompactMapBasedCodecs.deriveDecoder[SchemeAssert]
+    given Decoder[SchemeLet] = CompactMapBasedCodecs.deriveDecoder[SchemeLet]
+    given Decoder[SchemeIf] = CompactMapBasedCodecs.deriveDecoder[SchemeIf]
+    given Decoder[SchemeSet] = CompactMapBasedCodecs.deriveDecoder[SchemeSet]
+    given Decoder[SchemeBegin] = CompactMapBasedCodecs.deriveDecoder[SchemeBegin]
+    given Decoder[SchemeLetStar] = CompactMapBasedCodecs.deriveDecoder[SchemeLetStar]
 
 trait LoadSchemeExpressions extends LoadActualExprs[SchemeExp] with LoadSchemeSubExpressions:
-    override protected given actualExpressionDecoder: EncapsulatedDecoder[SchemeExp] with
-        override val decoder = getExpressionKeyDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): SchemeExp =
+    override protected given actualExpressionDecoder: MapDecoder[SchemeExp] with
+        override def read(reader: Reader): SchemeExp =
+            reader.start()
             val expression = reader.readMembers[SchemeExp](
               Array(
                 ("funcall", summon[Decoder[SchemeFuncall]]),
@@ -143,4 +124,5 @@ trait LoadSchemeExpressions extends LoadActualExprs[SchemeExp] with LoadSchemeSu
                 ("letStar", summon[Decoder[SchemeLetStar]]),
               )
             )
-            expression.value
+            reader.close()
+            return expression.value

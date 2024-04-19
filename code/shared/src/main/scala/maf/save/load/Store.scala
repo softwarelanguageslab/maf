@@ -9,7 +9,6 @@ import maf.language.scheme.SchemeExp
 import maf.lattice.HMapKey
 import maf.lattice.HMap
 import io.bullet.borer.Reader
-import maf.save.EncapsulatedDecoder.*
 import maf.language.scheme.lattices.ModularSchemeLattice
 import maf.lattice.Concrete
 import maf.lattice.ConstantPropagation
@@ -29,22 +28,6 @@ import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
  *   The type of expression used in the analysis
  */
 trait LoadValue[Expr <: Expression] extends Load[Expr] with AbstractDomain[Expr]:
-    /**
-     * Get the decoder that will be used to decode values.
-     *
-     * This will influence how values will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]] decoder.
-     */
-    def getValueDecoder: AbstractDecoder = getDecoder
-
-    /**
-     * Get the decoder that will be used to decode values.
-     *
-     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
-     * this key, and should therefore not be used here.
-     *
-     * This will influence how values will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]] decoder.
-     */
-    def getValueKeyDecoder: AbstractDecoder = getKeyDecoder
     given valueDecoder: Decoder[Value]
 
 /* Trait to decode lattices.
@@ -60,32 +43,15 @@ trait LoadLattice[Expr <: Expression] extends Load[Expr]:
      */
     type Lattice[T] = ConstantPropagation.L[T] | Concrete.L[T]
 
-    /**
-     * Get the decoder that will be used to decode lattices.
-     *
-     * This will influence how lattices will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getLatticeDecoder: AbstractDecoder = getDecoder
-
-    /**
-     * Get the decoder that will be used to decode lattices.
-     *
-     * This decoder is used to decode objects where the key is important, when you want to e.g. decode a type from the key, some decoders might ignore
-     * this key, and should therefore not be used here.
-     *
-     * This will influence how lattices will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getLatticeKeyDecoder: AbstractDecoder = getKeyDecoder
-
     /** Returns a map that links a key to a specific decoder. */
     def latticeDecoders[T: Decoder] = Set[(String, Decoder[_ <: Lattice[T]])](("constant", constantLatticeDecoder[T]))
 
-    given latticeDecoder[P[T] <: Lattice[T], T: Decoder]: EncapsulatedDecoder[P[T]] with
-        override def decoder: AbstractDecoder = getLatticeKeyDecoder
-        override protected def readEncapsulated(reader: Reader)(using d: AbstractDecoder): P[T] =
-            reader.readMembers[P[T]](latticeDecoders.toArray.asInstanceOf[Array[(String, io.bullet.borer.Decoder[? <: P[T]])]]).value
+    given latticeDecoder[P[T] <: Lattice[T], T: Decoder]: MapDecoder[P[T]] with
+        override def read(reader: Reader): P[T] =
+            reader.start()
+            val lattice = reader.readMembers[P[T]](latticeDecoders.toArray.asInstanceOf[Array[(String, io.bullet.borer.Decoder[? <: P[T]])]])
+            reader.close()
+            return lattice.value
 
     given constantLatticeDecoder[T: Decoder]: Decoder[ConstantPropagation.L[T]] with
         override def read(reader: Reader): ConstantPropagation.L[T] =
@@ -151,47 +117,48 @@ trait LoadModularSchemeLattices
         override def read(reader: Reader): (HMapKey, SchemeLattice#Prim) =
             return (modularLattice.PrimT, new modularLattice.Prim(reader.read[Set[String]]()))
 
-    given EncapsulatedDecoder[(SchemeLambdaExp, Env)] with
-        override def decoder: AbstractDecoder = getValueDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (SchemeLambdaExp, Env) =
+    given MapDecoder[(SchemeLambdaExp, Env)] with
+        override def read(reader: Reader): (SchemeLambdaExp, Env) =
+            reader.start()
             val expression = reader.readMember[SchemeExp]("expression").asInstanceOf[ReadValue[String, SchemeLambdaExp]]
             val address = reader.readMember[Env]("address")
+            reader.close()
             return (expression.value, address.value)
 
-    given EncapsulatedArrayDecoder[(HMapKey, SchemeLattice#Clo)]() with
-        override def decoder: AbstractDecoder = getValueDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, SchemeLattice#Clo) =
-            return (modularLattice.CloT,
-                    new modularLattice.Clo(
-                      reader.readUntilBeforeBreak[Set[(SchemeLambdaExp, Env)]](Set[(SchemeLambdaExp, Env)](),
-                                                                               (closures) => closures + (reader.read[(SchemeLambdaExp, Env)]())
-                      )
-                    )
+    given ArrayDecoder[(HMapKey, SchemeLattice#Clo)]() with
+        override def read(reader: Reader): (HMapKey, SchemeLattice#Clo) =
+            reader.start()
+            val closures = reader.readUntilBeforeBreak[Set[(SchemeLambdaExp, Env)]](Set[(SchemeLambdaExp, Env)](),
+                                                                                    (closures) => closures + (reader.read[(SchemeLambdaExp, Env)]())
             )
+            reader.close()
+            return (modularLattice.CloT, new modularLattice.Clo(closures))
 
-    given EncapsulatedArrayDecoder[(HMapKey, SchemeLattice#Pointer)]() with
-        override def decoder: AbstractDecoder = getValueDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, SchemeLattice#Pointer) =
-            return (modularLattice.PointerT,
-                    new modularLattice.Pointer(reader.readUntilBeforeBreak[Set[Address]](Set(), (pointers) => pointers + (reader.read[Address]())))
-            )
+    given ArrayDecoder[(HMapKey, SchemeLattice#Pointer)]() with
+        override def read(reader: Reader): (HMapKey, SchemeLattice#Pointer) =
+            reader.start()
+            val pointers = reader.readUntilBeforeBreak[Set[Address]](Set(), (pointers) => pointers + (reader.read[Address]()))
+            reader.close()
+            return (modularLattice.PointerT, new modularLattice.Pointer(pointers))
 
-    given EncapsulatedDecoder[(HMapKey, SchemeLattice#Cons)]() with
-        override def decoder: AbstractDecoder = getValueDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, SchemeLattice#Cons) =
+    given MapDecoder[(HMapKey, SchemeLattice#Cons)]() with
+        override def read(reader: Reader): (HMapKey, SchemeLattice#Cons) =
+            reader.start()
             val car = reader.readMember[SchemeLattice#L]("car")
             val cdr = reader.readMember[SchemeLattice#L]("cdr")
+            reader.close()
             return (modularLattice.ConsT, new modularLattice.Cons(car.value, cdr.value))
 
-    given EncapsulatedDecoder[(HMapKey, SchemeLattice#Vec)] with LoadMapToArray with
-        override def decoder: AbstractDecoder = getValueDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, SchemeLattice#Vec) =
+    given MapDecoder[(HMapKey, SchemeLattice#Vec)] with LoadMapToArray with
+        override def read(reader: Reader): (HMapKey, SchemeLattice#Vec) =
+            reader.start()
             val size = reader.readMember[Lattice[BigInt]]("size").value.asInstanceOf[LoadModularSchemeLattices.this.modularLatticeWrapper.I]
             val elements =
                 reader
                     .readMember[Map[Lattice[BigInt], SchemeLattice#L]]("elements")
                     .value
                     .asInstanceOf[Map[LoadModularSchemeLattices.this.modularLatticeWrapper.I, SchemeLattice#L]]
+            reader.close()
             return (modularLattice.VecT, new modularLattice.Vec(size, elements))
 
     given nilLatticeDecoder: Decoder[(HMapKey, modularLattice.Nil.type)] with
@@ -215,26 +182,22 @@ trait LoadModularSchemeLattices
  *   The type of expression used in the analysis
  */
 trait LoadModularDomain extends LoadValue[SchemeExp] with ModularSchemeDomain:
-    /**
-     * Get the decoder that will be used to decode an hMap.
-     *
-     * This will influence how an hMap will be decoded, this can be e.g. a [[MapDecoder map-based]] decoder or an [[ArrayDecoder array-based]]
-     * decoder.
-     */
-    def getHMapDecoder: AbstractDecoder = new ArrayDecoder
-
     /** Returns a map that links a key to a specific decoder. */
     def hMapDecoders = Set[(String, Decoder[_ <: (HMapKey, Any)])]()
 
-    given EncapsulatedDecoder[(HMapKey, Any)] with
-        override def decoder: AbstractDecoder = getValueKeyDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): (HMapKey, Any) =
-            reader.readMembers(hMapDecoders.toArray).value
+    given MapDecoder[(HMapKey, Any)] with
+        override def read(reader: Reader): (HMapKey, Any) =
+            reader.start()
+            val hmap = reader.readMembers(hMapDecoders.toArray)
+            reader.close()
+            return hmap.value
 
-    override given valueDecoder: EncapsulatedDecoder[HMap] with
-        override def decoder: AbstractDecoder = getHMapDecoder
-        override protected def readEncapsulated(reader: Reader)(using AbstractDecoder): HMap =
-            return new HMap(reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map(), (hMap) => hMap + reader.readMember[(HMapKey, Any)]().value))
+    override given valueDecoder: ArrayDecoder[HMap] with
+        override def read(reader: Reader): HMap =
+            reader.start()
+            val hmap = reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map(), (hMap) => hMap + reader.readMember[(HMapKey, Any)]().value)
+            reader.close()
+            return new HMap(hmap)
 
 /**
  * Trait to decode the global store.
