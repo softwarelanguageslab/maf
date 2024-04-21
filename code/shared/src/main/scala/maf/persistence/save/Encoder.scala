@@ -126,6 +126,9 @@ trait AbstractEncoder[T] extends Encoder[T]:
      */
     def closeEncapsulation(writer: Writer): Writer = writer.writeBreak()
 
+    /** [TODO: description] */
+    def encodeOption[T: Encoder](writer: Writer, key: String, option: Option[T]): Writer
+
     extension (writer: Writer)
         /**
          * Close the encapsulation.
@@ -171,6 +174,9 @@ trait AbstractEncoder[T] extends Encoder[T]:
         def writeMember[T: Encoder](value: T): Writer =
             writeKey(writer)
             writeValue(writer, value)
+
+        def writeMember[T: Encoder](key: String, value: Option[T]): Writer =
+            encodeOption(writer, key, value)
 
         /** [TODO: description] */
         def start() =
@@ -261,6 +267,9 @@ trait MapEncoder[T] extends AbstractEncoder[T]:
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
     override def openEncapsulation(writer: Writer): Writer = writer.writeMapStart()
     override def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeMapOpen(amount)
+    override def encodeOption[T: Encoder](writer: Writer, key: String, option: Option[T]): Writer =
+        if option.isDefined then writer.writeMember(key, option.get)
+        writer
 
 /**
  * Encoder that uses arrays to encode values.
@@ -286,6 +295,10 @@ trait ArrayEncoder[T] extends AbstractEncoder[T]:
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
     override def openEncapsulation(writer: Writer): Writer = writer.writeArrayStart()
     override def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeArrayOpen(amount)
+    override def encodeOption[T: Encoder](writer: Writer, key: String, option: Option[T]): Writer =
+        writer.writeArrayOpen(if option.isDefined then 1 else 0)
+        if option.isDefined then writer.write(option.get)
+        writer.writeBreak()
 
 /**
  * Encoder that uses arrays to encode values, but preserves keys.
@@ -339,6 +352,9 @@ trait ArrayKeyEncoder[T] extends ArrayEncoder[T]:
      */
     def writeKey[T: Encoder](writer: Writer, key: T): Writer = writer.write(key)
     override def writeValue[T: Encoder](writer: Writer, value: T): Writer = writer.write(value)
+    override def encodeOption[T: Encoder](writer: Writer, key: String, option: Option[T]): Writer =
+        if option.isDefined then writer.writeMember(key, option.get)
+        writer
 
     extension (writer: Writer)
         /**

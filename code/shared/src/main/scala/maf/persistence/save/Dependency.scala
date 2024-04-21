@@ -105,8 +105,7 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponents[SchemeExp] 
         override def write(writer: Writer, address: VarAddr[EncodeContext]): Writer =
             writer.start()
             writer.writeMember("id", address.id)
-            if address.ctx.asInstanceOf[Option[EncodeContext]].isDefined then
-                writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
+            writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]])
             writer.close()
 
     given MapEncoder[ReturnAddr[Component]] with
@@ -120,8 +119,7 @@ trait SaveSchemeAddr extends SaveAddr[SchemeExp] with SaveComponents[SchemeExp] 
         override def write(writer: Writer, address: PtrAddr[EncodeContext]): Writer =
             writer.start()
             writer.writeMember("expression", address.exp.asInstanceOf[SchemeExp])
-            if address.ctx.asInstanceOf[Option[EncodeContext]].isDefined then
-                writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]].get)
+            writer.writeMember("context", address.ctx.asInstanceOf[Option[EncodeContext]])
             writer.close()
 
     override given addressEncoder: MapEncoder[Address] with
