@@ -10,6 +10,7 @@ import io.bullet.borer.Reader
 import scala.collection.mutable.HashMap
 import maf.modular.AnalysisEntry
 import maf.modular.ModAnalysis
+import scala.collection.mutable.ListBuffer
 
 /**
  * Contains info about the top-level objects that need to be loaded.
@@ -46,14 +47,13 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
     private given excludedAnalysisDecoder: MapDecoder[Load[Expr]] with
         override def read(reader: Reader): Load[Expr] =
             reader.start()
-            val loaded = HashMap[String, Boolean]()
+            var loadResults = ListBuffer[() => Unit]()
             for (key, value) <- loadInfo do
                 if load.contains(key) then
                     val result = reader.readMember(key)(using value.decoder)
-                    if result.hasValue then
-                        value.load(result.value)
-                        loaded.addOne((key, true))
-            for (key, value) <- loadInfo do if load.contains(key) && !loaded.contains(key) then value.load(reader.getMember(key))
+                    if result.hasValue then value.load(result.value)
+                    else loadResults = loadResults.addOne(() => value.load(result.value))
+            for loadRes <- loadResults do loadRes()
             reader.close()
             return Load.this
 

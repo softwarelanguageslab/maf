@@ -14,6 +14,7 @@ import io.bullet.borer.Reader
 import io.bullet.borer.Decoder
 import maf.core.Identifier
 import maf.core.Identity
+import scala.collection.mutable.HashMap
 
 /**
  * Trait to decode address dependencies.
@@ -101,11 +102,11 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
         override def read(reader: Reader): VarAddr[DecodeContext] =
             reader.start()
             val name = reader.readMember[Identifier]("id")
-            val context = reader.readMember[DecodeContext]("context")
+            val context = reader.readOptionMember[DecodeContext]("context")
             reader.close()
             return new VarAddr[DecodeContext](
               name.value,
-              if context.hasValue then Some(context.value).asInstanceOf[DecodeContext] else None.asInstanceOf[DecodeContext]
+              context.value.asInstanceOf[DecodeContext]
             )
 
     given Decoder[PrmAddr] with
@@ -115,9 +116,9 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
         override def read(reader: Reader): PtrAddr[DecodeContext] =
             reader.start()
             val expression = reader.readMember[SchemeExp]("expression")
-            val context = reader.readMember[DecodeContext]("context")
+            val context = reader.readOptionMember[DecodeContext]("context")
             reader.close()
             return new PtrAddr[DecodeContext](
               expression.value,
-              if context.hasValue then Some(context.value).asInstanceOf[DecodeContext] else None.asInstanceOf[DecodeContext]
+              context.value.asInstanceOf[DecodeContext]
             )

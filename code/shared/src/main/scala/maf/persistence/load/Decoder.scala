@@ -112,6 +112,35 @@ class ReadValue[K, V](private val forceRead: (key: Option[K]) => Unit):
     /** The [[ReadValue]] that will be updated when this [[ReadValue]] gets a key or a value. */
     def updateValue = _updateValue
 
+class ReadOptionValue[K, V](private val forceRead: (key: Option[K]) => Unit) extends ReadValue[K, Option[V]](forceRead):
+    /**
+     * Create a new key-value pair with a key and a value.
+     *
+     * @param _key
+     *   The key of the key-value pair
+     * @param _value
+     *   The value of the key-value pair
+     */
+    def this(_key: K, _value: Option[V]) =
+        this((key: Option[K]) => ())
+        this._key = Some(_key)
+        this._value = Some(_value)
+
+    /**
+     * Create a new key-value pair with a key.
+     *
+     * @param _key
+     *   The key of the key-value pair
+     */
+    def this(_key: K, forceRead: (key: Option[K]) => Unit) =
+        this(forceRead)
+        this._key = Some(_key)
+
+    override def value: Option[V] =
+        if _value.isEmpty then return None
+        return _value.get
+    override def hasValue: Boolean = true
+
 /**
  * Base trait for an decoder.
  *
@@ -131,16 +160,6 @@ class ReadValue[K, V](private val forceRead: (key: Option[K]) => Unit):
  *   stored, you should use an decoder that writes them down like [[MapDecoder]] or [[ArrayKeyDecoder]] if you want to use an array.
  */
 trait AbstractDecoder[T] extends Decoder[T]:
-    /** The values that have already been decoded, with their key. */
-    protected val values = new HashMap[String, Any]()
-
-    /**
-     * The key that should be read next.
-     *
-     * This is the key that is given through [[readKey]].
-     */
-    protected var currentKey: Option[String] = None
-
     /**
      * Read a key from the given reader.
      *
@@ -205,27 +224,6 @@ trait AbstractDecoder[T] extends Decoder[T]:
     def readValue[T: Decoder](reader: Reader): ReadValue[String, T]
 
     /**
-     * Returns an already read value using a given key.
-     *
-     * @param key
-     *   The key for which to get the value
-     *
-     * @throws NoSuchElementException
-     *   If this key hasn't been read yet, and therefore doesn't have a value.
-     */
-    def getValue[T](key: String): T =
-        if !values.contains(key) then throw new NoSuchElementException(s"The key '${key}' does not have a value.")
-        values.get(key).get.asInstanceOf[T]
-
-    /**
-     * Returns whether or not a given key has a value yet.
-     *
-     * @param key
-     *   The key to check if it has a value
-     */
-    def hasValue(key: String): Boolean = values.contains(key)
-
-    /**
      * Opens either a new map or a new array, based on the decoder that is used.
      *
      * @note
@@ -287,6 +285,13 @@ trait AbstractDecoder[T] extends Decoder[T]:
      */
     def forceReadValue(reader: Reader): Unit
 
+    /** [TODO: description] */
+    def decodeOption[T: Decoder](reader: Reader): Option[T]
+
+    given [T: Decoder]: Decoder[Option[T]] with
+        override def read(reader: Reader): Option[T] =
+            return decodeOption[T](reader)
+
     def forceRead(reader: Reader, key: Option[String]) =
         if key.isDefined then forceReadValue(reader, key.get)
         else forceReadValue(reader)
@@ -329,6 +334,15 @@ trait AbstractDecoder[T] extends Decoder[T]:
         def readMember[T: Decoder](): ReadValue[String, T] =
             readKey(reader)
             readValue[T](reader)
+
+        def readOptionMember[T](key: String)(using Decoder[T]): ReadValue[String, Option[T]] =
+            readKey(reader, key)
+            val value = readValue[Option[T]](reader)
+            val optionValue =
+                if value.hasValue then new ReadOptionValue[String, T](value.key, value.value)
+                else new ReadOptionValue[String, T](value.key, forceRead(reader, _))
+            value.updateValue = optionValue;
+            return optionValue
 
         /**
          * Read one of the given key-value pairs.
@@ -377,18 +391,6 @@ trait AbstractDecoder[T] extends Decoder[T]:
             while !reader.hasBreak do res = f(res)
             return res
 
-        /**
-         * Returns an already read value using a given key.
-         *
-         * @param decoder
-         *   The decoder used to decode the value
-         * @throws NoSuchElementException
-         *   If this key hasn't been read yet, and therefore doesn't have a value.
-         */
-        def getMember[T](key: String): T =
-            if !hasValue(key) then forceReadValue(reader, key)
-            getValue[T](key)
-
         /** [TODO: description] */
         def start(): Unit =
             openEncapsulation(reader)
@@ -432,65 +434,79 @@ trait MapDecoder[T] extends AbstractDecoder[T]:
      */
     protected case class ValueDecoder[T](value: ReadValue[String, T], decoder: Decoder[T])
 
-    /** Stores keys that haven't been read yet combined with a decoder to decode the value, and the key-value pair that was returned. */
-    protected val keys = new HashMap[String, ValueDecoder[_]]()
+    /** [TODO: description] */
+    protected class DecoderInfo:
+        val keys: HashMap[String, ValueDecoder[_]] = new HashMap[String, ValueDecoder[_]]()
+        var currentKey: Option[String] = None
+        var decodeKey: Option[String] = None
+        var previous: DecoderInfo = this
 
-    /** The key that was read, and which value should now be read. */
-    protected var decodeKey: Option[String] = None
+    protected var decoderInfo = new DecoderInfo()
 
     /** Read the next key for which the value should be decoded, if there isn't currently a value being decoded */
     protected def readDecodeKey(reader: Reader): Unit =
-        if decodeKey.isEmpty && reader.hasString then decodeKey = Some(reader.readString())
+        if decoderInfo.decodeKey.isEmpty && reader.hasString then decoderInfo.decodeKey = Some(reader.readString())
     override def readKey(reader: Reader): String =
         readDecodeKey(reader)
-        this.currentKey = decodeKey
-        return if decodeKey.isDefined then decodeKey.get else ""
+        decoderInfo.currentKey = decoderInfo.decodeKey
+        return if decoderInfo.decodeKey.isDefined then decoderInfo.decodeKey.get else ""
     override def readKey(reader: Reader, key: String): String =
         readDecodeKey(reader)
-        this.currentKey = Some(key)
+        decoderInfo.currentKey = Some(key)
         return key
     override def readValue[T: Decoder](reader: Reader): ReadValue[String, T] =
-        if currentKey.isEmpty then throw new IllegalStateException("Trying to read a value before reading a key.")
+        if decoderInfo.currentKey.isEmpty then throw new IllegalStateException("Trying to read a value before reading a key.")
 
-        if decodeKey == currentKey then
-            val key = decodeKey.get
-            decodeKey = None
-            currentKey = None
+        if decoderInfo.decodeKey == decoderInfo.currentKey then
+            val key = decoderInfo.decodeKey.get
+            decoderInfo.decodeKey = None
+            decoderInfo.currentKey = None
             val res = reader.read[T]()
-            values.addOne((key, res))
-            if reader.hasString then decodeKey = Some(reader.readString())
-            if decodeKey.isDefined && keys.contains(decodeKey.get) then
-                currentKey = decodeKey
-                val valueDecoder = keys.get(currentKey.get).get
+            if reader.hasString then decoderInfo.decodeKey = Some(reader.readString())
+            if decoderInfo.decodeKey.isDefined && decoderInfo.keys.contains(decoderInfo.decodeKey.get) then
+                decoderInfo.currentKey = decoderInfo.decodeKey
+                val valueDecoder = decoderInfo.keys.get(decoderInfo.currentKey.get).get
                 readValue(reader)(using valueDecoder.decoder)
-            currentKey = None
-            if keys.contains(key) then
-                val valueDecoder = keys.remove(key).get.asInstanceOf[ValueDecoder[T]]
+            decoderInfo.currentKey = None
+            if decoderInfo.keys.contains(key) then
+                val valueDecoder = decoderInfo.keys.remove(key).get.asInstanceOf[ValueDecoder[T]]
                 valueDecoder.value.value = res
                 return valueDecoder.value
             else return new ReadValue[String, T](key, res)
         else
-            val readValue = new ReadValue[String, T](currentKey.get, forceRead(reader, _))
-            keys.addOne((currentKey.get, ValueDecoder(readValue, summon[Decoder[T]])))
-            currentKey = None
+            val readValue = new ReadValue[String, T](decoderInfo.currentKey.get, forceRead(reader, _))
+            decoderInfo.keys.addOne((decoderInfo.currentKey.get, ValueDecoder(readValue, summon[Decoder[T]])))
+            decoderInfo.currentKey = None
             return readValue
-    override def openEncapsulation(reader: Reader): Unit = reader.readMapStart()
-    override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readMapOpen(amount)
-    override def closeEncapsulation[T](reader: Reader): Unit = reader.readBreak()
+    override def openEncapsulation(reader: Reader): Unit =
+        val info = new DecoderInfo()
+        info.previous = decoderInfo
+        decoderInfo = info
+        reader.readMapStart()
+    override def openEncapsulation(reader: Reader, amount: Int): Unit =
+        val info = new DecoderInfo()
+        info.previous = decoderInfo
+        decoderInfo = info
+        reader.readMapOpen(amount)
+    override def closeEncapsulation[T](reader: Reader): Unit =
+        decoderInfo = decoderInfo.previous
+        reader.readBreak()
     override def forceReadValue(reader: Reader, key: String): Unit =
-        while decodeKey.isDefined && !values.contains(key.asInstanceOf[String]) do forceReadValue(reader)
+        while decoderInfo.decodeKey.isDefined do forceReadValue(reader)
     override def forceReadValue(reader: Reader): Unit =
-        val tmpCurrentKey = currentKey
+        val tmpCurrentKey = decoderInfo.currentKey
         readDecodeKey(reader)
-        while decodeKey.isDefined && !keys.contains(decodeKey.get) do
+        while decoderInfo.decodeKey.isDefined && !decoderInfo.keys.contains(decoderInfo.decodeKey.get) do
             reader.skipElement()
-            decodeKey = None
+            decoderInfo.decodeKey = None
             readDecodeKey(reader)
-        if !decodeKey.isDefined then return
-        val valueDecoder = keys.get(decodeKey.get).get
-        currentKey = decodeKey
+        if !decoderInfo.decodeKey.isDefined then return
+        val valueDecoder = decoderInfo.keys.get(decoderInfo.decodeKey.get).get
+        decoderInfo.currentKey = decoderInfo.decodeKey
         readValue(reader)(using valueDecoder.decoder)
-        currentKey = tmpCurrentKey
+        decoderInfo.currentKey = tmpCurrentKey
+    override def decodeOption[T: Decoder](reader: Reader): Option[T] =
+        return Some(reader.read[T]())
 
 /**
  * Decoder that uses arrays to decode values.
@@ -513,6 +529,7 @@ trait MapDecoder[T] extends AbstractDecoder[T]:
 trait ArrayDecoder[T] extends AbstractDecoder[T]:
     /** Used to generate IDs if no key is provided, this is used to store the values. */
     protected var id = -1
+    protected var currentKey: Option[String] = None
     override def readKey(reader: Reader): String = return ""
     override def readKey(reader: Reader, key: String): String =
         currentKey = Some(key)
@@ -523,13 +540,18 @@ trait ArrayDecoder[T] extends AbstractDecoder[T]:
         if reader.hasBreak then throw reader.unexpectedDataItem(key)
         id += 1
         val res = reader.read[T]()
-        values.addOne(key, res)
         return ReadValue[String, T](key, res)
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
     override def closeEncapsulation[T](reader: Reader): Unit = reader.readBreak()
     override def forceReadValue(reader: Reader, key: String): Unit = reader.skipElement()
     override def forceReadValue(reader: Reader): Unit = reader.skipElement()
+    override def decodeOption[T: Decoder](reader: Reader): Option[T] =
+        var res: Option[T] = None
+        reader.readArrayOpen(1)
+        if !reader.hasBreak then res = Some(reader.read[T]())
+        reader.readBreak()
+        return res
 
 /**
  * Decoder that uses arrays to decode values, but preserves keys.
@@ -564,7 +586,6 @@ trait ArrayDecoder[T] extends AbstractDecoder[T]:
 trait ArrayKeyDecoder[T] extends MapDecoder[T]:
     /** The key that was read, and which value should now be read. */
     protected var key: Option[Any] = None
-    protected val keyValues = new HashMap[Any, Any]()
 
     /**
      * Read a key from the given reader.
@@ -609,31 +630,11 @@ trait ArrayKeyDecoder[T] extends MapDecoder[T]:
         val res = reader.read[T]()
         val tmpKey = key
         key = None
-        keyValues.addOne((tmpKey.get, res))
         return ReadValue(tmpKey.get.asInstanceOf[V], res)
     override def openEncapsulation(reader: Reader): Unit = reader.readArrayStart()
     override def openEncapsulation(reader: Reader, amount: Int): Unit = reader.readArrayOpen(amount)
     override def closeEncapsulation[T](reader: Reader): Unit = reader.readBreak()
 
-    /**
-     * Returns an already read value using a given key.
-     *
-     * @throws NoSuchElementException
-     *   If this key hasn't been read yet, and therefore doesn't have a value.
-     */
-    def getValue[T](key: Any): T =
-        if !keyValues.contains(key) then
-            if key.isInstanceOf[String] then return super.getValue(key.asInstanceOf[String])
-            else throw new NoSuchElementException(s"The key '${key}' does not have a value.")
-        return keyValues.get(key).get.asInstanceOf[T]
-
-    /**
-     * Returns whether or not a given key has a value yet.
-     *
-     * @param key
-     *   The key to check if it has a value
-     */
-    def hasValue(key: Any): Boolean = keyValues.contains(key) || (key.isInstanceOf[String] && super.hasValue(key.asInstanceOf[String]))
     extension (reader: Reader)
         /**
          * Reads a key-value pair.

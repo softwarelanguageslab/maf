@@ -21,8 +21,8 @@ import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
  * The base trait for decoding [[AbstractDomain.Value values]].
  *
  * @note
- *   This trait gives the methods needed to decode values, but does not implement them yet, other traits like [[LoaNoContext]] should be mixed in for
- *   the implementation. The trait that should be mixed in depends on the kind of values that is used in your analysis.
+ *   This trait gives the methods needed to decode values, but does not implement them yet, other traits like [[LoadModularDomain]] should be mixed in
+ *   for the implementation. The trait that should be mixed in depends on the kind of values that is used in your analysis.
  *
  * @tparam Expr
  *   The type of expression used in the analysis
@@ -175,8 +175,8 @@ trait LoadModularSchemeLattices
  * Base trait for decoding values as [[ModularSchemeLattice modular scheme lattices]], as defined in [[ModularSchemeDomain]].
  *
  * @note
- *   This trait gives the methods needed to decode values, but does not implement them yet, other traits like [[LoaNoContext]] should be mixed in for
- *   the implementation. The trait that should be mixed in depends on the kind of values that is used in your analysis.
+ *   This trait gives the methods needed to decode values, but does not implement them yet, other traits like [[LoadModularSchemeLattices]] should be
+ *   mixed in for the implementation. The trait that should be mixed in depends on the kind of values that is used in your analysis.
  *
  * @tparam Expr
  *   The type of expression used in the analysis
