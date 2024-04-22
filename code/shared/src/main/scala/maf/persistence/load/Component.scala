@@ -188,7 +188,7 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
             reader.start()
             val value = reader
                 .readMembers[Environment[T]](
-                  Array(("basicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("nestedEnv", summon[Decoder[NestedEnv[T, T]]]))
+                  Array(("basicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("nestedEnvironment", summon[Decoder[NestedEnv[T, T]]]))
                 )
                 .value
             reader.close()
@@ -198,13 +198,14 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
         override def read(reader: Reader): BasicEnvironment[T] = return new BasicEnvironment(
           reader.read[Map[String, Address]]().asInstanceOf[Map[String, T]]
         )
+
     given [T <: Address, K <: Address]: MapDecoder[NestedEnv[T, K]] with
         override def read(reader: Reader): NestedEnv[T, K] =
             reader.start()
             val content = reader.readMember[Map[String, Address]]("content")
-            val rst = reader.readMember[Address]("rst")
+            val rst = reader.readOptionMember[Address]("rst")
             reader.close()
-            return new NestedEnv(content.value.asInstanceOf[Map[String, T]], if rst.hasValue then Some(rst.value.asInstanceOf[K]) else None)
+            return new NestedEnv(content.value.asInstanceOf[Map[String, T]], rst.value.asInstanceOf[Option[K]])
 
 /**
  * The base trait for decoding components only by their ID.
