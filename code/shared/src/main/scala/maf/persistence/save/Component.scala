@@ -230,9 +230,6 @@ trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
 trait SaveStandardSchemeComponents
     extends SaveActualComps[SchemeExp]
     with StandardSchemeModFComponents
-    with AnalysisResults[SchemeExp]
-    with SaveValue[SchemeExp]
-    with SavePosition[SchemeExp]
     with SaveEnvironment[SchemeExp]
     with SaveContext[SchemeExp]
     with SaveExpressions[SchemeExp]:
