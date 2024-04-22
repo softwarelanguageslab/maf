@@ -262,6 +262,6 @@ trait SaveSequentialWorklist[Expr <: Expression] extends SaveWorklist[Expr] with
     override given worklistEncoder: ArrayEncoder[WorkList[Component]] with
         override def write(writer: Writer, worklist: WorkList[Component]): Writer =
             writer.start()
-            val worklistList = workList.toList
+            val worklistList = worklist.toList
             worklistList.foreach(writer.writeMember(_))
             writer.close()
