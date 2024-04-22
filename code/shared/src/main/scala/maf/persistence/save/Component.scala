@@ -175,7 +175,7 @@ trait SaveEnvironment[Expr <: Expression] extends Save[Expr] with SaveAddr[Expr]
         override def write(writer: Writer, env: NestedEnv[Address, Address]): Writer =
             writer.start()
             writer.writeMember("content", env.content)
-            if env.rst.isDefined then writer.writeMember("rst", env.rst.get)
+            writer.writeMember("rst", env.rst)
             writer.close()
 
     given MapEncoder[Environment[Address]] with
