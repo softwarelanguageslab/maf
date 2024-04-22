@@ -312,22 +312,22 @@ trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
             reader.close()
             return components
 
-trait LoadWorklist[Expr <: Expression] extends Load[Expr]:
-    type WorklistComponent
-    given worklistDecoder: Decoder[List[WorklistComponent]]
-    def setWorklist(worklist: List[WorklistComponent]): Unit
+trait LoadWorklist[Expr <: Expression] extends ModAnalysis[Expr] with Load[Expr]:
+    given worklistDecoder: Decoder[WorkList[Component]]
+    def setWorklist(worklist: WorkList[Component]): Unit
+    def newWorklist(components: List[Component]): WorkList[Component]
     override def loadInfo: List[(String, Loadable[_])] =
-        super.loadInfo ++ List(("worklist" -> Loadable((worklist: List[WorklistComponent]) => setWorklist(worklist))))
+        super.loadInfo ++ List(("worklist" -> Loadable((worklist: WorkList[Component]) => setWorklist(worklist))))
 
 trait LoadSequentialWorklist[Expr <: Expression] extends SequentialWorklistAlgorithm[Expr] with LoadWorklist[Expr] with LoadComponents[Expr]:
-    type WorklistComponent = Component
-    given worklistDecoder: ArrayDecoder[List[WorklistComponent]] with
-        override def read(reader: Reader): List[WorklistComponent] =
+    override def setWorklist(worklist: WorkList[Component]): Unit = workList = worklist
+    given worklistDecoder: ArrayDecoder[WorkList[Component]] with
+        override def read(reader: Reader): WorkList[Component] =
             reader.start()
             val worklistComponents = reader.readUntilBeforeBreak(List[Component](), (lst: List[Component]) => lst ++ List(reader.read[Component]()))
             reader.close()
-            return worklistComponents
+            return newWorklist(worklistComponents)
 
 trait LoadFIFOWorklist[Expr <: Expression] extends LoadSequentialWorklist[Expr] with FIFOWorklistAlgorithm[Expr]:
-    def setWorklist(worklist: List[WorklistComponent]): Unit =
-        workList = new FIFOWorkList[WorklistComponent](Queue(), Set()).addAll(worklist)
+    override def newWorklist(components: List[Component]): WorkList[Component] =
+        return FIFOWorkList[Component](components.iterator.to(Iterable))
