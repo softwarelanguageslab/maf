@@ -76,7 +76,7 @@ trait LoadComponents[Expr <: Expression] extends ModAnalysis[Expr] with Load[Exp
  * @tparam Expr
  *   The type of expression used in the analysis
  */
-trait LoadActualComps[Expr <: Expression] extends LoadComponents[Expr]:
+protected trait LoadActualComps[Expr <: Expression] extends LoadComponents[Expr]:
     /** Encodes the actual component. */
     given actualComponentDecoder: Decoder[Component]
 
@@ -97,7 +97,6 @@ trait LoadStandardSchemeComponents
     extends LoadActualComps[SchemeExp]
     with StandardSchemeModFComponents
     with LoadContext[SchemeExp]
-    with LoadPosition[SchemeExp]
     with LoadEnvironment[SchemeExp]
     with LoadExpressions[SchemeExp]:
     override given actualComponentDecoder: Decoder[Component] with
