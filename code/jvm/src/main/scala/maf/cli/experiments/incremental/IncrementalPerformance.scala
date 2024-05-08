@@ -67,7 +67,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
     def runOneTime(analysis: Analysis, block: (Timeout.T, Analysis) => Unit, t: Option[Timeout.T] = None): Option[Double] =
         System.gc()
         val to = t match { // Use a new timeout if none is given. This way, one timeout can be used for the entire warm-up.
-            case None => timeout()
+            case None    => timeout()
             case Some(t) => t
         }
         val time = Timer.timeOnly(block(to, analysis))
@@ -127,24 +127,34 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
             // Initial analysis.
 
-            runNTimes("Warming up initial analysis",
-                () => analysis(program, noOptimisations.disableAsserts()),
-                (timeout, analysis) => analysis.analyzeWithTimeout(timeout), Some(timeout())) // For the warm-up, use always use the same timeout.
+            runNTimes(
+              "Warming up initial analysis",
+              () => analysis(program, noOptimisations.disableAsserts()),
+              (timeout, analysis) => analysis.analyzeWithTimeout(timeout),
+              Some(timeout())
+            ) // For the warm-up, use always use the same timeout.
             val initTs = runNTimes("Measuring initial analysis",
-                () => analysis(program, noOptimisations.disableAsserts()),
-                (timeout, analysis) => analysis.analyzeWithTimeout(timeout), None)
-            if addToResults(file, initTs, initS)
-            then return() // There was a timeout, so return. We cannot do anything anyway here, as probably no incremental updates can be run. TODO maybe remove?
+                                   () => analysis(program, noOptimisations.disableAsserts()),
+                                   (timeout, analysis) => analysis.analyzeWithTimeout(timeout),
+                                   None
+            )
+            if addToResults(file, initTs, initS) then return () // There was a timeout, so return. We cannot do anything anyway here, as probably no incremental updates can be run. TODO maybe remove?
 
             // Full reanalysis.
 
-            runNTimes("Warming up reanalysis",
-                () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
-                (timeout, analysis) => analysis.analyzeWithTimeout(timeout), Some(timeout()))
-             val reanTs = runNTimes("Measuring reanalysis",
-                 () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
-                 (timeout, analysis) => analysis.analyzeWithTimeout(timeout), None)
-             addToResults(file, reanTs, reanS)
+            runNTimes(
+              "Warming up reanalysis",
+              () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
+              (timeout, analysis) => analysis.analyzeWithTimeout(timeout),
+              Some(timeout())
+            )
+            val reanTs = runNTimes(
+              "Measuring reanalysis",
+              () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
+              (timeout, analysis) => analysis.analyzeWithTimeout(timeout),
+              None
+            )
+            addToResults(file, reanTs, reanS)
 
             // Incremental measurements.
 
@@ -156,12 +166,18 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
             initAnalysis.intraComponentAnalysisTimeAcc = 0 // Reset the timer.
 
             configurations.foreach { config =>
-                runNTimes(s"Warming up ${config.toString}",
-                    () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
-                    (timeout, analysis) => analysis.updateAnalysis(timeout), Some(timeout()))
-                val incTs = runNTimes(s"Measuring ${config.toString}",
-                    () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
-                    (timeout, analysis) => analysis.updateAnalysis(timeout), None)
+                runNTimes(
+                  s"Warming up ${config.toString}",
+                  () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
+                  (timeout, analysis) => analysis.updateAnalysis(timeout),
+                  Some(timeout())
+                )
+                val incTs = runNTimes(
+                  s"Measuring ${config.toString}",
+                  () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
+                  (timeout, analysis) => analysis.updateAnalysis(timeout),
+                  None
+                )
                 addToResults(file, incTs, config.toString)
             }
             val lst: List[String] = results.toCSVString(columns = cols).split("\n").nn.toList.map(_.nn)
@@ -228,18 +244,25 @@ object IncrementalSchemeModXPerformance:
         val outDir: String = "benchOutput/"
 
         val (curatedSuite, generatedSuite) = args.count match {
-            case Some(n) => (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
+            case Some(n) =>
+                (IncrementalSchemeBenchmarkPrograms.sequentialCurated.take(n), IncrementalSchemeBenchmarkPrograms.sequentialGenerated.take(n))
             case None => (IncrementalSchemeBenchmarkPrograms.sequentialCurated, IncrementalSchemeBenchmarkPrograms.sequentialGenerated)
         }
 
         if args.typeLattice then
-            if args.curated then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), curatedSuite, args, outDir + "type-curated-performance.csv")
-            if args.generated then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), generatedSuite, args, outDir + "type-generated-performance.csv")
-            if args.files.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), args.files, args, outDir + "type-file-performance.csv")
+            if args.curated then
+                runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), curatedSuite, args, outDir + "type-curated-performance.csv")
+            if args.generated then
+                runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), generatedSuite, args, outDir + "type-generated-performance.csv")
+            if args.files.nonEmpty then
+                runPerformanceExperiment(new IncrementalSchemeModFTypePerformance(), args.files, args, outDir + "type-file-performance.csv")
 
         if args.cpLattice then
-            if args.curated then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), curatedSuite, args, outDir + "cp-curated-performance.csv")
-            if args.generated then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), generatedSuite, args, outDir + "cp-generated-performance.csv")
-            if args.files.nonEmpty then runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), args.files, args, outDir + "cp-file-performance.csv")
+            if args.curated then
+                runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), curatedSuite, args, outDir + "cp-curated-performance.csv")
+            if args.generated then
+                runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), generatedSuite, args, outDir + "cp-generated-performance.csv")
+            if args.files.nonEmpty then
+                runPerformanceExperiment(new IncrementalSchemeModFCPPerformance(), args.files, args, outDir + "cp-file-performance.csv")
     end main
 end IncrementalSchemeModXPerformance

@@ -82,9 +82,10 @@ object CountFalsePositives:
                     case Error =>
                         (List(), table.add(name, s"${analysis}_blames", "ERROR"))
 
-                val remainingMetrics = metrics.map(_.name).toSet -- addedMetrics.toSet
+                //val remainingMetrics = metrics.map(_.name).toSet -- addedMetrics.toSet
 
-                remainingMetrics.foldLeft(resTable)((table, metric) => table.add(name, s"${analysis}_${metric}", "-"))
+                resTable
+            // remainingMetrics.foldLeft(resTable)((table, metric) => table.add(name, s"${analysis}_${metric}", "-"))
 
             }
         }

@@ -126,7 +126,7 @@ trait ScvAAMProvidesSemantics extends ScvAAMSemantics:
                         .flattenM
 
                 case f @ EvalGuardsFrame(values, collectedContracts, contract :: remaining, monIdns, env, Some(next)) =>
-                    pushFrameEv(contract, env, sto, next, f.copy(collectedContracts = vlu :: collectedContracts, remaining, monIdns, env), t, ext)
+                    pushFrameEv(contract, env, sto, next, f.copy(values, vlu :: collectedContracts, remaining, monIdns, env), t, ext)
 
                 case _ => super.continue(vlu, sto, kon, t, ext)
         }.flattenM

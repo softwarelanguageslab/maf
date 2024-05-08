@@ -15,6 +15,11 @@ import smtlib.theories.Core.False
 import maf.language.AScheme.ASchemeValues.Future
 import maf.language.AScheme.ASchemeLattice
 
+object ModularSchemeLattice: 
+  /** Counts the number of different consituent values a sparse 
+   *  product was created for. */
+  val inhabitedCounts: List[Int] = List()
+
 /**
  * Defines a Scheme lattice based on other lattices. Example usage: val address = NameAddress val lattice = new ModularSchemeLattice[SchemeExp,
  * address.A, Type.S, Type.B, Type.I, Type.R, Type.C, Type.Sym] Now `lattice.L` is a SchemeLattice, of which the implicit for the typeclass is

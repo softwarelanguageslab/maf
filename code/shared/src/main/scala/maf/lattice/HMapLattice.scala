@@ -43,6 +43,10 @@ trait AbstractWrapType[T: Lattice, W <: Product1[T]] extends AbstractType[T, W]:
     def unwrap(v: Wrap): Abstract = v._1
 
 case class HMap(contents: Map[HMapKey, Any]):
+    // Update the counters for tracking how many elements
+    // each created HMap contains
+    HMapInstrument.addCount(contents.size)
+
     /** Inject the given concrete value in the abstract domain */
     def inject(k: HMapKey, v: k.Inject): HMap =
         val abstr = k.inject(v)
@@ -109,6 +113,19 @@ case class HMap(contents: Map[HMapKey, Any]):
 
     override def toString: String =
         if contents.isEmpty then "⊥" else s"{${contents.values.map(_.toString).mkString(",")}}"
+
+/** Provides counters that track the evolution of values created using the HMap */
+object HMapInstrument:
+    /** Reset all the counters required for instrumentation */
+    def reset(): Unit =
+        count = List()
+
+    /** Number of elements in each created HMap over the run-time of the program */
+    var count: List[Int] = List()
+
+    /** Add a new size to the counter list */
+    def addCount(size: Int): Unit =
+        count = size :: count
 
 object HMap:
     /**
