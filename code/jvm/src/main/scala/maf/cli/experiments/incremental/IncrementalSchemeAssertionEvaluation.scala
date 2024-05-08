@@ -31,7 +31,7 @@ trait IncrementalSchemeAssertionEvaluation extends IncrementalExperiment[SchemeE
 
     def parse(string: String): SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(string))
 
-    override var catchErrors: Boolean = true // Put to false for debugging.
+    catchErrors = true // Put to false for debugging.
 
     def runAnalysis(
         file: String,

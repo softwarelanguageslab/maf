@@ -118,14 +118,14 @@ case class HMap(contents: Map[HMapKey, Any]):
 object HMapInstrument:
     /** Reset all the counters required for instrumentation */
     def reset(): Unit =
-        count = List()
+        count = Map()
 
     /** Number of elements in each created HMap over the run-time of the program */
-    var count: List[Int] = List()
+    var count: Map[Int, Int] = Map()
 
     /** Add a new size to the counter list */
     def addCount(size: Int): Unit =
-        count = size :: count
+      count = count.updatedWith(size)(v => Some(v.map(_ + 1).getOrElse(1)))
 
 object HMap:
     /**

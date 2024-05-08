@@ -14,7 +14,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     name := "maf",
     organization := "soft",
     version := "2.0",
-    scalaVersion := "3.2.1",
+    scalaVersion := "3.4.1",
     logLevel := Level.Error,
     //crossScalaVersions ++= Seq("2.13.6", "3.1.0"),
     /** Dependencies */

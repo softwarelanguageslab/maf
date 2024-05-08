@@ -221,7 +221,7 @@ class IncrementalSchemeModConcTypePerformance() extends IncrementalSchemePerform
             new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modconc-type.csv"
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+    configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 class IncrementalSchemeModConcCPPerformance() extends IncrementalSchemePerformance:
     override def analysis(e: SchemeExp, config: IncrementalConfiguration): Analysis = new IncrementalModConcAnalysisCPLattice(e, config)
@@ -230,7 +230,7 @@ class IncrementalSchemeModConcCPPerformance() extends IncrementalSchemePerforman
             new IntraAnalysis(cmp) with IncrementalSmallStepIntra with KCFAIntra with IncrementalGlobalStoreIntraAnalysis with SplitPerformanceIntra
     }
     val outputFile: String = s"performance/modconc-CP.csv"
-    override val configurations: List[IncrementalConfiguration] = allConfigurations.filterNot(_.cyclicValueInvalidation)
+    configurations = allConfigurations.filterNot(_.cyclicValueInvalidation)
 
 object IncrementalSchemeModXPerformance:
 
