@@ -11,6 +11,7 @@ import scala.collection.mutable.HashMap
 import maf.modular.AnalysisEntry
 import maf.modular.ModAnalysis
 import scala.collection.mutable.ListBuffer
+import io.bullet.borer.Cbor
 
 /**
  * Contains info about the top-level objects that need to be loaded.
@@ -38,18 +39,18 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
     given analysisDecoder: Decoder[Load[Expr]] with
         override def read(reader: Reader): Load[Expr] =
             val loadInfo = Load.this.loadInfo
-            load = loadInfo.map(_._1).toSet
+            loadSet = loadInfo.map(_._1).toSet
             reader.read[Load[Expr]]()
-            load = Set[String]()
+            loadSet = Set[String]()
             return Load.this
 
-    private var load = Set[String]()
-    private given excludedAnalysisDecoder: MapDecoder[Load[Expr]] with
+    protected var loadSet = Set[String]()
+    protected given excludedAnalysisDecoder: MapDecoder[Load[Expr]] with
         override def read(reader: Reader): Load[Expr] =
             reader.start()
             var loadResults = ListBuffer[() => Unit]()
             for (key, value) <- loadInfo do
-                if load.contains(key) then
+                if loadSet.contains(key) then
                     val result = reader.readMember(key)(using value.decoder)
                     if result.hasValue then value.load(result.value)
                     else loadResults = loadResults.addOne(() => value.load(result.value))
@@ -57,11 +58,15 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
             reader.close()
             return Load.this
 
+    def startLoad(): Unit = return
+
     override def load(filename: String): Unit =
+        startLoad()
         val bytes = Files.readAllBytes(Paths.get(filename))
         if bytes != null then Json.decode(bytes).to[Load[Expr]](using analysisDecoder).value
 
     override def load(filename: String, load: Set[String]): Unit =
+        startLoad()
         val bytes = Files.readAllBytes(Paths.get(filename))
         if bytes != null then Json.decode(bytes).to[Load[Expr]](using excludedAnalysisDecoder).value
 
@@ -78,13 +83,31 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
      */
     def loadInfo: List[(String, Loadable[_])] = List(("name", Loadable((name: String) => ())))
 
+trait LoadCbor[Expr <: Expression] extends Load[Expr]:
+    override def load(filename: String): Unit =
+        startLoad()
+        val bytes = Files.readAllBytes(Paths.get(filename))
+        if bytes != null then Cbor.decode(bytes).to[Load[Expr]](using analysisDecoder).value
+
+    override def load(filename: String, load: Set[String]): Unit =
+        startLoad()
+        val bytes = Files.readAllBytes(Paths.get(filename))
+        if bytes != null then Json.decode(bytes).to[Load[Expr]](using excludedAnalysisDecoder).value
+
 trait LoadInitialized[Expr <: Expression] extends ModAnalysis[Expr] with Load[Expr]:
     override def loadInfo: List[(String, Loadable[?])] =
-        super.loadInfo ++ List(("initialized", Loadable((initialized: Boolean) => analysisInitialized = initialized)))
+        super.loadInfo ++ List(
+          ("initialized",
+           Loadable((initialized: Boolean) =>
+               if !visited.contains(initialComponent) then visited = visited + initialComponent
+               analysisInitialized = initialized
+           )
+          )
+        )
 
 /** The trait used to load the modF analysis. */
 trait LoadModF
-    extends Load[SchemeExp]
+    extends LoadCbor[SchemeExp]
     with LoadInitialized[SchemeExp]
     with LoadExpressionIntID[SchemeExp]
     with LoadSchemeExpressions
@@ -96,4 +119,4 @@ trait LoadModF
     with LoadDependency[SchemeExp]
     with LoadAddrDependency[SchemeExp]
     with LoadGlobalStore[SchemeExp]
-    with LoadModularSchemeLattices
+    with LoadModularSchemeDomain
