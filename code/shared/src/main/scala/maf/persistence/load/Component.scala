@@ -86,7 +86,11 @@ protected trait LoadActualComps[Expr <: Expression] extends LoadComponents[Expr]
  * Implementation of [[LoadComponents]]
  */
 trait LoadActualComponents[Expr <: Expression] extends LoadActualComps[Expr]:
-    override given componentDecoder: Decoder[Component] = actualComponentDecoder
+    override given componentDecoder: Decoder[Component] with
+        override def read(reader: Reader): Component =
+            val component = reader.read[Component]()(using actualComponentDecoder)
+            if !visited.contains(component) then visited = visited + component
+            return component
 
 /**
  * Load standard scheme components
@@ -99,7 +103,7 @@ trait LoadStandardSchemeComponents
     with LoadContext[SchemeExp]
     with LoadEnvironment[SchemeExp]
     with LoadExpressions[SchemeExp]:
-    override given actualComponentDecoder: Decoder[Component] with
+    override given actualComponentDecoder: MapDecoder[Component] with
         override def read(reader: Reader): Component =
             if reader.tryReadString("main") then return initialComponent
             else reader.read[SchemeModFComponent.Call[DecodeContext]]()
@@ -141,7 +145,7 @@ trait LoadContext[Expr <: Expression] extends Load[Expr]:
 /**
  * Trait to decode the context for an analysis with no context.
  *
- * This will expect 'ε' when reading context.
+ * This will expect 'None' when reading context.
  *
  * @tparam Expr
  *   The type of expression used in the analysis
@@ -150,7 +154,7 @@ trait LoadNoContext[Expr <: Expression] extends LoadContext[Expr]:
     override type DecodeContext = NoContext.type
     override given contextDecoder: Decoder[DecodeContext] with
         override def read(reader: Reader): DecodeContext =
-            if !reader.tryReadString("ε") then return reader.unexpectedDataItem("ε")
+            if !reader.tryReadString("None") then return reader.unexpectedDataItem("None")
             return NoContext
 
 /**
@@ -228,6 +232,10 @@ trait LoadComponentID[Expr <: Expression] extends LoadActualComps[Expr] with Loa
     /** Map that connects component IDs to the component. */
     var components = HashMap[ID, Component]()
 
+    override def startLoad(): Unit =
+        super.startLoad()
+        components = HashMap[ID, Component]()
+
     /**
      * Register a loaded component, this allows you to also reference components using their ID using the [[components]] map.
      *
@@ -260,11 +268,14 @@ trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] wit
         if component != initialComponent then
             components.addOne(component.asInstanceOf[SchemeModFComponent.Call[DecodeContext]].clo._1.idn.pos, component)
 
-    override protected given componentSetDecoder: MapDecoder[Set[Component]] with
+    override protected given componentSetDecoder: ArrayDecoder[Set[Component]] with
         override def read(reader: Reader): Set[Component] =
             reader.start()
             val components =
-                reader.readUntilBeforeBreak(Set[Component](), (components: Set[Component]) => components + reader.readMember[Component]().value)
+                reader.readUntilBeforeBreak(
+                  Set[Component](),
+                  (components: Set[Component]) => components + reader.readMember[Component]()(using actualComponentDecoder).value
+                )
             reader.close()
             return components
 
