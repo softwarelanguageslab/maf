@@ -395,6 +395,16 @@ trait AbstractDecoder[T] extends Decoder[T]:
         def start(): Unit =
             openEncapsulation(reader)
 
+        def start(amount: Int): Unit = openEncapsulation(reader, amount)
+
+        def open(): Unit =
+            readKey(reader);
+            openEncapsulation(reader);
+
+        def open(amount: Int): Unit =
+            readKey(reader);
+            openEncapsulation(reader, amount);
+
         /** [TODO: description] */
         def close(): Unit =
             readUntilBeforeBreak(None,
