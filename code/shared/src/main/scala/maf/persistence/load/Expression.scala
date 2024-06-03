@@ -19,6 +19,7 @@ import maf.language.scheme.SchemeAssert
 import io.bullet.borer.Reader
 import scala.collection.mutable.HashMap
 import io.bullet.borer.derivation.CompactMapBasedCodecs
+import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
 
 /**
  * The base trait for decoding expressions.
@@ -68,8 +69,17 @@ trait LoadExpressionID[Expr <: Expression] extends Load[Expr] with LoadActualExp
     /** Decodes an expression using an ID */
     protected given expressionIDDecoder: Decoder[Expr]
 
+trait LoadMainSchemeBody extends BaseSchemeModFSemanticsM with LoadExpressions[SchemeExp]:
+    override def loadInfo: List[(String, Loadable[?])] =
+        super.loadInfo ++ List(("mainBody", Loadable((exp: SchemeExp) => mainBody = exp)))
+
 trait LoadExpressionIntID[Expr <: Expression] extends LoadExpressionID[Expr]:
-    private val expressions: HashMap[Int, Expr] = HashMap[Int, Expr]()
+    private var expressions: HashMap[Int, Expr] = HashMap[Int, Expr]()
+
+    override def startLoad(): Unit =
+        super.startLoad()
+        expressions = HashMap[Int, Expr]()
+
     override protected given expressionSetDecoder: MapDecoder[Set[Expr]] with
         override def read(reader: Reader): Set[Expr] =
             reader.start()
