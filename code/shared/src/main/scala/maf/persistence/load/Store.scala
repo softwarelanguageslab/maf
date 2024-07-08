@@ -51,9 +51,9 @@ trait LoadLattice[Expr <: Expression] extends Load[Expr]:
     given latticeDecoder[P[T] <: Lattice[T], T: Decoder]: MapDecoder[P[T]] with
         override def read(reader: Reader): P[T] =
             reader.start()
-            val lattice = reader.readMembers[P[T]](latticeDecoders.toArray.asInstanceOf[Array[(String, io.bullet.borer.Decoder[? <: P[T]])]])
+            val lattice = reader.readMembers[P[T]](latticeDecoders.toMap.asInstanceOf[Map[String, io.bullet.borer.Decoder[? <: P[T]]]])
             reader.close()
-            return lattice.value
+            return lattice._2
 
     given constantLatticeDecoder[T: Decoder]: Decoder[ConstantPropagation.L[T]] with
         override def read(reader: Reader): ConstantPropagation.L[T] =
@@ -164,10 +164,10 @@ trait LoadModularSchemeDomain
     given MapDecoder[(SchemeLambdaExp, Env)] with
         override def read(reader: Reader): (SchemeLambdaExp, Env) =
             reader.start()
-            val expression = reader.readMember[SchemeExp]("expression").asInstanceOf[ReadValue[String, SchemeLambdaExp]]
+            val expression = reader.readMember[SchemeExp]("expression").asInstanceOf[SchemeLambdaExp]
             val address = reader.readMember[Env]("address")
             reader.close()
-            return (expression.value, address.value)
+            return (expression, address)
 
     given ArrayDecoder[(HMapKey, LoadSchemeLattice#Clo)]() with
         override def read(reader: Reader): (HMapKey, LoadSchemeLattice#Clo) =
@@ -191,16 +191,15 @@ trait LoadModularSchemeDomain
             val car = reader.readMember[LoadSchemeLattice#L]("car")
             val cdr = reader.readMember[LoadSchemeLattice#L]("cdr")
             reader.close()
-            return (modularLattice.ConsT, new modularLattice.Cons(car.value, cdr.value))
+            return (modularLattice.ConsT, new modularLattice.Cons(car, cdr))
 
     given MapDecoder[(HMapKey, LoadSchemeLattice#Vec)] with LoadMapToArray with
         override def read(reader: Reader): (HMapKey, LoadSchemeLattice#Vec) =
             reader.start()
-            val size = reader.readMember[I]("size").value
+            val size = reader.readMember[I]("size")
             val elements =
                 reader
                     .readMember[Map[I, LoadSchemeLattice#L]]("elements")
-                    .value
                     .asInstanceOf[Map[LoadModularSchemeDomain.this.modularLatticeWrapper.I, LoadSchemeLattice#L]]
             reader.close()
             return (modularLattice.VecT, new modularLattice.Vec(size, elements))
@@ -232,14 +231,14 @@ trait LoadModularDomain extends LoadValue[SchemeExp] with ModularSchemeDomain:
     given MapDecoder[(HMapKey, Any)] with
         override def read(reader: Reader): (HMapKey, Any) =
             reader.start()
-            val hmap = reader.readMembers(hMapDecoders.toArray)
+            val hmap = reader.readMembers(hMapDecoders.toMap)
             reader.close()
-            return hmap.value
+            return hmap._2
 
     override given valueDecoder: ArrayDecoder[HMap] with
         override def read(reader: Reader): HMap =
             reader.start()
-            val hmap = reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map(), (hMap) => hMap + reader.readMember[(HMapKey, Any)]().value)
+            val hmap = reader.readUntilBeforeBreak[Map[HMapKey, Any]](Map(), (hMap) => hMap + reader.readMember[(HMapKey, Any)]()._2)
             reader.close()
             return new HMap(hmap)
 

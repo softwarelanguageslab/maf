@@ -20,6 +20,7 @@ import io.bullet.borer.Reader
 import scala.collection.mutable.HashMap
 import io.bullet.borer.derivation.CompactMapBasedCodecs
 import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
+import maf.util.Writer.write
 
 /**
  * The base trait for decoding expressions.
@@ -87,9 +88,9 @@ trait LoadExpressionIntID[Expr <: Expression] extends LoadExpressionID[Expr]:
               Set[Expr](),
               (expressions: Set[Expr]) =>
                   val expression = reader.readMember[Expr]()(using actualExpressionDecoder)
-                  val key = expression.key.toInt
-                  LoadExpressionIntID.this.expressions.addOne((key, expression.value))
-                  expressions + (expression.value)
+                  val key = expression._1.toInt
+                  LoadExpressionIntID.this.expressions.addOne((key, expression._2))
+                  expressions + (expression._2)
             )
             reader.close()
             return expressions
@@ -118,21 +119,21 @@ trait LoadSchemeExpressions extends LoadActualExprs[SchemeExp] with LoadSchemeSu
     override protected given actualExpressionDecoder: MapDecoder[SchemeExp] with
         override def read(reader: Reader): SchemeExp =
             reader.start()
-            val expression = reader.readMembers[SchemeExp](
-              Array(
-                ("funcall", summon[Decoder[SchemeFuncall]]),
-                ("var", summon[Decoder[SchemeVar]]),
-                ("lambda", summon[Decoder[SchemeLambda]]),
-                ("argLambda", summon[Decoder[SchemeVarArgLambda]]),
-                ("value", summon[Decoder[SchemeValue]]),
-                ("letrec", summon[Decoder[SchemeLetrec]]),
-                ("assert", summon[Decoder[SchemeAssert]]),
-                ("let", summon[Decoder[SchemeLet]]),
-                ("schemeIf", summon[Decoder[SchemeIf]]),
-                ("set", summon[Decoder[SchemeSet]]),
-                ("begin", summon[Decoder[SchemeBegin]]),
-                ("letStar", summon[Decoder[SchemeLetStar]]),
-              )
-            )
+            val map: Map[String, Decoder[_ <: SchemeExp]] =
+                Map(
+                  "funcall" -> summon[Decoder[SchemeFuncall]],
+                  "var" -> summon[Decoder[SchemeVar]],
+                  "lambda" -> summon[Decoder[SchemeLambda]],
+                  "argLambda" -> summon[Decoder[SchemeVarArgLambda]],
+                  "value" -> summon[Decoder[SchemeValue]],
+                  "letrec" -> summon[Decoder[SchemeLetrec]],
+                  "assert" -> summon[Decoder[SchemeAssert]],
+                  "let" -> summon[Decoder[SchemeLet]],
+                  "schemeIf" -> summon[Decoder[SchemeIf]],
+                  "set" -> summon[Decoder[SchemeSet]],
+                  "begin" -> summon[Decoder[SchemeBegin]],
+                  "letStar" -> summon[Decoder[SchemeLetStar]],
+                )
+            val expression = reader.readMembers[SchemeExp](map)
             reader.close()
-            return expression.value
+            return expression._2

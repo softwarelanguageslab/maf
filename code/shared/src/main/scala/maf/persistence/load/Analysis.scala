@@ -48,13 +48,10 @@ trait Load[Expr <: Expression] extends AnalysisEntry[Expr]:
     protected given excludedAnalysisDecoder: MapDecoder[Load[Expr]] with
         override def read(reader: Reader): Load[Expr] =
             reader.start()
-            var loadResults = ListBuffer[() => Unit]()
             for (key, value) <- loadInfo do
                 if loadSet.contains(key) then
                     val result = reader.readMember(key)(using value.decoder)
-                    if result.hasValue then value.load(result.value)
-                    else loadResults = loadResults.addOne(() => value.load(result.value))
-            for loadRes <- loadResults do loadRes()
+                    value.load(result)
             reader.close()
             return Load.this
 
@@ -107,12 +104,15 @@ trait LoadInitialized[Expr <: Expression] extends ModAnalysis[Expr] with Load[Ex
 
 /** The trait used to load the modF analysis. */
 trait LoadModF
-    extends LoadCbor[SchemeExp]
+    extends Load[SchemeExp]
     with LoadInitialized[SchemeExp]
-    with LoadExpressionIntID[SchemeExp]
     with LoadSchemeExpressions
+    // with LoadExpressionIntID[SchemeExp]
+    with LoadActualExpressions[SchemeExp]
+    with LoadMainSchemeBody
     with LoadComponents[SchemeExp]
-    with LoadComponentIntID[SchemeExp]
+    // with LoadComponentIntID[SchemeExp]
+    with LoadActualComponents[SchemeExp]
     with LoadStandardSchemeComponents
     with LoadNoContext[SchemeExp]
     with LoadSchemeAddr

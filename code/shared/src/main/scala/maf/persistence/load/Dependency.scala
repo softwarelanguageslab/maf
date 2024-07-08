@@ -51,9 +51,9 @@ trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadCompone
     given MapDecoder[Dependency] with
         override def read(reader: Reader): Dependency =
             reader.start()
-            val dependency = reader.readMembers(dependencyDecoders.toArray).value
+            val dependency = reader.readMembers(dependencyDecoders.toMap)
             reader.close()
-            return dependency
+            return dependency._2
 
 /**
  * The base trait for decoding addresses.
@@ -67,12 +67,12 @@ trait LoadDependency[Expr <: Expression] extends LoadMapToArray with LoadCompone
  */
 trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
     /** Returns a map that links a key to a specific decoder. */
-    def addressDecoders = List[(String, Decoder[_ <: Address])]()
+    def addressDecoders = Set[(String, Decoder[_ <: Address])]()
 
     given MapDecoder[Address] with
         override def read(reader: Reader): Address =
             reader.start()
-            val address = reader.readMembers(addressDecoders.toArray).value
+            val address = reader.readMembers(addressDecoders.toMap)._2
             reader.close()
             return address
 
@@ -83,7 +83,7 @@ trait LoadAddr[Expr <: Expression] extends Load[Expr] with LoadPosition[Expr]:
  */
 trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] with LoadComponents[SchemeExp] with LoadExpressions[SchemeExp]:
     override def addressDecoders =
-        super.addressDecoders ++ List(
+        super.addressDecoders ++ Set(
           ("varAddr", summon[Decoder[VarAddr[DecodeContext]]]),
           ("prmAddr", summon[Decoder[PrmAddr]]),
           ("returnAddr", summon[Decoder[ReturnAddr[Component]]]),
@@ -93,10 +93,10 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
     given MapDecoder[ReturnAddr[Component]] with
         override def read(reader: Reader): ReturnAddr[Component] =
             reader.start()
-            val component = reader.readMember[Component]("component")
             val identity = reader.readMember[Identity]("identity")
+            val component = reader.readMember[Component]("component")
             reader.close()
-            return new ReturnAddr[Component](component.value, identity.value)
+            return new ReturnAddr[Component](component, identity)
 
     given MapDecoder[VarAddr[DecodeContext]] with
         override def read(reader: Reader): VarAddr[DecodeContext] =
@@ -105,8 +105,8 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
             val context = reader.readOptionMember[DecodeContext]("context")
             reader.close()
             return new VarAddr[DecodeContext](
-              name.value,
-              context.value.asInstanceOf[DecodeContext]
+              name,
+              context.asInstanceOf[DecodeContext]
             )
 
     given Decoder[PrmAddr] with
@@ -119,6 +119,6 @@ trait LoadSchemeAddr extends LoadAddr[SchemeExp] with LoadContext[SchemeExp] wit
             val context = reader.readOptionMember[DecodeContext]("context")
             reader.close()
             return new PtrAddr[DecodeContext](
-              expression.value,
-              context.value.asInstanceOf[DecodeContext]
+              expression,
+              context.asInstanceOf[DecodeContext]
             )

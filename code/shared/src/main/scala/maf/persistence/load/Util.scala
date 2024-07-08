@@ -41,6 +41,6 @@ trait LoadMapToArray:
             val elements = mutable.Set[(K, V)]()
             while !reader.hasBreak do
                 val res = reader.readMember[K, V]()(using keyDecoder, valueDecoder)
-                elements.add(res.key, res.value)
+                elements.add(res._1, res._2)
             reader.close()
             return elements.toMap

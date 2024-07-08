@@ -45,6 +45,7 @@ import scala.collection.immutable.Queue
 import maf.core.worklist.FIFOWorkList
 import maf.modular.ModAnalysis
 import io.bullet.borer.derivation.CompactMapBasedCodecs
+import java.{util => ju}
 
 /**
  * The base trait for decoding components.
@@ -111,11 +112,11 @@ trait LoadStandardSchemeComponents
     given MapDecoder[SchemeModFComponent.Call[DecodeContext]] with
         override def read(reader: Reader): SchemeModFComponent.Call[DecodeContext] =
             reader.start()
-            val lambda = reader.readMember[SchemeExp]("lambda").asInstanceOf[ReadValue[String, SchemeLambdaExp]]
+            val lambda = reader.readMember[SchemeExp]("lambda").asInstanceOf[SchemeLambdaExp]
             val environment = reader.readMember[Environment[Address]]("environment")
             val context = reader.readMember[DecodeContext]("context")
             reader.close()
-            return new SchemeModFComponent.Call[DecodeContext]((lambda.value, environment.value), context.value)
+            return new SchemeModFComponent.Call[DecodeContext]((lambda, environment), context)
 
 /**
  * The base trait for decoding context.
@@ -192,11 +193,10 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
             reader.start()
             val value = reader
                 .readMembers[Environment[T]](
-                  Array(("basicEnvironment", summon[Decoder[BasicEnvironment[T]]]), ("nestedEnvironment", summon[Decoder[NestedEnv[T, T]]]))
+                  Map("basicEnvironment" -> summon[Decoder[BasicEnvironment[T]]], "nestedEnvironment" -> summon[Decoder[NestedEnv[T, T]]])
                 )
-                .value
             reader.close()
-            return value
+            return value._2
 
     given [T <: Address]: Decoder[BasicEnvironment[T]] with
         override def read(reader: Reader): BasicEnvironment[T] = return new BasicEnvironment(
@@ -209,7 +209,7 @@ trait LoadEnvironment[Expr <: Expression] extends Load[Expr] with LoadAddr[Expr]
             val content = reader.readMember[Map[String, Address]]("content")
             val rst = reader.readOptionMember[Address]("rst")
             reader.close()
-            return new NestedEnv(content.value.asInstanceOf[Map[String, T]], rst.value.asInstanceOf[Option[K]])
+            return new NestedEnv(content.asInstanceOf[Map[String, T]], rst.asInstanceOf[Option[K]])
 
 /**
  * The base trait for decoding components only by their ID.
@@ -274,7 +274,7 @@ trait LoadStandardSchemeComponentPosition extends LoadComponentID[SchemeExp] wit
             val components =
                 reader.readUntilBeforeBreak(
                   Set[Component](),
-                  (components: Set[Component]) => components + reader.readMember[Component]()(using actualComponentDecoder).value
+                  (components: Set[Component]) => components + reader.readMember[Component]()(using actualComponentDecoder)._2
                 )
             reader.close()
             return components
@@ -316,9 +316,9 @@ trait LoadComponentIntID[Expr <: Expression] extends LoadComponentID[Expr]:
               Set[Component](),
               (components: Set[Component]) =>
                   val component = reader.readMember[Component]()(using componentDecoder)
-                  val key = component.key.toInt
-                  LoadComponentIntID.this.components.addOne((key, component.value))
-                  components + (component.value)
+                  val key = component._1.toInt
+                  LoadComponentIntID.this.components.addOne((key, component._2))
+                  components + (component._2)
             )
             reader.close()
             return components
