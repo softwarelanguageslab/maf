@@ -53,12 +53,14 @@ trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
             for (key, value) <- saveInfo do if saveSet.contains(key) then writer.writeMember(key, value.value)(using value.encoder)
             writer.close()
 
+    def startSave(): Unit = return
     override def save(filename: String): Unit =
+        startSave()
         val res = Json.encode(this)(using analysisEncoder).toByteArray
         Files.write(Paths.get(filename), res)
 
     override def save(filename: String, save: Set[String]): Unit =
-        this.save = save
+        startSave()
         this.saveSet = save
         val res = Json.encode(this)(using excludedAnalysisEncoder).toByteArray
         this.saveSet = Set[String]()

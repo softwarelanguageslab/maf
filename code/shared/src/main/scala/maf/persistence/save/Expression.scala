@@ -113,6 +113,11 @@ trait SaveExpressionIntID[Expr <: Expression] extends SaveExpressionID[Expr] wit
             if expressions.contains(expr) then writer.write(expressions(expr))
             else writer.write(expr)(using actualExpressionEncoder)
 
+    override def startSave(): Unit =
+        id = 0
+        expressions = HashMap[Expr, Int]()
+        super.startSave()
+
 /**
  * Trait to encode scheme expressions recursively using integer IDs.
  *
@@ -178,6 +183,11 @@ trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] wi
         override def write(writer: Writer, expr: SchemeExp): Writer =
             if expressions.contains(expr) then writer.write(expressions(expr))
             else writer.write(expr)(using actualExpressionEncoder)
+
+    override def startSave(): Unit =
+        id = 0
+        expressions = HashMap[SchemeExp, Int]()
+        super.startSave()
 
 /**
  * Save the expressions normally.

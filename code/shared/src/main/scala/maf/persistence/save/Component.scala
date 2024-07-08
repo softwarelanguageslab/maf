@@ -130,6 +130,11 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveActualComps[Expr] with 
     override given componentIDEncoder: Encoder[Component] with
         override def write(writer: Writer, component: Component): Writer = writer.write(components(component))
 
+    override def startSave(): Unit =
+        id = 0
+        components = HashMap[Component, Int]()
+        super.startSave()
+
 /**
  * Trait that encodes components using their position.
  *
