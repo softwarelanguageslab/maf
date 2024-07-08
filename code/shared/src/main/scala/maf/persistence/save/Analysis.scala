@@ -11,6 +11,11 @@ import maf.save.save.SaveSchemeExpressions
 import maf.save.save.SaveRecursiveSchemeExpressionsIntID
 import maf.modular.AnalysisEntry
 import maf.modular.ModAnalysis
+import maf.save.save.SaveWorklistExpressionsID
+import io.bullet.borer.Cbor
+import maf.save.save.SaveActualExpressions
+import maf.save.save.SaveExpressionIntID
+import maf.save.save.SaveMainSchemeBody
 
 /**
  * Contains info about the top-level objects that need to be saved.
@@ -41,11 +46,11 @@ trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
             for (key, value) <- saveInfo do writer.writeMember(key, value.value)(using value.encoder)
             writer.close()
 
-    private var save = Set[String]()
-    private given excludedAnalysisEncoder: MapEncoder[Save[Expr]] with
+    protected var saveSet = Set[String]()
+    protected given excludedAnalysisEncoder: MapEncoder[Save[Expr]] with
         override def write(writer: Writer, value: Save[Expr]): Writer =
             writer.start()
-            for (key, value) <- saveInfo do if save.contains(key) then writer.writeMember(key, value.value)(using value.encoder)
+            for (key, value) <- saveInfo do if saveSet.contains(key) then writer.writeMember(key, value.value)(using value.encoder)
             writer.close()
 
     override def save(filename: String): Unit =
@@ -54,8 +59,9 @@ trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
 
     override def save(filename: String, save: Set[String]): Unit =
         this.save = save
+        this.saveSet = save
         val res = Json.encode(this)(using excludedAnalysisEncoder).toByteArray
-        this.save = Set[String]()
+        this.saveSet = Set[String]()
         Files.write(Paths.get(filename), res)
 
     /**
@@ -70,6 +76,28 @@ trait Save[Expr <: Expression] extends AnalysisEntry[Expr]:
      * }}}
      */
     def saveInfo: List[(String, Savable[_])] = List(("name", Savable(analysisName)))
+
+/**
+ * Trait to allow you to save analyses using CBOR instead of JSON.
+ *
+ * Implementing this allows you to save your analysis, by default it will only save the name of your analysis and you should mixin other traits like
+ * [[SaveComponents]] to also save components.
+ *
+ * @tparam Expr
+ *   The type of expression used in the analysis
+ */
+trait SaveCbor[Expr <: Expression] extends Save[Expr]:
+    override def save(filename: String): Unit =
+        startSave()
+        val res = Cbor.encode(this)(using analysisEncoder).toByteArray
+        Files.write(Paths.get(filename), res)
+
+    override def save(filename: String, save: Set[String]): Unit =
+        startSave()
+        this.saveSet = save
+        val res = Cbor.encode(this)(using excludedAnalysisEncoder).toByteArray
+        this.saveSet = Set[String]()
+        Files.write(Paths.get(filename), res)
 
 trait SaveInitialized[Expr <: Expression] extends ModAnalysis[Expr] with Save[Expr]:
     override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("initialized", Savable(analysisInitialized)))
