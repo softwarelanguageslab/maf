@@ -296,7 +296,7 @@ trait ArrayEncoder[T] extends AbstractEncoder[T]:
     override def openEncapsulation(writer: Writer): Writer = writer.writeArrayStart()
     override def openEncapsulation(writer: Writer, amount: Int): Writer = writer.writeArrayOpen(amount)
     override def encodeOption[T: Encoder](writer: Writer, key: String, option: Option[T]): Writer =
-        writer.writeArrayOpen(if option.isDefined then 1 else 0)
+        writer.writeArrayStart()
         if option.isDefined then writer.write(option.get)
         writer.writeBreak()
 
