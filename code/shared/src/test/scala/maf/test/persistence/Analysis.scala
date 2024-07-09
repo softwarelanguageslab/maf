@@ -25,7 +25,6 @@ import maf.save.AbstractDecoder
 import maf.save.AbstractEncoder
 import maf.save.ArrayDecoder
 import maf.save.ArrayEncoder
-import maf.save.ArrayKeyDecoder
 import maf.save.ArrayKeyEncoder
 import maf.save.Load
 import maf.save.LoadActualComponents
@@ -39,7 +38,6 @@ import maf.save.MapEncoder
 import maf.save.Save
 import maf.save.SaveActualComponents
 import maf.save.SaveComponents
-import maf.save.SaveModularDomain
 import maf.save.SaveStandardSchemeComponents
 import maf.save.save.SaveActualExpressions
 import maf.save.save.SaveExpressions
@@ -84,6 +82,51 @@ import maf.save.SaveModF
 import maf.save.LoadModF
 import maf.save.SaveEnvironment
 import maf.save.LoadEnvironment
+import maf.modular.GlobalStore
+import maf.save.SaveInitialized
+import maf.save.SaveWorklist
+import maf.save.SaveGlobalStore
+import maf.save.SaveDependency
+import maf.save.SaveAddrDep
+import maf.save.SaveModularSchemeDomain
+import maf.save.SaveSchemeConstantPropagationDomain
+import maf.save.SaveSchemeAddr
+import maf.save.SaveNoContext
+import maf.save.SaveSequentialWorklist
+import maf.save.LoadInitialized
+import maf.save.LoadWorklist
+import maf.save.LoadGlobalStore
+import maf.save.LoadDependency
+import maf.save.LoadAddrDependency
+import maf.save.LoadModularSchemeDomain
+import maf.save.LoadSchemeConstantPropagationDomain
+import maf.save.LoadSchemeAddr
+import maf.save.LoadFIFOWorklist
+import maf.save.LoadNoContext
+import maf.save.SaveStandardSchemeComponentPosition
+import maf.save.LoadStandardSchemeComponentPosition
+import maf.save.SaveComponentIntID
+import maf.save.LoadComponentIntID
+import maf.save.save.SaveRecursiveSchemeExpressionsIntID
+import maf.save.LoadExpressionIntID
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFActual
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFPositionComponents
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDComponents
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDExpressions
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDs
+import org.scalatest.compatible.Assertion
+import maf.save.save.SaveExpressionIntID
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDSchemeExpressions
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFActualCbor
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFPositionComponentsCbor
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDComponentsCbor
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDExpressionsCbor
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDSchemeExpressionsCbor
+import maf.test.persistence.PersistenceSpecAnalysises.SimpleModFIDsCbor
+import maf.save.SaveCbor
+import maf.save.LoadCbor
+import maf.save.save.SaveMainSchemeBody
+import maf.save.LoadMainSchemeBody
 
 trait Generator:
     protected case class StringValue(str: String)
@@ -262,8 +305,8 @@ trait PersistenceSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Tab
                 writer.writeBreak()
 
     trait LoadStringAddr[Expr <: Expression] extends LoadAddr[Expr]:
-        override def addressDecoders: List[(String, Decoder[? <: Address])] =
-            List(("==TESTING== NO ADDRESS", summon[Decoder[PrmAddr]]))
+        override def addressDecoders: Set[(String, Decoder[? <: Address])] =
+            Set(("==TESTING== NO ADDRESS", summon[Decoder[PrmAddr]]))
         given Decoder[PrmAddr] with
             override def read(reader: borer.Reader): PrmAddr =
                 val str = reader.readString()
@@ -354,9 +397,11 @@ trait PersistenceSpec extends AnyPropSpec with ScalaCheckPropertyChecks with Tab
         }
 
 class PersistAnalysisSpec extends PersistenceSpec:
-    val programsStream = Files.list(Paths.get("test/R5RS/ad"))
-    val programsList = if programsStream == null then List() else programsStream.iterator().nn.asScala.toList
-    val programs = Gen.oneOf[Path](programsList)
+    val programs = Gen.oneOf[Path](getFilesList("test/R5RS/ad").appendedAll(getFilesList("test/R5RS/various")))
+
+    def getFilesList(folder: String): List[Path] =
+        val programsStream = Files.list(Paths.get(folder))
+        return if programsStream == null then List() else programsStream.iterator().nn.asScala.toList
 
     class ContextInsensitiveSchemeAnalysis(program: SchemeExp)
         extends SaveAnalysis(program)
@@ -385,61 +430,286 @@ class PersistAnalysisSpec extends PersistenceSpec:
         analysis.load(saveFile.toString())
         return analysis
 
-    private def testSchemePrograms[ASSERTION, Analysis <: AnalysisEntry[SchemeExp]](
+    private def testSchemePrograms[ASSERTION, Analysis <: ModAnalysis[SchemeExp]](
         anl: (program: SchemeExp) => Analysis,
-        testCorrectness: (result: Analysis, loadedResult: Analysis) => ASSERTION
+        testCorrectness: (result: Analysis, loadedResult: Analysis) => ASSERTION,
+        runTest: ((Path) => Unit) => Unit,
+        limitHeight: Int
       ): Unit =
-        forAll(programs) { (path: Path) =>
-            Given(path.toString())
+        runTest((path: Path) =>
             val program = CSchemeParser.parseProgram(Reader.loadFile(path.toString()))
-            val analysis = anl(program)
-            val saveFile = save(program, analysis)
+            whenever(program.height < limitHeight) {
+                Given(path.toString())
+                val analysis = anl(program)
+                val saveFile = save(program, analysis)
 
-            val loadAnalysis = load(anl(program), saveFile)
+                val loadAnalysis = load(anl(program), saveFile)
 
-            Files.deleteIfExists(saveFile)
-            testCorrectness(analysis, loadAnalysis)
+                Files.deleteIfExists(saveFile)
+                testCorrectness(analysis, loadAnalysis)
+            }
+        )
+
+    private def testAnalysis[ASSERTION, Analysis <: GlobalStore[SchemeExp]](
+        name: String,
+        anl: (program: SchemeExp) => GlobalStore[SchemeExp] & BaseSchemeModFSemanticsM,
+        runTest: ((Path) => Unit) => Unit = (test: (Path) => Unit) => forAll(programs) { (path: Path) => test(path) },
+        limitHeight: Int = Int.MaxValue
+      ) =
+        property(s"A programs result should remain the same when encoded and decoded for a $name") {
+            testSchemePrograms(
+              anl,
+              (result: GlobalStore[SchemeExp], loadedResult: GlobalStore[SchemeExp]) =>
+                  loadedResult.result shouldBe defined
+                  loadedResult.result.get should equal(result.result.get),
+              runTest,
+              limitHeight
+            )
         }
 
-    property("A programs result should remain the same when encoded and decoded for a context insensitive scheme analysis") {
-        testSchemePrograms(
-          (program: SchemeExp) => new ContextInsensitiveSchemeAnalysis(program),
-          (result: ContextInsensitiveSchemeAnalysis, loadedResult: ContextInsensitiveSchemeAnalysis) =>
-              loadedResult.result shouldBe defined
-              loadedResult.result.get should equal(result.result.get)
-        )
-    }
+        property(s"A programs components should remain the same when encoded and decoded for a $name") {
+            testSchemePrograms(
+              anl,
+              (result: GlobalStore[SchemeExp], loadedResult: GlobalStore[SchemeExp]) =>
+                  loadedResult.visited.size should equal(result.visited.size)
+                  // This is done inside of a loop to improve the errors given when a test fails
+                  for component <- result.visited do loadedResult.visited should contain(component),
+              runTest,
+              limitHeight
+            )
+        }
 
-    property("A programs components should remain the same when encoded and decoded for a context insensitive scheme analysis") {
-        testSchemePrograms(
-          (program: SchemeExp) => new ContextInsensitiveSchemeAnalysis(program),
-          (result: ContextInsensitiveSchemeAnalysis, loadedResult: ContextInsensitiveSchemeAnalysis) =>
-              loadedResult.visited.size should equal(result.visited.size)
-              // This is done inside of a loop to improve the errors given when a test fails
-              for component <- result.visited do loadedResult.visited should contain(component)
-        )
-    }
+        property(s"A programs dependencies should remain the same when encoded and decoded for a $name") {
+            testSchemePrograms(
+              anl,
+              (result: GlobalStore[SchemeExp], loadedResult: GlobalStore[SchemeExp]) =>
+                  loadedResult.deps.size should equal(result.deps.size)
+                  // This is done inside of a loop to improve the errors given when a test fails
+                  for dependency <- result.deps.keysIterator do
+                      loadedResult.deps.keySet should contain(dependency)
+                      loadedResult.deps.get(dependency) should equal(result.deps.get(dependency))
+              ,
+              runTest,
+              limitHeight
+            )
+        }
 
-    property("A programs dependencies should remain the same when encoded and decoded for a context insensitive scheme analysis") {
-        testSchemePrograms(
-          (program: SchemeExp) => new ContextInsensitiveSchemeAnalysis(program),
-          (result: ContextInsensitiveSchemeAnalysis, loadedResult: ContextInsensitiveSchemeAnalysis) =>
-              loadedResult.deps.size should equal(result.deps.size)
-              // This is done inside of a loop to improve the errors given when a test fails
-              for dependency <- result.deps.keysIterator do
-                  loadedResult.deps.keySet should contain(dependency)
-                  loadedResult.deps.get(dependency) should equal(result.deps.get(dependency))
-        )
-    }
+        property(s"A programs store should remain the same when encoded and decoded for a $name") {
+            testSchemePrograms(
+              anl,
+              (result: GlobalStore[SchemeExp], loadedResult: GlobalStore[SchemeExp]) =>
+                  loadedResult.store.size should equal(result.store.size)
+                  // This is done inside of a loop to improve the errors given when a test fails
+                  for addr <- result.store.keySet do
+                      loadedResult.store.keySet should contain(addr)
+                      loadedResult.store.get(addr) should equal(result.store.get(addr))
+              ,
+              runTest,
+              limitHeight
+            )
+        }
 
-    property("A programs store should remain the same when encoded and decoded for a context insensitive scheme analysis") {
-        testSchemePrograms(
-          (program: SchemeExp) => new ContextInsensitiveSchemeAnalysis(program),
-          (result: ContextInsensitiveSchemeAnalysis, loadedResult: ContextInsensitiveSchemeAnalysis) =>
-              loadedResult.store.size should equal(result.store.size)
-              // This is done inside of a loop to improve the errors given when a test fails
-              for addr <- result.store.keySet do
-                  loadedResult.store.keySet should contain(addr)
-                  loadedResult.store.get(addr) should equal(result.store.get(addr))
-        )
-    }
+    testAnalysis("context insensitive modf analysis saving the actual expressions and components",
+                 (program: SchemeExp) => new SimpleModFActual(program),
+                 limitHeight = 20
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the components as their positions and actual expressions",
+      (program: SchemeExp) => new SimpleModFPositionComponents(program),
+      limitHeight = 20
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the components as integer IDs and actual expressions",
+      (program: SchemeExp) => new SimpleModFIDComponents(program),
+      limitHeight = 20
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the actual components and expressions as integer IDs",
+      (program: SchemeExp) => new SimpleModFIDExpressions(program),
+      limitHeight = 20
+    )
+
+    var maxADTHeight = 0
+    testAnalysis(
+      s"context insensitive modf analysis saving the expressions as integer IDs recursively and saving the actual components",
+      (program: SchemeExp) => new SimpleModFIDSchemeExpressions(program, maxADTHeight),
+      (test: (Path) => Unit) =>
+          forAll(programs, Gen.chooseNum(0, 15))({ (path: Path, maxADTHeight: Int) =>
+              this.maxADTHeight = maxADTHeight
+              Given(s"max ADT height: $maxADTHeight")
+              test(path)
+          })
+    )
+
+    testAnalysis(
+      s"context insensitive modf analysis saving the expressions recursively as integer IDs and components as integer IDs",
+      (program: SchemeExp) => new SimpleModFIDs(program, maxADTHeight),
+      (test: (Path) => Unit) =>
+          forAll(programs, Gen.chooseNum(0, 15))({ (path: Path, maxADTHeight: Int) =>
+              this.maxADTHeight = maxADTHeight
+              Given(s"max ADT height: $maxADTHeight")
+              test(path)
+          })
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the actual expressions and components in CBOR",
+      (program: SchemeExp) => new SimpleModFActualCbor(program),
+      limitHeight = 500
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the components as their positions and actual expressions in CBOR",
+      (program: SchemeExp) => new SimpleModFPositionComponentsCbor(program),
+      limitHeight = 500
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the components as integer IDs and actual expressions in CBOR",
+      (program: SchemeExp) => new SimpleModFIDComponentsCbor(program),
+      limitHeight = 500
+    )
+
+    testAnalysis(
+      "context insensitive modf analysis saving the actual components and expressions as integer IDs in CBOR",
+      (program: SchemeExp) => new SimpleModFIDExpressionsCbor(program),
+      limitHeight = 500
+    )
+
+    testAnalysis(
+      s"context insensitive modf analysis saving the expressions as integer IDs recursively and saving the actual components in CBOR",
+      (program: SchemeExp) => new SimpleModFIDSchemeExpressionsCbor(program, maxADTHeight),
+      (test: (Path) => Unit) =>
+          forAll(programs, Gen.chooseNum(0, 100))({ (path: Path, maxADTHeight: Int) =>
+              this.maxADTHeight = maxADTHeight
+              Given(s"max ADT height: $maxADTHeight")
+              test(path)
+          })
+    )
+
+    testAnalysis(
+      s"context insensitive modf analysis saving the expressions recursively as integer IDs and components as integer IDs in CBOR",
+      (program: SchemeExp) => new SimpleModFIDsCbor(program, maxADTHeight),
+      (test: (Path) => Unit) =>
+          forAll(programs, Gen.chooseNum(0, 100))({ (path: Path, maxADTHeight: Int) =>
+              this.maxADTHeight = maxADTHeight
+              Given(s"max ADT height: $maxADTHeight")
+              test(path)
+          })
+    )
+
+object PersistenceSpecAnalysises:
+    trait SaveSpec[Expr <: Expression]
+        extends Save[Expr]
+        with SaveInitialized[Expr]
+        with SaveComponents[Expr]
+        with SaveWorklist[Expr]
+        with SaveGlobalStore[Expr]
+        with SaveDependency[Expr]
+        with SaveAddrDep[Expr]
+
+    trait SaveModF
+        extends SaveSpec[SchemeExp]
+        with SaveStandardSchemeComponents
+        with SaveModularSchemeDomain
+        with SaveSchemeConstantPropagationDomain
+        with SaveSchemeAddr
+        with SaveSchemeExpressions
+        with SaveNoContext[SchemeExp]
+        with SaveSequentialWorklist[SchemeExp]
+        with SaveMainSchemeBody
+
+    trait LoadSpec[Expr <: Expression]
+        extends Load[Expr]
+        with LoadInitialized[Expr]
+        with LoadComponents[Expr]
+        with LoadWorklist[Expr]
+        with LoadGlobalStore[Expr]
+        with LoadDependency[Expr]
+        with LoadAddrDependency[Expr]
+
+    trait LoadModF
+        extends LoadSpec[SchemeExp]
+        with LoadStandardSchemeComponents
+        with LoadModularSchemeDomain
+        with LoadSchemeConstantPropagationDomain
+        with LoadSchemeAddr
+        with LoadFIFOWorklist[SchemeExp]
+        with LoadSchemeExpressions
+        with LoadNoContext[SchemeExp]
+        with LoadMainSchemeBody
+
+    trait SimpleModF
+        extends SimpleSchemeModFAnalysis
+        with SchemeModFNoSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SaveModF
+        with LoadModF
+
+    class SimpleModFActual(program: SchemeExp)
+        extends SimpleSchemeModFAnalysis(program)
+        with SaveActualExpressions[SchemeExp]
+        with LoadActualExpressions[SchemeExp]
+        with SaveActualComponents[SchemeExp]
+        with LoadActualComponents[SchemeExp]
+        with SimpleModF
+
+    class SimpleModFPositionComponents(program: SchemeExp)
+        extends SimpleSchemeModFAnalysis(program)
+        with SaveActualExpressions[SchemeExp]
+        with LoadActualExpressions[SchemeExp]
+        with SaveStandardSchemeComponentPosition
+        with LoadStandardSchemeComponentPosition
+        with SimpleModF
+
+    class SimpleModFIDComponents(program: SchemeExp)
+        extends SimpleSchemeModFAnalysis(program)
+        with SaveActualExpressions[SchemeExp]
+        with LoadActualExpressions[SchemeExp]
+        with SaveComponentIntID[SchemeExp]
+        with LoadComponentIntID[SchemeExp]
+        with SimpleModF
+
+    class SimpleModFIDExpressions(program: SchemeExp)
+        extends SimpleSchemeModFAnalysis(program)
+        with SaveExpressionIntID[SchemeExp]
+        with LoadExpressionIntID[SchemeExp]
+        with SaveActualComponents[SchemeExp]
+        with LoadActualComponents[SchemeExp]
+        with SimpleModF
+
+    class SimpleModFIDSchemeExpressions(program: SchemeExp, override val maxASTHeight: Int)
+        extends SimpleSchemeModFAnalysis(program)
+        with SaveRecursiveSchemeExpressionsIntID
+        with LoadExpressionIntID[SchemeExp]
+        with SaveActualComponents[SchemeExp]
+        with LoadActualComponents[SchemeExp]
+        with SimpleModF
+
+    class SimpleModFIDs(program: SchemeExp, override val maxASTHeight: Int)
+        extends SimpleSchemeModFAnalysis(program)
+        with SaveRecursiveSchemeExpressionsIntID
+        with LoadExpressionIntID[SchemeExp]
+        with SaveComponentIntID[SchemeExp]
+        with LoadComponentIntID[SchemeExp]
+        with SimpleModF
+
+    class SimpleModFActualCbor(program: SchemeExp) extends SimpleModFActual(program) with SaveCbor[SchemeExp] with LoadCbor[SchemeExp]
+    class SimpleModFPositionComponentsCbor(program: SchemeExp)
+        extends SimpleModFPositionComponents(program)
+        with SaveCbor[SchemeExp]
+        with LoadCbor[SchemeExp]
+    class SimpleModFIDComponentsCbor(program: SchemeExp) extends SimpleModFIDComponents(program) with SaveCbor[SchemeExp] with LoadCbor[SchemeExp]
+    class SimpleModFIDExpressionsCbor(program: SchemeExp) extends SimpleModFIDExpressions(program) with SaveCbor[SchemeExp] with LoadCbor[SchemeExp]
+    class SimpleModFIDSchemeExpressionsCbor(program: SchemeExp, maxASTHeight: Int)
+        extends SimpleModFIDSchemeExpressions(program, maxASTHeight)
+        with SaveCbor[SchemeExp]
+        with LoadCbor[SchemeExp]
+    class SimpleModFIDsCbor(program: SchemeExp, maxASTHeight: Int)
+        extends SimpleModFIDs(program, maxASTHeight)
+        with SaveCbor[SchemeExp]
+        with LoadCbor[SchemeExp]

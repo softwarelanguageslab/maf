@@ -30,7 +30,6 @@ import maf.core.Position.SourcePathTag
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks
 import io.bullet.borer.Encoder
-import maf.save.ArrayKeyDecoder
 import maf.save.ArrayDecoder
 import io.bullet.borer.Decoder
 import maf.core.BasicEnvironment

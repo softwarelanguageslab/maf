@@ -3,7 +3,6 @@ package maf.test.persistence
 import maf.save.SaveValue
 import maf.modular.ModAnalysis
 import maf.save.LoadValue
-import maf.save.SaveModularDomain
 import maf.save.LoadModularDomain
 import maf.core.Expression
 import maf.language.scheme.SchemeExp
@@ -18,12 +17,14 @@ import maf.lattice.ConstantPropagation
 import org.scalacheck.Gen
 import io.bullet.borer.Encoder
 import io.bullet.borer.Decoder
-import maf.save.LoadModularSchemeLattices
 import maf.lattice.HMap
 import maf.lattice.interfaces.IntLattice
 import scala.collection.mutable.HashMap
 import maf.core.BasicEnvironment
 import maf.core.Address
+import maf.save.SaveModularSchemeDomain
+import maf.save.SaveSchemeConstantPropagationDomain
+import maf.save.LoadModularSchemeDomain
 
 trait ValueGenerator extends Generator:
     type SchemeLattice = ModularSchemeLattice[?, ?, ?, ?, ?, ?, ?]
@@ -38,10 +39,13 @@ trait ValueGenerator extends Generator:
               functionGen(generateSchemeIntLattice),
               functionGen(generateSchemeBoolLattice),
               functionGen(generateSchemeStringLattice),
+              functionGen(generateSchemeCharLattice),
               functionGen(generateSchemePrimLattice),
+              functionGen(generateSchemeKontLattice),
               functionGen(generateSchemeSymbolLattice),
               maxDepthFunctionGen(generateSchemeConsLattice, generateSchemeLattice),
               maxDepthFunctionGen(generateSchemeVectorLattice, generateSchemeLattice),
+              maxDepthFunctionGen(generateSchemeInputPortLattice, generateSchemeLattice),
               functionGen(generateSchemeClosureLattice),
               functionGen(generateSchemeNilLattice),
               functionGen(generateSchemeVoidLattice),
@@ -64,6 +68,19 @@ trait ValueGenerator extends Generator:
 
     def generateSchemeStringLattice(): (HMapKey, SchemeLattice#Str) =
         return (modularLattice.StrT, new modularLattice.Str(generateConstantSchemeLattice(str.sample.get).sample.get))
+
+    def generateSchemeCharLattice(): (HMapKey, SchemeLattice#Char) =
+        return (modularLattice.CharT, new modularLattice.Char(generateConstantSchemeLattice(Gen.alphaChar).sample.get))
+
+    def generateSchemeInputPortLattice(): (HMapKey, SchemeLattice#InputPort) =
+        return (modularLattice.InputPortT, new modularLattice.InputPort(hMaps.sample.get))
+
+    def generateSchemeKontLattice(): (HMapKey, SchemeLattice#Kont) =
+        return (modularLattice.KontT,
+                new modularLattice.Kont(
+                  Gen.listOfN(10, stringComponents).sample.get.asInstanceOf[List[SchemeLattice#Kont]].toSet
+                )
+        )
 
     def generateSchemePrimLattice(): (HMapKey, SchemeLattice#Prim) =
         return (modularLattice.PrimT, new modularLattice.Prim(Gen.listOfN(5, str).sample.get.toSet))
@@ -108,9 +125,10 @@ class PersistValueSpec extends PersistenceSpec with ValueGenerator:
     class ModularDomainAnalysis
         extends TestBaseSchemeModFSemanticsAnalysis
         with ValueAnalysis[SchemeExp]
-        with SaveModularDomain
+        with SaveModularSchemeDomain
+        with SaveSchemeConstantPropagationDomain
         with LoadModularDomain
-        with LoadModularSchemeLattices
+        with LoadModularSchemeDomain
         with SaveStringContext[SchemeExp]
         with LoadStringContext[SchemeExp]
         with SaveStringComponent[SchemeExp]
