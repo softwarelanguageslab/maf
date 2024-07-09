@@ -255,14 +255,12 @@ trait SaveStandardSchemeComponents
             writer.writeMember("context", context.asInstanceOf[EncodeContext])
             writer.close()
 
-trait SaveWorklist[Expr <: Expression] extends Save[Expr]:
-    type WorklistComponent
-    given worklistEncoder: Encoder[WorkList[WorklistComponent]]
-    def getWorklist: WorkList[WorklistComponent]
+trait SaveWorklist[Expr <: Expression] extends Save[Expr] with SaveComponents[Expr]:
+    given worklistEncoder: Encoder[WorkList[Component]]
+    def getWorklist: WorkList[Component]
     override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("worklist", Savable(getWorklist)))
 
-trait SaveSequentialWorklist[Expr <: Expression] extends SaveWorklist[Expr] with SequentialWorklistAlgorithm[Expr] with SaveComponents[Expr]:
-    type WorklistComponent = Component
+trait SaveSequentialWorklist[Expr <: Expression] extends SaveWorklist[Expr] with SequentialWorklistAlgorithm[Expr]:
     override def getWorklist: WorkList[Component] = workList
     override given worklistEncoder: ArrayEncoder[WorkList[Component]] with
         override def write(writer: Writer, worklist: WorkList[Component]): Writer =
