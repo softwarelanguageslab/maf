@@ -87,6 +87,9 @@ trait SaveExpressionID[Expr <: Expression] extends ModAnalysis[Expr] with Save[E
     /** Encodes an expression using an ID */
     protected given expressionIDEncoder: Encoder[Expr]
 
+trait SaveMainSchemeBody extends BaseSchemeModFSemanticsM with SaveExpressions[SchemeExp]:
+    override def saveInfo: List[(String, Savable[?])] = super.saveInfo ++ List(("mainBody" -> Savable(mainBody)))
+
 /**
  * Trait to encode expressions using integer IDs.
  *

@@ -74,7 +74,7 @@ trait BaseSchemeModFSemanticsM
             caller: Component
           ): M[ComponentContext] = Monad[M].unit(allocCtx(clo, args, call, caller))
 
-    lazy val mainBody = program
+    var mainBody = program
     def expr(cmp: Component): SchemeExp = body(cmp)
     def body(cmp: Component): SchemeExp = body(view(cmp))
     def body(cmp: SchemeModFComponent): SchemeExp = cmp match
