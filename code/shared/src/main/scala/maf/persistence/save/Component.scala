@@ -217,7 +217,7 @@ trait SaveContext[Expr <: Expression] extends Save[Expr]:
 /**
  * Trait to encode the context for an analysis with no context.
  *
- * This will just write 'ε' when asked to write the context.
+ * This will just write 'None' when asked to write the context.
  *
  * @tparam T
  *   The type of the value the needs to be saved
@@ -225,7 +225,7 @@ trait SaveContext[Expr <: Expression] extends Save[Expr]:
 trait SaveNoContext[Expr <: Expression] extends SaveContext[Expr]:
     override type EncodeContext = NoContext.type
     override given contextEncoder: Encoder[EncodeContext] with
-        override def write(writer: Writer, context: EncodeContext): Writer = writer.write("ε")
+        override def write(writer: Writer, context: EncodeContext): Writer = writer.write("None")
 
 /**
  * Trait to encode standard scheme components.
