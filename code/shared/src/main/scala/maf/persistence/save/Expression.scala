@@ -26,6 +26,7 @@ import maf.language.scheme.SchemeLambdaExp
 import maf.modular.ModAnalysis
 import maf.save.MapEncoder
 import io.bullet.borer.derivation.CompactMapBasedCodecs
+import maf.save.SaveWorklist
 import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
 
 /**
@@ -80,13 +81,17 @@ trait SaveActualExprs[Expr <: Expression] extends SaveExpressions[Expr]:
  */
 trait SaveExpressionID[Expr <: Expression] extends ModAnalysis[Expr] with Save[Expr] with SaveActualExprs[Expr]:
     override given expressionEncoder: Encoder[Expr] = expressionIDEncoder
-    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("expressions" -> Savable(visited.map(expr(_)))))
+    override def saveInfo: List[(String, Savable[_])] = super.saveInfo ++ List(("expressions" -> Savable(getExpressions())))
+    def getExpressions(): Set[Expr] = return visited.map(expr(_))
 
     /** Encodes a set of expressions, this is used to e.g. add ID info to the expressions. */
     protected given expressionSetEncoder: Encoder[Set[Expr]]
 
     /** Encodes an expression using an ID */
     protected given expressionIDEncoder: Encoder[Expr]
+
+trait SaveWorklistExpressionsID[Expr <: Expression] extends SaveExpressionID[Expr] with SaveWorklist[Expr]:
+    override def getExpressions(): Set[Expr] = return super.getExpressions() ++ getWorklist.toSet.map(expr(_))
 
 trait SaveMainSchemeBody extends BaseSchemeModFSemanticsM with SaveExpressions[SchemeExp]:
     override def saveInfo: List[(String, Savable[?])] = super.saveInfo ++ List(("mainBody" -> Savable(mainBody)))
