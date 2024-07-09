@@ -111,11 +111,14 @@ trait SaveModF
     with SaveSchemeExpressions
     with SaveRecursiveSchemeExpressionsIntID
     with SaveComponentIntID[SchemeExp]
+    with SaveWorklistExpressionsID[SchemeExp]
+    with SaveMainSchemeBody
     with SaveStandardSchemeComponents
-    with SaveModularDomain
+    with SaveModularSchemeDomain
+    with SaveSchemeConstantPropagationDomain
     with SaveAddrDep[SchemeExp]
     with SaveSchemeAddr
     with SaveGlobalStore[SchemeExp]
     with SaveSequentialWorklist[SchemeExp]
     with SaveNoContext[SchemeExp]:
-    override val maxASTHeight = 3
+    override val maxASTHeight: Int = 0
