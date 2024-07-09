@@ -26,6 +26,7 @@ import maf.language.scheme.SchemeLambdaExp
 import maf.modular.ModAnalysis
 import maf.save.MapEncoder
 import io.bullet.borer.derivation.CompactMapBasedCodecs
+import maf.modular.scheme.modf.BaseSchemeModFSemanticsM
 
 /**
  * The base trait for encoding expressions.
@@ -99,7 +100,7 @@ trait SaveMainSchemeBody extends BaseSchemeModFSemanticsM with SaveExpressions[S
  *   The type of expression used in the analysis
  */
 trait SaveExpressionIntID[Expr <: Expression] extends SaveExpressionID[Expr] with SaveExpressions[Expr]:
-    private val expressions = HashMap[Expr, Int]()
+    private var expressions = HashMap[Expr, Int]()
     private var id = 0
 
     override protected given expressionSetEncoder: MapEncoder[Set[Expr]] with
@@ -130,7 +131,7 @@ trait SaveExpressionIntID[Expr <: Expression] extends SaveExpressionID[Expr] wit
  * Implementation of [[SaveExpressionID]]
  */
 trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] with SaveExpressions[SchemeExp]:
-    private val expressions = HashMap[SchemeExp, Int]()
+    private var expressions = HashMap[SchemeExp, Int]()
     private var id = 0
 
     /** The max height of the AST before you encode it normally. */
@@ -153,24 +154,26 @@ trait SaveRecursiveSchemeExpressionsIntID extends SaveExpressionID[SchemeExp] wi
                         case lambda: SchemeLambda          => writer.write(lambda.body)
                         case argLambda: SchemeVarArgLambda => writer.write(argLambda.body)
                         case letrec: SchemeLetrec =>
-                            for (binding <- letrec.bindings) writer.write(binding._2)
+                            for (binding <- letrec.bindings) writer.write(binding._2)(using recursiveExpressionEncoder)
                             writer.write(letrec.body)
-                        case assert: SchemeAssert => writer.write(assert.exp)
+                        case assert: SchemeAssert => writer.write(assert.exp)(using recursiveExpressionEncoder)
                         case let: SchemeLet =>
-                            for (binding <- let.bindings) writer.write(binding._2)
+                            for (binding <- let.bindings) writer.write(binding._2)(using recursiveExpressionEncoder)
                             writer.write(let.body)
                         case schemeIf: SchemeIf =>
-                            writer.write(schemeIf.cond)
-                            writer.write(schemeIf.cons)
-                            writer.write(schemeIf.alt)
+                            writer.write(schemeIf.cond)(using recursiveExpressionEncoder)
+                            writer.write(schemeIf.cons)(using recursiveExpressionEncoder)
+                            writer.write(schemeIf.alt)(using recursiveExpressionEncoder)
                         case set: SchemeSet =>
-                            writer.write(set.value)
+                            writer.write(set.value)(using recursiveExpressionEncoder)
                         case begin: SchemeBegin =>
                             writer.write(begin.exps)
                         case letStar: SchemeLetStar =>
-                            for (binding <- letStar.bindings) writer.write(binding._2)
+                            for (binding <- letStar.bindings) writer.write(binding._2)(using recursiveExpressionEncoder)
                             writer.write(letStar.body)
-                        case _ => ()
+                        case _: SchemeVar   => ()
+                        case _: SchemeValue => ()
+                        case _              => System.err.nn.println("The expression with type `" + expr.getClass + "` could not be encoded")
 
                 writer.writeMember(id.toString(), expr)(using actualExpressionEncoder)
                 expressions.addOne(expr, id)
