@@ -97,7 +97,7 @@ trait SaveActualComponents[Expr <: Expression] extends SaveActualComps[Expr]:
  * @tparam T
  *   The type of the value the needs to be saved
  */
-trait SaveComponentID[Expr <: Expression] extends SaveComponents[Expr] with SavePosition[Expr]:
+trait SaveComponentID[Expr <: Expression] extends SaveActualComps[Expr] with SavePosition[Expr]:
     /** Encodes a component by their ID */
     given componentIDEncoder: Encoder[Component]
     override given componentEncoder: Encoder[Component] = componentIDEncoder
@@ -115,7 +115,7 @@ trait SaveComponentID[Expr <: Expression] extends SaveComponents[Expr] with Save
  *   The type of expression used in the analysis
  */
 trait SaveComponentIntID[Expr <: Expression] extends SaveActualComps[Expr] with SaveComponentID[Expr]:
-    private val components = HashMap[Component, Int]()
+    private var components = HashMap[Component, Int]()
     private var id = 0
 
     override protected given componentSetEncoder: MapEncoder[Set[Component]] with
@@ -144,26 +144,24 @@ trait SaveComponentIntID[Expr <: Expression] extends SaveActualComps[Expr] with 
  *   Because this trait only encodes the component position, the entire component should be encoded somewhere else if you want to decode this again.
  */
 trait SaveStandardSchemeComponentPosition extends SaveComponentID[SchemeExp] with StandardSchemeModFComponents:
+    override type Component = SchemeModFComponent
+
     /** Encodes a component by their position */
     override given componentIDEncoder: Encoder[Component] with
         def write(writer: Writer, component: Component): Writer =
-            writer.start()
             if component.equals(initialComponent) then writer.write("main")
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])(schemeComponentIDEncoder)
-            writer.close()
 
     /** Encodes a scheme component using their position */
     given schemeComponentIDEncoder[T]: Encoder[SchemeModFComponent.Call[T]] with
         def write(writer: Writer, component: SchemeModFComponent.Call[T]): Writer =
-            writer.start()
             val (lambda, _) = component.clo
             writer.write(lambda.idn.pos)
-            writer.close()
 
     override protected given componentSetEncoder: ArrayEncoder[Set[Component]] with
         override def write(writer: Writer, components: Set[Component]): Writer =
             writer.start()
-            for (component <- components) do writer.writeMember(component)
+            for (component <- components) do writer.writeMember(component)(using actualComponentEncoder)
             writer.close()
 
 /**
@@ -240,7 +238,7 @@ trait SaveStandardSchemeComponents
     with SaveExpressions[SchemeExp]:
     override type Component = SchemeModFComponent
 
-    override given actualComponentEncoder: Encoder[Component] with
+    override given actualComponentEncoder: MapEncoder[Component] with
         def write(writer: Writer, component: Component): Writer =
             if component.equals(initialComponent) then writer.write("main")
             else writer.write(component.asInstanceOf[SchemeModFComponent.Call[ComponentContext]])
