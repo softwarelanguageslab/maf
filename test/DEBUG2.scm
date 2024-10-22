@@ -1,6 +1,4 @@
-(letrec ((fill-vector-iter! (lambda ()
-                              (<change>
-                                ()
-                                (fill-vector-iter!))
-                              ())))
-  (fill-vector-iter!))
+(letrec ((f (lambda ()
+              (<change> () (f))
+              ())))
+  (f))

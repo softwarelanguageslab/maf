@@ -186,7 +186,7 @@ object ConstantPropagation:
             def plus(n1: I, n2: I): I = binop(_ + _, n1, n2)
             def minus(n1: I, n2: I): I = binop(_ - _, n1, n2)
             def times(n1: I, n2: I): I = binop(_ * _, n1, n2)
-            def div[F: RealLattice](n1: I, n2: I): F = (n1, n2) match
+            def div[F: RealLattice](n1: I, n2: I): F = (n1, n2) match // TODO: when the arguments are top+bottom, the result should be bottom...
                 case (Top, _) | (_, Top)                  => RealLattice[F].top
                 case (Constant(x), Constant(y)) if y != 0 => RealLattice[F].inject(bigIntToDouble(x) / bigIntToDouble(y))
                 // TODO: use MayFail here for when divide-by-zero occurs ...
