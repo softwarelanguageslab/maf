@@ -4,11 +4,15 @@ case class Color(hex: String):
     override def toString: String = hex
 object Colors:
     object BabyBlue extends Color("#9FC2E2")
+    object Beige extends Color("#999966")
     object Black extends Color("#000000")
     object Blue extends Color("#DDFFFF") // Soft blue
     object BlueGreen extends Color("#40E0D0")
     object Bordeaux extends Color("#990000")
+    object BrightBlue extends Color("#00FFFF")
+    object BrightPink extends Color("#FF0066")
     object BrightYellow extends Color("#DFFF00") // Fluo
+    object Brown extends Color("#996633")
     object DarkBlue extends Color("#00008B")
     object DarkGreen extends Color("#008000")
     object DarkGrey extends Color("#999999")
@@ -31,8 +35,8 @@ object Colors:
     object White extends Color("#FFFFFF")
     object Yellow extends Color("#FFFFDD") // Soft yellow
     lazy val softColors: List[Color] = List(BabyBlue, DullOrange, Green, Yellow, Blue, PinkOrange, Olive, Pink, SoftGreen, PaleViolet, DarkOlive, Redwood, GreenishGrey)
-    lazy val brightColors: List[Color] = List(BlueGreen, BrightYellow, Grass, Red)
-    lazy val darkColors: List[Color] = List(DarkBlue, DarkGreen, Ocre, Bordeaux, Violet, RoseEbony)
+    lazy val brightColors: List[Color] = List(BlueGreen, BrightYellow, Grass, Red, BrightBlue, BrightPink)
+    lazy val darkColors: List[Color] = List(DarkBlue, DarkGreen, Ocre, Bordeaux, Violet, RoseEbony, Beige, Brown)
     lazy val greyScale: List[Color] = List(Grey, DarkGrey, Black, White)
     lazy val palette: List[Color] = softColors ++ brightColors ++ darkColors ++ greyScale // Some nicer ordering of colours.
     /* lazy val allColors: List[Color] = List(Green,

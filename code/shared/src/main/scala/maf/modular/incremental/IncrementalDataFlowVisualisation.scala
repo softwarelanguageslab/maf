@@ -2,7 +2,7 @@ package maf.modular.incremental
 
 import maf.core.Expression
 import maf.modular.*
-import maf.modular.scheme.LitAddr
+import maf.modular.scheme.*
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.*
@@ -59,6 +59,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
         def addrToGE(a: Addr): GE = a match {
             case _: LitAddr[_] => GE(a.toString, Colors.PinkOrange, "octagon")
+            case _: FlowAddr[_] => GE(a.toString, Colors.Grey, "oval")
             case _ => GE(a.toString, shape = "box")
         }
 
@@ -77,7 +78,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         val nodes: Map[Addr, GE] = (edges.map(_.source) ++ edges.map(_.target)).map(a => (a, addrToGE(a))).toMap
         // Compute a subgraph for every SCA.
         val subgraphs: List[(GE, Set[GE])] = computeSCAs().toList.zipWithIndex.map({case (sca, index) =>
-          val colour = palette(index)
+          val colour = palette(index % palette.size)
           val attributes = Map("name" -> s"cluster_$index","style" -> "\"filled,dashed\"", "fillcolor" -> s"<$colour>")
           val ge_nodes = sca.map(nodes)
           val ge_subgraph = GE("",  attributes = attributes)
@@ -88,6 +89,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         subgraphs.foldLeft(edges.foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
             case (graph, edge) => g.addEdge(graph, nodes(edge.source), edgeToGE(edge), nodes(edge.target))
         }){ case (graph, (sg, nodes)) => g.addSubgraph(graph, sg, nodes)}.toFile(fileName)
+        println(s"Graph $fileName contains ${edges.size} edges and ${nodes.size} nodes and ${subgraphs.size} SCAs.")
 
     def dataFlowToImage(fileName: String): Unit =
         flowInformationToDotGraph(fileName)

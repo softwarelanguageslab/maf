@@ -5,7 +5,7 @@ import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.*
 import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
-import maf.modular.scheme.LitAddr
+import maf.modular.scheme.*
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.util.ColouredFormatting.*
 import maf.util.benchmarks.Timeout
@@ -25,8 +25,12 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         if configuration.cyclicValueInvalidation
         then
             dataFlowR = dataFlowR - cmp
-            litAddr = litAddr - cmp
+            noStoreAddr = noStoreAddr - cmp
         super.deleteComponent(cmp)
+
+    /* ************************************ */
+    /* ************** Caches ************** */
+    /* ************************************ */
 
     /**
      * For every component, stores a map of W ~> Set[R], where the values R are the "constituents" of W.
@@ -44,14 +48,18 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      */
     var interComponentFlow: Map[Component, Map[Component, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
-    /** All encountered literal addresses. */
-    var litAddr: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+    /** All encountered addresses that are not in the store. Used to know the nodes when invoking Tarjan. */
+    var noStoreAddr: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
 
     /**
      * Keeps track of all inferred SCCs of addresses during an incremental update. To avoid confusion with analysis components, we call these Strongly
      * Connected Addresses (SCC containing addresses). For every SCA, keep track of the join of values flowing towards it from outside the SCA.
      */
     var SCAs: Set[SCA] = Set()
+
+    /* *********************************** */
+    /* ************** Flows ************** */
+    /* *********************************** */
 
     /**
      * Computes a map of addresses written to all addresses influencing these addresses via explicit data flow or via intra-component implicit flows.
@@ -108,6 +116,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             written.foldLeft(df) { case (df, w) => df + (w -> SmartUnion.sunion(df(w), iFlow)) }
         }
 
+    /* ************************************ */
+    /* *************** SCAs *************** */
+    /* ************************************ */
+
     /**
      * Computes the SCAs in the program based on the explicit and implicit flows.
      */
@@ -120,7 +132,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         // Also take the literal addresses into account when doing so.
-        Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, litAddr.values.flatten.toSet), allFlowsR)
+        Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
 
     /** Checks whether a SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
@@ -149,7 +161,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     def refineSCA(sca: SCA): Unit =
         //var ignored: Set[Component] = Set()
         sca.foreach {
-            case _: LitAddr[_] => // Nothing to do for literal addresses as they are not in the store. Contributions containing them however need to be ignored when refining other addresses.
+            case _: LitAddr[_]  => // Nothing to do for literal addresses and flow addresses as they are not in the store. Contributions containing them however need to be ignored when refining other addresses.
+            case _: FlowAddr[_] =>
             case a =>
                 // Computation of the new value + remove provenance and data flow that is no longer valid.
                 val v = provenance(a).foldLeft(lattice.bottom) { case (acc, (c, v)) =>
@@ -185,6 +198,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Unit =
         SCAs = computeSCAs()
         SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
+
+    /* ************************************ */
+    /* ***** Intra-component analysis ***** */
+    /* ************************************ */
 
     trait IncrementalGlobalStoreCYIntraAnalysis extends IncrementalGlobalStoreIntraAnalysis:
         intra =>

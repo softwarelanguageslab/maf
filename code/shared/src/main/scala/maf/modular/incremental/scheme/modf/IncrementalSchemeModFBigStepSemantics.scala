@@ -76,8 +76,18 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
 
         override def commit(): Unit =
             // Update this here. This way it can be decided when reanalysis is needed in applyClosuresM using interComponentFlow.
-            interComponentFlow = interComponentFlow + (component -> cutFlows)
-            litAddr = litAddr + (component -> litAddrs)
+
+            // Reduce the number of flows by inserting flow nodes.
+            val (fromNodeR, toNodeR): (Map[Component, Set[Addr]], Map[Addr, Set[Addr]]) =
+                cutFlows.foldLeft((Map[Component, Set[Addr]](), Map[Addr, Set[Addr]]()))({case ((fromNodeR, toNodeR), (c, a)) =>
+                    val flowNode = FlowAddr(c)
+                    (fromNodeR + (c -> Set(flowNode)), toNodeR + (flowNode -> a))
+            })
+            interComponentFlow = interComponentFlow + (component -> fromNodeR) // flowNode ~> componentContext
+            toNodeR.foreach((w, r) => dataFlow = dataFlow + (w -> (dataFlow(w) ++ r))) // implicit flows ~> flowNode (reversed)
+
+            // Store the created of addresses that are not in the store.
+            noStoreAddr = noStoreAddr + (component -> (litAddrs ++ toNodeR.keySet))
             super.commit()
 
         // analysis entry point
