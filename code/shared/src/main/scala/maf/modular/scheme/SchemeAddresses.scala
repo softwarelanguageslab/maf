@@ -39,7 +39,9 @@ case class LitAddr[Context](exp: SchemeExp) extends SchemeAddr[Context]:
     def printable = true
     def idn: Identity = exp.idn
     override def toString: String = s"Literal($exp@${exp.idn})"
-case class FlowAddr[Component](cmp: Component) extends SchemeAddr[Component]:
+case class FlowAddr[Component](cmp: Component, e: Option[SchemeExp] = None) extends SchemeAddr[Component]:
     def printable = false
     def idn: Identity = Identity.none
-    override def toString: String = s"iFlowCtx($cmp)"
+    override def toString: String = e match
+        case Some(e) => s"iFlowCtx($cmp : $e)"
+        case None => s"iFlowCtx($cmp)"

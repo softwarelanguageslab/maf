@@ -137,11 +137,13 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     // When CY is disabled, no addresses will be present (and implicitFlows will be a list of empty sets).
                     iFlows <- getImplicitFlows
                     adr = lattice.getAddresses(prdVal) ++ iFlows
-                    resVal <- withImplicitFlows(adr) {
+                    // Reduce the number of edges:
+                    addr = if adr.size > 1 then { val flw = FlowAddr(component, Some(prd)) ; dataFlow = dataFlow + (flw -> (dataFlow(flw) ++ adr)) ; Set(flw) } else adr
+                    resVal <- withImplicitFlows(addr) {
                         cond(prdVal, eval(csq), eval(alt))
                     }
                 // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
-                yield lattice.addAddresses(resVal, adr)
+                yield lattice.addAddresses(resVal, addr)
             else super.evalIf(prd, csq, alt)
 
         /** Evaluation of a literal value that adds a "literal address" as source. */
