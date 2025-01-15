@@ -17,12 +17,12 @@ import maf.util.graph.*
 trait DotGraphOutput extends AAMSoundnessTests:
     final val graph = new DotGraph[GraphElementAAM, GraphElement, GraphElement]()
 
-    type G = graph.G
+    type G = graph.G2
     type N = GraphElementAAM
     type E = GraphElement
 
-    implicit protected def graphInstance = graph.G.typeclass
-    protected def emptyGraph = graph.G.typeclass.empty
+    implicit protected def graphInstance = graph.G2.typeclass
+    protected def emptyGraph = graph.G2.typeclass.empty
     protected def saveGraph(benchmark: Benchmark, graph: G): Unit = ()
 
 trait SchemeAAMSoundnessTests extends maf.test.aam.AAMSoundnessTests with DotGraphOutput:

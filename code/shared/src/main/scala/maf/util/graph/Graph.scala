@@ -89,6 +89,9 @@ trait Graph[G, N <: GraphElement, E <: GraphElement, S <: GraphElement]:
 
     /** Finds the node by the given id if supported */
     def findNodeById(g: G, id: Int): Option[N] = None
+    
+    /** Set the name of the graph */
+    def setName(g: G, name: String): G
 
 object Graph:
     def apply[G, N <: GraphElement, E <: GraphElement, S <: GraphElement]()(implicit g: Graph[G, N, E, S]): Graph[G, N, E, S] =
@@ -115,3 +118,4 @@ object Graph:
         def edges: Int = ev.nodes(g)
         def findNodes(p: N => Boolean): Set[N] = ev.findNodes(g, p)
         def findNodeById(id: Int): Option[N] = ev.findNodeById(g, id)
+        def setName(n: String): G = ev.setName(g, n)

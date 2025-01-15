@@ -27,4 +27,5 @@ case class ReachableStatesConditionGraph[N <: GraphElement, E <: GraphElement, S
             def nodes(g: G) = g.states.size
             def edges(g: G) = 0
             def findNodes(g: G, p: N => Boolean) = g.states.filter(p)
+            def setName(g: G, name: String): G = setName(g, name)
         }

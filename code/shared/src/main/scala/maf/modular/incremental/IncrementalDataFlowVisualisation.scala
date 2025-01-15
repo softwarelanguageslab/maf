@@ -48,7 +48,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
 
 
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
-    def flowInformationToDotGraph(fileName: String): Unit =
+    def flowInformationToDotGraph(fileName: String, name: Option[String] = None): Unit =
         // Type of graph elements. One type suffices for both nodes and edges.
         case class GE(label: String,
                       color: Color = Colors.White,
@@ -85,13 +85,16 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
           (ge_subgraph, ge_nodes)
         })
         // Create the graph and write it to a file. Only edges that are assigned a colour will be drawn.
-        val g = DotGraph[GE, GE, GE]().G.typeclass
-        subgraphs.foldLeft(edges.foldLeft(nodes.values.foldLeft(g.empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
+        val g = DotGraph[GE, GE, GE]().G2.typeclass
+        val empty = name match
+            case Some(n) => g.setName(g.empty, n)
+            case None => g.empty
+        subgraphs.foldLeft(edges.foldLeft(nodes.values.foldLeft(empty) { case (graph, node: GE) => g.addNode(graph, node) }) {
             case (graph, edge) => g.addEdge(graph, nodes(edge.source), edgeToGE(edge), nodes(edge.target))
         }){ case (graph, (sg, nodes)) => g.addSubgraph(graph, sg, nodes)}.toFile(fileName)
         println(s"Graph $fileName contains ${edges.size} edges and ${nodes.size} nodes and ${subgraphs.size} SCAs.")
 
-    def dataFlowToImage(fileName: String): Unit =
-        flowInformationToDotGraph(fileName)
+    def dataFlowToImage(fileName: String, name: Option[String] = None): Unit =
+        flowInformationToDotGraph(fileName, name)
         if !DotGraph.createSVG(fileName, true)
         then System.err.nn.println("Conversion failed.")

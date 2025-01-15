@@ -25,4 +25,5 @@ class NoGraph[N <: GraphElement, E <: GraphElement, S <: GraphElement]:
             def nodes(g: G) = 0
             def edges(g: G) = 0
             def findNodes(g: G, p: N => Boolean) = Set.empty
+            def setName(g: G, name: String): G = g
         }
