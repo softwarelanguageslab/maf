@@ -72,22 +72,31 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         import evalM._
 
         var cutFlows: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
-        var litAddrs: Set[Addr] = Set()
+        var noStoreAddrIntra: Set[Addr] = Set()
+        
+        // Inserts a flow node in the data flow.
+        // Sources are the addresses from which information flows to the flow node.
+        // Returns the flow node (so that it can e.g., be used easily in the conditional).
+        private def insertFlowNode(flw: Addr, sources: Set[Addr]): Addr =
+            dataFlowRIntra = dataFlowRIntra + (flw -> (dataFlowRIntra(flw) ++ sources)) // implicit flows ~> flowNode (reversed)
+            noStoreAddrIntra = noStoreAddrIntra + flw // Assume this is also needed for flows to conditionals (if) todo: check
+            flw
 
         override def commit(): Unit =
             // Update this here. This way it can be decided when reanalysis is needed in applyClosuresM using interComponentFlow.
 
             // Reduce the number of flows by inserting flow nodes.
+            // Collect 2 maps: one with all components and their flow nodes (fromNodeR), and one with all implicit flows going to flow nodes (toNodeR).
             val (fromNodeR, toNodeR): (Map[Component, Set[Addr]], Map[Addr, Set[Addr]]) =
                 cutFlows.foldLeft((Map[Component, Set[Addr]](), Map[Addr, Set[Addr]]()))({case ((fromNodeR, toNodeR), (c, a)) =>
                     val flowNode = FlowAddr(c)
                     (fromNodeR + (c -> Set(flowNode)), toNodeR + (flowNode -> a))
             })
             interComponentFlow = interComponentFlow + (component -> fromNodeR) // flowNode ~> componentContext
-            toNodeR.foreach((w, r) => dataFlow = dataFlow + (w -> (dataFlow(w) ++ r))) // implicit flows ~> flowNode (reversed)
+            toNodeR.foreach(insertFlowNode) // implicit flows ~> flowNode
 
             // Store the created of addresses that are not in the store.
-            noStoreAddr = noStoreAddr + (component -> (litAddrs ++ toNodeR.keySet))
+            noStoreAddr = noStoreAddr + (component -> noStoreAddrIntra)
             super.commit()
 
         // analysis entry point
@@ -138,7 +147,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     iFlows <- getImplicitFlows
                     adr = lattice.getAddresses(prdVal) ++ iFlows
                     // Reduce the number of edges:
-                    addr = if adr.size > 1 then { val flw = FlowAddr(component, Some(prd)) ; dataFlow = dataFlow + (flw -> (dataFlow(flw) ++ adr)) ; Set(flw) } else adr
+                    addr = if adr.size > 1 then Set(insertFlowNode(FlowAddr(component, Some(prd)), adr)) else adr
                     resVal <- withImplicitFlows(addr) {
                         cond(prdVal, eval(csq), eval(alt))
                     }
@@ -152,14 +161,14 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             // Make it part of an SCA using implicit flows! This fixes precision loss due to conditional reading of literals!
             if configuration.cyclicValueInvalidation then
                 val a = LitAddr(exp)
-                litAddrs += a
+                noStoreAddrIntra += a
                 for
                     iFlows <- getImplicitFlows
                     //_ = { dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) } // TODO!! (+ todo: remove iflows from value)
                     value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking + implicit flows!.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield
-                    dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
+                    dataFlowRIntra += (a -> SmartUnion.sunion(dataFlowRIntra(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
                     value
             else super.evalLiteralValue(literal, exp)
 

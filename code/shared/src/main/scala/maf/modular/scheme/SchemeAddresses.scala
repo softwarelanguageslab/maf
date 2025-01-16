@@ -43,5 +43,5 @@ case class FlowAddr[Component](cmp: Component, e: Option[SchemeExp] = None) exte
     def printable = false
     def idn: Identity = Identity.none
     override def toString: String = e match
-        case Some(e) => s"iFlowCtx($cmp : $e)"
-        case None => s"iFlowCtx($cmp)"
+        case Some(e) => s"flowCtx($cmp :: ${e.idn.pos})"
+        case None => s"flowCtx($cmp)"

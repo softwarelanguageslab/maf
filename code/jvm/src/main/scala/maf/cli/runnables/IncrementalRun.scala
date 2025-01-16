@@ -101,7 +101,7 @@ object IncrementalRun extends App:
         exp
 
     // Returns a boolean indicating whether the analysis is fully precise.
-    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true, images: Boolean = false): Boolean =
+    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true, images: Boolean = false, name: Option[String] = None): Boolean =
         try
             val a = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
             val b = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
@@ -111,7 +111,7 @@ object IncrementalRun extends App:
             start()
             println(markStep("init"))
             a.analyzeWithTimeout(newTimeout())
-            if images then a.dataFlowToImage("flows-init.dot")
+            if images then a.dataFlowToImage("flows-init.dot", name.map(_ + " (initial analysis)"))
 
             tick()
             println(markStep("rean"))
@@ -125,8 +125,8 @@ object IncrementalRun extends App:
             stop()
             if images
             then
-                a.dataFlowToImage("flows-incr.dot")
-                b.dataFlowToImage("flows-rean.dot")
+                a.dataFlowToImage("flows-incr.dot", name.map(_ + " (incremental update)"))
+                b.dataFlowToImage("flows-rean.dot", name.map(_ + " (full reanalysis)"))
             println(markStep("Comparing analyses"))
             //a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
             val diff = storeDiff(a, b)
@@ -157,9 +157,9 @@ object IncrementalRun extends App:
         //"test/changes/scheme/generated/R5RS_various_work-3.scm",
 
         // Not precise yet.
-        "test/DEBUG2.scm",
+        //"test/DEBUG2.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
-        "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
+        //"test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
         "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
         "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
         "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm",
@@ -170,12 +170,12 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
-    ).foreach { bench =>
+    ).slice(0,1).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
             println(text)
-            println(!analyse(text, false, false, false))
+            println(!analyse(text, false, false, true, Some(bench)))
             //val reduced = reduceImprecise(text)
             //println(reduced)
             //println(!analyse(reduced, true, true))

@@ -131,7 +131,7 @@ object Tarjan:
                     // Paths contains source and target.
                     val subSCCs = paths.flatMap(node => currSCCs.find(_.contains(node)))
                     val resultSCC = subSCCs.flatten ++ paths
-                    currSCCs = (currSCCs --subSCCs) + resultSCC
+                    currSCCs = (currSCCs -- subSCCs) + resultSCC
             }
         }
 

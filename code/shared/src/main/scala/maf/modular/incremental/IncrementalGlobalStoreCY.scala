@@ -46,6 +46,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      *  Caches the implicit flows cut on the component boundary found by every component for other components.
      *  Doubly indexed to allow easy deletion upon component reanalysis.
      */
+    // TODO: Given that flow nodes are now used, Set[Addr] could be replaced by Addr.
     var interComponentFlow: Map[Component, Map[Component, Set[Addr]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
     /** All encountered addresses that are not in the store. Used to know the nodes when invoking Tarjan. */
@@ -120,10 +121,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     /* *************** SCAs *************** */
     /* ************************************ */
 
+    // Keeps track of the previous flows for the incremental Tarjan.
+    var previousFlowsR: Map[Addr, Set[Addr]] = Map()
+
     /**
      * Computes the SCAs in the program based on the explicit and implicit flows.
      */
-    def computeSCAs(): Set[SCA] =
+    def computeSCAs(firstTime: Boolean = false): Set[SCA] =
         // Explicit flows + intra-component implicit flows.
         val flowsR = explicitAndIntraComponentImplicitFlowsR()
         // Compute the transitive inter-component flows.
@@ -132,7 +136,15 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         val allFlowsR = attachTransitiveFlowsToFlowsR(flowsR, transitiveInterComponentFlows)
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         // Also take the literal addresses into account when doing so.
-        Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
+        if firstTime
+        then
+            previousFlowsR = allFlowsR
+            Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
+        else
+            val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, Set()))))
+            val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, Set()))))
+            previousFlowsR = allFlowsR
+            Tarjan.updateSCCs[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR, added, removed, SCAs)
 
     /** Checks whether a SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
@@ -208,7 +220,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
 
         /** Map of address dependencies W ~> Set[R]. */
         // (Temporary cache, such as the sets C, R, W.)
-        var dataFlow: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
+        var dataFlowRIntra: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
 
         override def readAddr(addr: Addr): Value =
             if configuration.cyclicValueInvalidation then lattice.addAddress(super.readAddr(addr), addr)
@@ -219,8 +231,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                 // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
                 val dependentAddresses = lattice.getAddresses(value) // TODO: add inter-component implicit data flow (cut)
                 // Store the dependencies.
-                val newDependencies = SmartUnion.sunion(dataFlow(addr), dependentAddresses)
-                dataFlow += (addr -> newDependencies)
+                val newDependencies = SmartUnion.sunion(dataFlowRIntra(addr), dependentAddresses)
+                dataFlowRIntra += (addr -> newDependencies)
                 super.writeAddr(addr, lattice.removeAddresses(value))
             else super.writeAddr(addr, value)
 
@@ -230,7 +242,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             super.commit()
             // Todo: is CY more efficient before or after WI? Or should it work at the same time?
             if configuration.cyclicValueInvalidation then
-                dataFlowR += (component -> dataFlow)
+                dataFlowR += (component -> dataFlowRIntra)
                 if version == New then updateSCAs(oldStore, oldDataFlowR)
 
     end IncrementalGlobalStoreCYIntraAnalysis
