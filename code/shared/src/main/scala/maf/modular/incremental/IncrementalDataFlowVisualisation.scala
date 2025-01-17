@@ -14,38 +14,29 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
     override def deleteComponent(cmp: Component): Unit =
         super.deleteComponent(cmp)
 
-    sealed trait Edge:
-        val source: Addr
-        val target: Addr
-        val bidirectional: Boolean
-    case class ExplicitOrIntraCImplicit(source: Addr, target: Addr, bidirectional: Boolean = false) extends Edge
-    case class InterComponentImplicit(source: Addr, target: Addr, bidirectional: Boolean = false) extends Edge
+    case class Edge(source: Addr, target: Addr, bidirectional: Boolean = false)
 
     def computeEdges(): Set[Edge] =
         // TODO: make this more efficient... Postpone the flatMapping until after the bidirifying (save edges as in dotgraph to have faster lookups).
-        def bidirify[E <: Edge](edges: Set[E], make: (Addr, Addr, Boolean) => E) : Set[E] =
+        def bidirify(edges: Set[Edge]): Set[Edge] =
             var lst = edges
-            var res: List[E] = List()
+            var res: List[Edge] = List()
             while lst.nonEmpty
             do
                 val first = lst.head
                 lst = lst.tail
                 lst.find(e => e.source == first.target && e.target == first.source) match
                     case Some(a) =>
-                        res = make(first.source, first.target, true) :: res
+                        res = Edge(first.source, first.target, true) :: res
                         lst = lst - a
                     case None =>
                         res = first :: res
             res.toSet
-        val flowsR = explicitAndIntraComponentImplicitFlowsR()
-        val interF = attachTransitiveFlowsToFlowsR(Map().withDefaultValue(Set()), computeTransitiveInterComponentFlows()) // Do not attach to explicit flows but keep separate.
-        val e: Set[ExplicitOrIntraCImplicit] = flowsR.toList.flatMap {case (target, sources) => sources.map(s => ExplicitOrIntraCImplicit(s, target))}.toSet
-        val i: Set[InterComponentImplicit] = interF.toList.flatMap {case (target, sources) => sources.map(s => InterComponentImplicit(s, target))}.toSet
+        val flowsR = combineDataflowR()
+        val interF = addInterComponentImplicitFlows(flowsR)
+        val i: Set[Edge] = interF.toList.flatMap {case (target, sources) => sources.map(s => Edge(s, target))}.toSet
         // Less arrows: if a flow exist in both directions, make 1 bidirectional arrow instead of 2.
-        val eBidir = bidirify(e, {case (s, t, b) => ExplicitOrIntraCImplicit(s, t, b)})
-        val iBidir = bidirify(i, {case (s, t, b) => InterComponentImplicit(s, t, b)})
-        eBidir ++ iBidir
-
+        bidirify(i)
 
     /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
     def flowInformationToDotGraph(fileName: String, name: Option[String] = None): Unit =
@@ -64,9 +55,10 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         }
 
         def edgeToGE(e: Edge): GE =
-            val colour = e match {
-                case _: ExplicitOrIntraCImplicit => Colors.Bordeaux
-                case _: InterComponentImplicit => Colors.DarkGrey
+            val colour = e.source match {
+                case _: LitAddr[_] => Colors.Bordeaux
+                case _: FlowAddr[_] => Colors.DarkGrey
+                case _ => Colors.RoseEbony
             }
             val attributes = if e.bidirectional then Map("style" -> "\"dashed\"", "arrowhead" -> "none") else Map()
             GE("", colour, attributes = attributes)
@@ -78,8 +70,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         val nodes: Map[Addr, GE] = (edges.map(_.source) ++ edges.map(_.target)).map(a => (a, addrToGE(a))).toMap
         // Compute a subgraph for every SCA.
         val subgraphs: List[(GE, Set[GE])] = computeSCAs().toList.zipWithIndex.map({case (sca, index) =>
-          val colour = palette(index % palette.size)
-          val attributes = Map("name" -> s"cluster_$index","style" -> "\"filled,dashed\"", "fillcolor" -> s"<$colour>")
+          val attributes = Map("name" -> s"cluster_$index","style" -> "\"filled,dashed\"", "fillcolor" -> s"<${Colors.Yellow}>")
           val ge_nodes = sca.map(nodes)
           val ge_subgraph = GE("",  attributes = attributes)
           (ge_subgraph, ge_nodes)

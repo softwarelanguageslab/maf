@@ -73,7 +73,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
 
         var cutFlows: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
         var noStoreAddrIntra: Set[Addr] = Set()
-        
+
         // Inserts a flow node in the data flow.
         // Sources are the addresses from which information flows to the flow node.
         // Returns the flow node (so that it can e.g., be used easily in the conditional).
@@ -88,10 +88,13 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             // Reduce the number of flows by inserting flow nodes.
             // Collect 2 maps: one with all components and their flow nodes (fromNodeR), and one with all implicit flows going to flow nodes (toNodeR).
             val (fromNodeR, toNodeR): (Map[Component, Set[Addr]], Map[Addr, Set[Addr]]) =
-                cutFlows.foldLeft((Map[Component, Set[Addr]](), Map[Addr, Set[Addr]]()))({case ((fromNodeR, toNodeR), (c, a)) =>
-                    val flowNode = FlowAddr(c)
-                    (fromNodeR + (c -> Set(flowNode)), toNodeR + (flowNode -> a))
-            })
+                cutFlows.foldLeft((Map[Component, Set[Addr]](), Map[Addr, Set[Addr]]())) { case ((fromNodeR, toNodeR), (c, a)) =>
+                    if a.nonEmpty 
+                    then 
+                        val flowNode = FlowAddr(c)
+                        (fromNodeR + (c -> Set(flowNode)), toNodeR + (flowNode -> a))
+                    else (fromNodeR, toNodeR)
+            }
             interComponentFlow = interComponentFlow + (component -> fromNodeR) // flowNode ~> componentContext
             toNodeR.foreach(insertFlowNode) // implicit flows ~> flowNode
 

@@ -158,8 +158,8 @@ object IncrementalRun extends App:
 
         // Not precise yet.
         //"test/DEBUG2.scm",
-        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
-        //"test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
+        //"test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
+        "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
         "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
         "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
         "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm",
