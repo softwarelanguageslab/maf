@@ -300,8 +300,6 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
                 assume(a.finished)
                 val SCAs = a.computeSCAs()
                 println(a.program.prettyString())
-                println(a.combineDataflowR())
-                println(a.computeTransitiveInterComponentFlows())
                 println(SCAs)
                 c(SCAs)
             }

@@ -60,7 +60,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
       |COMI  Indicates the component's analysis is committed.
       |DELA  Indicates the removal of a given address.
       |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
-      |ICFL  The cut inter-component implicit flows to every component, found by the currently analysed component.
+      |ICFL  The components called in a non-empty flow context.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
       |NEWC  Discovery of a new, not yet existing component.
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
@@ -124,9 +124,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
             .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
             .prettyString()
         // Inter-component dataflow
-        val icFlow = interComponentFlow.values.flatten.groupBy(_._1).map({case (c, ca) => (c, ca.flatMap(_._2).toSet)})
-        val icFlowString = icFlow
-            .foldLeft(Table.empty.withDefaultValue(""))( {case (table, flow) => table.add(flow._1.toString, "Flows to cmp", flow._2.mkString("; "))})
+        val icFlowString = interComponentFlow
+            .foldLeft(Table.empty.withDefaultValue(""))( {case (table, flow) => table.add(flow._1.toString, "Calls in non-empty context", flow._2.mkString(" "))})
             .prettyString()
         val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
         depString + "\n\n" + icFlowString + (if configuration.cyclicValueInvalidation && mode != Select then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString)
@@ -290,7 +289,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         override def commit(): Unit =
             if mode != Summary || stepSelect() then logger.log("COMI")
             super.commit()
-            if (mode == Fine || (mode == Step && stepSelect())) then logger.log(s"ICFL ${interComponentFlow.getOrElse(component, Map()).toList.map(kv => s"${kv._1} => {${kv._2.mkString(", ")}}").mkString("; ")}")
+            if (mode == Fine || (mode == Step && stepSelect())) then logger.log(s"ICFL ${interComponentFlow.getOrElse(component, Map()).toList.mkString(" ")}")
             insertTable(Right(component))
 
     end IncrementalLoggingIntra

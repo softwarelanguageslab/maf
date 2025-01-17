@@ -32,9 +32,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
                     case None =>
                         res = first :: res
             res.toSet
-        val flowsR = combineDataflowR()
-        val interF = addInterComponentImplicitFlows(flowsR)
-        val i: Set[Edge] = interF.toList.flatMap {case (target, sources) => sources.map(s => Edge(s, target))}.toSet
+        val i: Set[Edge] = computeInformationFlow().toList.flatMap {case (target, sources) => sources.map(s => Edge(s, target))}.toSet
         // Less arrows: if a flow exist in both directions, make 1 bidirectional arrow instead of 2.
         bidirify(i)
 

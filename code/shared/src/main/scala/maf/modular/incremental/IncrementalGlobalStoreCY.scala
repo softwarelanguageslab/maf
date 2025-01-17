@@ -52,11 +52,11 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     var dataFlowR: Map[Component, Map[W, Set[R]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
 
     /**
-     *  Caches the implicit flows cut on the component boundary found by every component for other components.
-     *  Doubly indexed to allow easy deletion upon component reanalysis.
+     *  Indicates that implicit cut flows exist for a given component. Maps callers to callees.
+     *  The actual flows themselves don't need to be stored here, as they are flowing to the flow node.
+     *  Hence, for every component in the value set, the flow node represents all incoming cut flows.
      */
-    // TODO: Given that flow nodes are now used, Set[Addr] could be replaced by Addr.
-    var interComponentFlow: Map[Component, Map[Component, Set[I]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+    var interComponentFlow: Map[Component, Set[Component]] = Map().withDefaultValue(Set())
 
     /** All encountered addresses that are not in the store. Used to know the nodes when invoking Tarjan. */
     var noStoreAddr: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
@@ -72,83 +72,40 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     /* *********************************** */
 
     /**
-     * Combines the information stored on a per-component basis in dataFlowR.
-     * Computes a map of addresses written to all addresses influencing these addresses (both explicitly as well as via implicit flows).
-     * @return Map[W, Set[R + I]]
-     * @note Explicit flows and intra-component implicit flows are together since the implicit flows are in the monad which is not available here.
-     *       Hence, the implicit intra-component flows are already added to the explicit flows upon write to the store in the semantics.
+     * Based on the collected dataFlowR and the cut inter-component flows, computes the full information flow (explicit and implicit).
+     * @return The REVERSE flows, containing the explicit and all implicit flows.
      */
-    def combineDataflowR(): Map[W, Set[R]] = // dataFlowR.values.flatten.groupBy(_._1).map({ case (w, wr) => (w, wr.flatMap(_._2).toSet) }) // Map[W, Set[R]]
-        dataFlowR.foldLeft(Map().withDefaultValue(Set[R]())) { case (res, (_, map)) => // Hopefully this is more efficient than what is commented out above.
+    def computeInformationFlow(): Map[W, Set[R]] =
+        // Combines the information stored on a per-component basis in dataFlowR.
+        var flowsR: Map[W, Set[R]] = dataFlowR.foldLeft(Map().withDefaultValue(Set[R]())) { case (res, (_, map)) =>
             map.foldLeft(res) { case (res, (w, rs)) => res + (w -> SmartUnion.sunion(res(w), rs)) }
         }
-
-    /**
-     * Adds the inter-component implicit flows to the writes of all components, and adds this immediately to the explicit and intra-component implicit flows.
-     * @param dataflowR The REVERSE explicit and intra-component implicit flows, without inter-component implicit flows.
-     * @return The REVERSE dataflow, containing the explicit and all implicit flows.
-     */
-    def addInterComponentImplicitFlows(dataflowR: Map[W, Set[R]]): Map[W, Set[R]] =
-        // Flows to every component (now only the flowAddrs normally).
-        val combinedFlowsInterCmp: Map[Component, Set[Addr]] =
-            interComponentFlow.values.foldLeft(Map[Component, Set[Addr]]()) { case (res, m) => // Use a double fold instead of flatten for efficiency?
-                m.foldLeft(res) { case (res, (cmp, addr)) =>
-                    res + (cmp -> SmartUnion.sunion(res.getOrElse(cmp, Set()), addr))
-                }
-            }
-         
-        // For every component that has a non-empty implicit flow context,
-        // add a flow to the flow nodes of all components called by it.
-        // This is a fixed-point computation as an edge may be added to a flow node of a component 
-        // that has already been processed, meaning that propagation is needed.
-        // TODO: It is assumed that this needs to be a fixed-point computation, but no situation has been encountered where the commented out computation below does not suffice.
-        var work: Set[Component] = visited
-        var addedTo: Set[Component] = Set() // Allows to still process a node when it does not have implicit flows other than ones added in this fixed-point computation.
-        var processedImplicit: Set[Component] = Set() // Visited set of "expanded" nodes.
-        var currDataflowR: Map[W, Set[R]] = dataflowR
+    
+        // For every component that is called in a non-empty implicit flow context, 
+        // add a flow from its flow node to the flow nodes of all components called by it.
+        // Propagate over calls made by the latter, as they were also made in the implicit flow context.
+        var work: Set[Component] = interComponentFlow.values.toSet.flatten // We only need to start from the components that were called in a non-empty context.
+        var visited: Set[Component] = Set()
         
         while work.nonEmpty
         do
-            val caller = work.head
+            val caller = work.head // The component called in a non-empty flow context, calling other components.
             work = work - caller
-            val flowsToCaller = combinedFlowsInterCmp.getOrElse(caller, Set())
-            if !processedImplicit.contains(caller) && (flowsToCaller.nonEmpty || addedTo.contains(caller))
+            if !visited.contains(caller)
             then
-                processedImplicit = processedImplicit + caller
-                currDataflowR = cachedSpawns(caller).foldLeft(currDataflowR) { case (df, callee) =>
+                visited = visited + caller
+                flowsR = cachedSpawns(caller).foldLeft(flowsR) { case (df, callee) =>
                     val calleeAddr = FlowAddr(callee)
-                    addedTo = addedTo + callee
                     work = work + callee
                     df + (calleeAddr -> (df(calleeAddr) + FlowAddr(caller)))
                 }
                 
         // For every component that has a non-empty implicit flow context, 
         // add a flow from the components "flow node" to all addresses it wrote.
-        processedImplicit.foldLeft(currDataflowR) { (df, cmp) =>
+        visited.foldLeft(flowsR) { (df, cmp) =>
             val cmpAddr = FlowAddr(cmp)
             cachedWrites(cmp).foldLeft(df) { case (df, w) => df + (w -> (df(w) + cmpAddr)) }
         }
-
-        /*
-        // For every component that has a non-empty implicit flow context:
-        //  - Add a flow from the components "flow node" to all addresses it wrote.
-        //  - Add a flow to the flow nodes of all components called by it.
-        // TODO: if the combined flow is empty, nothing will be done here even though another component may have added something to the implicit flows of it.
-        cachedSpawns.foldLeft(dataflowR) { case (df, (caller, callees)) =>
-            val callerAddr = FlowAddr(caller)
-            val flowsToCaller = combinedFlowsInterCmp.getOrElse(caller, Set())
-            if flowsToCaller.nonEmpty
-            then
-                val written = cachedWrites(caller) // All addresses to which the implicit flows must be added (in reverse).
-                val df2 = written.foldLeft(df) { case (df, w) => df + (w -> (df(w) + callerAddr))
-                }
-                callees.foldLeft(df2) { case (df, callee) =>
-                    val calleeAddr = FlowAddr(callee)
-                    df + (calleeAddr -> (df(calleeAddr) + callerAddr))
-                }
-            else df
-        }
-        */
 
     /* ************************************ */
     /* *************** SCAs *************** */
@@ -161,10 +118,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * Computes the SCAs in the program based on the explicit and implicit flows.
      */
     def computeSCAs(firstTime: Boolean = false): Set[SCA] =
-        // Explicit flows + intra-component implicit flows.
-        val flowsR = combineDataflowR()
-        // Apply the transitive inter-component dataflow to all the writes of components and add this to the explicit flow.
-        val allFlowsR = addInterComponentImplicitFlows(flowsR)
+        // Compute the total information flow.
+        val allFlowsR = computeInformationFlow()
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         // Also take the literal addresses into account when doing so.
         if firstTime

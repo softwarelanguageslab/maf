@@ -86,16 +86,17 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             // Update this here. This way it can be decided when reanalysis is needed in applyClosuresM using interComponentFlow.
 
             // Reduce the number of flows by inserting flow nodes.
-            // Collect 2 maps: one with all components and their flow nodes (fromNodeR), and one with all implicit flows going to flow nodes (toNodeR).
-            val (fromNodeR, toNodeR): (Map[Component, Set[Addr]], Map[Addr, Set[Addr]]) =
-                cutFlows.foldLeft((Map[Component, Set[Addr]](), Map[Addr, Set[Addr]]())) { case ((fromNodeR, toNodeR), (c, a)) =>
+            // Collect a set with all components that were called with a non-empty flow context, 
+            // and a map with all implicit flows going to flow nodes (toNodeR).
+            val (cmpWithCtx, toNodeR): (Set[Component], Map[Addr, Set[Addr]]) =
+                cutFlows.foldLeft((Set[Component](), Map[Addr, Set[Addr]]())) { case ((cmpWithCtx, toNodeR), (c, a)) =>
                     if a.nonEmpty 
                     then 
                         val flowNode = FlowAddr(c)
-                        (fromNodeR + (c -> Set(flowNode)), toNodeR + (flowNode -> a))
-                    else (fromNodeR, toNodeR)
+                        (cmpWithCtx + c, toNodeR + (flowNode -> a))
+                    else (cmpWithCtx, toNodeR)
             }
-            interComponentFlow = interComponentFlow + (component -> fromNodeR) // flowNode ~> componentContext
+            interComponentFlow = interComponentFlow + (component -> cmpWithCtx) // components called with a non-empty flow context.
             toNodeR.foreach(insertFlowNode) // implicit flows ~> flowNode
 
             // Store the created of addresses that are not in the store.
