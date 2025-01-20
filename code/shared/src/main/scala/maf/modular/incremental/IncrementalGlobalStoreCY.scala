@@ -18,7 +18,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     inter =>
 
     override def updateAnalysis(timeout: Timeout.T): Unit =
-        if configuration.cyclicValueInvalidation then SCAs = computeSCAs()
+        if configuration.cyclicValueInvalidation then SCAs = computeSCAs(true) // Compute the SCAs for a first time. This will invoke a full Tarjan.
         super.updateAnalysis(timeout)
 
     override def deleteComponent(cmp: Component): Unit =
@@ -127,8 +127,9 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             previousFlowsR = allFlowsR
             Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
         else
-            val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, Set()))))
-            val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, Set()))))
+            // First remove keys with empty values to be more efficient when updating the SCA (hopefully).
+            val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
+            val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
             previousFlowsR = allFlowsR
             Tarjan.updateSCCs[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR, added, removed, SCAs)
 
