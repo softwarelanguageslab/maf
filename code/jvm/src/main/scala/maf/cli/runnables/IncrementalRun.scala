@@ -156,7 +156,7 @@ object IncrementalRun extends App:
         //"test/changes/scheme/generated/R5RS_various_work-1.scm",
         //"test/changes/scheme/generated/R5RS_various_work-3.scm",
 
-        "test/changes/scheme/browse.scm",
+        "test/changes/scheme/leval.scm",
 
         // Not precise yet.
         "test/DEBUG2.scm",
@@ -177,7 +177,7 @@ object IncrementalRun extends App:
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
             println(text)
-            println(!analyse(text, false, false, true, Some(bench)))
+            println(!analyse(text, false, false, false, Some(bench)))
             //val reduced = reduceImprecise(text)
             //println(reduced)
             //println(!analyse(reduced, true, true))

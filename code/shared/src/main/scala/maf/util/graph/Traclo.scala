@@ -1,6 +1,6 @@
 package maf.util.graph
 
-object Warshall:
+object Traclo:
 
     /** Implementation of Warshall's transitive closure algorithm.
      * Implementation based on W. De Meuter "Algorithms and Data Structures in Scheme".<br> 
@@ -14,7 +14,7 @@ object Warshall:
      * @return
      *   An updated set of edges, being the transitive closure.
      */
-    def traclo[Node](nodes: Set[Node], e: Map[Node, Set[Node]]): Map[Node, Set[Node]] =
+    def warshall[Node](nodes: Set[Node], e: Map[Node, Set[Node]]): Map[Node, Set[Node]] =
         var edges = e
         nodes.foreach({ via =>
            nodes.foreach({ from =>

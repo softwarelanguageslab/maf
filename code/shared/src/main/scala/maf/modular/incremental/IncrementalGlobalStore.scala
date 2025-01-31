@@ -7,7 +7,7 @@ import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.modular.scheme.LitAddr
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
-import maf.util.graph.Tarjan
+import maf.util.graph.SCC
 
 import scala.collection.immutable.*
 

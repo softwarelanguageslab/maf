@@ -10,7 +10,7 @@ import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.util.ColouredFormatting.*
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
-import maf.util.graph.Tarjan
+import maf.util.graph.SCC
 
 import scala.collection.immutable.*
 
@@ -66,6 +66,28 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * Connected Addresses (SCC containing addresses). For every SCA, keep track of the join of values flowing towards it from outside the SCA.
      */
     var SCAs: Set[SCA] = Set()
+
+    /* *********************************** */
+    /* ************** Updating *********** */
+    /* *********************************** */
+
+    var nonIncrementalUpdate: Boolean = false
+
+    // Verify when a nonIncrementalUpdate has taken place, to conditionally perform SCA computations (rather than doing it every time).
+    override def deleteContribution(cmp: Component, addr: Addr): Unit =
+        val old = store.getOrElse(addr, lattice.bottom)
+        super.deleteContribution(cmp, addr)
+        val nw = store.getOrElse(addr, lattice.bottom)
+        if !lattice.subsumes(nw, old)
+        then nonIncrementalUpdate = true
+
+    override def updateAddrInc(cmp: Component, addr: Addr, nw: Value): Boolean =
+        val old = store.getOrElse(addr, lattice.bottom)
+        val res = super.updateAddrInc(cmp, addr, nw)
+        val nwv = store.getOrElse(addr, lattice.bottom)
+        if !lattice.subsumes(nwv, old)
+        then nonIncrementalUpdate = true
+        res
 
     /* *********************************** */
     /* ************** Flows ************** */
@@ -125,13 +147,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         if firstTime
         then
             previousFlowsR = allFlowsR
-            Tarjan.scc[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
+            SCC.tarjan[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
         else
             // First remove keys with empty values to be more efficient when updating the SCA (hopefully).
             val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
             val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
             previousFlowsR = allFlowsR
-            Tarjan.updateSCCs[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR, added, removed, SCAs)
+            SCC.incremental[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR, added, removed, SCAs)
 
     /** Checks whether a SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
@@ -194,9 +216,13 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     // Add all these components to the worklist at once (should perform better as it avoids duplicate additions).
     //addToWorkList(ignored)
 
-    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Unit =
-        SCAs = computeSCAs()
-        SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
+    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, Set[R]]], cmp: Component): Unit =
+        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, Set())).nonEmpty)
+        if flowDeleted || nonIncrementalUpdate
+        then
+            SCAs = computeSCAs()
+            SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
+            nonIncrementalUpdate = false
 
     /* ************************************ */
     /* ***** Intra-component analysis ***** */
@@ -230,7 +256,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             // Todo: is CY more efficient before or after WI? Or should it work at the same time?
             if configuration.cyclicValueInvalidation then
                 dataFlowR += (component -> dataFlowRIntra)
-                if version == New then updateSCAs(oldStore, oldDataFlowR)
+                if version == New then updateSCAs(oldStore, oldDataFlowR, component)
 
     end IncrementalGlobalStoreCYIntraAnalysis
 

@@ -1,7 +1,7 @@
 package maf.test.util
 
 import maf.test.UtilityTest
-import maf.util.graph.Tarjan
+import maf.util.graph.SCC
 import org.scalatest.propspec.AnyPropSpec
 
 class IncrementalSCCTests  extends AnyPropSpec:
@@ -14,7 +14,7 @@ class IncrementalSCCTests  extends AnyPropSpec:
                               previousSCCs: Set[Set[N]],
                               expectedResult: Set[Set[N]]):
         def test(): Unit = property(s"Tarjan correctly computes SCCs for graph $id.", UtilityTest) {
-            val scc = Tarjan.updateSCCs(nodes, edges, addedEdges, removedEdges, previousSCCs)
+            val scc = SCC.incremental(nodes, edges, addedEdges, removedEdges, previousSCCs)
             assert(scc == expectedResult, s"Incremental SCC returned $scc for graph $id, whilst $expectedResult was expected.")
         }
 

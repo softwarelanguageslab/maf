@@ -134,7 +134,7 @@ object ScvGraphGenerator:
         val edges = writeDep.foldLeft(readDep) { case ((deps), (from, toS)) =>
             deps + (from -> (deps.get(from).getOrElse(Set()) ++ toS))
         }
-        val sccs = Tarjan.scc(nodes, edges)
+        val sccs = SCC.tarjan(nodes, edges)
 
         // visualize the scc's
         implicit val graph = new DotGraph[Node, Edge, GraphElement].G2.typeclass

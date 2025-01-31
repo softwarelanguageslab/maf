@@ -1,10 +1,11 @@
 package maf.util.graph
 
 import maf.language.scheme.SchemeCase
+import maf.util.benchmarks.Timeout
 
 import scala.annotation.tailrec
 
-object Tarjan:
+object SCC:
 
     /**
      * Collapses a graph into its strongly connected components.
@@ -17,7 +18,7 @@ object Tarjan:
      *   scc for the algorithm
      */
     def collapse[N](nodes: Set[N], originalEdges: Map[N, Set[N]]): (Set[Set[N]], Map[Set[N], Set[Set[N]]]) =
-        val cmpsWithoutSelf = scc(nodes, originalEdges)
+        val cmpsWithoutSelf = tarjan(nodes, originalEdges)
         // create singleton sets of nodes that are not in an scc
         val cmps = cmpsWithoutSelf ++ nodes.filterNot(n => cmpsWithoutSelf.exists(_.contains(n))).map(Set(_))
         val edges = cmps.foldLeft(Map[Set[N], Set[Set[N]]]().withDefaultValue(Set()))((edges, cmp) =>
@@ -40,7 +41,7 @@ object Tarjan:
      * @return A set of SCCs, where each SCC is a set of the nodes that form the SCC.
      * @note Unit tests: maf.test.util.TarjanSCCTests
      */
-    def scc[Node](nodes: Set[Node], edges: Map[Node, Set[Node]]): Set[Set[Node]] =
+    def tarjan[Node](nodes: Set[Node], edges: Map[Node, Set[Node]]): Set[Set[Node]] =
         var unvisited: Set[Node] = nodes
         var id = 0
         var ids: Map[Node, Int] = Map()
@@ -89,7 +90,7 @@ object Tarjan:
      * @return A set of SCCs, where each SCC is a set of the nodes that form the SCC.
      * @note Unit tests: maf.test.util.IncrementalSCCTests
      */
-    def updateSCCs[Node](nodes: Set[Node], edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
+    def incremental[Node](nodes: Set[Node], edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
         // findPaths returns all nodes on all paths from from to to.
         // Works in O(|V|+|E|), although smaller in practice because it only traverses part of the graph reachable from current.
         def findPaths(current: Node, target: Node, visited: Set[Node] = Set()): Set[Node] =
@@ -109,7 +110,7 @@ object Tarjan:
         removedEdges.flatMap { case (source, targets) =>
             targets.flatMap(target => currSCCs.find{scc => scc.contains(source) && scc.contains(target)})
         }.foreach { SCC =>
-            val newSCC = scc(SCC, edges) // Local Tarjan using the nodes of the SCC.
+            val newSCC = tarjan(SCC, edges) // Local Tarjan using the nodes of the SCC.
             if newSCC.size != 1 || newSCC.head != SCC // Not sure whether this test makes it faster.
             then currSCCs = currSCCs - SCC ++ newSCC
         }

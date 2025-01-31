@@ -10,7 +10,7 @@ import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.worklist.SequentialWorklistAlgorithm
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
-import maf.util.graph.Tarjan
+import maf.util.graph.SCC
 
 import scala.collection.immutable.*
 
