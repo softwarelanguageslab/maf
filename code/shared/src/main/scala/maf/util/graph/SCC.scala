@@ -2,6 +2,7 @@ package maf.util.graph
 
 import maf.language.scheme.SchemeCase
 import maf.util.benchmarks.Timeout
+import maf.util.datastructures.SmartUnion
 
 import scala.annotation.tailrec
 
@@ -91,17 +92,23 @@ object SCC:
      * @note Unit tests: maf.test.util.IncrementalSCCTests
      */
     def incremental[Node](nodes: Set[Node], edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
-        // findPaths returns all nodes on all paths from from to to.
+        // findPaths returns all nodes on all paths from from to to as well as the set of visited nodes (= all nodes reachable from from).
         // Works in O(|V|+|E|), although smaller in practice because it only traverses part of the graph reachable from current.
-        def findPaths(current: Node, target: Node, visited: Set[Node] = Set()): Set[Node] =
+        def findPaths(current: Node, target: Node, visited: Set[Node] = Set()): (Set[Node], Set[Node]) =
             if current == target
-            then Set(current)
+            then (Set(current), visited + current) // Found: add the node to the path list and to the visited set.
             else if visited.contains(current)
-            then Set()
-            else
+            then (Set(), visited) // Not found, we are looping! Only add the node to the visited set.
+            else // Explore where we can get from the current node.
                 val next = edges.getOrElse(current, Set())
-                val res: Set[Node] = next.flatMap(findPaths(_, target, visited + current))
-                if res.nonEmpty then res + current else res
+                // Traverse the entire graph only once depht-first, by accumulating all visited nodes, and
+                // whether they have a path to the target or not.
+                val (paths, vis) =  next.foldLeft((Set[Node](), visited + current)) { case ((paths, vis), next) =>
+                    val (path, vis2) = findPaths(next, target, vis)
+                    if path.isEmpty
+                    then (paths, vis2) else (SmartUnion.sunion(path, paths), vis2)
+                }
+                if paths.nonEmpty then (paths + current, vis) else (paths, vis)
 
         var currSCCs = previousSCCs
 
@@ -112,7 +119,7 @@ object SCC:
         }.foreach { SCC =>
             val newSCC = tarjan(SCC, edges) // Local Tarjan using the nodes of the SCC.
             if newSCC.size != 1 || newSCC.head != SCC // Not sure whether this test makes it faster.
-            then currSCCs = currSCCs - SCC ++ newSCC
+            then currSCCs = SmartUnion.sunion(currSCCs - SCC, newSCC)
         }
 
         // Treat edge additions: look for edges not within an SCC that are added. (The others can't create a new SCC.)
@@ -126,12 +133,12 @@ object SCC:
                 case None => targets
                 case Some(scc) => targets.diff(scc)
             }).foreach { target =>
-                val paths = findPaths(target, source)
+                val (paths, _) = findPaths(target, source)
                 if paths.nonEmpty
                 then
                     // Paths contains source and target.
                     val subSCCs = paths.flatMap(node => currSCCs.find(_.contains(node)))
-                    val resultSCC = subSCCs.flatten ++ paths
+                    val resultSCC = SmartUnion.sunion(subSCCs.flatten, paths)
                     currSCCs = (currSCCs -- subSCCs) + resultSCC
             }
         }

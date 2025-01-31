@@ -156,7 +156,7 @@ object IncrementalRun extends App:
         //"test/changes/scheme/generated/R5RS_various_work-1.scm",
         //"test/changes/scheme/generated/R5RS_various_work-3.scm",
 
-        "test/changes/scheme/leval.scm",
+        "test/changes/scheme/matrix.scm",
 
         // Not precise yet.
         "test/DEBUG2.scm",
