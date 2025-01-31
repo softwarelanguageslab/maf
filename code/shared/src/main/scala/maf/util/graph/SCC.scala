@@ -94,8 +94,8 @@ object SCC:
     def incremental[Node](nodes: Set[Node], edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
         // findPaths returns all nodes on all paths from from to to as well as the set of visited nodes (= all nodes reachable from from).
         // Works in O(|V|+|E|), although smaller in practice because it only traverses part of the graph reachable from current.
-        def findPaths(current: Node, target: Node, visited: Set[Node] = Set()): (Set[Node], Set[Node]) =
-            if current == target
+        def findPaths(current: Node, target: Node, paths: Set[Node] = Set(), visited: Set[Node] = Set()): (Set[Node], Set[Node]) =
+            if current == target || paths.contains(current)
             then (Set(current), visited + current) // Found: add the node to the path list and to the visited set.
             else if visited.contains(current)
             then (Set(), visited) // Not found, we are looping! Only add the node to the visited set.
@@ -103,12 +103,12 @@ object SCC:
                 val next = edges.getOrElse(current, Set())
                 // Traverse the entire graph only once depht-first, by accumulating all visited nodes, and
                 // whether they have a path to the target or not.
-                val (paths, vis) =  next.foldLeft((Set[Node](), visited + current)) { case ((paths, vis), next) =>
-                    val (path, vis2) = findPaths(next, target, vis)
+                val (newPaths, vis) =  next.foldLeft((paths, visited + current)) { case ((paths, vis), next) =>
+                    val (path, vis2) = findPaths(next, target, paths, vis)
                     if path.isEmpty
                     then (paths, vis2) else (SmartUnion.sunion(path, paths), vis2)
                 }
-                if paths.nonEmpty then (paths + current, vis) else (paths, vis)
+                if newPaths.nonEmpty then (newPaths + current, vis) else (newPaths, vis)
 
         var currSCCs = previousSCCs
 
