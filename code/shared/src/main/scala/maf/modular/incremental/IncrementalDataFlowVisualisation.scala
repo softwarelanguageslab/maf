@@ -67,8 +67,8 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         // IMPORTANT: if a node has no edges, it will be omitted...
         val nodes: Map[Addr, GE] = (edges.map(_.source) ++ edges.map(_.target)).map(a => (a, addrToGE(a))).toMap
         // Compute a subgraph for every SCA.
-        val subgraphs: List[(GE, Set[GE])] = computeSCAs().toList.zipWithIndex.map({case (sca, index) =>
-          val attributes = Map("name" -> s"cluster_$index","style" -> "\"filled,dashed\"", "fillcolor" -> s"<${Colors.Yellow}>")
+        val subgraphs: List[(GE, Set[GE])] = computeSCAs(true).toList.zipWithIndex.map({case (sca, index) =>
+          val attributes = Map("name" -> s"cluster_$index","style" -> "\"filled,dashed\"", "fillcolor" -> s"<${Colors.Yellow}>","color" -> s"<${Colors.Ocre}>")
           val ge_nodes = sca.map(nodes)
           val ge_subgraph = GE("",  attributes = attributes)
           (ge_subgraph, ge_nodes)
