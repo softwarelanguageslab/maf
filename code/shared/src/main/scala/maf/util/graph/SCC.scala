@@ -138,23 +138,11 @@ object SCC:
                 val (paths, _) = findPaths(target, source)
                 if paths.nonEmpty
                 then
-                    println(s"path $target -> $source")
                     // Paths contains source and target.
                     val subSCCs = paths.flatMap(node => currSCCs.find(_.contains(node)))
                     val resultSCC = SmartUnion.sunion(subSCCs.flatten, paths)
                     currSCCs = (currSCCs -- subSCCs) + resultSCC
-                else
-                    println(s"no path $target -> $source")
             }
         }
-
-        import maf.util.ColouredFormatting
-        println(ColouredFormatting.markWarning(nodes.toString()))
-        println(ColouredFormatting.markWarning(edges.toString()))
-        println(ColouredFormatting.markOK(addedEdges.toString()))
-        println(ColouredFormatting.markError(removedEdges.toString()))
-        println(previousSCCs)
-        println(currSCCs)
-        println()
 
         currSCCs
