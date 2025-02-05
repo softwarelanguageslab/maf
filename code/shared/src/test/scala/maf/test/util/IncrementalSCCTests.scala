@@ -19,6 +19,10 @@ class IncrementalSCCTests  extends AnyPropSpec:
         }
 
     private case class Node(name: Int)
+    private sealed trait N
+    private case class A(name: Int) extends N
+    private case class L(name: Int) extends N
+    private case class C(name: Int) extends N
 
     val graphs: List[TarjanGraph[_]] = List(
         TarjanGraph(1, Set(1, 2, 3, 4), Map((2, Set(3)), (3, Set(2, 4))),
@@ -171,6 +175,83 @@ class IncrementalSCCTests  extends AnyPropSpec:
             Set(Set("a", "b", "e"), Set("c", "d", "h"), Set("f", "g"), Set("i")),
             Set(Set("a", "b"), Set("f", "g"))
         ),
+        TarjanGraph[N](
+            13,
+            ((1 to 5).map(L.apply) ++ (1 to 5).map(C.apply) ++ (1 to 16).map(A.apply)).toSet,
+            Map(
+                (A(1), Set(C(1))),
+                (A(4), Set(C(3))),
+                (A(5), Set(A(8))),
+                (A(6), Set(C(4))),
+                (A(7), Set(A(10))),
+                (A(8), Set(A(9))),
+                (A(9), Set(A(12))),
+                (A(10), Set(A(14))),
+                (A(11), Set(C(5))),
+                (A(12), Set(A(13), L(5), C(5))),
+                (A(14), Set(A(15))),
+                (A(15), Set(A(16))),
+                (A(16), Set(A(16), A(7))),
+                (L(1), Set(A(2))),
+                (L(2), Set(A(5))),
+                (L(3), Set(A(16))),
+                (L(4), Set(A(16))),
+                (L(5), Set(A(16))),
+                (C(1), Set(C(2), A(5), A(12))),
+                (C(2), Set(C(3), A(9))),
+                (C(3), Set(A(8))),
+                (C(4), Set(A(7), A(16))),
+                (C(5), Set(A(15)))
+            ),
+            Map(
+                (A(1), Set(C(1))),
+                (A(4), Set(C(3))),
+                (A(5), Set(A(8))),
+                (A(6), Set(C(4))),
+                (A(7), Set(A(10))),
+                (A(8), Set(A(9))),
+                (A(9), Set(A(12))),
+                (A(10), Set(A(14))),
+                (A(11), Set(C(5))),
+                (A(12), Set(A(13), L(5), C(5))),
+                (A(14), Set(A(15))),
+                (A(15), Set(A(16))),
+                (A(16), Set(A(16), A(7))),
+                (L(1), Set(A(2))),
+                (L(2), Set(A(5))),
+                (L(3), Set(A(16))),
+                (L(4), Set(A(16))),
+                (L(5), Set(A(16))),
+                (C(1), Set(C(2), A(5), A(12))),
+                (C(2), Set(C(3), A(9))),
+                (C(3), Set(A(8))),
+                (C(4), Set(A(7), A(16))),
+                (C(5), Set(A(15)))
+            ),
+            Map(),
+            Set(),
+            Set(Set(A(7), A(10), A(14), A(15), A(16)))
+        ),
+        TarjanGraph(
+            14,
+            (1 to 10).toSet,
+            Map(
+                (2, Set(3, 5)),
+                (3, Set(8)),
+                (4, Set(1, 2, 4, 6, 7)),
+                (5, Set(10)),
+                (7, Set(10)),
+                (8, Set(4)),
+                (9, Set(10)),
+            ),
+            Map(
+                (4, Set(2, 4, 7)),
+                (9, Set(10))
+            ),
+            Map(),
+            Set(),
+            Set(Set(2, 3, 4, 8))
+        )
     )
 
     graphs.foreach(_.test())

@@ -108,7 +108,9 @@ object SCC:
                     if path.isEmpty
                     then (paths, vis2) else (SmartUnion.sunion(path, paths), vis2)
                 }
-                if newPaths.nonEmpty then (newPaths + current, vis) else (newPaths, vis)
+                // If any of the successor nodes has a path to the target, then so does this node.
+                // We cannot just check whether newPaths is non-empty, as it contains the accumulated paths.
+                if newPaths.intersect(next).nonEmpty then (newPaths + current, vis) else (newPaths, vis)
 
         var currSCCs = previousSCCs
 
@@ -136,11 +138,23 @@ object SCC:
                 val (paths, _) = findPaths(target, source)
                 if paths.nonEmpty
                 then
+                    println(s"path $target -> $source")
                     // Paths contains source and target.
                     val subSCCs = paths.flatMap(node => currSCCs.find(_.contains(node)))
                     val resultSCC = SmartUnion.sunion(subSCCs.flatten, paths)
                     currSCCs = (currSCCs -- subSCCs) + resultSCC
+                else
+                    println(s"no path $target -> $source")
             }
         }
+
+        import maf.util.ColouredFormatting
+        println(ColouredFormatting.markWarning(nodes.toString()))
+        println(ColouredFormatting.markWarning(edges.toString()))
+        println(ColouredFormatting.markOK(addedEdges.toString()))
+        println(ColouredFormatting.markError(removedEdges.toString()))
+        println(previousSCCs)
+        println(currSCCs)
+        println()
 
         currSCCs
