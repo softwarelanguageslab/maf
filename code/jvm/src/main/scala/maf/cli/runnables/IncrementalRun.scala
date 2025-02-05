@@ -2,6 +2,7 @@ package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.incremental.*
+import maf.core.Expression
 import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.GTR.*
 import maf.deltaDebugging.gtr.transformations.TransformationManager
@@ -30,12 +31,18 @@ object IncrementalRun extends App:
 
     type A = ModAnalysis[SchemeExp] with IncrementalGlobalStoreCY[SchemeExp] with IncrementalSchemeTypeDomain
 
-    def storeDiff(a: A, b: A): String =
+    def storeDiff(a: A, b: A, aName: String = "a", bName: String = "b"): String =
         (a.store.keySet ++ b.store.keySet).foldLeft("") { case (str, addr) =>
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
             val valB = b.store.getOrElse(addr, b.lattice.bottom)
             if valA != valB
-            then str ++ (addr.toString + "\n" + a.lattice.compare(valA, valB) + "\n")
+            then
+                val comp: String = (a.lattice.subsumes(valA, valB), a.lattice.subsumes(valB, valA)) match
+                    case (true, true) => s"$aName == $bName"
+                    case (false, false) => s"$aName ⋢ $bName ⋢ $aName"
+                    case (true, false) => s"$bName ⊏ $aName"
+                    case (false, true) => s"$aName ⊏ $bName"
+                str ++ (addr.toString + s" ($comp)" + "\n" + a.lattice.compare(valA, valB, aName, bName) + "\n")
             else str
         }
 
@@ -67,7 +74,7 @@ object IncrementalRun extends App:
         var step: Int = 0
         a.analyzeWithTimeout(newTimeout())
         a.version = New
-        if a.configuration.cyclicValueInvalidation then a.SCAs = a.computeSCAs()
+        if a.configuration.cyclicValueInvalidation then a.SCAs = a.computeSCAs(false)
         val affected = a.findUpdatedExpressions(a.program).flatMap(a.mapping)
         affected.foreach(a.addToWorkList)
         var anly: Map[Int, BaseModFAnalysisIncremental] = Map() + (0 -> a)
@@ -103,46 +110,60 @@ object IncrementalRun extends App:
     // Returns a boolean indicating whether the analysis is fully precise.
     def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true, images: Boolean = false, name: Option[String] = None): Boolean =
         try
-            val a = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
-            val b = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
+            val init = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
+            val rean = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
 
             import SimpleTimer.*
 
             start()
             println(markStep("init"))
-            a.analyzeWithTimeout(newTimeout())
-            if images then a.dataFlowToImage("flows-init.dot", name.map(_ + " (initial analysis)"))
+            init.analyzeWithTimeout(newTimeout())
+            val incr = init.deepCopy() // Copy as making the image triggers SCC computations etc.
+            if images then init.dataFlowToImage("flows-init.dot", name.map(_ + " (initial analysis)"))
 
             tick()
             println(markStep("rean"))
-            b.version = New
-            b.analyzeWithTimeout(newTimeout())
+            rean.version = New
+            rean.analyzeWithTimeout(newTimeout())
 
             tick()
             println(markStep("upd"))
-            a.updateAnalysis(newTimeout())
+            incr.updateAnalysis(newTimeout())
 
             stop()
             if images
             then
-                a.dataFlowToImage("flows-incr.dot", name.map(_ + " (incremental update)"))
-                b.dataFlowToImage("flows-rean.dot", name.map(_ + " (full reanalysis)"))
+                incr.dataFlowToImage("flows-incr.dot", name.map(_ + " (incremental update)"))
+                rean.dataFlowToImage("flows-rean.dot", name.map(_ + " (full reanalysis)"))
             println(markStep("Comparing analyses"))
             //a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
-            val diff = storeDiff(a, b)
+            val diff = storeDiff(incr, rean, "incr", "rean")
             println(diff)
             if throwAssertionViolations
             then
                 println(markError(diff))
                 assert(diff.isEmpty)
+            //if unsound[SchemeExp](a, b) then throw new Exception(s"Unsound: $name")
             diff.isEmpty
+            //!unsound[SchemeExp](a, b)
         catch
             case t: Throwable =>
                 println(t.toString)
                 throw t
 
     // Uses delta debugging to reduce a program to a minimal version that is still imprecise.
-    def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false))
+    def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false, false))
+
+    def unsound[E <: Expression](inc: IncrementalModAnalysis[E] with IncrementalGlobalStoreCY[E],
+                   rean: IncrementalModAnalysis[E] with IncrementalGlobalStoreCY[E]): Boolean =
+        val allAddr = inc.store.keySet ++ rean.store.keySet
+        allAddr.foreach({ a =>
+            val incr = inc.store.getOrElse(a, inc.lattice.bottom)
+            val rn = rean.store.getOrElse(a, rean.lattice.bottom)
+            if incr != rn && !inc.lattice.subsumes(incr, rn.asInstanceOf[inc.Value])
+            then return true
+        })
+        false
 
     List(
         // Different results with and without LitAddr.
@@ -156,8 +177,16 @@ object IncrementalRun extends App:
         //"test/changes/scheme/generated/R5RS_various_work-1.scm",
         //"test/changes/scheme/generated/R5RS_various_work-3.scm",
 
+        //"test/changes/scheme/generated/R5RS_scp1_organigram-4.scm",
+        //"test/changes/scheme/generated/R5RS_various_four-in-a-row-2.scm",
+        //"test/changes/scheme/generated/R5RS_various_four-in-a-row-4.scm",
+        //"test/changes/scheme/generated/R5RS_various_rsa-1.scm",
+        //"test/changes/scheme/generated/R5RS_various_rsa-3.scm",
         "test/changes/scheme/matrix.scm",
+        "test/changes/scheme/multiple-dwelling (coarse).scm",
+        "test/changes/scheme/multiple-dwelling (fine).scm",
 
+        /*
         // Not precise yet.
         "test/DEBUG2.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
@@ -171,16 +200,20 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_scp1_merge-5.scm",
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
-        "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm",
+        "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm", */
     ).slice(0,1).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            println(text)
-            println(!analyse(text, false, false, false, Some(bench)))
-            //val reduced = reduceImprecise(text)
-            //println(reduced)
-            //println(!analyse(reduced, true, true))
+            val anly = true // Switch between analysing and delta debugging
+            if anly
+            then
+                println(text)
+                println(!analyse(text, false, logging = false, images = false, Some(bench)))
+            else
+                val reduced = reduceImprecise(text)
+                println(reduced)
+                //println(!analyse(reduced, true, true))
             //println(!analyse(CSchemeParser.parseProgram(Reader.loadFile("logs/reduced-program.txt")), false, true))
         } catch {
             case e: Exception =>

@@ -8,6 +8,7 @@ import maf.util.ColouredFormatting.*
 import maf.util.Logger
 import maf.util.Logger.*
 import maf.util.benchmarks.*
+import maf.util.datastructures.SmartUnion
 import maf.util.graph.DotGraph
 
 /**
@@ -67,6 +68,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
       |RSCA  Indicates (an address in) a SCA is refined. The number indicates the number of SCA refinement.
+      |SCAC  Computed SCA. Shows the algorithm used for this computation.
+      |SCAR  Finds that an SCA needs to be refined and gives the addresses because of which.
       |TRIG  Indicates the given dependency has been triggered.
       |WRIT  Address write, including the address, value written and value now residing in the store.
       |
@@ -127,7 +130,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         val icFlowString = interComponentFlow
             .foldLeft(Table.empty.withDefaultValue(""))( {case (table, flow) => table.add(flow._1.toString, "Calls in non-empty context", flow._2.mkString(" "))})
             .prettyString()
-        val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
+        val scaString = computeSCAs(true).map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
         depString + "\n\n" + icFlowString + (if configuration.cyclicValueInvalidation && mode != Select then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString)
                      else "")
 
@@ -223,10 +226,37 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         if (mode != Summary && (mode != Step || stepSelect())) && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
+    override def computeSCAs(fullComputation: Boolean): Set[SCA] = 
+        val res = super.computeSCAs(fullComputation)
+        val algo = if fullComputation then "TARJAN" else "INCREMENTAL"
+        if mode != Summary || stepSelect() then res.foreach(sca => logger.log(s"SCAC ($algo) ${sca.mkString(", ")}"))
+        res
+
+    override def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
+        var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
+        dataFlowR.foreach { case (_, wr) =>
+            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
+            }
+        }
+        var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
+        oldDataFlowR.foreach { case (_, wr) =>
+            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+                oldFlowsR = oldFlowsR + (write -> SmartUnion.sunion(oldFlowsR(write), reads))
+            }
+        }
+        val reasons = oldFlowsR.filter { case (w, rs) =>
+            // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
+            rs.diff(flowsR(w)).nonEmpty ||
+                rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom)) }
+        }
+        if mode != Summary || stepSelect() then logger.log(s"SCAR $sca because of flows to ${reasons.keySet.mkString(", ")}")
+        super.refiningNeeded(sca, oldStore, oldDataFlowR)
+
     private var rSCAcount = 0
     override def refineSCA(sca: SCA): Unit =
         rSCAcount = rSCAcount + 1
-        dataFlowToImage("pre-RSCA.dot")
+        //dataFlowToImage("pre-RSCA.dot")
         var values: Map[Addr, Value] = Map()
         if mode != Step || stepSelect() then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
         super.refineSCA(sca)

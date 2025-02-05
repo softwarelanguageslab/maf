@@ -1,4 +1,2 @@
-(letrec ((f (lambda ()
-              (<change> () (f))
-              ())))
-  (f))
+(define + =)
+(+ 4 4)

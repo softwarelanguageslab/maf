@@ -298,7 +298,7 @@ class IncrementalModXMachineryTests extends AnyPropSpec:
                 val a = analysis(p)
                 a.analyzeWithTimeout(timeout())
                 assume(a.finished)
-                val SCAs = a.computeSCAs()
+                val SCAs = a.computeSCAs(true)
                 println(a.program.prettyString())
                 println(SCAs)
                 c(SCAs)

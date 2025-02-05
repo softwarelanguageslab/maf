@@ -138,13 +138,15 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
 
     /**
      * Computes the SCAs in the program based on the explicit and implicit flows.
+     * @param fullComputation Indicates whether a full SCC computation needs to happen, or whether a previous result can be updated incrementally.
+     *                        A full computation normally is only needed at the beginning of an incremental update.
      */
-    def computeSCAs(firstTime: Boolean = false): Set[SCA] =
+    def computeSCAs(fullComputation: Boolean): Set[SCA] =
         // Compute the total information flow.
         val allFlowsR = computeInformationFlow()
         // Then, use the expanded dataflow to compute SCAs (using the reversed flows).
         // Also take the literal addresses into account when doing so.
-        if firstTime
+        if fullComputation
         then
             previousFlowsR = allFlowsR
             SCC.tarjan[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
@@ -155,7 +157,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             previousFlowsR = allFlowsR
             SCC.incremental[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR, added, removed, SCAs)
 
-    /** Checks whether a SCA needs to be refined. */
+    /** Checks whether an SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
@@ -180,10 +182,12 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * refinement.
      */
     def refineSCA(sca: SCA): Unit =
-        //var ignored: Set[Component] = Set()
+        var ignored: Set[Component] = Set()
+        var updated: Set[Addr] = Set()
         sca.foreach {
             case _: LitAddr[_]  => // Nothing to do for literal addresses and flow addresses as they are not in the store. Contributions containing them however need to be ignored when refining other addresses.
             case _: FlowAddr[_] =>
+            //case _: PrmAddr => // TODO Need a way to ensure the initial bindings remain present... But if a PrmAddr is assigned... (is this possible?) Not possible, but these can normally never be part of SCCs because they are never written by the analysis of a component!
             case a =>
                 // Computation of the new value + remove provenance and data flow that is no longer valid.
                 val v = provenance(a).foldLeft(lattice.bottom) { case (acc, (c, v)) =>
@@ -191,36 +195,34 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                     if dataFlowR(c)(a).intersect(sca).isEmpty then lattice.join(acc, v)
                     else
                         // Indicate that this component needs to be reanalysed, as at some point, its contribution is ignored.
-                        //ignored += c // TODO: is this always needed or only e.g., in the case where the store value was updated (and not when a flow disappeared)?
+                        ignored += c // TODO: is this always needed or only e.g., in the case where the store value was updated (and not when a flow disappeared)? Or is this not possible due to the condition?
                         // Delete the provenance of non-incoming values (i.e., flows within the SCA).
                         provenance += (a -> (provenance(a) - c))
                         // Mark that there is no provenance any more. (otherwise this gives key not found errors in deleteContribution/store; could be added in deleteComponent as well but makes more sense here?)
                         // REMARK: check reason + impact
                         cachedWrites = cachedWrites + (c -> (cachedWrites(c) - a))
-                        //cachedWrites = cachedWrites.map(kv => (kv._1, kv._2 - a)).withDefaultValue(Set())
                         // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
                         dataFlowR = dataFlowR + (c -> (dataFlowR(c) + (a -> dataFlowR(c)(a).diff(sca))))
-                        //dataFlowR = dataFlowR.map(cm => (cm._1, cm._2 + (a -> cm._2(a).diff(sca))))
                         acc
                 }
-                //val old = store.getOrElse(a, lattice.bottom)
-                //if old != v then // No need for a trigger when nothing changes. TODO adding this tests causes unsoundness and errors?
-                // Refine the store. TODO remove when v is bottom!
-                if configuration.checkAsserts then assert(lattice.subsumes(inter.store(a), v))
-                store += (a -> v)
-                if configuration.checkAsserts then assert(store(a) == provenanceValue(a))
-                // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
-                // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
-                trigger(AddrDependency(a))
+                val old = store.getOrElse(a, lattice.bottom)
+                if old != v then // No need for a trigger when nothing changes. TODO adding this tests causes unsoundness and errors?
+                    // Refine the store.
+                    if configuration.checkAsserts then assert(lattice.subsumes(inter.store.getOrElse(a,lattice.bottom), v))
+                    store += (a -> v) // Todo (maybe): remove when v is bottom?
+                    if configuration.checkAsserts then assert(store.getOrElse(a, lattice.bottom) == provenanceValue(a))
+                    // TODO: should we trigger the address dependency here? Probably yes, but then a stratified worklist is needed for performance
+                    // todo: to avoid already reanalysing dependent components that do not contribute to the SCA.
+                    updated += a
         }
-    // Add all these components to the worklist at once (should perform better as it avoids duplicate additions).
-    //addToWorkList(ignored)
+        // Add all these components to the worklist at once (should perform better as it avoids duplicate additions).
+        addToWorkList(SmartUnion.sunion(updated.flatMap(a => deps(AddrDependency(a))), ignored))
 
     def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, Set[R]]], cmp: Component): Unit =
         val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, Set())).nonEmpty)
         if flowDeleted || nonIncrementalUpdate
         then
-            SCAs = computeSCAs()
+            SCAs = computeSCAs(false)
             SCAs.foreach { sca => if refiningNeeded(sca, oldStore, oldDataFlowR) then refineSCA(sca) }
             nonIncrementalUpdate = false
 
