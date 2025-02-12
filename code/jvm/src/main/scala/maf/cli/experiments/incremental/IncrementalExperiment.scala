@@ -80,7 +80,7 @@ trait IncrementalExperiment[E <: Expression]:
         if args.config.nonEmpty then configurations = List(args.config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
         if args.timeout >= 0 then minutes = args.timeout
         executed = true
-        val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + outputFile)
+        val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + s"$minutes MIN " + outputFile)
         output = writer
         Writer.enableReporting(output)
         measure(bench)

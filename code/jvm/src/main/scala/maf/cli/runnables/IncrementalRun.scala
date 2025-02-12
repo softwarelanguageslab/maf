@@ -65,7 +65,7 @@ object IncrementalRun extends App:
         override def intraAnalysis(cmp: Component) =
             new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
 
-    def newTimeout(): Timeout.T = Timeout.start(Duration(1, MINUTES))
+    def newTimeout(): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
     // Check whether an analysis (in an incremental update) arrives in a loop with the same store).
     // Returns a tuple indicating steps in the analysis that are identical.
@@ -125,10 +125,18 @@ object IncrementalRun extends App:
             println(markStep("rean"))
             rean.version = New
             rean.analyzeWithTimeout(newTimeout())
+            if !rean.finished
+            then
+                println(markError("REAN timed out."))
+                return false
 
             tick()
             println(markStep("upd"))
             incr.updateAnalysis(newTimeout())
+            if !incr.finished
+            then
+                println(markError("INCR timed out."))
+                return false
 
             stop()
             if images
@@ -143,9 +151,9 @@ object IncrementalRun extends App:
             then
                 println(markError(diff))
                 assert(diff.isEmpty)
-            //if unsound[SchemeExp](a, b) then throw new Exception(s"Unsound: $name")
+            //if unsound[SchemeExp](incr, rean) then throw new Exception(s"Unsound: $name")
             diff.isEmpty
-            //!unsound[SchemeExp](a, b)
+            //!unsound[SchemeExp](incr, rean)
         catch
             case t: Throwable =>
                 println(t.toString)
@@ -182,9 +190,9 @@ object IncrementalRun extends App:
         //"test/changes/scheme/generated/R5RS_various_four-in-a-row-4.scm",
         //"test/changes/scheme/generated/R5RS_various_rsa-1.scm",
         //"test/changes/scheme/generated/R5RS_various_rsa-3.scm",
-        "test/changes/scheme/matrix.scm",
-        "test/changes/scheme/multiple-dwelling (coarse).scm",
-        "test/changes/scheme/multiple-dwelling (fine).scm",
+
+        "test/DEBUG2.scm",
+        "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
 
         /*
         // Not precise yet.
@@ -209,7 +217,7 @@ object IncrementalRun extends App:
             if anly
             then
                 println(text)
-                println(!analyse(text, false, logging = false, images = false, Some(bench)))
+                println(!analyse(text, false, logging = false, images = true, Some(bench)))
             else
                 val reduced = reduceImprecise(text)
                 println(reduced)
