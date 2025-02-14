@@ -232,7 +232,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         if mode != Summary || stepSelect() then res.foreach(sca => logger.log(s"SCAC ($algo) ${sca.mkString(", ")}"))
         res
 
-    override def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Boolean =
+    override def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Set[Addr] =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
@@ -250,16 +250,17 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
             rs.diff(flowsR(w)).nonEmpty ||
                 rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom)) }
         }
-        if mode != Summary || stepSelect() then logger.log(s"SCAR $sca because of flows to ${reasons.keySet.mkString(", ")}")
+        if (mode != Summary || stepSelect()) && reasons.nonEmpty
+        then logger.log(s"SCAR $sca because of flows to ${reasons.keySet.mkString(", ")}")
         super.refiningNeeded(sca, oldStore, oldDataFlowR)
 
     private var rSCAcount = 0
-    override def refineSCA(sca: SCA): Unit =
+    override def refineSCA(sca: SCA, refinedEntries: Set[Addr]): Unit =
         rSCAcount = rSCAcount + 1
         //dataFlowToImage("pre-RSCA.dot")
         var values: Map[Addr, Value] = Map()
         if mode != Step || stepSelect() then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
-        super.refineSCA(sca)
+        super.refineSCA(sca, refinedEntries)
         if mode != Step || stepSelect() then
             sca.toList.sortBy(_.toString).map(a => s"$a (${values(a)} -> ${store.getOrElse(a, lattice.bottom)})").foreach(u => logger.log(s"RSCA ($rSCAcount) $u"))
 

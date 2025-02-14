@@ -3,6 +3,7 @@ package maf.modular.incremental
 import maf.core.Expression
 import maf.modular.*
 import maf.modular.scheme.*
+import maf.util.ColouredFormatting.yellowText
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
 import maf.util.graph.*
@@ -36,8 +37,9 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         // Less arrows: if a flow exist in both directions, make 1 bidirectional arrow instead of 2.
         bidirify(i)
 
-    /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename. */
-    def flowInformationToDotGraph(fileName: String, name: Option[String] = None): Unit =
+    /** Creates a dotgraph from the existing flow information and writes this to a file with the given filename.
+     *  Returns the number of nodes, edges, and subgraphs. */
+    def flowInformationToDotGraph(fileName: String, name: Option[String] = None): (Int, Int, Int) =
         // Type of graph elements. One type suffices for both nodes and edges.
         case class GE(label: String,
                       color: Color = Colors.White,
@@ -82,8 +84,13 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
             case (graph, edge) => g.addEdge(graph, nodes(edge.source), edgeToGE(edge), nodes(edge.target))
         }){ case (graph, (sg, nodes)) => g.addSubgraph(graph, sg, nodes)}.toFile(fileName)
         println(s"Graph $fileName contains ${edges.size} edges and ${nodes.size} nodes and ${subgraphs.size} SCAs.")
+        (nodes.size, edges.size, subgraphs.size)
 
     def dataFlowToImage(fileName: String, name: Option[String] = None): Unit =
-        flowInformationToDotGraph(fileName, name)
+        val (nodes, edges, _) = flowInformationToDotGraph(fileName, name)
+        if nodes > 1000 || edges > 1000 
+        then
+            println(yellowText("Graph too large, not converting to image."))
+            return
         if !DotGraph.createSVG(fileName, true)
         then System.err.nn.println("Conversion failed.")

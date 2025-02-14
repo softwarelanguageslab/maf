@@ -30,14 +30,23 @@
   ())
 
 ;"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm"
-(letrec ((count-pairs (lambda (lst)
-                        (letrec ((count (lambda (current)
-                                          (count current))))
-                          (count lst))))
-          (retno (<change>
+;(letrec ((count-pairs (lambda (lst)
+;                        (letrec ((count (lambda (current)
+;                                          (count current))))
+;                          (count lst))))
+;          (retno (<change>
+;                   ()
+;                   #f)))
+;  (count-pairs retno))
+
+(letrec ((fun (lambda (arg)
+                (letrec ((loop (lambda (curr)
+                                 (loop curr))))
+                  (loop arg))))
+          (input (<change>
                    ()
                    #f)))
-  (count-pairs retno))
+  (fun input))
 
 ; "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm"
 (letrec ((ontdubbel-iter (lambda (restLijst)
@@ -110,6 +119,13 @@
                         (merge (if (<change> #f (not #f)) () (first-el))))
                 ())))
   ())
+
+; Verdere reductie met SCA refinement:
+(letrec ((not (lambda (x)
+                (if x #f #t))))
+  (if (<change> #f (not #f))
+    ()
+    (not ())))
 
 ;"test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm"
 (letrec ((foo (lambda ()

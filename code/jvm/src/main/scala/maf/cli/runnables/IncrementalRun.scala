@@ -214,10 +214,12 @@ object IncrementalRun extends App:
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
             val anly = true // Switch between analysing and delta debugging
+            val logging = true
+            val images = true
             if anly
             then
                 println(text)
-                println(!analyse(text, false, logging = false, images = true, Some(bench)))
+                println(!analyse(text, false, logging = logging && anly, images = images && anly, Some(bench)))
             else
                 val reduced = reduceImprecise(text)
                 println(reduced)
