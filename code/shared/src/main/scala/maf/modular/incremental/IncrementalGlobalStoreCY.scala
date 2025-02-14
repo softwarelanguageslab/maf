@@ -182,7 +182,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * refinement.
      */
     def refineSCA(sca: SCA, refinedEntries: Set[Addr]): Unit =
-        println(greenText(sca.toString))
+        //println(greenText(sca.toString))
         var ignored: Set[Component] = Set()
         var updated: Set[Addr] = Set()
         sca.foreach {
@@ -207,7 +207,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                         dataFlowR = dataFlowR + (c -> (dataFlowR(c) + (a -> dataFlowR(c)(a).diff(sca))))
                         acc
                 }
-                println(markOK(v.toString))
+                //println(markOK(v.toString))
                 val old = store.getOrElse(a, lattice.bottom)
                 if old != v then // No need for a trigger when nothing changes. TODO adding this tests causes unsoundness and errors?
                     // Refine the store.
