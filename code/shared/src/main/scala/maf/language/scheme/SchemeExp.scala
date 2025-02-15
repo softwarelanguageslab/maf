@@ -379,7 +379,7 @@ sealed trait SchemeLettishExp extends SchemeExp:
     val body: List[SchemeExp]
     val idn: Identity
     override type T <: SchemeLettishExp
-    override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
+    override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height)).max(body.foldLeft(0)((mx, e) => mx.max(e.height)))
     def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
     override def isomorphic(other: Expression): Boolean = super.isomorphic(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
     override def eql(other: Expression): Boolean = super.eql(other) && body.length == other.asInstanceOf[SchemeLettishExp].body.length
@@ -1048,6 +1048,7 @@ case class SchemeAssert(exp: SchemeExp, idn: Identity) extends SchemeExp:
     override def toString: String = s"(assert $exp)"
     def fv: Set[String] = exp.fv
     val label: Label = ASS
+    override val height: Int = 1 + exp.height
 
     override def deepDropIdentifier(id: Identifier): Option[SchemeExp] =
       exp.deepDropIdentifier(id) match
