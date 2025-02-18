@@ -117,8 +117,9 @@ object SCC:
         // Treat edge removals: find the SCCs for which an edges between two nodes is removed. (The other removals cannot cause SCCs to be removed.)
         // For every SCC that is found, verify whether it still is an SCC. If it is split up, remove it.
         removedEdges.flatMap { case (source, targets) =>
-            targets.flatMap(target => currSCCs.find{scc => scc.contains(source) && scc.contains(target)})
-        }.foreach { SCC =>
+            currSCCs.filter(scc => scc.contains(source) && scc.intersect(targets).nonEmpty)
+            //targets.flatMap(target => currSCCs.find{scc => scc.contains(source) && scc.contains(target)})
+        }.toSet.foreach { SCC => // toSet to avoid duplicate traversals.
             val newSCC = tarjan(SCC, edges) // Local Tarjan using the nodes of the SCC.
             if newSCC.size != 1 || newSCC.head != SCC // Not sure whether this test makes it faster.
             then currSCCs = SmartUnion.sunion(currSCCs - SCC, newSCC)
