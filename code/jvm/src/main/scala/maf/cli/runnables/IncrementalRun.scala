@@ -191,8 +191,11 @@ object IncrementalRun extends App:
         //"test/changes/scheme/generated/R5RS_various_rsa-1.scm",
         //"test/changes/scheme/generated/R5RS_various_rsa-3.scm",
 
+        // Nog imprecies zelfs met bottomen van cycles. Niet door heuristieken.
+        //"test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
+
         "test/DEBUG2.scm",
-        "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
 
         /*
         // Not precise yet.
@@ -214,7 +217,7 @@ object IncrementalRun extends App:
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
             val anly = true // Switch between analysing and delta debugging
-            val logging = true
+            val logging = false
             val images = true
             if anly
             then

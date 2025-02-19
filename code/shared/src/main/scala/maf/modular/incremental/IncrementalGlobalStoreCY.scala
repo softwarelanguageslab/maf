@@ -155,7 +155,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
             val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
             previousFlowsR = allFlowsR
-            SCC.incremental[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR, added, removed, SCAs)
+            SCC.incremental[Addr](allFlowsR, added, removed, SCAs)
 
     /** Checks whether an SCA needs to be refined. */
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Set[Addr] =

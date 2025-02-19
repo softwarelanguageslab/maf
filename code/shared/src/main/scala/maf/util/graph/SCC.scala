@@ -81,7 +81,6 @@ object SCC:
 
     /**
      * Incrementally computes the updated set of SCCs in an updated graph.
-     * @param nodes The set of nodes in the updated graph.
      * @param edges The set of edges in the updated graph.
      *              Edges must only contain all current edges, including the ones in addedEdges but excluding the ones in removedEdges.
      * @param addedEdges The edges added to the graph.
@@ -91,7 +90,7 @@ object SCC:
      * @return A set of SCCs, where each SCC is a set of the nodes that form the SCC.
      * @note Unit tests: maf.test.util.IncrementalSCCTests
      */
-    def incremental[Node](nodes: Set[Node], edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
+    def incremental[Node](edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
         // findPaths returns all nodes on all paths from from to to as well as the set of visited nodes (= all nodes reachable from from).
         // Works in O(|V|+|E|), although smaller in practice because it only traverses part of the graph reachable from current.
         def findPaths(current: Node, target: Node, paths: Set[Node] = Set(), visited: Set[Node] = Set()): (Set[Node], Set[Node]) =
