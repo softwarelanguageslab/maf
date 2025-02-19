@@ -91,7 +91,7 @@ object SCC:
      * @note Unit tests: maf.test.util.IncrementalSCCTests
      */
     def incremental[Node](edges: Map[Node, Set[Node]], addedEdges: Map[Node, Set[Node]], removedEdges: Map[Node, Set[Node]], previousSCCs: Set[Set[Node]]): Set[Set[Node]] =
-        // findPaths returns all nodes on all paths from from to to as well as the set of visited nodes (= all nodes reachable from from).
+        // findPaths returns all nodes on all paths from current to target as well as the set of visited nodes (= all nodes reachable from from).
         // Works in O(|V|+|E|), although smaller in practice because it only traverses part of the graph reachable from current.
         def findPaths(current: Node, target: Node, paths: Set[Node] = Set(), visited: Set[Node] = Set()): (Set[Node], Set[Node]) =
             if current == target || paths.contains(current)
