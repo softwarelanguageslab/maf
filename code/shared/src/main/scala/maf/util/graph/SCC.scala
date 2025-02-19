@@ -139,7 +139,7 @@ object SCC:
                 if paths.nonEmpty
                 then
                     // Paths contains source and target.
-                    val subSCCs = paths.flatMap(node => currSCCs.find(_.contains(node)))
+                    val subSCCs = currSCCs.filter(_.intersect(paths).nonEmpty) //paths.flatMap(node => currSCCs.find(_.contains(node)))
                     val resultSCC = SmartUnion.sunion(subSCCs.flatten, paths)
                     currSCCs = (currSCCs -- subSCCs) + resultSCC
             }
