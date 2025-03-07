@@ -76,6 +76,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
     def runNTimes(
         msg: String,
+        n: Int,
         createAnalysis: () => Analysis,
         block: (Timeout.T, Analysis) => Unit,
         timeOut: Option[Timeout.T]
@@ -83,7 +84,7 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
         print(s"$msg ")
         var times: List[Double] = List()
         var timesIntra: List[Double] = List()
-        for i <- 1 to measuredRuns do
+        for i <- 1 to n do
             print(s"$i ")
             val analysis = createAnalysis() // Don't measure analysis creation.
             runOneTime(analysis, block, timeOut) match
@@ -127,10 +128,10 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
             // Initial analysis.
 
-            runNTimes("Warming up initial analysis",
+            runNTimes("Warming up initial analysis", maxWarmupRuns,
                 () => analysis(program, noOptimisations.disableAsserts()),
                 (timeout, analysis) => analysis.analyzeWithTimeout(timeout), Some(timeout())) // For the warm-up, use always use the same timeout.
-            val initTs = runNTimes("Measuring initial analysis",
+            val initTs = runNTimes("Measuring initial analysis", measuredRuns,
                 () => analysis(program, noOptimisations.disableAsserts()),
                 (timeout, analysis) => analysis.analyzeWithTimeout(timeout), None)
             if addToResults(file, initTs, initS)
@@ -138,10 +139,10 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
 
             // Full reanalysis.
 
-            runNTimes("Warming up reanalysis",
+            runNTimes("Warming up reanalysis", maxWarmupRuns,
                 () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
                 (timeout, analysis) => analysis.analyzeWithTimeout(timeout), Some(timeout()))
-             val reanTs = runNTimes("Measuring reanalysis",
+             val reanTs = runNTimes("Measuring reanalysis", measuredRuns,
                  () => { val a = analysis(program, noOptimisations.disableAsserts()); a.version = New; a },
                  (timeout, analysis) => analysis.analyzeWithTimeout(timeout), None)
              addToResults(file, reanTs, reanS)
@@ -156,10 +157,10 @@ trait IncrementalTime[E <: Expression] extends IncrementalExperiment[E] with Tab
             initAnalysis.intraComponentAnalysisTimeAcc = 0 // Reset the timer.
 
             configurations.foreach { config =>
-                runNTimes(s"Warming up ${config.toString}",
+                runNTimes(s"Warming up ${config.toString}", maxWarmupRuns,
                     () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
                     (timeout, analysis) => analysis.updateAnalysis(timeout), Some(timeout()))
-                val incTs = runNTimes(s"Measuring ${config.toString}",
+                val incTs = runNTimes(s"Measuring ${config.toString}", measuredRuns,
                     () => { val a = initAnalysis.deepCopy(); a.configuration = config.disableAsserts(); a },
                     (timeout, analysis) => analysis.updateAnalysis(timeout), None)
                 addToResults(file, incTs, config.toString)
