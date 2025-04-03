@@ -4,6 +4,7 @@ import maf.core.Expression
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.*
+import maf.modular.scheme.FlowAddr
 import maf.util.ColouredFormatting.*
 import maf.util.Logger
 import maf.util.Logger.*
@@ -55,21 +56,22 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
     private def legend(): String =
         """***** LEGEND OF ABBREVIATIONS *****
       |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
-      |ADP*  Similar to ADEP, but the address dependency originates from an implicit value flow (e.g., due to a conditional).
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
       |CINV  Component invalidation: the given component is deleted.
       |COMI  Indicates the component's analysis is committed.
       |DELA  Indicates the removal of a given address.
       |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
       |ICFL  The components called in a non-empty flow context.
+      |IFLW  The implicit flows added to compute the SCAs.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
       |NEWC  Discovery of a new, not yet existing component.
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
-      |RSCA  Indicates (an address in) a SCA is refined. The number indicates the number of SCA refinement.
+      |RSCA  Indicates (an address in) an SCA is refined. The number indicates the number of SCA refinement.
       |SCAC  Computed SCA. Shows the algorithm used for this computation.
       |SCAR  Finds that an SCA needs to be refined and gives the addresses because of which.
+      |SKIP  SCA computation skipped (due to heuristic).
       |TRIG  Indicates the given dependency has been triggered.
       |WRIT  Address write, including the address, value written and value now residing in the store.
       |
@@ -226,6 +228,19 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         if (mode != Summary && (mode != Step || stepSelect())) && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
+    override def computeInformationFlow(): Map[W, Set[R]] =
+        // Combines the information stored on a per-component basis in dataFlowR.
+        val flowsR: Map[W, Set[R]] = dataFlowR.foldLeft(Map().withDefaultValue(Set[R]())) { case (res, (_, map)) =>
+            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> SmartUnion.sunion(res(w), rs)) }
+        }
+        val res = super.computeInformationFlow()
+        res.foreach { (w, rs) =>
+            rs.diff(flowsR.getOrElse(w, Set())).foreach { r =>
+                logger.log(s"IFLW $w ~> $r")
+            }
+        }
+        res
+
     override def computeSCAs(fullComputation: Boolean): Set[SCA] = 
         val res = super.computeSCAs(fullComputation)
         val algo = if fullComputation then "TARJAN" else "INCREMENTAL"
@@ -251,8 +266,23 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
                 rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom)) }
         }
         if (mode != Summary || stepSelect()) && reasons.nonEmpty
-        then logger.log(s"SCAR $sca because of flows to ${reasons.keySet.mkString(", ")}")
+        then
+            reasons.foreach { (w, rs) =>
+                val gone: Set[Addr] = rs.diff(flowsR(w))
+                val nonM: Set[Addr] = rs.filter { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom)) }
+                gone.foreach { r =>
+                    logger.log(s"SCAR $r ~\\~> $w: $sca")
+                }
+                nonM.foreach { r =>
+                    logger.log(s"SCAR $r (${oldStore.getOrElse(r, lattice.bottom)} => ${store.getOrElse(r, lattice.bottom)}) ~> $w: $sca")
+                }
+            }
         super.refiningNeeded(sca, oldStore, oldDataFlowR)
+
+    override def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, Set[R]]], cmp: Component): Unit =
+        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, Set())).nonEmpty)
+        if !(flowDeleted || nonIncrementalUpdate) then logger.log("SKIP")
+        super.updateSCAs(oldStore, oldDataFlowR, cmp)
 
     private var rSCAcount = 0
     override def refineSCA(sca: SCA, refinedEntries: Set[Addr]): Unit =
@@ -297,10 +327,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
                         if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
                             logger.log(s"ADEP ${crop(r.toString)} ~> ${crop(addr.toString)}")
                     )
-                //implicitFlows.flatten.foreach(f =>
-                //    if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
-                //        logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}")
-                //)
             val b = super.writeAddr(addr, value)
             if mode == Fine || select(addr) || stepSelect() then
                 logger.log(

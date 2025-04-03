@@ -1,15 +1,10 @@
-(letrec ((__toplevel_cons cons)
-          (_0 (letrec ((init (lambda (ipats)
-                               (let ()
-                                 (letrec ((__do_loop (lambda (p)
-                                                       (<change>
-                                                         (if (null? ())
-                                                           (set-cdr! p #f)
-                                                           (() (() ())))
-                                                         (set-cdr! p ())))))
-                                   (__do_loop ipats))
-                                 generate-symbol)))
-                        (database (init
-                                    (__toplevel_cons 'a ()))))
-                ())))
-  ())
+; Aangapaste WCR 3-5 reductie
+(letrec ((fun
+           (lambda (l)
+             (if (null? l)
+               (fun2 l)
+               (<change> (fun2 (cdr l)) ()))))
+          (fun2
+            (lambda (l2)
+              (fun l2))))
+  (fun (cons 'f ())))

@@ -174,29 +174,13 @@ object IncrementalRun extends App:
         false
 
     List(
-        // Different results with and without LitAddr.
-        // SOME IGNORE TIMEOUT?
-        //"test/changes/scheme/generated/R5RS_gambit_matrix-1.scm",
-        //"test/changes/scheme/generated/R5RS_scp1_draw-umbrella-4.scm",
-        //"test/changes/scheme/generated/R5RS_scp1_draw-umbrella-5.scm",
-        //"test/changes/scheme/generated/R5RS_scp1_insert-2.scm",
-        //"test/changes/scheme/generated/R5RS_scp1_list-compare-n-1.scm",
-        //"test/changes/scheme/generated/R5RS_scp1_list-compare-n-3.scm",
-        //"test/changes/scheme/generated/R5RS_various_work-1.scm",
-        //"test/changes/scheme/generated/R5RS_various_work-3.scm",
-
-        //"test/changes/scheme/generated/R5RS_scp1_organigram-4.scm",
-        //"test/changes/scheme/generated/R5RS_various_four-in-a-row-2.scm",
-        //"test/changes/scheme/generated/R5RS_various_four-in-a-row-4.scm",
-        //"test/changes/scheme/generated/R5RS_various_rsa-1.scm",
-        //"test/changes/scheme/generated/R5RS_various_rsa-3.scm",
-
         // Nog imprecies zelfs met bottomen van cycles. Niet door heuristieken.
         //"test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
 
-        "test/DEBUG2.scm",
+        //"test/DEBUG3.scm",
+        //"test/DEBUG1.scm",
         //"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
-
+        "test/DEBUG1.scm",
         /*
         // Not precise yet.
         "test/DEBUG2.scm",
@@ -219,6 +203,8 @@ object IncrementalRun extends App:
             val anly = true // Switch between analysing and delta debugging
             val logging = false
             val images = true
+
+            // Update the flags above!
             if anly
             then
                 println(text)
