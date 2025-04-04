@@ -49,7 +49,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      *   We could also store it as R ~> Set[W], but the current approach seems slightly easier
      *   (doesn't require a foreach over the set `reads`).
      */
-    var dataFlowR: Map[Component, Map[W, Set[R]]] = Map().withDefaultValue(Map().withDefaultValue(Set()))
+    var dataFlowR: Map[Component, Map[W, List[R]]] = Map().withDefaultValue(Map().withDefaultValue(List()))
 
     /**
      *  Indicates that implicit cut flows exist for a given component. Maps callers to callees.
@@ -97,10 +97,10 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
      * Based on the collected dataFlowR and the cut inter-component flows, computes the full information flow (explicit and implicit).
      * @return The REVERSE flows, containing the explicit and all implicit flows.
      */
-    def computeInformationFlow(): Map[W, Set[R]] =
+    def computeInformationFlow(): Map[W, List[R]] =
         // Combines the information stored on a per-component basis in dataFlowR.
-        var flowsR: Map[W, Set[R]] = dataFlowR.foldLeft(Map().withDefaultValue(Set[R]())) { case (res, (_, map)) =>
-            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> SmartUnion.sunion(res(w), rs)) }
+        var flowsR: Map[W, List[R]] = dataFlowR.foldLeft(Map().withDefaultValue(List[R]())) { case (res, (_, map)) =>
+            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> (res(w) ++ rs)) }
         }
     
         // For every component that is called in a non-empty implicit flow context, 
@@ -119,14 +119,14 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                 flowsR = cachedSpawns(caller).foldLeft(flowsR) { case (df, callee) =>
                     val calleeAddr = FlowAddr(callee)
                     work = work + callee
-                    df + (calleeAddr -> (df(calleeAddr) + FlowAddr(caller)))
+                    df + (calleeAddr -> (FlowAddr(caller) :: df(calleeAddr)))
                 }
                 
         // For every component that has a non-empty implicit flow context, 
         // add a flow from the components "flow node" to all addresses it wrote.
         visited.foldLeft(flowsR) { (df, cmp) =>
             val cmpAddr = FlowAddr(cmp)
-            cachedWrites(cmp).foldLeft(df) { case (df, w) => df + (w -> (df(w) + cmpAddr)) }
+            cachedWrites(cmp).foldLeft(df) { case (df, w) => df + (w -> (cmpAddr :: df(w))) }
         }
 
     /* ************************************ */
@@ -134,7 +134,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
     /* ************************************ */
 
     // Keeps track of the previous flows for the incremental Tarjan.
-    var previousFlowsR: Map[Addr, Set[Addr]] = Map()
+    var previousFlowsR: Map[Addr, List[Addr]] = Map()
 
     /**
      * Computes the SCAs in the program based on the explicit and implicit flows.
@@ -149,30 +149,31 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         if fullComputation
         then
             previousFlowsR = allFlowsR
-            SCC.tarjan[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR)
+            SCC.tarjan[Addr](SmartUnion.sunion(store.keySet, noStoreAddr.values.flatten.toSet), allFlowsR.map(kv => (kv._1, kv._2.toSet)))
         else
             // First remove keys with empty values to be more efficient when updating the SCA (hopefully).
-            val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
-            val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, Set())))).filter(_._2.nonEmpty)
+            val added = allFlowsR.map((k, v) => (k, v.diff(previousFlowsR.getOrElse(k, List())))).filter(_._2.nonEmpty)
+            val removed = previousFlowsR.map((k, v) => (k, v.diff(allFlowsR.getOrElse(k, List())))).filter(_._2.nonEmpty)
             previousFlowsR = allFlowsR
-            SCC.incremental[Addr](allFlowsR, added, removed, SCAs)
+            SCC.incremental[Addr](allFlowsR.map(kv => (kv._1, kv._2.toSet)), added.map(kv => (kv._1, kv._2.toSet)), removed.map(kv => (kv._1, kv._2.toSet)), SCAs)
 
     /** Checks whether an SCA needs to be refined. */
-    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Set[Addr] =
-        var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
+    def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, List[Addr]]]): Set[Addr] =
+        var flowsR = Map[Addr, List[Addr]]().withDefaultValue(List()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
+                flowsR = flowsR + (write -> (flowsR(write) ++ reads))
             }
         }
-        var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
+        var oldFlowsR = Map[Addr, List[Addr]]().withDefaultValue(List())
         oldDataFlowR.foreach { case (_, wr) =>
             wr./*filter(tuple => sca.contains(tuple._1)).*/foreach { case (write, reads) =>
-             if sca.contains(write) then oldFlowsR = oldFlowsR + (write -> SmartUnion.sunion(oldFlowsR(write), reads))
+             if sca.contains(write) then oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
             }
         }
         oldFlowsR.filter { case (w, rs) =>
             // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
+            println(magentaText(sca.mkString("[",",","]")) ++ s"\n  $rs\n  ${flowsR(w)}")
             rs.diff(flowsR(w)).nonEmpty ||
                 rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom))}
         }.keySet
@@ -204,7 +205,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                         // REMARK: check reason + impact
                         cachedWrites = cachedWrites + (c -> (cachedWrites(c) - a))
                         // TODO Should we delete dataflowR as well? (Maybe this is better to avoid spurious analyses and computations as the value is deleted anyway.)
-                        dataFlowR = dataFlowR + (c -> (dataFlowR(c) + (a -> dataFlowR(c)(a).diff(sca))))
+                        dataFlowR = dataFlowR + (c -> (dataFlowR(c) + (a -> dataFlowR(c)(a).filter(sca))))
                         acc
                 }
                 //println(markOK(v.toString))
@@ -221,8 +222,8 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         // Add all these components to the worklist at once (should perform better as it avoids duplicate additions).
         addToWorkList(SmartUnion.sunion(updated.flatMap(a => deps(AddrDependency(a))), ignored))
 
-    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, Set[R]]], cmp: Component): Unit =
-        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, Set())).nonEmpty)
+    def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, List[R]]], cmp: Component): Unit =
+        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, List())).nonEmpty)
         if flowDeleted || nonIncrementalUpdate
         then
             SCAs = computeSCAs(false)
@@ -240,7 +241,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
 
         /** Map of address dependencies W ~> Set[R]. */
         // (Temporary cache, such as the sets C, R, W.)
-        var dataFlowRIntra: Map[Addr, Set[Addr]] = Map().withDefaultValue(Set())
+        var dataFlowRIntra: Map[Addr, List[Addr]] = Map().withDefaultValue(List())
 
         override def readAddr(addr: Addr): Value =
             if configuration.cyclicValueInvalidation then lattice.addAddress(super.readAddr(addr), addr)
@@ -251,7 +252,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
                 // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
                 val dependentAddresses = lattice.getAddresses(value)
                 // Store the dependencies.
-                val newDependencies = SmartUnion.sunion(dataFlowRIntra(addr), dependentAddresses)
+                val newDependencies = dataFlowRIntra(addr) ++ dependentAddresses
                 dataFlowRIntra += (addr -> newDependencies)
                 super.writeAddr(addr, lattice.removeAddresses(value))
             else super.writeAddr(addr, value)

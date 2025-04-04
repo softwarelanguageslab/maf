@@ -22,7 +22,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
     type EvalM[X] = FlowEvalM[X]
     implicit val evalM: MonadFlowEvalM = new MonadFlowEvalM {}
 
-    case class FlowEvalM[+X](run: (Set[Address], Environment[Address]) => Option[X]):
+    case class FlowEvalM[+X](run: (List[Address], Environment[Address]) => Option[X]):
         def flatMap[Y](f: X => FlowEvalM[Y]): FlowEvalM[Y] =
             FlowEvalM((implicitFlows, env) => run(implicitFlows, env).flatMap(res => f(res).run(implicitFlows, env)))
         def map[Y](f: X => Y): FlowEvalM[Y] = FlowEvalM((implicitFlows, env) => run(implicitFlows, env).map(f))
@@ -53,8 +53,8 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         // TODO: withExtendedEnv would make more sense
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => FlowEvalM[X]): FlowEvalM[X] =
             FlowEvalM((imF, env) => ev.run(imF, f(env)))
-        def getImplicitFlows: FlowEvalM[Set[Address]] = FlowEvalM((implicitFlows, _) => Some(implicitFlows))
-        def withImplicitFlows[X](implicitFlows: Set[Addr])(ev: => FlowEvalM[X]): FlowEvalM[X] = FlowEvalM((_, env) => ev.run(implicitFlows, env))
+        def getImplicitFlows: FlowEvalM[List[Address]] = FlowEvalM((implicitFlows, _) => Some(implicitFlows))
+        def withImplicitFlows[X](implicitFlows: List[Addr])(ev: => FlowEvalM[X]): FlowEvalM[X] = FlowEvalM((_, env) => ev.run(implicitFlows, env))
         def merge[X: Lattice](x: FlowEvalM[X], y: FlowEvalM[X]): FlowEvalM[X] = FlowEvalM { (implicitFlows, env) =>
             (x.run(implicitFlows, env), y.run(implicitFlows, env)) match
                 case (None, yres) => yres
@@ -71,13 +71,13 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
     trait IncrementalSchemeModFBigStepIntra extends BigStepModFIntraT with IncrementalIntraAnalysis with IncrementalGlobalStoreCYIntraAnalysis:
         import evalM._
 
-        var cutFlows: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+        var cutFlows: Map[Component, List[Addr]] = Map().withDefaultValue(List())
         var noStoreAddrIntra: Set[Addr] = Set()
 
         // Inserts a flow node in the data flow.
         // Sources are the addresses from which information flows to the flow node.
         // Returns the flow node (so that it can e.g., be used easily in the conditional).
-        private def insertFlowNode(flw: Addr, sources: Set[Addr]): Addr =
+        private def insertFlowNode(flw: Addr, sources: List[Addr]): Addr =
             dataFlowRIntra = dataFlowRIntra + (flw -> (dataFlowRIntra(flw) ++ sources)) // implicit flows ~> flowNode (reversed)
             noStoreAddrIntra = noStoreAddrIntra + flw // Assume this is also needed for flows to conditionals (if) todo: check
             flw
@@ -88,8 +88,8 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             // Reduce the number of flows by inserting flow nodes.
             // Collect a set with all components that were called with a non-empty flow context,
             // and a map with all implicit flows going to flow nodes (toNodeR).
-            val (cmpWithCtx, toNodeR): (Set[Component], Map[Addr, Set[Addr]]) =
-                cutFlows.foldLeft((Set[Component](), Map[Addr, Set[Addr]]())) { case ((cmpWithCtx, toNodeR), (c, a)) =>
+            val (cmpWithCtx, toNodeR): (Set[Component], Map[Addr, List[Addr]]) =
+                cutFlows.foldLeft((Set[Component](), Map[Addr, List[Addr]]())) { case ((cmpWithCtx, toNodeR), (c, a)) =>
                     if a.nonEmpty 
                     then 
                         val flowNode = FlowAddr(c)
@@ -105,7 +105,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
 
         // analysis entry point
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(Set[Addr](), fnEnv).foreach(res => writeResult(res))
+            eval(fnBody).run(List[Addr](), fnEnv).foreach(res => writeResult(res))
 
        /*  override protected def allocateVal(exp: SchemeExp)(v: Value): M[Value] =
             if configuration.cyclicValueInvalidation then
@@ -151,11 +151,11 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     iFlows <- getImplicitFlows
                     adr = lattice.getAddresses(prdVal) ++ iFlows
                     // Reduce the number of edges:
-                    addr = if adr.size > 1 then Set(insertFlowNode(FlowAddr(component, Some(prd)), adr)) else adr
+                    addr = if adr.size > 1 then List(insertFlowNode(FlowAddr(component, Some(prd)), adr)) else adr
                     resVal <- withImplicitFlows(addr) {
                         cond(prdVal, eval(csq), eval(alt))
                     }
-                // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
+                // Implicit flows need to be added to the re turn value of the if as well, as this value depends on the predicate.
                 yield lattice.addAddresses(resVal, addr)
             else super.evalIf(prd, csq, alt)
 
@@ -172,7 +172,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking + implicit flows!.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield
-                    dataFlowRIntra += (a -> SmartUnion.sunion(dataFlowRIntra(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
+                    dataFlowRIntra += (a -> (dataFlowRIntra(a) ++ iFlows)) // TODO!! (+ todo: remove iflows from value)
                     value
             else super.evalLiteralValue(literal, exp)
 

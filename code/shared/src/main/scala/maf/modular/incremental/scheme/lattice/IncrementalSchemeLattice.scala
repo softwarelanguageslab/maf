@@ -8,12 +8,12 @@ import maf.util.datastructures.SmartUnion
 trait IncrementalSchemeLattice[AL, A <: Address] extends IncrementalLattice[AL, A] with SchemeLattice[AL, A]:
 
     override def and(x: AL, y: => AL): AL =
-        val addr = SmartUnion.sunion(getAddresses(x), getAddresses(y))
+        val addr = getAddresses(x) ++ getAddresses(y)
         val res = super.and(x, y)
         addAddresses(res, addr)
 
     override def or(x: AL, y: => AL): AL =
-        val addr = SmartUnion.sunion(getAddresses(x), getAddresses(y))
+        val addr = getAddresses(x) ++ getAddresses(y)
         val res = super.or(x, y)
         addAddresses(res, addr)
 

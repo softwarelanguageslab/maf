@@ -44,9 +44,9 @@ trait GlobalStoreTaint[Expr <: Expression] extends ModAnalysis[Expr] with Global
 
         override def writeAddr(addr: Addr, value: Value): Boolean =
             // Get the annotations and remove them so they are not written to the store. Add the implicit flows as well.
-            val dependentAddresses = SmartUnion.sunion(lattice.getAddresses(value), implicitFlowsCut.getOrElse(component, Set()))
+            val dependentAddresses = lattice.getAddresses(value) ++ implicitFlowsCut.getOrElse(component, Set())
             // Store the dependencies.
-            val newDependencies = SmartUnion.sunion(dataFlow(addr), dependentAddresses)
+            val newDependencies = dataFlow(addr) ++ dependentAddresses
             dataFlow += (addr -> newDependencies)
             super.writeAddr(addr, lattice.removeAddresses(value))
 

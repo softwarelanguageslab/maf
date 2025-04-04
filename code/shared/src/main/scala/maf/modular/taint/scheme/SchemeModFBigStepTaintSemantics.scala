@@ -24,7 +24,7 @@ trait SchemeModFBigStepTaintSemantics
     type EvalM[X] = TaintEvalM[X]
     implicit val evalM: MonadTaintEvalM = new MonadTaintEvalM {}
 
-    case class TaintEvalM[+X](run: (Set[Address], Environment[Address]) => Option[X]):
+    case class TaintEvalM[+X](run: (List[Address], Environment[Address]) => Option[X]):
         def flatMap[Y](f: X => TaintEvalM[Y]): TaintEvalM[Y] =
             TaintEvalM((implicitFlows, env) => run(implicitFlows, env).flatMap(res => f(res).run(implicitFlows, env)))
         def map[Y](f: X => Y): TaintEvalM[Y] = TaintEvalM((imF, env) => run(imF, env).map(f))
@@ -56,9 +56,9 @@ trait SchemeModFBigStepTaintSemantics
         // TODO: withExtendedEnv would make more sense
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => TaintEvalM[X]): TaintEvalM[X] =
             TaintEvalM((imF, env) => ev.run(imF, f(env)))
-        def getImplicitTaint: TaintEvalM[Set[Address]] = TaintEvalM((t, _) => Some(t))
-        def withImplicitTaint[X](ts: Set[Addr])(ev: => TaintEvalM[X]): TaintEvalM[X] = TaintEvalM((imF, env) => ev.run(ts, env))
-        def addImplicitTaint[X](ts: Set[Addr])(ev: => TaintEvalM[X]): TaintEvalM[X] = TaintEvalM((imF, env) => ev.run(imF ++ ts, env))
+        def getImplicitTaint: TaintEvalM[List[Address]] = TaintEvalM((t, _) => Some(t))
+        def withImplicitTaint[X](ts: List[Addr])(ev: => TaintEvalM[X]): TaintEvalM[X] = TaintEvalM((imF, env) => ev.run(ts, env))
+        def addImplicitTaint[X](ts: List[Addr])(ev: => TaintEvalM[X]): TaintEvalM[X] = TaintEvalM((imF, env) => ev.run(imF ++ ts, env))
         def merge[X: Lattice](x: TaintEvalM[X], y: TaintEvalM[X]): TaintEvalM[X] = TaintEvalM { (imF, env) =>
             (x.run(imF, env), y.run(imF, env)) match
                 case (None, yres)             => yres
@@ -99,7 +99,7 @@ trait SchemeModFBigStepTaintSemantics
 
         // analysis entry point
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(Set[Addr](), fnEnv).foreach(res => writeResult(res))
+            eval(fnBody).run(List[Addr](), fnEnv).foreach(res => writeResult(res))
 
         override def eval(exp: SchemeExp): EvalM[Value] = exp match
             case SchemeSource(name, _) =>

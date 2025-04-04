@@ -26,7 +26,7 @@ class IncrementalModularSchemeLattice[
 
     import Elements.*
 
-    type Sources = Set[A]
+    type Sources = List[A]
 
     /**
      * * A value that keeps track of the store addresses it depends upon.
@@ -44,21 +44,21 @@ class IncrementalModularSchemeLattice[
 
     type AL = AnnotatedElements
     object AnnotatedElement extends Serializable:
-        def apply(v: Value): AL = apply(v, Set())
+        def apply(v: Value): AL = apply(v, List())
         def apply(v: Value, sources: Sources): AL =
             // NOTE: the usage of asInstanceOf here is slightly unsafe since Value.tpy.Wrap might not correspond to the actual type of v
             // we trust the programmers to not make this mistake, but it cannot be enforcement at compile-time.
             // Removal of these wrappers might (partially) solve the problem.
             AnnotatedElements(HMap.wrapInserted(v.tpy, v.asInstanceOf[v.tpy.Wrap]), sources)
 
-    def toAL(x: L): AL = AnnotatedElements(x, Set())
+    def toAL(x: L): AL = AnnotatedElements(x, List())
 
     import maf.util.MonoidInstances._
 
     /** Provides the monoid implementation for annotated elements AL. */
     implicit val alMonoid: Monoid[AL] = new Monoid[AL] {
         def append(xs: AL, ys: => AL): AL = AnnotatedElements(Lattice[L].join(xs.toL(), ys.toL()), xs.sources.union(ys.sources))
-        def zero: AL = AnnotatedElements(Lattice[L].bottom, Set())
+        def zero: AL = AnnotatedElements(Lattice[L].bottom, List())
     }
     implicit val alMFMonoid: Monoid[MayFail[AL, Error]] = MonoidInstances.mayFail[AL]
 
@@ -83,7 +83,7 @@ class IncrementalModularSchemeLattice[
 
         /** Apply an operation: apply the operation on the values and join the annotations. */
         def op(op: SchemeOp)(args: List[AL]): MayFail[AL, Error] =
-            val sources = args.flatMap(_.sources).toSet // Combine all sources (= join).
+            val sources = args.flatMap(_.sources) // Combine all sources (= join).
             // Redirect to the non-annotated lattice and annotate afterwards. This allows more reuse of code.
             schemeLattice.op(op)(args.map(_.toL())).map(annotate(_, sources))
         def join(x: AL, y: => AL): AL =
@@ -102,15 +102,15 @@ class IncrementalModularSchemeLattice[
         def getThreads(x: AL): Set[TID] = schemeLattice.getThreads(x.toL())
         def getBlames(x: AL): Set[Blame] = schemeLattice.getBlames(x.toL())
         def getGrds(x: AL): Set[Grd[AL]] =
-            schemeLattice.getGrds(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
+            schemeLattice.getGrds(x.toL()).map(_.map(annotate(_, List()))) // TODO[medium] not sure what to pass to annotate
         def getArrs(x: AL): Set[Arr[AL]] =
-            schemeLattice.getArrs(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
+            schemeLattice.getArrs(x.toL()).map(_.map(annotate(_, List()))) // TODO[medium] not sure what to pass to annotate
         def getFlats(x: AL): Set[Flat[AL]] =
-            schemeLattice.getFlats(x.toL()).map(_.map(annotate(_, Set()))) // TODO[medium] not sure what to pass to annotate
+            schemeLattice.getFlats(x.toL()).map(_.map(annotate(_, List()))) // TODO[medium] not sure what to pass to annotate
         def getGetterSetter(x: AL): Set[StructSetterGetter] =
             schemeLattice.getGetterSetter(x.toL())
         def getStructs(x: AL): Set[Struct[AL]] =
-            schemeLattice.getStructs(x.toL()).map(_.map(annotate(_, Set())))
+            schemeLattice.getStructs(x.toL()).map(_.map(annotate(_, List())))
         def getStructConstructor(x: AL): Set[StructConstructor] =
             schemeLattice.getStructConstructor(x.toL())
         def getStructPredicates(x: AL): Set[StructPredicate] =
@@ -119,7 +119,7 @@ class IncrementalModularSchemeLattice[
         def acquire(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.acquire(lock.toL(), tid).map(annotate(_, lock.sources))
         def release(lock: AL, tid: TID): MayFail[AL, Error] = schemeLattice.release(lock.toL(), tid).map(annotate(_, lock.sources))
 
-        def bottom: AL = AnnotatedElements(schemeLattice.bottom, Set())
+        def bottom: AL = AnnotatedElements(schemeLattice.bottom, List())
 
         override def isBottom(x: AL): Boolean = removeAddresses(x) == bottom // Just check the value.
 
@@ -139,7 +139,7 @@ class IncrementalModularSchemeLattice[
         def cont(x: K): AL = toAL(schemeLattice.cont(x))
         def symbol(x: String): AL = toAL(schemeLattice.symbol(x))
         def cons(car: AL, cdr: AL): AL = annotate(schemeLattice.cons(car.toL(), cdr.toL()), car.joinedSources(cdr))
-        def pointer(a: A): AL = annotate(schemeLattice.pointer(a), /* implicitFlows + */ Set(a))
+        def pointer(a: A): AL = annotate(schemeLattice.pointer(a), /* implicitFlows + */ List(a))
         def thread(tid: TID): AL = toAL(schemeLattice.thread(tid))
         def lock(threads: Set[TID]): AL = toAL(schemeLattice.lock(threads))
         def blame(blame: Blame): AL = toAL(schemeLattice.blame(blame))
@@ -158,14 +158,14 @@ class IncrementalModularSchemeLattice[
         def eq(xs: AL, ys: AL)(cmp: MaybeEq[A]): AL = annotate(schemeLattice.eq(xs.toL(), ys.toL())(cmp), xs.joinedSources(ys))
 
         override def rmods(mod: AL): Set[RMod[AL]] =
-            schemeLattice.rmods(mod.toL()).map(_.mapValues(annotate(_, Set())))
+            schemeLattice.rmods(mod.toL()).map(_.mapValues(annotate(_, List())))
 
         override def rmod(mod: RMod[AL]): AL =
-            annotate(schemeLattice.rmod(mod.mapValues(_.toL())), Set())
+            annotate(schemeLattice.rmod(mod.mapValues(_.toL())), List())
 
         override def addAddresses(v: AL, addresses: Sources): AL = AnnotatedElements(v.toL(), v.sources.union(addresses))
-        override def getAddresses(v: AL): Set[A] = v.sources
-        override def removeAddresses(v: AL): AL = v.copy(sources = Set())
+        override def getAddresses(v: AL): List[A] = v.sources
+        override def removeAddresses(v: AL): AL = v.copy(sources = List())
 
         /** Shows the differences between x and y (from the perspective of a modular lattice). */
         def compare(

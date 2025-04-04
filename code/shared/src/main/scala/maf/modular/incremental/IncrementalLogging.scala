@@ -228,14 +228,14 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         if (mode != Summary && (mode != Step || stepSelect())) && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
-    override def computeInformationFlow(): Map[W, Set[R]] =
+    override def computeInformationFlow(): Map[W, List[R]] =
         // Combines the information stored on a per-component basis in dataFlowR.
-        val flowsR: Map[W, Set[R]] = dataFlowR.foldLeft(Map().withDefaultValue(Set[R]())) { case (res, (_, map)) =>
-            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> SmartUnion.sunion(res(w), rs)) }
+        val flowsR: Map[W, List[R]] = dataFlowR.foldLeft(Map().withDefaultValue(List[R]())) { case (res, (_, map)) =>
+            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> (res(w) ++ rs)) }
         }
         val res = super.computeInformationFlow()
         res.foreach { (w, rs) =>
-            rs.diff(flowsR.getOrElse(w, Set())).foreach { r =>
+            rs.diff(flowsR.getOrElse(w, List())).foreach { r =>
                 logger.log(s"IFLW $w ~> $r")
             }
         }
@@ -247,17 +247,17 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
         if mode != Summary || stepSelect() then res.foreach(sca => logger.log(s"SCAC ($algo) ${sca.mkString(", ")}"))
         res
 
-    override def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Set[Addr] =
+    override def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, List[Addr]]]): Set[Addr] =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
+                flowsR = flowsR + (write -> (flowsR(write) ++ reads))
             }
         }
         var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
         oldDataFlowR.foreach { case (_, wr) =>
             wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
-                oldFlowsR = oldFlowsR + (write -> SmartUnion.sunion(oldFlowsR(write), reads))
+                oldFlowsR = oldFlowsR + (write -> (oldFlowsR(write) ++ reads))
             }
         }
         val reasons = oldFlowsR.filter { case (w, rs) =>
@@ -279,8 +279,8 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualis
             }
         super.refiningNeeded(sca, oldStore, oldDataFlowR)
 
-    override def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, Set[R]]], cmp: Component): Unit =
-        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, Set())).nonEmpty)
+    override def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, List[R]]], cmp: Component): Unit =
+        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => (rs.diff(dataFlowR(cmp).getOrElse(w, List()))).nonEmpty)
         if !(flowDeleted || nonIncrementalUpdate) then logger.log("SKIP")
         super.updateSCAs(oldStore, oldDataFlowR, cmp)
 
