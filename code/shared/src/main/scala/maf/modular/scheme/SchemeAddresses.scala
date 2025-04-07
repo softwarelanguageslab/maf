@@ -45,3 +45,7 @@ case class FlowAddr[Component](cmp: Component, e: Option[SchemeExp] = None) exte
     override def toString: String = e match
         case Some(e) => s"ifCtx($cmp :: ${e.idn.pos})"
         case None => s"cmpCtx($cmp)"
+case class PrimFlowAddr[Component](cmp: Component, e: SchemeExp) extends SchemeAddr[Component]:
+    def printable = false
+    def idn: Identity = Identity.none
+    override def toString: String = s"prim($e@${e.idn.pos})"

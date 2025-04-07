@@ -158,6 +158,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             SCC.incremental[Addr](allFlowsR.map(kv => (kv._1, kv._2.toSet)), added.map(kv => (kv._1, kv._2.toSet)), removed.map(kv => (kv._1, kv._2.toSet)), SCAs)
 
     /** Checks whether an SCA needs to be refined. */
+    // TODO: Move back to outputting a boolean in case the set is not needed.
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, List[Addr]]]): Set[Addr] =
         var flowsR = Map[Addr, List[Addr]]().withDefaultValue(List()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>
@@ -173,7 +174,6 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
         }
         oldFlowsR.filter { case (w, rs) =>
             // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
-            println(magentaText(sca.mkString("[",",","]")) ++ s"\n  $rs\n  ${flowsR(w)}")
             rs.diff(flowsR(w)).nonEmpty ||
                 rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom))}
         }.keySet
