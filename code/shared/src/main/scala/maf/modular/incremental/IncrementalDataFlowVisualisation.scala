@@ -51,6 +51,7 @@ trait IncrementalDataFlowVisualisation[Expr <: Expression] extends IncrementalGl
         def addrToGE(a: Addr): GE = a match {
             case _: LitAddr[_] => GE(a.toString, Colors.PinkOrange, "octagon")
             case _: FlowAddr[_] => GE(a.toString, Colors.Grey, "oval")
+            case _: PrimFlowAddr[_] => GE(a.toString, Colors.Grey, "box")
             case _ => GE(a.toString, shape = "box")
         }
 

@@ -158,6 +158,7 @@ trait IncrementalGlobalStoreCY[Expr <: Expression] extends IncrementalGlobalStor
             SCC.incremental[Addr](allFlowsR, added, removed, SCAs)
 
     /** Checks whether an SCA needs to be refined. */
+    // TODO: Move back to outputting a boolean in case the set is not needed.
     def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Set[Addr] =
         var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
         dataFlowR.foreach { case (_, wr) =>

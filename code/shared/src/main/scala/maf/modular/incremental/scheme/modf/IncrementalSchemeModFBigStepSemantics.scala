@@ -150,7 +150,7 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
                     // When CY is disabled, no addresses will be present (and implicitFlows will be a list of empty sets).
                     iFlows <- getImplicitFlows
                     adr = lattice.getAddresses(prdVal) ++ iFlows
-                    // Reduce the number of edges:
+                    // Reduce the number of edges: // TODO should the flow addr also contain the prd (to improve the precision of the cycle detection)?
                     addr = if adr.size > 1 then Set(insertFlowNode(FlowAddr(component, Some(prd)), adr)) else adr
                     resVal <- withImplicitFlows(addr) {
                         cond(prdVal, eval(csq), eval(alt))
@@ -228,14 +228,12 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             else super.applyClosuresM(fun, args, cll, ctx)
         end applyClosuresM
 
-        /*
         override def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): FlowEvalM[Value] =
             for
-                i <- getImplicitFlows
-                _ = lattice.setContext(i) // TODO: should the context only be expanded within primitives?
-                r <- super.applyPrimitives(fexp, fval, args)
-                _ = lattice.setContext(Set())
-            yield r */
+                res <- super.applyPrimitives(fexp, fval, args)
+                adr = lattice.getAddresses(res)
+                flw = insertFlowNode(PrimFlowAddr(component, fexp.f), adr)
+            yield lattice.addAddress(lattice.removeAddresses(res), flw)
 
     end IncrementalSchemeModFBigStepIntra
 
