@@ -345,6 +345,7 @@ case class RefCountingStore[A <: Address, V](content: SmartMap[A, (V, AbstractCo
         }
         Delta(delta, deltaRefs)
     def update(adr: A, vlu: V): Delta =
+        throw new Exception("Updates are not yet properly supported")
         content.get(adr) match
             case None | Some((_, CountZero)) => // should not happen
                 throw new Exception("Trying to update a non-existing address")
@@ -393,6 +394,28 @@ case class RefCountingStore[A <: Address, V](content: SmartMap[A, (V, AbstractCo
                     case Some(addrs)                        => (a, addrs ++ r)
             }
             Delta(delta, deltaRefs)
+    def changeRoot(newRoots: Set[A]): RefCountingStore[A, V] =
+        val updated = RefCountingStore(content, refs, newRoots)
+        roots.foldLeft(updated)((acc, root) => acc.removeRoot(root))
+    private def removeRoot(adr: A): RefCountingStore[A, V] = 
+        val froms = refs.getOrElse(adr, Set.empty)
+        if froms.isEmpty && !roots(adr) then
+            reclaim(addr)
+        else 
+            this
+    private def removeRef(from: A, to: A): RefCountingStore[A, V] =
+        val updated = refs(to) - from 
+        if updated.isEmpty && !roots(to) then 
+            reclaim(to)
+        else if updated.isEmpty then 
+            RefCountingStore(content, refs - to, roots)
+        else 
+            RefCountingStore(content, refs + (to -> updated), roots)
+    private def reclaim(adr: A): RefCountingStore[A, V] = 
+        val addrs = lat.refs(lookupValue(adr))adr
+        val current = RefCountingStore(content - , refs - adr, roots)
+        addrs.foldLeft(current)((acc, to) => acc.removeRef(adr, to))
+
     case class Delta(delta: SmartMap[A, (V, AbstractCount)], deltaRefs: Map[A, Set[A]]):
         def store = sto 
 
