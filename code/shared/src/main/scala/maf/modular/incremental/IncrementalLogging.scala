@@ -4,10 +4,12 @@ import maf.core.Expression
 import maf.language.change.CodeVersion.*
 import maf.language.scheme.SchemeExp
 import maf.modular.*
+import maf.modular.scheme.FlowAddr
 import maf.util.ColouredFormatting.*
 import maf.util.Logger
 import maf.util.Logger.*
 import maf.util.benchmarks.*
+import maf.util.datastructures.SmartUnion
 import maf.util.graph.DotGraph
 
 /**
@@ -16,7 +18,7 @@ import maf.util.graph.DotGraph
  * @tparam Expr
  *   The type of the expressions under analysis.
  */
-trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Expr]:
+trait IncrementalLogging[Expr <: Expression] extends IncrementalDataFlowVisualisation[Expr]:
     inter =>
 
     val logger: NumberedLog = Logger.numbered()
@@ -54,19 +56,22 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
     private def legend(): String =
         """***** LEGEND OF ABBREVIATIONS *****
       |ADEP  An address value dependency is registered. Includes the "source" address and the address where the value flows to.
-      |ADP*  Similar to ADEP, but the address dependency originates from an implicit value flow (e.g., due to a conditional).
       |ANLY  Analysis of a component, indicating the step of the analysis and the number of times the current component is now analysed.
       |CINV  Component invalidation: the given component is deleted.
       |COMI  Indicates the component's analysis is committed.
       |DELA  Indicates the removal of a given address.
       |DINV  Dependency invalidation: the component is no longer dependent on the dependency.
-      |ICFL  The cut inter-component implicit flows to every component, found by the currently analysed component.
+      |ICFL  The components called in a non-empty flow context.
+      |IFLW  The implicit flows added to compute the SCAs.
       |IUPD  Incremental update of the given address, indicating the value now residing in the store and the value actually written.
       |NEWC  Discovery of a new, not yet existing component.
       |PROV  Registration of provenance, including the address and new provenance value, for values that did not cause store changes.
       |READ  Address read, includes the address and value retrieved from the store.
       |RSAD  Indicates the address dependencies for a given component are reset.
-      |RSCA  Indicates (an address in) a SCA is refined. The number indicates the number of SCA refinement.
+      |RSCA  Indicates (an address in) an SCA is refined. The number indicates the number of SCA refinement.
+      |SCAC  Computed SCA. Shows the algorithm used for this computation.
+      |SCAR  Finds that an SCA needs to be refined and gives the addresses because of which.
+      |SKIP  SCA computation skipped (due to heuristic).
       |TRIG  Indicates the given dependency has been triggered.
       |WRIT  Address write, including the address, value written and value now residing in the store.
       |
@@ -103,8 +108,18 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         val depCols = table.allColumns.filter(_.startsWith("~>")).toList.sorted
         table.prettyString(rowName = "Step",
                            rows = (1 until step).toList.map(_.toString),
-                           columns = "Phase" :: storeCols ::: provCols ::: depCols ::: List("Bot"),
+                           columns = "Phase" :: storeCols ::: List("Bot"),
                            format = s => crop(s)
+        ) + "\n\n" +
+        table.prettyString(rowName = "Step",
+            rows = (1 until step).toList.map(_.toString),
+            columns = "Phase" :: provCols,
+            format = s => crop(s)
+        ) + "\n\n" +
+        table.prettyString(rowName = "Step",
+            rows = (1 until step).toList.map(_.toString),
+            columns = "Phase" :: depCols,
+            format = s => crop(s)
         )
 
     private def addressDependenciesToString(): String =
@@ -114,11 +129,10 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
             .foldLeft(Table.empty.withDefaultValue(""))({ case (table, dep) => table.add(dep._1.toString, "Value sources", dep._2.mkString("; ")) })
             .prettyString()
         // Inter-component dataflow
-        val icFlow = interComponentFlow.values.flatten.groupBy(_._1).map({case (c, ca) => (c, ca.flatMap(_._2).toSet)})
-        val icFlowString = icFlow
-            .foldLeft(Table.empty.withDefaultValue(""))( {case (table, flow) => table.add(flow._1.toString, "Flows to cmp", flow._2.mkString("; "))})
+        val icFlowString = interComponentFlow
+            .foldLeft(Table.empty.withDefaultValue(""))( {case (table, flow) => table.add(flow._1.toString, "Calls in non-empty context", flow._2.mkString(" "))})
             .prettyString()
-        val scaString = computeSCAs().map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
+        val scaString = computeSCAs(true).map(_.map(a => crop(a.toString)).mkString("{", ", ", "}")).mkString("\n")
         depString + "\n\n" + icFlowString + (if configuration.cyclicValueInvalidation && mode != Select then "\nSCAs:\n" + (if scaString.isEmpty then "none" else scaString)
                      else "")
 
@@ -214,12 +228,69 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         if (mode != Summary && (mode != Step || stepSelect())) && !visited(cmp) then logger.log(s"NEWC ${crop(cmp.toString)}")
         super.spawn(cmp)
 
+    override def computeInformationFlow(): Map[W, Set[R]] =
+        // Combines the information stored on a per-component basis in dataFlowR.
+        val flowsR: Map[W, Set[R]] = dataFlowR.foldLeft(Map().withDefaultValue(Set[R]())) { case (res, (_, map)) =>
+            map.foldLeft(res) { case (res, (w, rs)) => res + (w -> SmartUnion.sunion(res(w), rs)) }
+        }
+        val res = super.computeInformationFlow()
+        res.foreach { (w, rs) =>
+            rs.diff(flowsR.getOrElse(w, Set())).foreach { r =>
+                logger.log(s"IFLW $w ~> $r")
+            }
+        }
+        res
+
+    override def computeSCAs(fullComputation: Boolean): Set[SCA] = 
+        val res = super.computeSCAs(fullComputation)
+        val algo = if fullComputation then "TARJAN" else "INCREMENTAL"
+        if mode != Summary || stepSelect() then res.foreach(sca => logger.log(s"SCAC ($algo) ${sca.mkString(", ")}"))
+        res
+
+    override def refiningNeeded(sca: SCA, oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[Addr, Set[Addr]]]): Set[Addr] =
+        var flowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set()) // Map[Writes, Set[Reads]]
+        dataFlowR.foreach { case (_, wr) =>
+            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+                flowsR = flowsR + (write -> SmartUnion.sunion(flowsR(write), reads))
+            }
+        }
+        var oldFlowsR = Map[Addr, Set[Addr]]().withDefaultValue(Set())
+        oldDataFlowR.foreach { case (_, wr) =>
+            wr.filter(tuple => sca.contains(tuple._1)).foreach { case (write, reads) =>
+                oldFlowsR = oldFlowsR + (write -> SmartUnion.sunion(oldFlowsR(write), reads))
+            }
+        }
+        val reasons = oldFlowsR.filter { case (w, rs) =>
+            // TODO: why does there also need to be a getOrElse at oldstore(w)? If it is not there, it cannot be part of the SCA?
+            rs.diff(flowsR(w)).nonEmpty ||
+                rs.exists { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom)) }
+        }
+        if (mode != Summary || stepSelect()) && reasons.nonEmpty
+        then
+            reasons.foreach { (w, rs) =>
+                val gone: Set[Addr] = rs.diff(flowsR(w))
+                val nonM: Set[Addr] = rs.filter { r => !lattice.subsumes(store.getOrElse(r, lattice.bottom), oldStore.getOrElse(r, lattice.bottom)) }
+                gone.foreach { r =>
+                    logger.log(s"SCAR $r ~\\~> $w: $sca")
+                }
+                nonM.foreach { r =>
+                    logger.log(s"SCAR $r (${oldStore.getOrElse(r, lattice.bottom)} => ${store.getOrElse(r, lattice.bottom)}) ~> $w: $sca")
+                }
+            }
+        super.refiningNeeded(sca, oldStore, oldDataFlowR)
+
+    override def updateSCAs(oldStore: Map[Addr, Value], oldDataFlowR: Map[Component, Map[W, Set[R]]], cmp: Component): Unit =
+        val flowDeleted = oldDataFlowR(cmp).exists((w, rs) => rs.diff(dataFlowR(cmp).getOrElse(w, Set())).nonEmpty)
+        if !(flowDeleted || nonIncrementalUpdate) then logger.log("SKIP")
+        super.updateSCAs(oldStore, oldDataFlowR, cmp)
+
     private var rSCAcount = 0
-    override def refineSCA(sca: SCA): Unit =
+    override def refineSCA(sca: SCA, refinedEntries: Set[Addr]): Unit =
         rSCAcount = rSCAcount + 1
+        //dataFlowToImage("pre-RSCA.dot")
         var values: Map[Addr, Value] = Map()
         if mode != Step || stepSelect() then sca.foreach(a => values = values + (a -> store.getOrElse(a, lattice.bottom)))
-        super.refineSCA(sca)
+        super.refineSCA(sca, refinedEntries)
         if mode != Step || stepSelect() then
             sca.toList.sortBy(_.toString).map(a => s"$a (${values(a)} -> ${store.getOrElse(a, lattice.bottom)})").foreach(u => logger.log(s"RSCA ($rSCAcount) $u"))
 
@@ -227,10 +298,10 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         intra =>
         // Analysis of a component.
         abstract override def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            if rSCAcount >= 10
-            then
-                logger.logU(s"RSCA count = 2, aborting analysis before step $step")
-                throw new Exception("Aborting analysis!")
+            //if rSCAcount >= 10
+            //then
+            //    logger.logU(s"RSCA count = 2, aborting analysis before step $step")
+            //    throw new Exception("Aborting analysis!")
             if mode != Summary && (mode != Step || stepSelect()) then logger.logU("") // Adds a newline to the log.
             if version == Old then intraC += 1 else intraCU += 1
             repeats = repeats + (component -> (repeats(component) + 1))
@@ -256,10 +327,6 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
                         if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
                             logger.log(s"ADEP ${crop(r.toString)} ~> ${crop(addr.toString)}")
                     )
-                //implicitFlows.flatten.foreach(f =>
-                //    if (mode != Select || focus(addr)) && (mode != Step || stepSelect()) then
-                //        logger.log(s"ADP* ${crop(f.toString)} ~> ${crop(addr.toString)}")
-                //)
             val b = super.writeAddr(addr, value)
             if mode == Fine || select(addr) || stepSelect() then
                 logger.log(
@@ -279,7 +346,7 @@ trait IncrementalLogging[Expr <: Expression] extends IncrementalGlobalStoreCY[Ex
         override def commit(): Unit =
             if mode != Summary || stepSelect() then logger.log("COMI")
             super.commit()
-            if (mode == Fine || (mode == Step && stepSelect())) then logger.log(s"ICFL ${interComponentFlow.getOrElse(component, Map()).toList.map(kv => s"${kv._1} => {${kv._2.mkString(", ")}}").mkString("; ")}")
+            if (mode == Fine || (mode == Step && stepSelect())) then logger.log(s"ICFL ${interComponentFlow.getOrElse(component, Map()).toList.mkString(" ")}")
             insertTable(Right(component))
 
     end IncrementalLoggingIntra

@@ -31,12 +31,12 @@ trait AAMTesterT:
     def run(name: String): Unit =
         val content = Reader.loadFile(name)
         val program = parseProgram(content)
-        val graph = new DotGraph[GraphElementAAM, GraphElement]()
-        given gInst: Graph[graph.G, GraphElementAAM, GraphElement] = graph.G.typeclass
+        val graph = new DotGraph[GraphElementAAM, GraphElement, GraphElement]()
+        given gInst: Graph[graph.G2, GraphElementAAM, GraphElement, GraphElement] = graph.G2.typeclass
         println(s"input program ${program.prettyString(0)}")
         val theAnalysis = analysis(program)
 
-        def findConf[T](states: Set[T], g: graph.G, id: String): Option[T] =
+        def findConf[T](states: Set[T], g: graph.G2, id: String): Option[T] =
             val stateId = id.toIntOption
             if stateId.isEmpty then None
             else
@@ -48,7 +48,7 @@ trait AAMTesterT:
                     case None => None
 
         val (time, analysisResult) = Timer.time {
-            theAnalysis.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)), graph.G.typeclass.empty)
+            theAnalysis.analyzeWithTimeout(Timeout.start(Duration(60, SECONDS)), graph.G2.typeclass.empty)
         }
 
         val states = analysisResult.allConfs

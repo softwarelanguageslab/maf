@@ -2,6 +2,7 @@ package maf.cli.runnables
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.cli.experiments.incremental.*
+import maf.core.Expression
 import maf.deltaDebugging.gtr.GTR
 import maf.deltaDebugging.gtr.GTR.*
 import maf.deltaDebugging.gtr.transformations.TransformationManager
@@ -30,49 +31,20 @@ object IncrementalRun extends App:
 
     type A = ModAnalysis[SchemeExp] with IncrementalGlobalStoreCY[SchemeExp] with IncrementalSchemeTypeDomain
 
-    // Runs the program with a concrete interpreter, just to check whether it makes sense (i.e., if the concrete interpreter does not error).
-    // Useful when reducing a program when debugging the analysis.
-    def interpretProgram(file: String): Unit =
-        val prog = CSchemeParser.parseProgram(Reader.loadFile(file))
-        val i = new SchemeInterpreter((_, _) => ())
-        List(Old, New).foreach { version =>
-            try
-                print("*")
-                i.run(prog, Timeout.start(Duration(3, MINUTES)), version)
-            catch {
-                case ProgramError(e) => System.err.nn.println(e)
-            }
-        }
-        println("Done interpreting.")
-
-    def storeDiff(a: A, b: A): String =
+    def storeDiff(a: A, b: A, aName: String = "a", bName: String = "b"): String =
         (a.store.keySet ++ b.store.keySet).foldLeft("") { case (str, addr) =>
             val valA = a.store.getOrElse(addr, a.lattice.bottom)
             val valB = b.store.getOrElse(addr, b.lattice.bottom)
             if valA != valB
-            then str ++ (addr.toString + "\n" + a.lattice.compare(valA, valB) + "\n")
+            then
+                val comp: String = (a.lattice.subsumes(valA, valB), a.lattice.subsumes(valB, valA)) match
+                    case (true, true) => s"$aName == $bName"
+                    case (false, false) => s"$aName ⋢ $bName ⋢ $aName"
+                    case (true, false) => s"$bName ⊏ $aName"
+                    case (false, true) => s"$aName ⊏ $bName"
+                str ++ (addr.toString + s" ($comp)" + "\n" + a.lattice.compare(valA, valB, aName, bName) + "\n")
             else str
         }
-
-    class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, var configuration: IncrementalConfiguration)
-        extends BaseModFAnalysisIncremental(prg)
-            with IncrementalSchemeTypeDomain
-            with IncrementalLogging[SchemeExp]
-            with IncrementalDataFlowVisualisation[SchemeExp]
-            with IncrementalGlobalStoreCY[SchemeExp]:
-        stepFocus = Set(25,26,27)
-        override def focus(a: Addr): Boolean =  List(
-          "ret (main)",
-          "x@4:23[Some(ε)]",
-          "f@1:24[Some(ε)]",
-          "ret (λ@4:15 [ε])",
-          "_0@1:2[None]",
-          "ret (λ@2:18 [ε])"
-        ).exists(s => a.toString.contains(s))
-
-        mode = Mode.Fine
-        override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra with IncrementalVisualIntra
 
     class IncrementalSchemeModFAnalysisTypeLatticeNoLogging(prg: SchemeExp, var configuration: IncrementalConfiguration)
         extends BaseModFAnalysisIncremental(prg)
@@ -81,9 +53,19 @@ object IncrementalRun extends App:
             with IncrementalGlobalStoreCY[SchemeExp]:
 
         override def intraAnalysis(cmp: Component) =
-            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalVisualIntra
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis
 
-    def newTimeout(): Timeout.T = Timeout.start(Duration(10, SECONDS))
+    class IncrementalSchemeModFAnalysisTypeLattice(prg: SchemeExp, configuration: IncrementalConfiguration)
+        extends IncrementalSchemeModFAnalysisTypeLatticeNoLogging(prg, configuration) with IncrementalLogging[SchemeExp]:
+
+        mode = Mode.Fine
+        override def focus(a: Addr): Boolean = !a.toString.contains("Prm")
+        stepFocus = Set(25, 26, 27)
+
+        override def intraAnalysis(cmp: Component) =
+            new IntraAnalysis(cmp) with IncrementalSchemeModFBigStepIntra with IncrementalGlobalStoreCYIntraAnalysis with IncrementalLoggingIntra
+
+    def newTimeout(): Timeout.T = Timeout.start(Duration(3, MINUTES))
 
     // Check whether an analysis (in an incremental update) arrives in a loop with the same store).
     // Returns a tuple indicating steps in the analysis that are identical.
@@ -92,7 +74,7 @@ object IncrementalRun extends App:
         var step: Int = 0
         a.analyzeWithTimeout(newTimeout())
         a.version = New
-        if a.configuration.cyclicValueInvalidation then a.SCAs = a.computeSCAs()
+        if a.configuration.cyclicValueInvalidation then a.SCAs = a.computeSCAs(false)
         val affected = a.findUpdatedExpressions(a.program).flatMap(a.mapping)
         affected.foreach(a.addToWorkList)
         var anly: Map[Int, BaseModFAnalysisIncremental] = Map() + (0 -> a)
@@ -126,60 +108,111 @@ object IncrementalRun extends App:
         exp
 
     // Returns a boolean indicating whether the analysis is fully precise.
-    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true): Boolean =
+    def analyse(text: SchemeExp, throwAssertionViolations: Boolean, logging: Boolean = true, images: Boolean = false, name: Option[String] = None): Boolean =
         try
-            val a = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
-            val b = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
+            val init = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
+            val rean = if logging then new IncrementalSchemeModFAnalysisTypeLattice(text, allOptimisations) else new IncrementalSchemeModFAnalysisTypeLatticeNoLogging(text, allOptimisations)
 
             import SimpleTimer.*
 
             start()
             println(markStep("init"))
-            a.analyzeWithTimeout(newTimeout())
-            a.dataFlowToImage("flows-init.dot")
+            init.analyzeWithTimeout(newTimeout())
+            val incr = init.deepCopy() // Copy as making the image triggers SCC computations etc.
+            if images then init.dataFlowToImage("flows-init.dot", name.map(_ + " (initial analysis)"))
 
             tick()
             println(markStep("rean"))
-            b.version = New
-            b.analyzeWithTimeout(newTimeout())
+            rean.version = New
+            rean.analyzeWithTimeout(newTimeout())
+            if !rean.finished
+            then
+                println(markError("REAN timed out."))
+                return false
 
             tick()
             println(markStep("upd"))
-            a.updateAnalysis(newTimeout())
+            incr.updateAnalysis(newTimeout())
+            if !incr.finished
+            then
+                println(markError("INCR timed out."))
+                return false
 
             stop()
-            a.dataFlowToImage("flows-incr.dot")
-            b.dataFlowToImage("flows-rean.dot")
+            if images
+            then
+                incr.dataFlowToImage("flows-incr.dot", name.map(_ + " (incremental update)"))
+                rean.dataFlowToImage("flows-rean.dot", name.map(_ + " (full reanalysis)"))
             println(markStep("Comparing analyses"))
             //a.logger.logU("store difference with full reanalysis:\n" ++ storeDiff(a, b)) // Log the difference in stores if any.
-            val diff = storeDiff(a, b)
+            val diff = storeDiff(incr, rean, "incr", "rean")
             println(diff)
             if throwAssertionViolations
             then
                 println(markError(diff))
                 assert(diff.isEmpty)
+            //if unsound[SchemeExp](incr, rean) then throw new Exception(s"Unsound: $name")
             diff.isEmpty
+            //!unsound[SchemeExp](incr, rean)
         catch
             case t: Throwable =>
                 println(t.toString)
                 throw t
 
     // Uses delta debugging to reduce a program to a minimal version that is still imprecise.
-    def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false))
+    def reduceImprecise(text: SchemeExp): SchemeExp = reduce(text, !analyse(_, false, false, false))
+
+    def unsound[E <: Expression](inc: IncrementalModAnalysis[E] with IncrementalGlobalStoreCY[E],
+                   rean: IncrementalModAnalysis[E] with IncrementalGlobalStoreCY[E]): Boolean =
+        val allAddr = inc.store.keySet ++ rean.store.keySet
+        allAddr.foreach({ a =>
+            val incr = inc.store.getOrElse(a, inc.lattice.bottom)
+            val rn = rean.store.getOrElse(a, rean.lattice.bottom)
+            if incr != rn && !inc.lattice.subsumes(incr, rn.asInstanceOf[inc.Value])
+            then return true
+        })
+        false
 
     List(
-        //"test/changes/scheme/leval.scm", // Resulteert in errors (andere bench ook). => heapSpace error
-        //"test/changes/scheme/freeze.scm", // Nog niet precies.
-        //"test/DEBUG2.scm",
-        //"test/DEBUG2B.scm",
-        "test/DEBUG4.scm"
-    ).foreach { bench =>
+        // Nog imprecies zelfs met bottomen van cycles. Niet door heuristieken.
+        //"test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
+
+        //"test/DEBUG3.scm",
+        //"test/DEBUG1.scm",
+        //"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
+        "test/DEBUG1.scm",
+        /*
+        // Not precise yet.
+        "test/DEBUG2.scm",
+        "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
+        "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
+        "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
+        "test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
+        "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm",
+        "test/changes/scheme/generated/R5RS_scp1_deep-map-combine-4.scm",
+        "test/changes/scheme/generated/R5RS_scp1_merge-1.scm",
+        "test/changes/scheme/generated/R5RS_scp1_merge-3.scm",
+        "test/changes/scheme/generated/R5RS_scp1_merge-5.scm",
+        "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
+        "test/changes/scheme/generated/R5RS_various_church-4.scm",
+        "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm", */
+    ).slice(0,1).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
-            println(!analyse(text, false, true))
-            //val reduced = reduceImprecise(text)
-            //println(!analyse(reduced, true, true))
+            val anly = true // Switch between analysing and delta debugging
+            val logging = false
+            val images = true
+
+            // Update the flags above!
+            if anly
+            then
+                println(text)
+                println(!analyse(text, false, logging = logging && anly, images = images && anly, Some(bench)))
+            else
+                val reduced = reduceImprecise(text)
+                println(reduced)
+                //println(!analyse(reduced, true, true))
             //println(!analyse(CSchemeParser.parseProgram(Reader.loadFile("logs/reduced-program.txt")), false, true))
         } catch {
             case e: Exception =>

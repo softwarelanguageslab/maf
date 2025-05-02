@@ -72,10 +72,35 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
         import evalM._
 
         var cutFlows: Map[Component, Set[Addr]] = Map().withDefaultValue(Set())
+        var noStoreAddrIntra: Set[Addr] = Set()
+
+        // Inserts a flow node in the data flow.
+        // Sources are the addresses from which information flows to the flow node.
+        // Returns the flow node (so that it can e.g., be used easily in the conditional).
+        private def insertFlowNode(flw: Addr, sources: Set[Addr]): Addr =
+            dataFlowRIntra = dataFlowRIntra + (flw -> (dataFlowRIntra(flw) ++ sources)) // implicit flows ~> flowNode (reversed)
+            noStoreAddrIntra = noStoreAddrIntra + flw // Assume this is also needed for flows to conditionals (if) todo: check
+            flw
 
         override def commit(): Unit =
             // Update this here. This way it can be decided when reanalysis is needed in applyClosuresM using interComponentFlow.
-            interComponentFlow = interComponentFlow + (component -> cutFlows)
+
+            // Reduce the number of flows by inserting flow nodes.
+            // Collect a set with all components that were called with a non-empty flow context,
+            // and a map with all implicit flows going to flow nodes (toNodeR).
+            val (cmpWithCtx, toNodeR): (Set[Component], Map[Addr, Set[Addr]]) =
+                cutFlows.foldLeft((Set[Component](), Map[Addr, Set[Addr]]())) { case ((cmpWithCtx, toNodeR), (c, a)) =>
+                    if a.nonEmpty 
+                    then 
+                        val flowNode = FlowAddr(c)
+                        (cmpWithCtx + c, toNodeR + (flowNode -> a))
+                    else (cmpWithCtx, toNodeR)
+            }
+            interComponentFlow = interComponentFlow + (component -> cmpWithCtx) // components called with a non-empty flow context.
+            toNodeR.foreach(insertFlowNode) // implicit flows ~> flowNode
+
+            // Store the created of addresses that are not in the store.
+            noStoreAddr = noStoreAddr + (component -> noStoreAddrIntra)
             super.commit()
 
         // analysis entry point
@@ -118,17 +143,21 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
          *   See [Liu et al. 2010].
          */
         override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): EvalM[Value] =
-            for
-                prdVal <- eval(prd)
-                // Implicit flows go from the predicate to the branches of the conditional.
-                // When CY is disabled, no addresses will be present (and implicitFlows will be a list of empty sets).
-                iFlows <- getImplicitFlows
-                adr = lattice.getAddresses(prdVal) ++ iFlows
-                resVal <- withImplicitFlows(adr) {
-                    cond(prdVal, eval(csq), eval(alt))
-                }
-            // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
-            yield lattice.addAddresses(resVal, adr)
+            if configuration.cyclicValueInvalidation then
+                for
+                    prdVal <- eval(prd)
+                    // Implicit flows go from the predicate to the branches of the conditional.
+                    // When CY is disabled, no addresses will be present (and implicitFlows will be a list of empty sets).
+                    iFlows <- getImplicitFlows
+                    adr = lattice.getAddresses(prdVal) ++ iFlows
+                    // Reduce the number of edges: // TODO should the flow addr also contain the prd (to improve the precision of the cycle detection)?
+                    addr = if adr.size > 1 then Set(insertFlowNode(FlowAddr(component, Some(prd)), adr)) else adr
+                    resVal <- withImplicitFlows(addr) {
+                        cond(prdVal, eval(csq), eval(alt))
+                    }
+                // Implicit flows need to be added to the return value of the if as well, as this value depends on the predicate.
+                yield lattice.addAddresses(resVal, addr)
+            else super.evalIf(prd, csq, alt)
 
         /** Evaluation of a literal value that adds a "literal address" as source. */
         override protected def evalLiteralValue(literal: sexp.Value, exp: SchemeExp): M[Value] =
@@ -136,64 +165,77 @@ trait IncrementalSchemeModFBigStepSemantics extends BigStepModFSemanticsT with I
             // Make it part of an SCA using implicit flows! This fixes precision loss due to conditional reading of literals!
             if configuration.cyclicValueInvalidation then
                 val a = LitAddr(exp)
+                noStoreAddrIntra += a
                 for
                     iFlows <- getImplicitFlows
                     //_ = { dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) } // TODO!! (+ todo: remove iflows from value)
                     value <- super.evalLiteralValue(literal, exp).map(lattice.addAddress(_, a)) // Attach the address to the value for flow tracking + implicit flows!.
                 // _ = { if !lattice.isBottom(value) then intraProvenance += (a -> value) } // We can just overwrite any previous value as it will be the same.
                 yield
-                    dataFlow += (a -> SmartUnion.sunion(dataFlow(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
+                    dataFlowRIntra += (a -> SmartUnion.sunion(dataFlowRIntra(a), iFlows)) // TODO!! (+ todo: remove iflows from value)
                     value
             else super.evalLiteralValue(literal, exp)
 
         override protected def applyClosuresM(fun: Value, args: List[(SchemeExp, Value)], cll: Position, ctx: ContextBuilder = DefaultContextBuilder): M[Value] =
-            val arity = args.length
-            val closures = lattice.getClosures(fun)
-            val explicitFlows = lattice.getAddresses(fun) // Added TODO is this needed?
-            MonadJoin[M].mfoldMap(closures)((clo) =>
-                (clo match {
-                    case (SchemeLambda(_, prs, _, _, _), _) =>
-                        if prs.length == arity then
-                            val argVals = args.map(_._2)
-                            val argsVNoFlow = argVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
-                            for
-                                context <- ctx.allocM(clo, argsVNoFlow, cll, component)
-                                targetCall = Call(clo, context)
-                                targetCmp <- newComponentM(targetCall)
-                                _ = bindArgs(targetCmp, prs, argVals)
-                                _ <- ctx.beforeCall(targetCmp, prs, clo)
-                                iTaint <- getImplicitFlows
-                                result = call(targetCmp) // TODO make sure the implicit flows are added to the component even when bottom is returned!
-                                updatedResult <- afterCall(result, targetCmp, cll)
-                            yield
-                                // TODO should this be moved up? If call results bottom, this will otherwise not be executed, or only after a reanalysis, which may trigger further reanalysis. => not needed since iflows added afterwards
-                                cutFlows = cutFlows + (targetCmp -> (cutFlows(targetCmp) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
-                                updatedResult
-                        else baseEvalM.fail(ArityError(cll, prs.length, arity))
-                    case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
-                        if prs.length <= arity then
-                            val (fixedArgs, varArgs) = args.splitAt(prs.length)
-                            val fixedArgVals = fixedArgs.map(_._2)
-                            val fixedArgsVNoFlow = fixedArgVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
-                            for
-                                varArgVal <- allocateList(varArgs)
-                                context <- ctx.allocM(clo, fixedArgsVNoFlow :+ varArgVal, cll, component)
-                                targetCall = Call(clo, context)
-                                targetCmp <- newComponentM(targetCall)
-                                _ = bindArgs(targetCmp, prs, fixedArgVals)
-                                _ = bindArg(targetCmp, vararg, varArgVal)
-                                _ <- ctx.beforeCall(targetCmp, prs, clo)
-                                iTaint <- getImplicitFlows
-                                result = call(targetCmp)
-                                updatedResult <- afterCall(result, targetCmp, cll)
-                            yield
-                                cutFlows = cutFlows + (targetCmp -> (cutFlows(targetCmp) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
-                                updatedResult
-                        else baseEvalM.fail(VarArityError(cll, prs.length, arity))
-                    case _ => Monad[M].unit(lattice.bottom)
-                })
-            )
+            if configuration.cyclicValueInvalidation
+            then
+                val arity = args.length
+                val closures = lattice.getClosures(fun)
+                val explicitFlows = lattice.getAddresses(fun) // Added TODO is this needed?
+                MonadJoin[M].mfoldMap(closures)((clo) =>
+                    (clo match {
+                        case (SchemeLambda(_, prs, _, _, _), _) =>
+                            if prs.length == arity then
+                                val argVals = args.map(_._2)
+                                val argsVNoFlow = argVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
+                                for
+                                    context <- ctx.allocM(clo, argsVNoFlow, cll, component)
+                                    targetCall = Call(clo, context)
+                                    targetCmp <- newComponentM(targetCall)
+                                    _ = bindArgs(targetCmp, prs, argVals)
+                                    _ <- ctx.beforeCall(targetCmp, prs, clo)
+                                    iTaint <- getImplicitFlows
+                                    result = call(targetCmp) // TODO make sure the implicit flows are added to the component even when bottom is returned!
+                                    updatedResult <- afterCall(result, targetCmp, cll)
+                                yield
+                                    // TODO should this be moved up? If call results bottom, this will otherwise not be executed, or only after a reanalysis, which may trigger further reanalysis. => not needed since iflows added afterwards
+                                    cutFlows = cutFlows + (targetCmp -> (cutFlows(targetCmp) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
+                                    updatedResult
+                            else baseEvalM.fail(ArityError(cll, prs.length, arity))
+                        case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
+                            if prs.length <= arity then
+                                val (fixedArgs, varArgs) = args.splitAt(prs.length)
+                                val fixedArgVals = fixedArgs.map(_._2)
+                                val fixedArgsVNoFlow = fixedArgVals.map(lattice.removeAddresses) // Ensure that the flow doesn't alter the context-sensitivity!
+                                for
+                                    varArgVal <- allocateList(varArgs)
+                                    context <- ctx.allocM(clo, fixedArgsVNoFlow :+ varArgVal, cll, component)
+                                    targetCall = Call(clo, context)
+                                    targetCmp <- newComponentM(targetCall)
+                                    _ = bindArgs(targetCmp, prs, fixedArgVals)
+                                    _ = bindArg(targetCmp, vararg, varArgVal)
+                                    _ <- ctx.beforeCall(targetCmp, prs, clo)
+                                    iTaint <- getImplicitFlows
+                                    result = call(targetCmp)
+                                    updatedResult <- afterCall(result, targetCmp, cll)
+                                yield
+                                    cutFlows = cutFlows + (targetCmp -> (cutFlows(targetCmp) ++ explicitFlows ++ iTaint)) // TODO: do we need explicit flows here?
+                                    updatedResult
+                            else baseEvalM.fail(VarArityError(cll, prs.length, arity))
+                        case _ => Monad[M].unit(lattice.bottom)
+                    })
+                )
+            else super.applyClosuresM(fun, args, cll, ctx)
         end applyClosuresM
+
+        override def applyPrimitives(fexp: SchemeFuncall, fval: Value, args: List[(SchemeExp, Value)]): FlowEvalM[Value] =
+            for
+                res <- super.applyPrimitives(fexp, fval, args)
+                adr = lattice.getAddresses(res)
+                flw = insertFlowNode(PrimFlowAddr(component, fexp.f), adr)
+            yield lattice.addAddress(lattice.removeAddresses(res), flw)
+
+    end IncrementalSchemeModFBigStepIntra
 
     override def intraAnalysis(cmp: Component): IncrementalSchemeModFBigStepIntra
 

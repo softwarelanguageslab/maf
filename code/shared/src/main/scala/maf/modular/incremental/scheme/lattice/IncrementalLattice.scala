@@ -17,3 +17,6 @@ trait IncrementalLattice[AL, A <: Address] extends Lattice[AL]:
 
     /** Shows the differences between x and y (from the perspective of a modular lattice). */
     def compare(x: AL, y: AL, xname: String = "x", yname: String = "y"): String
+    
+    // A bit of hacking, implicit flow contexts
+    //def setContext(addr: Set[A]): Unit

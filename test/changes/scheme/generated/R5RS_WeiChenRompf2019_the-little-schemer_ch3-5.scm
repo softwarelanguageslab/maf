@@ -125,7 +125,7 @@
                                        'x
                                        (__toplevel_cons 'b (__toplevel_cons 'y (__toplevel_cons 'b (__toplevel_cons 'z ()))))))))))
                      (<change>
-                        (letrec ((multiinsertR (lambda (new old lat)
+                        (letrec ((llll (lambda (new old lat)
                                                  (if (null? lat)
                                                     ()
                                                     (if (eq? (car lat) old)

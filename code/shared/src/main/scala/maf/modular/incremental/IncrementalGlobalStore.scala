@@ -7,7 +7,7 @@ import maf.modular.incremental.scheme.lattice.IncrementalAbstractDomain
 import maf.modular.scheme.LitAddr
 import maf.util.benchmarks.Timeout
 import maf.util.datastructures.SmartUnion
-import maf.util.graph.Tarjan
+import maf.util.graph.SCC
 
 import scala.collection.immutable.*
 
@@ -151,8 +151,10 @@ trait IncrementalGlobalStore[Expr <: Expression] extends IncrementalModAnalysis[
         /* ----- Basic store operations ----- */
         /* ---------------------------------- */
 
-        override def writeAddr(addr: Addr, value: Value): Boolean =
-            if configuration.checkAsserts then assert(lattice.getAddresses(value).isEmpty)
+        override def writeAddr(addr: Addr, v: Value): Boolean =
+            // Normally there should not be any addresses here. Unfortunately, the configuration is not available in the IncrementalSchemeLatticePrimitives,
+            // so every time a pointer is allocated for example, an address is added to it even though the CY store may not be used... TODO?
+            val value = lattice.removeAddresses(v)
             // WI: Update the intra-provenance: for every address, keep the join of the values written to the address. Do this only after possible removal of annotations.
             if !lattice.isBottom(value) then intraProvenance += (addr -> lattice.join(intraProvenance(addr), value))
 

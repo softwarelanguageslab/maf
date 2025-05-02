@@ -63,7 +63,8 @@ trait AAMSoundnessTests extends SchemeBenchmarkTests:
     protected type G
     protected type N = GraphElementAAM
     protected type E = GraphElement
-    implicit protected def graphInstance: maf.util.graph.Graph[G, N, E]
+    protected type S = GraphElement
+    implicit protected def graphInstance: maf.util.graph.Graph[G, N, E, S]
     protected def emptyGraph: G
     protected def saveGraph(benchmark: Benchmark, graph: G): Unit
 
@@ -72,7 +73,7 @@ trait AAMSoundnessTests extends SchemeBenchmarkTests:
             // analyze the program using a ModF analysis
             val anl = analysis(program)
             val timeout = analysisTimeout(benchmark)
-            given instance: maf.util.graph.Graph[G, N, E] = graphInstance
+            given instance: maf.util.graph.Graph[G, N, E, S] = graphInstance
             val result = anl.analyzeWithTimeout(timeout, emptyGraph)
             saveGraph(benchmark, result.dependencyGraph)
 

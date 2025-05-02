@@ -8,7 +8,7 @@ import maf.core.Monad.MonadSyntaxOps
 import maf.language.scheme.SchemeExp
 import maf.core.Monad.MonadIterableOps
 import maf.util.benchmarks.Timeout
-import maf.util.graph.{Tarjan, TopSort}
+import maf.util.graph.{SCC, TopSort}
 import maf.util.MAFLogger
 import maf.modular.scheme.modf.SchemeModFComponent.Main
 import maf.modular.scheme.modf.SchemeModFComponent
@@ -326,7 +326,7 @@ trait SccGraph extends FunctionSummaryAnalysis with ModGraph[SchemeExp]:
         }
         val nodes = completeGraph.keySet
 
-        Tarjan.collapse(nodes, completeGraph)
+        SCC.collapse(nodes, completeGraph)
 
     override def intraAnalysis(component: Component): SccGraphIntra
 
