@@ -15,19 +15,16 @@ trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-/*
 class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (context-insensitive)"
     def analysis(prg: SchemeExp) =
-        new SchemeModFLocal(prg) //TODO!
+        new SchemeModFLocalFS(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalFSAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(
-          "test/R5RS/various/SICP-compiler.scm", // TIMES OUT
-          "test/R5RS/various/four-in-a-row.scm", // TIMES OUT
           // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
           "test/R5RS/various/infinite-1.scm",
           "test/R5RS/various/infinite-2.scm",
@@ -35,7 +32,7 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
         ).contains(b)
 
 class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
-    def name = "MODF LOCAL (FS) call-site sensitive)"
+    def name = "MODF LOCAL (FS) (call-site sensitive)"
     def analysis(prg: SchemeExp) =
         new SchemeModFLocal(prg) //TODO!
             with SchemeConstantPropagationDomain
@@ -43,5 +40,3 @@ class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSo
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: String): Boolean = true // don't run this for fast tests
-
- */
