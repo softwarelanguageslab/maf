@@ -58,7 +58,7 @@ trait AAMGC extends AAMScheme:
     def restrictEnv(f: Frame): Frame = f match
         case IffK(c, a, ρ, t, aₖ)       => IffK(c, a, ρ.restrictTo(c.fv ++ a.fv), t, aₖ) 
         case SeqK(r, ρ, t, aₖ)          => SeqK(r, ρ.restrictTo(fv(r)), t, aₖ) 
-        case LetK(l, v, a, b, ρ, t, aₖ) => LetK(l, v, a, b, ρ.restrictTo(fv(l.map(_._2))), t, aₖ)
+        case LetK(l, v, a, b, ρ, t, aₖ) => LetK(l, v, a, b, ρ.restrictTo(fv(l.map(_._2) ++ b)), t, aₖ)
         case LtsK(l, v, b, ρ, t, aₖ)    => LtsK(l, v, b, ρ.restrictTo(fv(l.map(_._2) ++ b)), t, aₖ)
         case LtrK(l, a, b, ρ, t, aₖ)    => LtrK(l, a, b, ρ.restrictTo(fv(l.map(_._2) ++ b)), t, aₖ)
         case FunK(a, r, ρ, t, aₖ)       => FunK(a, r, ρ.restrictTo(fv(r)), t, aₖ)
