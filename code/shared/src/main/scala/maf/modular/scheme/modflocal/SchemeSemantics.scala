@@ -47,7 +47,6 @@ trait SchemeSemantics:
         def allocPtr(exp: SchemeExp): M[Adr] =
             for ctx <- getCtx yield PtrAddr(exp, ctx)
         def call(lam: Lam): M[Val]
-        def nontail[A](blk: => M[A]): M[A] = blk
         // Scala is too stupid to figure this out...
         implicit final private val self: AnalysisM[M] = this
 
@@ -72,14 +71,8 @@ trait SchemeSemantics:
         case SchemeAssert(exp, _)       => evalAssert(exp)
         case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
 
-    def evalAll(lst: List[SchemeExp]): A[List[Val]] = lst match
-        case Nil         => unit(Nil)
-        case last :: Nil => eval(last).map(_ :: Nil)
-        case next :: rest =>
-            for
-                v <- nontail { eval(next) }
-                vs <- evalAll(rest)
-            yield v :: vs
+    def evalAll(lst: List[SchemeExp]): A[List[Val]] = 
+        lst.mapM(e => nontail { eval(e) })
 
     protected def evalLambda(lam: Lam): A[Val] =
         for env <- getEnv yield lattice.closure((lam, env.restrictTo(lam.fv)))
@@ -113,7 +106,7 @@ trait SchemeSemantics:
     protected def evalLet(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] =
         val (vrs, rhs) = bds.unzip
         for
-            vls <- nontail { evalAll(rhs) }
+            vls <- rhs.mapM(e => nontail { eval(e) })
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
                 extendSto(ads.zip(vls)) >>> evalSequence(bdy)
@@ -156,7 +149,7 @@ trait SchemeSemantics:
     protected def evalCall(app: App): A[Val] =
         for
             fun <- nontail { eval(app.f) }
-            ags <- nontail { evalAll(app.args) }
+            ags <- app.args.mapM(arg => nontail {eval(arg) })
             res <- applyFun(app, fun, ags)
         yield res
 
@@ -232,3 +225,5 @@ trait SchemeSemantics:
                 rst <- allocLst(rst)
                 pai <- allocPai(exp, vlu, rst)
             yield pai
+
+    protected def nontail[X](blk: => A[X]): A[X] = blk

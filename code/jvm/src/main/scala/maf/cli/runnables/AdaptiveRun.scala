@@ -74,7 +74,7 @@ object AdaptiveRun:
         CSchemeParser.undefine(transf)
 
     def runDSS(prg: SchemeExp) =
-        val anl = new SchemeDSSAnalysis(prg, 0) with LoggingEval //with NameBasedAllocator
+        val anl = new SchemeDSSAnalysis(prg, 0) //with LoggingEval //with NameBasedAllocator
         anl.analyze()
         val res = anl.results(anl.MainComponent).asInstanceOf[Set[(anl.Val, anl.Dlt, Set[anl.Adr])]]
         val vlu = Lattice[anl.Val].join(res.map(_._1))

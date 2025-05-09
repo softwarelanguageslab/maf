@@ -125,7 +125,7 @@ object GC:
 // A basic store
 //
 
-case class BasicStore[A <: Address, V](content: Map[A, V])(using lat: LatticeWithAddrs[V, A]) extends AbstractGC[A]:
+case class BasicStore[A <: Address, V](content: Map[A, V])(using lat: LatticeWithAddrs[V, A]):
     inline def apply(a: A): V = lookup(a).getOrElse(lat.bottom)
     inline def lookup(a: A): Option[V] = content.get(a)
     inline def extend(a: A, v: V): BasicStore[A, V] = extendOption(a, v).getOrElse(this)
@@ -175,7 +175,7 @@ case object CountInf extends AbstractCount:
     def join(other: AbstractCount) = this
     def +(cnt: => AbstractCount) = this
 
-case class CountingStore[A <: Address, V](content: Map[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean) extends AbstractGC[A]:
+case class CountingStore[A <: Address, V](content: Map[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean):
     // "get"-functions return an Option
     inline def get(a: A): Option[(V, AbstractCount)] = content.get(a)
     inline def getValue(a: A): Option[V] = get(a).map(_._1)
@@ -217,8 +217,25 @@ object CountingStore:
 // for DSS: counting + delta stores
 //
 
-case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean)
-    extends AbstractGC[A]:
+case class Delta[A <: Address, V](delta: SmartMap[A, (V, AbstractCount)])
+
+case class DeltaGC[A <: Address,V](sto: LocalStore[A,V])(using lat: LatticeWithAddrs[V, A]) extends AbstractGC[Delta[A,V], A]:
+    def fresh = Delta.emptyDelta[A,V]
+    def move(addr: A, from: Delta[A,V], to: Delta[A,V]): (Delta[A,V], Set[A]) =
+        from.delta.get(addr) match
+            case None =>
+                sto.get(addr) match
+                    case None         => (to, Set.empty)
+                    case Some((v, _)) => (to, lat.refs(v))
+            case Some(s @ (v, _)) => (Delta(to.delta + (addr -> s)), lat.refs(v))
+
+object Delta:
+    // Deltas!
+    def emptyDelta[A <: Address,V]: Delta[A,V] = Delta(SmartMap.empty)
+    def compose[A <: Address,V](d1:Delta[A,V], d0: Delta[A,V]): Delta[A,V] =
+        Delta(d0.delta ++ d1.delta)
+
+case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean):
     sto =>
     // "get"-functions return an Option
     inline def get(a: A): Option[(V, AbstractCount)] = content.get(a)
@@ -229,11 +246,11 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     inline def lookupValue(a: A): V = getValue(a).getOrElse(lat.bottom)
     inline def lookupCount(a: A): AbstractCount = getCount(a).getOrElse(CountZero)
     // extend & update return a Delta
-    def extend(adr: A, vlu: V): Delta = content.get(adr) match
-        case None if lat.isBottom(vlu) => emptyDelta
+    def extend(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
+        case None if lat.isBottom(vlu) => Delta.emptyDelta[A,V]
         case None                      => Delta(SmartMap(adr -> (vlu, countFor(adr))))
         case Some(old @ (oldV, oldC))  => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)))
-    def update(adr: A, vlu: V): Delta = content.get(adr) match
+    def update(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
         case None | Some((_, CountZero)) => throw new Exception("Trying to update a non-existing address")
         case Some((_, CountOne))         => Delta(SmartMap(adr -> (vlu, CountOne))) // strong update
         case Some((oldV, CountInf))      => Delta(SmartMap(adr -> (lat.join(oldV, vlu), CountInf))) // weak update
@@ -254,14 +271,10 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     private def countFor(a: A): AbstractCount =
         if shouldCount(a) then CountOne else CountInf
     // integrating a delta in the store
-    def integrate(d: Delta): LocalStore[A, V] =
+    def integrate(d: Delta[A, V]): LocalStore[A, V] =
         LocalStore(content ++ d.delta)
-    // composing two deltas
-    // assumes that (d1 :: nxt.Delta), where nxt = this.integrate(d0)
-    def compose(d1: LocalStore[A, V]#Delta, d0: Delta): Delta =
-        Delta(d0.delta ++ d1.delta)
     // joining two deltas
-    def join(d1: Delta, d2: Delta): Delta =
+    def join(d1: Delta[A,V], d2: Delta[A,V]): Delta[A,V] =
         val ads = d1.delta.keys ++ d2.delta.keys
         Delta(ads.foldLeft(SmartMap.empty)((acc, adr) =>
             lazy val prv = get(adr).getOrElse((lat.bottom, CountZero))
@@ -269,39 +282,24 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             val (vlu2, cnt2) = d2.delta.get(adr).getOrElse(prv)
             acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
         ))
-    // replaying a delta that was computed w.r.t. a GC'd store dgc
-    // assumes that (dgc :: sgc.Delta), where sgc = this.collect(r) for some r
-    def replay(dgc: LocalStore[A, V]#Delta, tai: Boolean): Delta =
-        if tai then Delta(dgc.delta)
-        else
-            Delta(dgc.delta.map { case (adr, s @ (v, c)) =>
-                get(adr) match
-                    case None                        => (adr, s)
-                    case Some(_) if dgc.inStore(adr) => (adr, s)
-                    case Some((v2, c2))              => (adr, (lat.join(v2, v), c2 + c))
-            })
-    // abstract GC support
-    type This = LocalStore[A, V]
-    def fresh = LocalStore.empty
-    def move(addr: A, to: This): (This, Set[A]) =
-        get(addr) match
+    // replaying a delta that was computed w.r.t. a GC'd store
+    def replay(delta: Delta[A,V], updated: Set[A]): Delta[A,V] =
+        Delta(delta.delta.map { case bnd @ (adr, (v, c)) =>
+            if updated.contains(adr) then 
+                bnd
+            else 
+                get(adr) match {
+                    case None           => bnd 
+                    case Some((v2, c2)) => (adr, (lat.join(v2, v), CountInf))
+                }
+        })
+
+case class LocalStoreGC[A <: Address,V]()(using lat: LatticeWithAddrs[V, A], shouldCount: A=>Boolean) extends AbstractGC[LocalStore[A,V], A]:
+    def fresh = LocalStore.empty[A,V]
+    def move(addr: A, from: LocalStore[A,V], to: LocalStore[A,V]): (LocalStore[A,V], Set[A]) =
+        from.get(addr) match
             case None             => (to, Set.empty)
-            case Some(s @ (v, _)) => (LocalStore(to.content + (addr -> s)), lat.refs(v))
-    // Deltas!
-    def emptyDelta: Delta = Delta(SmartMap.empty)
-    case class Delta(delta: SmartMap[A, (V, AbstractCount)]) extends AbstractGC[A]:
-        inline def inStore(a: A): Boolean = sto.contains(a)
-        def store = sto 
-        // abstract GC support
-        type This = Delta
-        def fresh = sto.emptyDelta
-        def move(addr: A, to: Delta): (Delta, Set[A]) =
-            delta.get(addr) match
-                case None =>
-                    sto.get(addr) match
-                        case None         => (to, Set.empty)
-                        case Some((v, _)) => (to, lat.refs(v))
-                case Some(s @ (v, _)) => (Delta(to.delta + (addr -> s)), lat.refs(v))
+            case Some(s @ (v, _)) => (LocalStore[A,V](to.content + (addr -> s)), lat.refs(v))
 
 object LocalStore:
     def empty[A <: Address, V](using LatticeWithAddrs[V, A], A => Boolean): LocalStore[A, V] =
@@ -311,132 +309,23 @@ object LocalStore:
             acc.integrate(acc.extend(adr, vlu))
         }
 
-
-//
-// REF-COUNTING STORE
-//
-
-case class RefCountingStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)], refs: Map[A, Set[A]], roots: Set[A])(using lat: LatticeWithAddrs[V, A], shouldCount: A => Boolean):
-    sto =>
-    // for performance 
-    override def hashCode = content.hashCode
-    override def equals(other: Any) = other match
-        case RefCountingStore(otherContent, _, _) => otherContent == content
-        case _ => false
-    // "get"-functions return an Option
-    inline def get(a: A): Option[(V, AbstractCount)] = content.get(a)
-    inline def getValue(a: A): Option[V] = get(a).map(_._1)
-    inline def getCount(a: A): Option[AbstractCount] = get(a).map(_._2)
-    // lookup functions return bottom if not found
-    inline def lookup(a: A): (V, AbstractCount) = get(a).getOrElse((lat.bottom, CountZero))
-    inline def lookupValue(a: A): V = getValue(a).getOrElse(lat.bottom)
-    inline def lookupCount(a: A): AbstractCount = getCount(a).getOrElse(CountZero)
-    // where to enable abstract counting
-    private def countFor(a: A): AbstractCount =
-        if shouldCount(a) then CountOne else CountInf
-    // extend & update return a Delta
-    def extend(adr: A, vlu: V): Delta = 
-        val delta = content.get(adr) match
-            case None if lat.isBottom(vlu) => SmartMap.empty 
-            case None                      => SmartMap(adr -> (vlu, countFor(adr)))
-            case Some(old @ (oldV, oldC))  => SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc))
-        val deltaRefs = lat.refs(vlu).foldLeft(refs) { (acc, ref) =>
-            acc + (ref -> (refs.getOrElse(ref, Set.empty) + adr))
-        }
-        Delta(delta, deltaRefs)
-    def update(adr: A, vlu: V): Delta =
-        throw new Exception("Updates are not yet properly supported")
-        content.get(adr) match
-            case None | Some((_, CountZero)) => // should not happen
-                throw new Exception("Trying to update a non-existing address")
-            case Some((oldV, CountOne))      => // strong update
-                val delta = SmartMap(adr -> (vlu, CountOne))
-                val oldRefs = lat.refs(oldV)
-                val newRefs = lat.refs(vlu)
-                val decRefs = (oldRefs -- newRefs).foldLeft(refs) { (acc, ref) =>
-                    acc + (ref -> (refs(ref) - adr))
-                }
-                val incRefs = (newRefs -- oldRefs).foldLeft(decRefs) { (acc, ref) =>
-                    acc + (ref -> (refs.getOrElse(ref, Set.empty) + adr))    
-                }
-                Delta(delta, incRefs)
-            case Some((oldV, CountInf))      => // weak update
-                val delta = SmartMap(adr -> (lat.join(oldV, vlu), CountInf))
-                val deltaRefs = lat.refs(vlu).foldLeft(refs) { (acc, ref) =>
-                    acc + (ref -> (refs.getOrElse(ref, Set.empty) + adr))
-                }
-                Delta(delta, deltaRefs)
-    def emptyDelta: Delta = Delta(SmartMap.empty, Map.empty)
-    // integrating a delta in the store
-    def integrate(d: Delta): RefCountingStore[A, V] =
-        RefCountingStore(content ++ d.delta, refs ++ d.deltaRefs, roots)
-    // composing two deltas
-    // assumes that (d1 :: nxt.Delta), where nxt = this.integrate(d0)
-    def compose(d1: RefCountingStore[A, V]#Delta, d0: Delta): Delta =
-        Delta(d0.delta ++ d1.delta, d0.deltaRefs ++ d1.deltaRefs)
-    // replaying a delta that was computed w.r.t. a GC'd store dgc
-    // assumes that (dgc :: sgc.Delta), where sgc = this.collect(r) for some r
-    def replay(dgc: RefCountingStore[A, V]#Delta, tai: Boolean): Delta =
-        if tai 
-        then Delta(dgc.delta, dgc.deltaRefs)
-        else
-            val store = dgc.store 
-            val delta = dgc.delta.map { case (adr, s @ (v, c)) =>
-                get(adr) match
-                    case None                                   => (adr, s)
-                    case Some(_) if store.content.contains(adr) => (adr, s)
-                    case Some((v2, c2))                         => (adr, (lat.join(v2, v), c2 + c))
-            }
-            val deltaRefs = dgc.deltaRefs.map { (a, r) =>  
-                refs.get(a) match 
-                    case None                               => (a, r)
-                    case Some(_) if store.refs.contains(a)  => (a, r)
-                    case Some(addrs)                        => (a, addrs ++ r)
-            }
-            Delta(delta, deltaRefs)
-    def changeRoot(newRoots: Set[A]): RefCountingStore[A, V] =
-        val updated = RefCountingStore(content, refs, newRoots)
-        roots.foldLeft(updated)((acc, root) => acc.removeRoot(root))
-    private def removeRoot(adr: A): RefCountingStore[A, V] = 
-        val froms = refs.getOrElse(adr, Set.empty)
-        if froms.isEmpty && !roots(adr) then
-            reclaim(addr)
-        else 
-            this
-    private def removeRef(from: A, to: A): RefCountingStore[A, V] =
-        val updated = refs(to) - from 
-        if updated.isEmpty && !roots(to) then 
-            reclaim(to)
-        else if updated.isEmpty then 
-            RefCountingStore(content, refs - to, roots)
-        else 
-            RefCountingStore(content, refs + (to -> updated), roots)
-    private def reclaim(adr: A): RefCountingStore[A, V] = 
-        val addrs = lat.refs(lookupValue(adr))adr
-        val current = RefCountingStore(content - , refs - adr, roots)
-        addrs.foldLeft(current)((acc, to) => acc.removeRef(adr, to))
-
-    case class Delta(delta: SmartMap[A, (V, AbstractCount)], deltaRefs: Map[A, Set[A]]):
-        def store = sto 
-
 //
 // ABSTRACT GC
 //
 
-trait AbstractGC[A]:
+trait AbstractGC[S, A]: 
     // needs to be implemented, depending on what is being GC'd
-    type This
-    def fresh: This
-    def move(addr: A, to: This): (This, Set[A])
+    def fresh: S
+    def move(addr: A, from: S, to: S): (S, Set[A])
     // implements stop-and-copy GC
-    def collect(roots: Set[A]): This =
-        scan(roots, roots, fresh)
+    def collect(store: S, roots: Set[A]): S =
+        scan(store, roots, roots, fresh)
     @tailrec
-    private def scan(toMove: Set[A], visited: Set[A], cur: This): This =
+    private def scan(prv: S, toMove: Set[A], visited: Set[A], cur: S): S =
         if toMove.isEmpty then cur
         else
             val addr = toMove.head
             val rest = toMove.tail
-            val (updated, refs) = move(addr, cur)
+            val (updated, refs) = move(addr, prv, cur)
             val newRefs = refs.filterNot(visited)
-            scan(rest ++ newRefs, visited ++ newRefs, updated)
+            scan(prv, rest ++ newRefs, visited ++ newRefs, updated)

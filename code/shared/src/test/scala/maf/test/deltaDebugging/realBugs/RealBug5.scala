@@ -14,4 +14,4 @@ trait RealBug5 extends SchemeModFLocalAnalysisResults:
       case _: VarAddr[_] | _: PtrAddr[_] =>
         adr.idn -> (resultsPerIdn(adr.idn) + vlu) //store mismanaged here
       case _ => ()
-    sto.emptyDelta //return value wrong here
+    ??? //Delta.emptyDelta //return value wrong here
