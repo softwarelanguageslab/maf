@@ -21,7 +21,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     type Sto = LocalStore[Adr, Val]
     type Dlt = Delta[Adr, Val]
     type Cnt = AbstractCount
-    type Res = Map[Cmp, (Val, Dlt, Set[Adr])]
+    type Res = Map[Cmp, (Val, Dlt, Set[Adr], Set[Adr])]
     type Sts = Map[Cmp, Sto]
     type Anl = SchemeModFLocalFSIntraAnalysis
 
@@ -91,9 +91,11 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
         (anl, env, sto, ctx) =>
             val gcs = LocalStoreGC().collect(sto, rs)
-            blk(anl, env, sto, ctx).map { (vlu, dlt, upd) =>
-                val gcd = DeltaGC(gcs).collect(dlt, lattice.refs(vlu) ++ upd)
-                (vlu, gcd, upd)
+            blk(anl, env, sto, ctx).map { (vlu, dlt, upd, all) =>
+                val gcu = upd.filter(gcs.contains)
+                val gca = all.filter(dlt.delta.contains)
+                val gcd = DeltaGC(gcs).collect(dlt, lattice.refs(vlu) ++ gcu)
+                (vlu, gcd, gcu, gca)
             }
 
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
@@ -109,20 +111,20 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     // ANALYSISM MONAD
     //
 
-    type A[X] = (Anl, Env, Sto, Ctx) => Option[(X, Dlt, Set[Adr])]
+    type A[X] = (Anl, Env, Sto, Ctx) => Option[(X, Dlt, Set[Adr], Set[Adr])]
 
     given analysisM: AnalysisM[A] with
         // MONAD
         def unit[X](x: X) =
-            (_, _, _, _) => Some((x, Delta.emptyDelta, Set.empty))
+            (_, _, _, _) => Some((x, Delta.emptyDelta, Set.empty, Set.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
-            (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d, u) => (f(x), d, u))
+            (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d, u, a) => (f(x), d, u, a))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
             (anl, env, sto, ctx) =>
                 for
-                    (x0, d0, u0) <- m(anl, env, sto, ctx)
-                    (x1, d1, u1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
-                yield (x1, Delta.compose(d1, d0), u0 ++ u1.filter(sto.contains))
+                    (x0, d0, u0, a0) <- m(anl, env, sto, ctx)
+                    (x1, d1, u1, a1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
+                yield (x1, Delta.compose(d1, d0), u0 ++ u1, a0 ++ a1)
         // MONADJOIN
         def mbottom[X] =
             (_, _, _, _) => None
@@ -131,27 +133,27 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                 (x(anl, env, sto, ctx), y(anl, env, sto, ctx)) match
                     case (None, yres)                   => yres
                     case (xres, None)                   => xres
-                    case (Some((xv, xs, xu)), Some(yv, ys, yu)) => Some((Lattice[X].join(xv, yv), sto.join(xs, ys), xu ++ yu))
+                    case (Some((xv, xs, xu, xa)), Some(yv, ys, yu, ya)) => Some((Lattice[X].join(xv, yv), sto.join(xs, ys), xu ++ yu, xa ++ ya))
         // MONADERROR
         def fail[X](err: Error) =
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (_, _, sto, _) => Some((eqA(sto), Delta.emptyDelta, Set.empty))
+            (_, _, sto, _) => Some((eqA(sto), Delta.emptyDelta, Set.empty, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
-            (_, _, sto, _) => Some((), extendV(sto, adr, vlu), Set.empty)
+            (_, _, sto, _) => Some((), extendV(sto, adr, vlu), Set.empty, Set(adr))
         def updateSto(adr: Adr, vlu: Val) =
-            (_, _, sto, _) => Some((), updateV(sto, adr, vlu), Set(adr))
+            (_, _, sto, _) => Some((), updateV(sto, adr, vlu), Set(adr), Set.empty)
         def lookupSto(adr: Adr) =
-            (_, _, sto, _) => sto.getValue(adr).map((_, Delta.emptyDelta, Set.empty))
+            (_, _, sto, _) => sto.getValue(adr).map((_, Delta.emptyDelta, Set.empty, Set.empty))
         // CTX STUFF
         def getCtx =
-            (_, _, _, ctx) => Some((ctx, Delta.emptyDelta, Set.empty))
+            (_, _, _, ctx) => Some((ctx, Delta.emptyDelta, Set.empty, Set.empty))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]) =
             (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
         // ENV STUFF
         def getEnv =
-            (_, env, _, _) => Some((env, Delta.emptyDelta, Set.empty))
+            (_, env, _, _) => Some((env, Delta.emptyDelta, Set.empty, Set.empty))
         def withEnv[X](f: Env => Env)(blk: A[X]) =
             (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
@@ -176,8 +178,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
             // register dependencies on all addresses
             sto.content.keys.foreach(adr => register(AddrDependencyFS(cmp, adr)))
             // GC the result
-            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx).map { (v, d, u) =>
-                (v, DeltaGC(sto).collect(d, lattice.refs(v) ++ u), u)
+            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx).map { (v, d, u, a) =>
+                (v, DeltaGC(sto).collect(d, lattice.refs(v) ++ u), u, a)
             }
             // update the result of this component
             val old = results.get(cmp)
@@ -185,7 +187,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                 results += cmp -> rgc.get
                 trigger(ResultDependency(cmp))
 
-        def call(cll: Cll, sto: Sto): Option[(Val, Dlt, Set[Adr])] =
+        def call(cll: Cll, sto: Sto): Option[(Val, Dlt, Set[Adr], Set[Adr])] =
             // spawn the component
             spawn(cll)
             // add bindings to its store
@@ -204,7 +206,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
 
         override def doWrite(dep: Dependency): Boolean = dep match
             case ResultDependency(cmp) =>
-                val old = inter.results.getOrElse(cmp, (lattice.bottom, Delta.emptyDelta, Set.empty))
+                val old = inter.results.getOrElse(cmp, (lattice.bottom, Delta.emptyDelta, Set.empty, Set.empty))
                 val cur = intra.results(cmp) // we are certain to have a result here!
                 if old != cur then
                     inter.results += cmp -> cur

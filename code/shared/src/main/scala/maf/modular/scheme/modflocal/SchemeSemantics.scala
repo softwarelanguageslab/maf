@@ -149,7 +149,7 @@ trait SchemeSemantics:
     protected def evalCall(app: App): A[Val] =
         for
             fun <- nontail { eval(app.f) }
-            ags <- app.args.mapM(arg => nontail {eval(arg) })
+            ags <- app.args.mapM(arg => nontail { eval(arg) })
             res <- applyFun(app, fun, ags)
         yield res
 

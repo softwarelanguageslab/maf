@@ -283,15 +283,15 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             acc + (adr -> (lat.join(vlu1, vlu2), cnt1.join(cnt2)))
         ))
     // replaying a delta that was computed w.r.t. a GC'd store
-    def replay(delta: Delta[A,V], updated: Set[A]): Delta[A,V] =
+    def replay(delta: Delta[A,V], allocated: Set[A]): Delta[A,V] =
         Delta(delta.delta.map { case bnd @ (adr, (v, c)) =>
-            if updated.contains(adr) then 
-                bnd
-            else 
+            if allocated.contains(adr) then 
                 get(adr) match {
                     case None           => bnd 
                     case Some((v2, c2)) => (adr, (lat.join(v2, v), CountInf))
                 }
+            else 
+                bnd 
         })
 
 case class LocalStoreGC[A <: Address,V]()(using lat: LatticeWithAddrs[V, A], shouldCount: A=>Boolean) extends AbstractGC[LocalStore[A,V], A]:
