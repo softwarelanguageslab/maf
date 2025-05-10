@@ -51,23 +51,29 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
 
     // addresses
 
-    case class NAdr(nat: String) extends Address:
+    sealed trait SchemeAddress extends Address:
+        def toBaseAddr: maf.cli.experiments.precision.BaseAddr 
+
+    case class NAdr(nat: String) extends SchemeAddress:
         def idn = Identity.none
         def printable = false
-    case class VAdr(vrb: Var, ctx: Ctx) extends Address:
+        def toBaseAddr = maf.cli.experiments.precision.PrmAddr(nat)
+    case class VAdr(vrb: Var, ctx: Ctx) extends SchemeAddress:
         def idn = vrb.idn
         def printable = true 
-    case class PAdr(exp: Exp, ctx: Ctx) extends Address:
+        def toBaseAddr = maf.cli.experiments.precision.VarAddr(vrb)
+    case class PAdr(exp: Exp, ctx: Ctx) extends SchemeAddress:
         def idn = exp.idn
         def printable = true
+        def toBaseAddr = maf.cli.experiments.precision.PtrAddr(exp)
     trait KAdr extends Address:
         def printable = false
-    case class KA(e: Exp, ctx: Ctx) extends KAdr:
-        def idn = e.idn
+    case class KA(ev: Ev, sto: Sto) extends KAdr:
+        def idn = ev.e.idn
     case object HaltAddr extends KAdr:
         def idn = Identity.none
 
-    def kalloc(e: Exp, ctx: Ctx) = KA(e, ctx)
+    def kalloc(ev: Ev, sto: Sto) = KA(ev, sto)
     def alloc(v: Var, ctx: Ctx) = VAdr(v, ctx)
     def alloc(e: Exp, ctx: Ctx) = PAdr(e, ctx)
 
@@ -244,7 +250,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
             push(LtrK(rst, adr, bdy, ρ, t, aₖ), exp, ρ, t, σ, σₖ)
 
     protected def push(frm: Frame, e: Exp, ρ: Env, t: Ctx, σ: Sto, σₖ: KSto) = 
-        val ak2 = kalloc(e, t)
+        val ak2 = kalloc(Ev(e, ρ, t), σ)
         Set(State(Ev(e, ρ, t), σ, σₖ.extend(ak2, Set(frm)), ak2))
 
     private def result(v: Val, σ: Sto, σₖ: KSto, aₖ: KAdr) =
@@ -270,7 +276,7 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     given SchemePrimM[AAM, Adr, Val] with
         def lookupSto(a: Adr): AAM[Val] = (_, σ) => Set((σ(a), σ))
         def extendSto(a: Adr, v: Val) = (_, σ) => Set(((), σ.extend(a, v)))
-        def updateSto(a: Adr, v: Val) = (_, σ) => Set(((), σ.extend(a, v)))
+        def updateSto(a: Adr, v: Val) = (_, σ) => Set(((), σ.update(a, v)))
         def allocVar(v: Var): AAM[Adr] = (c, σ) => Set((alloc(v, c), σ))
         def allocPtr(e: Exp): AAM[Adr] = (c, σ) => Set((alloc(e, c), σ))
         def mbottom[X]: AAM[X] = (_, _) => Set.empty

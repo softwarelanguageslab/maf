@@ -1,5 +1,6 @@
 package maf.cli.experiments.precision
 
+import maf.modular.scheme.aam._
 import maf.cli.experiments._
 import maf.language.scheme._
 import maf.lattice._
@@ -19,7 +20,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     def analyses: List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(30, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(30, SECONDS)) // timeout for the analyses
     def runs = 3 // number of runs for the concrete interpreter
 
     // keep the results of the benchmarks in a table
@@ -76,33 +77,95 @@ object AnalysisComparisonAlt1
       ConstantPropagation.Sym
     ]:
     def k = 0
-    def ls = List(100)
-    lazy val modf: (SchemeExp => Analysis, String) = (SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA MODF")
-    lazy val dss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS")
+    lazy val aam: (SchemeExp => Analysis, String) = (aamAnalysis(_, k), s"$k-CFA AAM")
+    lazy val dss: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS")
     //lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
     //lazy val dssFS: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalFSAnalysis(_, k), s"$k-CFA DSS-FS")
     //lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
     //    (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
     //}
-    def analyses = modf :: dss :: Nil
-    def main(args: Array[String]) = runBenchmarks(
-      Set(
-        //"test/R5RS/various/collatz.scm",
-        //"test/R5RS/various/mceval.scm",
-        //"test/R5RS/various/church.scm",
-        //"test/R5RS/various/regex.scm",
-        //"test/R5RS/various/blur.scm",
-        //"test/R5RS/various/bound-precision.scm",
-        //"test/R5RS/various/eta.scm",
-        //"test/R5RS/various/gcipd.scm",
-        //"test/R5RS/various/four-in-a-row.scm",
-        //"test/R5RS/various/grid.scm",
-        //"test/R5RS/various/mj09.scm",
-        //"test/R5RS/various/primtest.scm",
-        //"test/R5RS/various/rsa.scm",
-        //"test/R5RS/gambit/deriv.scm",
-        //"test/R5RS/gambit/tak.scm",
-        //"test/R5RS/gambit/browse.scm",
+
+    def aamAnalysis(prg: SchemeExp, k: Int) = new SchemeAAMGCAnalysis(prg, k)
+
+    def analyses = aam :: dss :: Nil
+
+    def gambit = List("array1.scm",
+                      "deriv.scm",
+                     // "graphs.scm",
+                      "nqueens.scm",
+                      "puzzle.scm",
+                      "sum.scm",
+                      "triangl.scm",
+                      "browse.scm",
+                      "destruc.scm",
+                      "lattice.scm",
+                      "paraffins.scm",	
+                      "sboyer.scm",	
+                      "sumloop.scm",
+                      "wc.scm",
+                      "cat.scm",
+                      "diviter.scm",
+                      "matrix.scm",	
+                      "perm9.scm",	
+                      "scheme.scm",	
+                      "tail.scm",
+                      "compiler.scm",
+                      "earley.scm",	
+                      "mazefun.scm",	
+                      "peval.scm",	
+                      "slatex.scm",	
+                      "tak.scm",
+                      "ctak.scm",	
+                      "fibc.scm",	
+                      "nboyer.scm",	
+                      "primes.scm",	
+                      "string.scm",	
+                      "trav1.scm"
+                    ).map(file => s"test/R5RS/various/$file")
+
+    def gabriel = List(
+      "boyer",
+      "browse",
+      "cpstak",
+      "dderiv",
+      "deriv",
+      "destruct",
+      "diviter",
+      "divrec",
+      "puzzle",
+      "takl",
+      "triangl"
+    ).map(name => s"test/R5RS/gabriel/$name.scm")
+
+    def main(args: Array[String]) = runBenchmarks(gabriel)
+    /*
+      List(
+        //VARIOUS
+        "test/R5RS/various/collatz.scm",
+        "test/R5RS/various/mceval.scm",
+        "test/R5RS/various/church.scm",
+        "test/R5RS/various/regex.scm",
+        "test/R5RS/various/blur.scm",
+        "test/R5RS/various/bound-precision.scm",
+        "test/R5RS/various/eta.scm",
+        "test/R5RS/various/gcipd.scm",
+        "test/R5RS/various/four-in-a-row.scm",
+        "test/R5RS/various/grid.scm",
+        "test/R5RS/various/mj09.scm",
+        "test/R5RS/various/primtest.scm",
+        "test/R5RS/various/rsa.scm",
+        //GAMBIT
+        "test/R5RS/gambit/array1.scm",
+        "test/R5RS/gambit/deriv.scm",
+        "test/R5RS/gambit/tak.scm",
+        "test/R5RS/gambit/array1.scm",
+        "test/R5RS/gambit/destruc.scm",
+        "test/R5RS/gambit/diviter.scm",
+        "test/R5RS/gambit/lattice.scm",
+        "test/R5RS/gambit/nboyer.scm",
+        "test/R5RS/gambit/paraffins.scm",
+        "test/R5RS/gambit/perm9.scm",
+        "test/R5RS/gambit/perm.scm",
         //"test/R5RS/gambit/earley.scm",
         //"test/R5RS/gambit/matrix.scm",
         //"test/R5RS/gambit/mazefun.scm",
@@ -121,6 +184,7 @@ object AnalysisComparisonAlt1
         "test/R5RS/various/strong-update.scm"
       )
     )
+      */
 
     override def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)
@@ -128,7 +192,8 @@ object AnalysisComparisonAlt1
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-    def runBenchmarks(benchmarks: Set[Benchmark]) =
+    def runBenchmarks(benchmarks: List[Benchmark]) =
+        assert(benchmarks.size == benchmarks.toSet.size)
         benchmarks.foreach(runBenchmark)
         val cols = analyses.map(_._2)
         println(results.prettyString(columns = cols))

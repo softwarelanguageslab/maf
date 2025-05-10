@@ -12,6 +12,11 @@ import maf.util._
 import maf.util.benchmarks.Timeout
 import maf.language.scheme.interpreter.EmptyIO
 
+sealed trait BaseAddr extends Address { def printable = true; def idn: Identity }
+case class VarAddr(vrb: Identifier) extends BaseAddr { def idn: Identity = vrb.idn; override def toString = s"<variable $vrb>" }
+case class PtrAddr(exp: Expression) extends BaseAddr { def idn = exp.idn; override def toString = s"<pointer $exp>" }
+case class PrmAddr(nam: String) extends BaseAddr { def idn: Identity = Identity.none; override def toString = s"<primitive $nam>" }
+
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
     type Benchmark = String
@@ -23,15 +28,11 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
     implicit def cpAnalysis(anl: ModularSchemeDomain): Analysis = anl.asInstanceOf[Analysis]
 
-    sealed trait BaseAddr extends Address { def printable = true; def idn: Identity }
-    case class VarAddr(vrb: Identifier) extends BaseAddr { def idn: Identity = vrb.idn; override def toString = s"<variable $vrb>" }
-    case class PtrAddr(exp: Expression) extends BaseAddr { def idn = exp.idn; override def toString = s"<pointer $exp>" }
-    case class PrmAddr(nam: String) extends BaseAddr { def idn: Identity = Identity.none; override def toString = s"<primitive $nam>" }
-
     private def convertAddr(addr: Address): BaseAddr = addr match
         case maf.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
         case maf.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp)
         case maf.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
+        case a: maf.modular.scheme.aam.AAMScheme#SchemeAddress => a.toBaseAddr
 
     val baseDomain = new ModularSchemeLattice[BaseAddr, Str, Bln, Num, Rea, Chr, Smb]
     val baseLattice = baseDomain.schemeLattice
@@ -125,10 +126,12 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
             val value1 = b1.getOrElse(pos, baseLattice.bottom)
             val value2 = b2.getOrElse(pos, baseLattice.bottom)
             if value1 == value2 then (acc._1 + pos, acc._2, acc._3, acc._4)
-            else if baseLattice.subsumes(value1, value2) then (acc._1, acc._2 + pos, acc._3, acc._4)
-            else if baseLattice.subsumes(value2, value1) then (acc._1, acc._2, acc._3 + pos, acc._4)
+            else if baseLattice.subsumes(value1, value2) then 
+                    (acc._1, acc._2 + pos, acc._3, acc._4)
+            else if baseLattice.subsumes(value2, value1) then 
+                    (acc._1, acc._2, acc._3 + pos, acc._4)
             else // neither value is more precise than the other
-                (acc._1, acc._2, acc._3, acc._4 + pos)
+                    (acc._1, acc._2, acc._3, acc._4 + pos)
         }
 
     /**
@@ -204,6 +207,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
             else TimedOut(res)
         catch
             case e: Exception =>
+                e.printStackTrace()
                 println(s"Analyzer failed with exception $e")
                 Errored(e)
             case e: VirtualMachineError =>
