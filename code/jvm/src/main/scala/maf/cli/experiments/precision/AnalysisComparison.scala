@@ -7,6 +7,7 @@ import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util._
 import maf.util.benchmarks._
+import maf.language.scheme.primitives.SchemePrelude
 
 import scala.concurrent.duration._
 
@@ -21,9 +22,9 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
 
     // and can, optionally, be configured in its timeouts (default: 5min.)
     def analysisTimeout(): Timeout.T = Timeout.start(Duration(30, SECONDS)) //timeout for (non-base) analyses
-    def concreteTimeout(): Timeout.T = Timeout.start(Duration(1, MINUTES)) //timeout for concrete interpreter
+    def concreteTimeout(): Timeout.T = Timeout.start(Duration(30, SECONDS)) //timeout for concrete interpreter
 
-    def concreteRuns() = 5
+    def concreteRuns() = 3
 
     // keep the results of the benchmarks in a table
     var results: Table[Option[Int]] = Table.empty[Option[Int]]
@@ -114,7 +115,7 @@ object AnalysisComparison1
         "cpstak",
         "dderiv",
         "deriv",
-        "destruct",
+        "destruc",
         "diviter",
         "divrec",
         "puzzle",
@@ -122,7 +123,17 @@ object AnalysisComparison1
         "triangl"
      ).map(name => s"test/R5RS/gabriel/$name.scm")
 
-    def main(args: Array[String]) = runBenchmarks(gabriel)
+    def sas2025 = 
+        List(
+            "test/R5RS/gambit/deriv.scm",
+            "test/R5RS/gambit/tak.scm",
+            "test/R5RS/various/grid.scm",
+            "test/R5RS/various/regex.scm",
+            "test/R5RS/various/rsa.scm"
+        )
+
+
+    def main(args: Array[String]) = runBenchmarks(sas2025)
 
     override def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)

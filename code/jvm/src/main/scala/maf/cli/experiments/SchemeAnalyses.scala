@@ -148,6 +148,13 @@ object SchemeAnalyses:
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
 
+    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
+      new SchemeModFLocalFS(prg)
+          with SchemeConstantPropagationDomain
+          with SchemeModFLocalCallSiteSensitivity(k)
+          with FIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFLocalFSAnalysisResults
+
     // Flow sensitive analysis
     def modFFlowSensitive(prg: SchemeExp) =
         new SimpleFlowSensitiveAnalysis(prg)

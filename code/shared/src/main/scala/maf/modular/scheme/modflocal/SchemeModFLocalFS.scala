@@ -10,6 +10,7 @@ import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.datastructures.SmartMap
+import maf.core.Monad.MonadSyntaxOps
 
 abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
@@ -98,10 +99,31 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                 (vlu, gcd, gcu, gca)
             }
 
+    import analysisM_._
+    override def eval(exp: Exp): A[Val] =
+        withEnv(_.restrictTo(exp.fv)) {
+            getEnv >>= { env =>
+                withRestrictedStore(env.addrs) {
+                    super.eval(exp)
+                }
+            }
+        }
+        
+    override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
+        withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
+            super.applyPrimitive(app, prm, ags)
+        }
+
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
         withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
             super.applyClosure(app, lam, ags, fvs)
         }
+
+    override protected def nontail[X](blk: => A[X]) =  
+        (anl, env, sto, ctx) =>
+            blk(anl, env, sto, ctx).map { (v, d, u, a) =>
+                (v, sto.replay(d, a), u, a)
+            }
 
     override def init() =
         super.init()
