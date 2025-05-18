@@ -25,6 +25,7 @@ Thumbs.db
 # Test reports
 test-output/
 benchOutput/
+evaluationLogs/
 
 # JARs or packaged files
 *.jar
