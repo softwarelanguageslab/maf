@@ -1,6 +1,7 @@
 package maf.cli.experiments
 
 import maf.language.scheme._
+import maf.modular.scheme.aam._
 import maf.modular._
 import maf.language.symbolic.lattices.*
 import maf.modular.adaptive._
@@ -141,6 +142,9 @@ object SchemeAnalyses:
         }
     }
 
+    def aamGCAnalysis(prg: SchemeExp, k: Int) = 
+      new SchemeAAMGCAnalysis(prg, k)
+
     def modflocalAnalysis(prg: SchemeExp, k: Int) =
         new SchemeModFLocal(prg)
             with SchemeConstantPropagationDomain
@@ -148,8 +152,8 @@ object SchemeAnalyses:
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
 
-    def modflocalFSAnalysis(prg: SchemeExp, k: Int) =
-      new SchemeModFLocalFS(prg)
+    def modflocalFSAnalysis(prg: SchemeExp, k: Int, gc: Boolean = true) =
+      new SchemeModFLocalFS(prg, gc)
           with SchemeConstantPropagationDomain
           with SchemeModFLocalCallSiteSensitivity(k)
           with FIFOWorklistAlgorithm[SchemeExp]

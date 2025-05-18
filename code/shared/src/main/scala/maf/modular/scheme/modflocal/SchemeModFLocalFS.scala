@@ -12,7 +12,7 @@ import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.datastructures.SmartMap
 import maf.core.Monad.MonadSyntaxOps
 
-abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
+abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -89,15 +89,17 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                     case _                   => BoolLattice[B].top
             else BoolLattice[B].inject(false)
 
-    def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
-        (anl, env, sto, ctx) =>
-            val gcs = LocalStoreGC().collect(sto, rs)
-            blk(anl, env, sto, ctx).map { (vlu, dlt, upd, all) =>
-                val gcu = upd.filter(gcs.contains)
-                val gca = all.filter(dlt.delta.contains)
-                val gcd = DeltaGC(gcs).collect(dlt, lattice.refs(vlu) ++ gcu)
-                (vlu, gcd, gcu, gca)
-            }
+    def withRestrictedStore(rs: => Set[Adr])(blk: A[Val]): A[Val] =
+        if gc then
+            (anl, env, sto, ctx) =>
+                val gcs = LocalStoreGC().collect(sto, rs)
+                blk(anl, env, sto, ctx).map { (vlu, dlt, upd, all) =>
+                    val gcu = upd.filter(gcs.contains)
+                    val gca = all.filter(dlt.delta.contains)
+                    val gcd = DeltaGC(gcs).collect(dlt, lattice.refs(vlu) ++ gcu)
+                    (vlu, gcd, gcu, gca)
+                }
+        else blk
 
     import analysisM_._
     override def eval(exp: Exp): A[Val] =
@@ -105,7 +107,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
             getEnv >>= { env =>
                 withRestrictedStore(env.addrs) {
                     super.eval(exp)
-                }
+               }
             }
         }
         
@@ -120,10 +122,12 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
         }
 
     override protected def nontail[X](blk: => A[X]) =  
-        (anl, env, sto, ctx) =>
-            blk(anl, env, sto, ctx).map { (v, d, u, a) =>
-                (v, sto.replay(d, a), u, a)
-            }
+        if gc then 
+            (anl, env, sto, ctx) =>
+                blk(anl, env, sto, ctx).map { (v, d, u, a) =>
+                    (v, sto.replay(d, a), u, a)
+                }
+        else blk
 
     override def init() =
         super.init()
@@ -186,26 +190,27 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
     // THE INTRA-ANALYSIS
     //
 
+    var iterations = 0
+
     def intraAnalysis(cmp: Component) = new SchemeModFLocalFSIntraAnalysis(cmp)
     class SchemeModFLocalFSIntraAnalysis(cmp: Component) extends IntraAnalysis(cmp):
         intra =>
-
+        
         // local state
         var results = inter.results
         var stores = inter.stores
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
+            iterations = iterations + 1
             // get the (widened) store
             val sto = stores.getOrElse(cmp, LocalStore.empty)
             // register dependencies on all addresses
             sto.content.keys.foreach(adr => register(AddrDependencyFS(cmp, adr)))
             // GC the result
-            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx).map { (v, d, u, a) =>
-                (v, DeltaGC(sto).collect(d, lattice.refs(v) ++ u), u, a)
-            }
+            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx)
             // update the result of this component
             val old = results.get(cmp)
-            if (rgc != old) then
+            if (old != rgc) then
                 results += cmp -> rgc.get
                 trigger(ResultDependency(cmp))
 
@@ -222,15 +227,14 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                         (upd, true)
             }
             if dty then stores += cll -> upd
-            // read its result
             register(ResultDependency(cll))
             results.get(cll)
 
         override def doWrite(dep: Dependency): Boolean = dep match
             case ResultDependency(cmp) =>
-                val old = inter.results.getOrElse(cmp, (lattice.bottom, Delta.emptyDelta, Set.empty, Set.empty))
-                val cur = intra.results(cmp) // we are certain to have a result here!
-                if old != cur then
+                val old = inter.results.get(cmp)
+                val cur = intra.results(cmp)        // we are certain to have a result here!
+                if !old.isDefined || old.get != cur then
                     inter.results += cmp -> cur
                     true
                 else false
@@ -244,6 +248,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp) extends ModAnalysis[SchemeExp](
                         inter.stores += cmp -> upd
                         true
             case _ => super.doWrite(dep)
+
 
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>

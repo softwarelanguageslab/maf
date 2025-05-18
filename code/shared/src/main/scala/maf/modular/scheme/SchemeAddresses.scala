@@ -12,7 +12,7 @@ trait SchemeAddr[+Context] extends Address:
     protected def showCtx(ctx: Any) =
         if (ctx == ()) then "" else s"[$ctx]"
 case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Context]:
-    def printable = true
+    def printable = !id.name.startsWith("__")
     def idn: Identity = id.idn
     override def toString: String = s"${id.fullString}${showCtx(ctx)}"
 case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddr[Context]:

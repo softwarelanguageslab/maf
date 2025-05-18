@@ -190,8 +190,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             results.getOrElse(cmp, Set.empty)
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
-            val rgc = res.map((v, d, u, a) => (v, DeltaGC(cmp.sto).collect(d, lattice.refs(v) ++ u), u, a))
+            val rgc = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
             val old = results.getOrElse(cmp, Set.empty)
             if rgc != old then
                 intra.results += cmp -> rgc

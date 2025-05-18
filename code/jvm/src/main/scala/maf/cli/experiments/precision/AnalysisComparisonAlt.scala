@@ -1,6 +1,5 @@
 package maf.cli.experiments.precision
 
-import maf.modular.scheme.aam._
 import maf.cli.experiments._
 import maf.language.scheme._
 import maf.lattice._
@@ -9,20 +8,25 @@ import maf.util.benchmarks._
 import maf.util.{Reader, Writer}
 import maf.language.scheme.primitives.SchemePrelude
 import maf.bench.scheme.*
-
 import scala.concurrent.duration._
+import maf.modular.scheme.modflocal._
 
+
+//compares analyses by counting number of over-approximations w.r.t. a concrete interpreter
+//(lower is better)
 abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]
     extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
 
     // the precision comparison is parameterized by:
     // - the analyses to compare in terms of precision
+    // - the benchmarks to compare the analyses on
     // - the number of runs for the concrete interpreter
     def analyses: List[(SchemeExp => Analysis, String)]
-
-    // and can, optionally, be configured in its timeouts (default: 30min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(5, MINUTES)) // timeout for the analyses
+    def benchmarks: List[Benchmark]
     def runs = 3 // number of runs for the concrete interpreter
+
+    // and can, optionally, be configured in its timeouts (default: 10min.) and the number of concrete runs
+    def timeout() = Timeout.start(Duration(10, MINUTES)) // timeout for the analyses
 
     // keep the results of the benchmarks in a table
     enum Result:
@@ -33,7 +37,9 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
             case Result.Success(abs) => s"$abs"
             case Result.Timeout(abs) => s"TIMEOUT (>= $abs)"
             case Result.Errored      => "ERROR"
-    var results: Table[Result] = Table.empty
+
+    var precisionResults:   Table[Result]         = Table.empty
+    var performanceResults: Table[Option[Double]] = Table.empty 
 
     protected def additionalCounts(analysisName: String, path: Benchmark, r1: ResultMap, r2: ResultMap): Unit = ()
 
@@ -54,7 +60,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
             val t0 = System.nanoTime
             val otherResult = runAnalysis(analysis, name, program, path, timeout())
             val t1 = System.nanoTime
-            val duration = (System.nanoTime - t0) / 1e9d
+            val duration = (System.nanoTime - t0) / 1e9d  //duration is reported in seconds
             println(s"duration: $duration")
             val (lessPrecise, size) = otherResult match
                 case Terminated(analysisResult) =>
@@ -64,11 +70,39 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
                     additionalCounts(name, path, partialResult, concreteResult)
                     (Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size), Result.Timeout(partialResult.keys.size))
                 case Errored(_) => (Result.Errored, Result.Errored)
-            results = results.add(path, name, lessPrecise)
-            results = results.add(path, s"$name-total", size)
+            precisionResults = precisionResults.add(path, name, lessPrecise)
+            //precisionResults = precisionResults.add(path, s"$name-total", size)
         }
 
-object AnalysisComparisonAlt1
+    private def runBenchmarks(benchmarks: List[Benchmark], outputFolder: Option[String] = None) =
+      assert(benchmarks.size == benchmarks.toSet.size) // sanity check to make sure we don't have duplicates
+      benchmarks.foreach(runBenchmark)
+      showResults(outputFolder)
+    
+    protected def showResults(outputFolder: Option[String]) =
+      println("PRECISION RESULTS")
+      println("=================")
+      println()
+      println(precisionResults.prettyString())
+      println()
+      println("PERFORMANCE RESULTS")
+      println("===================")
+      println()
+      println(performanceResults.prettyString())
+      outputFolder.foreach { dir => 
+        writeToFile(precisionResults,   s"$dir/precision-benchmarks.csv")
+        writeToFile(performanceResults, s"$dir/performance-benchmarks.csv")      
+      }
+
+    protected def writeToFile[X](results: Table[X], path: String) =
+      val writer = Writer.open(path)
+      Writer.write(writer, results.toCSVString(rowName = "benchmark"))
+      Writer.close(writer)
+
+    def main(args: Array[String]) = runBenchmarks(benchmarks, args.headOption)
+
+
+abstract class SASBenchmarks
     extends AnalysisComparisonAlt[
       ConstantPropagation.I,
       ConstantPropagation.R,
@@ -77,89 +111,45 @@ object AnalysisComparisonAlt1
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
-    def k = 0
-    lazy val aam0: (SchemeExp => Analysis, String)   = (aamAnalysis(_, 0), s"0-CFA AAM")
-    lazy val aam1: (SchemeExp => Analysis, String)   = (aamAnalysis(_, 1), s"1-CFA AAM")
-    lazy val aam2: (SchemeExp => Analysis, String)   = (aamAnalysis(_, 2), s"2-CFA AAM")
-    lazy val dss0: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS")
-    lazy val dss1: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalAnalysis(_, 1), "1-CFA DSS")
-    lazy val dss2: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalAnalysis(_, 2), "2-CFA DSS")
-    lazy val dssFS0: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 0), "0-CFA FS-DSS")
-    lazy val dssFS1: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 1), "1-CFA FS-DSS")
-    lazy val dssFS2: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 2), "2-CFA FS-DSS")
-    //lazy val wdss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modFlocalAnalysisWidened(_, k), s"$k-CFA WDSS")
-    //lazy val dssFS: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalFSAnalysis(_, k), s"$k-CFA DSS-FS")
-    //lazy val adaptive: List[(SchemeExp => Analysis, String)] = ls.map { l =>
-    //    (SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
-    //}
 
-    def aamAnalysis(prg: SchemeExp, k: Int) = new SchemeAAMGCAnalysis(prg, k)
+    lazy val aam0: (SchemeExp => Analysis, String)        = (SchemeAnalyses.aamGCAnalysis(_, 0),              "0-CFA AAM")
+    lazy val aam1: (SchemeExp => Analysis, String)        = (SchemeAnalyses.aamGCAnalysis(_, 1),              "1-CFA AAM")
+    lazy val aam2: (SchemeExp => Analysis, String)        = (SchemeAnalyses.aamGCAnalysis(_, 2),              "2-CFA AAM")
+    lazy val dss0: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 0),          "0-CFA DSS")
+    lazy val dss1: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 1),          "1-CFA DSS")
+    lazy val dss2: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 2),          "2-CFA DSS")
+    lazy val dssFS0: (SchemeExp => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 0, true),  "0-CFA DSS-FS")
+    lazy val dssFS1: (SchemeExp => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 1, true),  "1-CFA DSS-FS")
+    lazy val dssFS2: (SchemeExp => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 2, true),  "2-CFA DSS-FS")
+    lazy val dssFS0NoGC: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 0, false), "0-CFA DSS-FS (without GC)")
+    lazy val dssFS1NoGC: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 1, false), "1-CFA DSS-FS (without GC)")
+    lazy val dssFS2NoGC: (SchemeExp => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 2, false), "2-CFA DSS-FS (without GC)")
 
-    def analyses = List(
-      aam0, aam1, aam2,
-      dss0, dss1, dss2,
-      dssFS0, dssFS1, dssFS2
-    )
-
-    def gambit = List("array1.scm",
-                      "deriv.scm",
-                     // "graphs.scm",
-                      "nqueens.scm",
-                      "puzzle.scm",
-                      "sum.scm",
-                      "triangl.scm",
-                      "browse.scm",
-                      "destruc.scm",
-                      "lattice.scm",
-                      "paraffins.scm",	
-                      "sboyer.scm",	
-                      "sumloop.scm",
-                      //"wc.scm",
-                      //"cat.scm",
-                      "diviter.scm",
-                      "matrix.scm",	
-                      "perm9.scm",	
-                      "scheme.scm",	
-                      //"tail.scm",
-                      "compiler.scm",
-                      "earley.scm",	
-                      "mazefun.scm",	
-                      "peval.scm",	
-                      "slatex.scm",	
-                      "tak.scm",
-                      
-                      //"ctak.scm",	
-                      //"fibc.scm",	
-                      "nboyer.scm",	
-                      "primes.scm",	
-                      "string.scm",	
-                      "trav1.scm"
-                    ).map(file => s"test/R5RS/various/$file")
-
-    def sas2025 = 
+    def gabrielBenchmarks = 
       List(
-          //"test/R5RS/gambit/deriv.scm",
-          //"test/R5RS/gambit/tak.scm",
-          //"test/R5RS/various/grid.scm",
-          //"test/R5RS/various/regex.scm",
-          //"test/R5RS/WeiChenRompf2019/rsa.scm"
+        "boyer",
+        "browse",
+        "cpstak",
+        "dderiv",
+        "deriv",
+        "destruc",
+        "diviter",
+        "divrec",
+        "takl",
+        //"triangl" <- times out in concrete interpreter
+      ).map(name => s"test/R5RS/gabriel/$name.scm")
+
+    def extraBenchmarks = 
+      List(
+          "test/R5RS/various/grid.scm",
+          "test/R5RS/gambit/matrix.scm",
+          "test/R5RS/various/mceval.scm",
+          "test/R5RS/various/regex.scm",
+          "test/R5RS/WeiChenRompf2019/rsa.scm",
+          "test/R5RS/gambit/tak.scm",
       )
 
-    def gabriel = List(
-      "boyer",
-      "browse",
-      "cpstak",
-      "dderiv",
-      "deriv",
-      "destruc",
-      "diviter",
-      "divrec",
-      "puzzle",
-      "takl",
-      //"triangl"
-    ).map(name => s"test/R5RS/gabriel/$name.scm")
-
-    def main(args: Array[String]) = runBenchmarks(gabriel)
+    def benchmarks = gabrielBenchmarks ++ extraBenchmarks
 
     override def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)
@@ -167,11 +157,52 @@ object AnalysisComparisonAlt1
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-    def runBenchmarks(benchmarks: List[Benchmark]) =
-        assert(benchmarks.size == benchmarks.toSet.size)
-        benchmarks.foreach(runBenchmark)
-        val cols = analyses.map(_._2)
-        println(results.prettyString(columns = cols))
-        val writer = Writer.open("benchOutput/precision/precision-benchmarks.csv")
-        Writer.write(writer, results.toCSVString(rowName = "benchmark", columns = cols))
-        Writer.close(writer)
+object AllSASBenchmarks extends SASBenchmarks:
+  def analyses = List(
+    aam0, aam1, aam2,
+    dss0, dss1, dss2,
+    dssFS0, dssFS1, dssFS2,
+    dssFS0NoGC, dssFS1NoGC, dssFS2NoGC
+  )
+
+object Table2Benchmarks extends SASBenchmarks:
+  def analyses = List(
+    aam0, aam1, aam2,
+    dss0, dss1, dss2,
+)
+
+object Table3Benchmarks extends SASBenchmarks:
+  def analyses = List(
+    dss0, dss1, dss2,
+    dssFS0, dssFS1, dssFS2,
+)
+
+object Table4Benchmarks extends SASBenchmarks:
+  def analyses = List(
+    dssFS0, dssFS1, dssFS2,
+    dssFS0NoGC, dssFS1NoGC, dssFS2NoGC
+  )
+
+object CountIterationBenchmark extends SASBenchmarks:
+
+  def analyses = List(
+    dssFS0, dssFS0NoGC
+  )
+
+  var results: Table[Int] = Table.empty 
+
+  override protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit =
+    println(s"ANALYZING $path")
+    analyses.foreach { case (analysis, name) => 
+      val anl = analysis(program)
+      anl.analyzeWithTimeout(Timeout.start(Duration(15, MINUTES)))
+      results = results.add(path, name, anl.asInstanceOf[SchemeModFLocalFS].iterations)
+    }
+
+  override def timeout() = Timeout.none
+
+  override protected def showResults(outputFolder: Option[String]) =
+    println(results.prettyString())
+    outputFolder.foreach { dir => 
+      writeToFile(results, s"$dir/iteration-benchmarks.csv") 
+    }

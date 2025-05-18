@@ -293,6 +293,10 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             else 
                 bnd 
         })
+    override def toString = 
+        content.content
+               .filter { case (a, (v, c)) => a.printable }
+               .toString
 
 case class LocalStoreGC[A <: Address,V]()(using lat: LatticeWithAddrs[V, A], shouldCount: A=>Boolean) extends AbstractGC[LocalStore[A,V], A]:
     def fresh = LocalStore.empty[A,V]
