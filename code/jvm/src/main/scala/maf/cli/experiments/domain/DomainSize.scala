@@ -38,7 +38,7 @@ object DomainSize extends DomainSizePrograms:
      * source. This can then be processed for counting purposes, SLOC, etc.
      */
     private def printProgramNames(): Unit =
-        val w = Writer.openTimeStamped("results/programs.csv")
+        val w = Writer.open("results/programs.csv")
         val programs = programsByCategory.map { case (k, v) => k + "," + v.toList.mkString(",") }.mkString("\n")
         Writer.write(w, programs)
         Writer.close(w)
@@ -56,7 +56,7 @@ object DomainSize extends DomainSizePrograms:
             }
             .toCSVString()
 
-        val w = Writer.openTimeStamped("results/output.csv")
+        val w = Writer.open("results/output.csv")
         Writer.write(w, csv)
         Writer.close(w)
 
