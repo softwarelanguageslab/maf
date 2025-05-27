@@ -1,11 +1,13 @@
 package maf.cli.experiments.precision
 
+import maf.modular.scheme.aam._
 import maf.cli.experiments._
 import maf.language.scheme._
 import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util._
 import maf.util.benchmarks._
+import maf.language.scheme.primitives.SchemePrelude
 
 import scala.concurrent.duration._
 
@@ -19,10 +21,10 @@ abstract class AnalysisComparison[Num: IntLattice, Rea: RealLattice, Bln: BoolLa
     def otherAnalyses(): List[(SchemeExp => Analysis, String)]
 
     // and can, optionally, be configured in its timeouts (default: 5min.)
-    def analysisTimeout(): Timeout.T = Timeout.start(Duration(45, MINUTES)) //timeout for (non-base) analyses
-    def concreteTimeout(): Timeout.T = Timeout.none //timeout for concrete interpreter
+    def analysisTimeout(): Timeout.T = Timeout.start(Duration(30, SECONDS)) //timeout for (non-base) analyses
+    def concreteTimeout(): Timeout.T = Timeout.start(Duration(30, SECONDS)) //timeout for concrete interpreter
 
-    def concreteRuns() = 5
+    def concreteRuns() = 3
 
     // keep the results of the benchmarks in a table
     var results: Table[Option[Int]] = Table.empty[Option[Int]]
@@ -63,38 +65,86 @@ object AnalysisComparison1
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
+
     val k = 0
-    val l = 1000
+
+    lazy val aam: (SchemeExp => Analysis, String) = (new SchemeAAMGCAnalysis(_, k),          s"$k-CFA AAM")
+    lazy val dss: (SchemeExp => Analysis, String) = (SchemeAnalyses.modflocalAnalysis(_, k), s"$k-CFA DSS")
+
     def baseAnalysis(prg: SchemeExp): Analysis =
-        SchemeAnalyses.kCFAAnalysis(prg, k)
-    def otherAnalyses() =
-        // run some regular k-cfa analyses
+        SchemeAnalyses.contextInsensitiveAnalysis(prg) //context-insensitive analysis
+    def otherAnalyses() = aam :: dss :: Nil 
+
+    def gambit = List("array1.scm",
+                        "deriv.scm",
+                        // "graphs.scm",
+                        "nqueens.scm",
+                        "puzzle.scm",
+                        "sum.scm",
+                        "triangl.scm",
+                        "browse.scm",
+                        "destruc.scm",
+                        "lattice.scm",
+                        "paraffins.scm",	
+                        "sboyer.scm",	
+                        "sumloop.scm",
+                        "wc.scm",
+                        "cat.scm",
+                        "diviter.scm",
+                        "matrix.scm",	
+                        "perm9.scm",	
+                        "scheme.scm",	
+                        "tail.scm",
+                        "compiler.scm",
+                        "earley.scm",	
+                        "mazefun.scm",	
+                        "peval.scm",	
+                        "slatex.scm",	
+                        "tak.scm",
+                        "ctak.scm",	
+                        "fibc.scm",	
+                        "nboyer.scm",	
+                        "primes.scm",	
+                        "string.scm",	
+                        "trav1.scm"
+                    ).map(file => s"test/R5RS/various/$file")
+
+    def gabriel = List(
+        "boyer",
+        "browse",
+        "cpstak",
+        "dderiv",
+        "deriv",
+        "destruc",
+        "diviter",
+        "divrec",
+        "puzzle",
+        "takl",
+        "triangl"
+     ).map(name => s"test/R5RS/gabriel/$name.scm")
+
+    def sas2025 = 
         List(
-          //(SchemeAnalyses.modflocalAnalysis(_, 0), "0-CFA DSS"),
-          //(SchemeAnalyses.modflocalAnalysisAdaptiveA(_, k, l), s"$k-CFA DSS w/ ASW (l = $l)")
+            "test/R5RS/gambit/deriv.scm",
+            "test/R5RS/gambit/tak.scm",
+            "test/R5RS/various/grid.scm",
+            "test/R5RS/various/regex.scm",
+            "test/R5RS/various/rsa.scm"
         )
 
-    def main(args: Array[String]) = runBenchmarks(
-      Set(
-        "test/R5RS/various/mceval.scm"
-      )
-    )
 
-    def check(path: Benchmark) =
-        val txt = Reader.loadFile(path)
-        val prg = SchemeParser.parseProgram(txt)
-        val con = runInterpreter(prg, path).get
-        val Terminated(abs) = runAnalysis(SchemeAnalyses.fullArgContextSensitiveAnalysis(_), "analysis", prg, path)
-        val allKeys = con.keys ++ abs.keys
-        allKeys.foreach { k =>
-            val absVal = abs.getOrElse(k, "⊥")
-            val concVal = con.getOrElse(k, "⊥")
-            if absVal != concVal then println(s"$k -> $absVal ; $concVal ")
-        }
+    def main(args: Array[String]) = runBenchmarks(sas2025)
 
-    def runBenchmarks(benchmarks: Set[Benchmark]) =
+    override def parseProgram(txt: String): SchemeExp =
+        val parsed = SchemeParser.parse(txt)
+        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val transf = SchemeMutableVarBoxer.transform(prelud)
+        SchemeParser.undefine(transf)
+
+    def runBenchmarks(benchmarks: List[Benchmark]) =
+        assert(benchmarks.size == benchmarks.toSet.size)
         benchmarks.foreach(runBenchmark)
         println(results.prettyString(format = _.map(_.toString()).getOrElse("TIMEOUT")))
-        val writer = Writer.open("benchOutput/precision/adaptive-precision-benchmarks.csv")
+        val writer = Writer.open("benchOutput/precision/precision-benchmarks.csv")
         Writer.write(writer, results.toCSVString(format = _.map(_.toString()).getOrElse("TIMEOUT"), rowName = "benchmark"))
         Writer.close(writer)

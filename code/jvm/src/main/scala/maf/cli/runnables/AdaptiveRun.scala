@@ -25,7 +25,7 @@ import maf.core._
 
 object AdaptiveRun:
 
-    def main(args: Array[String]): Unit = print(runAAM(counterExample))
+    def main(args: Array[String]): Unit = print(runDSS(prg2))
 
     val prg1 = parse(
         """
@@ -37,14 +37,35 @@ object AdaptiveRun:
         """.stripMargin
     )
 
+    val prg2 = parse(
+        """
+        | (let ((a 0))
+        |   (set! a (+ a 1))
+        |   a)
+        """.stripMargin
+    )
+
     val counterExample = parse(
         """
         | (let*
         |   ((g (lambda (v) (lambda () v)))
-        |    (a (let ((v 100)) (g 42))))
+        |    (v 0)
+        |    (inc (lambda (x) (+ x 1)))
+        |    (a (g (inc v))))
         |   (a))
         """.stripMargin
     )
+
+    val counterExample2 = parse(
+        """
+        | (let* ((alloc (lambda (a) (lambda () a)))
+        |        (f (lambda (a) (let ((c (alloc 1)) (ignore a)) c)))
+        |        (b (f 0)))
+        |    (b))
+        """.stripMargin
+    )
+
+    lazy val grid = parse(Reader.loadFile("test/R5RS/various/grid.scm"))
 
     def parse(txt: String): SchemeExp =
         val parsed = CSchemeParser.parse(txt)
@@ -53,7 +74,7 @@ object AdaptiveRun:
         CSchemeParser.undefine(transf)
 
     def runDSS(prg: SchemeExp) =
-        val anl = new SchemeDSSAnalysis(prg, 0) with NameBasedAllocator
+        val anl = new SchemeDSSAnalysis(prg, 0) //with LoggingEval //with NameBasedAllocator
         anl.analyze()
         val res = anl.results(anl.MainComponent).asInstanceOf[Set[(anl.Val, anl.Dlt, Set[anl.Adr])]]
         val vlu = Lattice[anl.Val].join(res.map(_._1))

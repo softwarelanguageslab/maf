@@ -22,7 +22,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     type Cll = CallComponent
     type Dep = Dependency
     type Sto = LocalStore[Adr, Val]
-    type Dlt = LocalStore[Adr, Val]#Delta
+    type Dlt = Delta[Adr, Val]
     type Cnt = AbstractCount
     type Anl = SchemeLocalIntraAnalysis
 
@@ -69,8 +69,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // RESULTS
     //
 
-    // in reality, 'Any' here is `Set[(Val, cmp.sto.Delta)]` for a given key `cmp `
-    var results: Map[Component, Any] = Map.empty
+    var results: Map[Component, Set[(Val, Dlt, Set[Adr], Set[Adr])]] = Map.empty
 
     case class ResultDependency(cmp: Component) extends Dependency
 
@@ -78,22 +77,25 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // STORE STUFF
     //
 
-    def extendV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.extend(adr, vlu)
-    def updateV(sto: Sto, adr: Adr, vlu: Val): sto.Delta = sto.update(adr, vlu)
+    def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
+    def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
 
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
             if a1 == a2 then
-                if sto.lookupCount(a1) == CountOne then BoolLattice[B].inject(true)
+                if sto.lookupCount(a1) == CountOne 
+                then BoolLattice[B].inject(true)
                 else BoolLattice[B].top
             else BoolLattice[B].inject(false)
 
     def withRestrictedStore(rs: Set[Adr])(blk: A[Val]): A[Val] =
-        (anl, env, sto, ctx, tai) =>
-            val gcs = sto.collect(rs)
-            blk(anl, env, gcs, ctx, true).map { (v, d, u) =>
-                val gcd = d.collect(lattice.refs(v) ++ u)
-                (v, sto.replay(gcd, tai), u)
+        (anl, env, sto, ctx) =>
+            val gcs = LocalStoreGC().collect(sto, rs)
+            blk(anl, env, gcs, ctx).map { (v, d, u, a) =>
+                val gcu = u.filter(gcs.contains)
+                val gca = a.filter(d.delta.contains)
+                val gcd = DeltaGC(gcs).collect(d, lattice.refs(v) ++ gcu)
+                (v, gcd, gcu, gca)
             }
 
     import analysisM_._
@@ -116,57 +118,59 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             super.applyClosure(app, lam, ags, fvs)
         }
 
+    override protected def nontail[X](blk: => A[X]) =  
+        (anl, env, sto, ctx) =>
+            blk(anl, env, sto, ctx).map { (v, d, u, a) =>
+                (v, sto.replay(d, a), u, a)
+            }
     //
     // ANALYSISM MONAD
     //
 
-    type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx, tai: Boolean) => Set[(X, sto.Delta, Set[Adr])]
+    type A[X] = (anl: Anl, env: Env, sto: Sto, ctx: Ctx) => Set[(X, Dlt, Set[Adr], Set[Adr])]
 
     protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
-            (_, _, sto, _, _) => Set((x, sto.emptyDelta, Set.empty))
+            (_, _, sto, _) => Set((x, Delta.emptyDelta[Adr,Val], Set.empty, Set.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
-            (anl, env, sto, ctx, tai) => m(anl, env, sto, ctx, tai).map((x, d, u) => (f(x), d, u))
+            (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d, u, a) => (f(x), d, u, a))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-            (anl, env, sto, ctx, tai) =>
+            (anl, env, sto, ctx) =>
                 for
-                    (x0, d0, u0) <- m(anl, env, sto, ctx, tai)
-                    (x1, d1, u1) <- f(x0)(anl, env, sto.integrate(d0), ctx, tai)
-                yield (x1, sto.compose(d1, d0), u0 ++ u1.filter(sto.contains))
+                    (x0, d0, u0, a0) <- m(anl, env, sto, ctx)
+                    (x1, d1, u1, a1) <- f(x0)(anl, env, sto.integrate(d0), ctx)
+                yield (x1, Delta.compose(d1, d0), u0 ++ u1, a0 ++ a1)
         // MONADJOIN
         def mbottom[X] =
-            (_, _, _, _, _) => Set.empty
+            (_, _, _, _) => Set.empty
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
-            (anl, env, sto, ctx, tai) => x(anl, env, sto, ctx, tai) ++ y(anl, env, sto, ctx, tai)
+            (anl, env, sto, ctx) => x(anl, env, sto, ctx) ++ y(anl, env, sto, ctx)
         // MONADERROR
         def fail[X](err: Error) =
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _, _) => Set((eqA(sto), sto.emptyDelta, Set.empty))
+            (anl, _, sto, _) => Set((eqA(sto), Delta.emptyDelta, Set.empty, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _, _) => Set(((), extendV(sto, adr, vlu), Set.empty))
+            (anl, _, sto, _) => Set(((), extendV(sto, adr, vlu), Set.empty, Set(adr)))
         def updateSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _, _) => Set(((), updateV(sto, adr, vlu), Set(adr)))
+            (anl, _, sto, _) => Set(((), updateV(sto, adr, vlu), Set(adr), Set.empty))
         def lookupSto(adr: Adr) =
-            flatMap((anl, _, sto, _, _) => Set((sto.lookupValue(adr), sto.emptyDelta, Set.empty)))(inject)
+            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), Delta.emptyDelta, Set.empty, Set.empty)))(inject)
         // CTX STUFF
         def getCtx =
-            (_, _, sto, ctx, _) => Set((ctx, sto.emptyDelta, Set.empty))
+            (_, _, sto, ctx) => Set((ctx, Delta.emptyDelta, Set.empty, Set.empty))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-            (anl, env, sto, ctx, tai) => blk(anl, env, sto, f(ctx), tai)
+            (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
         // ENV STUFF
         def getEnv =
-            (_, env, sto, _, _) => Set((env, sto.emptyDelta, Set.empty))
+            (_, env, sto, _) => Set((env, Delta.emptyDelta, Set.empty, Set.empty))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-            (anl, env, sto, ctx, tai) => blk(anl, f(env), sto, ctx, tai)
+            (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, sto, ctx, _) => anl.call(lam, env, sto, ctx)
-        // NONTAIL!
-        override def nontail[X](blk: => A[X]): A[X] =
-            (anl, env, sto, ctx, _) => blk(anl, env, sto, ctx, false)
+            (anl, env, sto, ctx) => anl.call(lam, env, sto, ctx)
 
     //
     // THE INTRA-ANALYSIS
@@ -179,15 +183,14 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         // local state
         var results = inter.results
 
-        def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx): Set[(Val, sto.Delta, Set[Adr])] =
+        def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx): Set[(Val, Dlt, Set[Adr], Set[Adr])] =
             val cmp = CallComponent(lam, env, sto, ctx)
             spawn(cmp)
             register(ResultDependency(cmp))
-            results.getOrElse(cmp, Set.empty).asInstanceOf[Set[(Val, sto.Delta, Set[Adr])]]
+            results.getOrElse(cmp, Set.empty)
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val res = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx, true)
-            val rgc = res.map((v, d, u) => (v, d.collect(lattice.refs(v) ++ u), u))
+            val rgc = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
             val old = results.getOrElse(cmp, Set.empty)
             if rgc != old then
                 intra.results += cmp -> rgc

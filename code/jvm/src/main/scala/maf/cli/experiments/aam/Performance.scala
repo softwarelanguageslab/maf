@@ -1,7 +1,6 @@
 package maf.cli.experiments.aam
 
 import maf.cli.experiments.performance.*
-import scala.concurrent.duration._
 import maf.aam.*
 import maf.language.scheme.*
 import maf.modular.Metric
@@ -55,7 +54,7 @@ object ScvPerformanceComparison extends AAMPerformanceComparison:
     override def maxWarmupRuns = 5
     override def analysisRuns = 20
 
-    override def analysisTime = Timeout.start(Duration(180, MINUTES)) // maximum time to spend *on a single analysis run*
+    override def analysisTime = ??? //Timeout.start(Duration(180, MINUTES)) // maximum time to spend *on a single analysis run*
 
     override def parseProgram(txt: String): SchemeExp =
         val result = SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)

@@ -1,0 +1,37 @@
+# SBT build artifacts
+target/
+project/target/
+project/project/
+
+# IntelliJ / VSCode / Metals IDE metadata
+.idea/
+*.iml
+.vscode/
+.metals/
+.bloop/
+.bsp/
+
+# Logs and caches
+*.log
+.history
+.cache/
+coursier-cache/
+.ivy2/
+
+# OS/Tool-specific files
+.DS_Store
+Thumbs.db
+
+# Test reports
+test-output/
+benchOutput/
+evaluationLogs/
+
+# JARs or packaged files
+*.jar
+*.zip
+*.tgz
+
+# Git-related
+.git/
+.gitignore

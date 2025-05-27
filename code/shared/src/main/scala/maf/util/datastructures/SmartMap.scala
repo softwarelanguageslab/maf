@@ -1,6 +1,6 @@
 package maf.util.datastructures
 
-case class SmartMap[K, V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]:
+case class SmartMap[K, +V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]:
     override def hashCode: Int = hc.toInt
     override def equals(other: Any): Boolean =
         other match
@@ -8,13 +8,13 @@ case class SmartMap[K, V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]
             case _                               => false
     def apply(adr: K): V = content(adr)
     def get(adr: K): Option[V] = content.get(adr)
-    def getOrElse(adr: K, els: => V): V = content.getOrElse(adr, els)
-    def +(bnd: (K, V)) =
+    def getOrElse[V2 >: V](adr: K, els: => V2): V2 = content.getOrElse(adr, els)
+    def +[V2 >: V](bnd: (K, V2)) =
         get(bnd._1) match
             case None      => SmartMap(content + bnd, hc + bnd.hashCode)
             case Some(old) => SmartMap(content + bnd, hc - (bnd._1, old).hashCode + bnd.hashCode)
-    def ++(bds: Iterable[(K, V)]) =
-        bds.foldLeft(this)((acc, bnd) => acc + bnd)
+    def ++[V2 >: V](bds: Iterable[(K, V2)]): SmartMap[K, V2] =
+        bds.foldLeft[SmartMap[K,V2]](this)((acc, bnd) => acc + bnd)
     def -(key: K) =
         get(key) match
             case None      => this
@@ -25,7 +25,7 @@ case class SmartMap[K, V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]
     def contains(key: K) = content.contains(key)
     def keys: Iterable[K] = content.keys
     def keySet: Set[K] = content.keySet
-    def map(f: ((K, V)) => (K, V)): SmartMap[K, V] = SmartMap.from(content.map(f)) //TODO: type can be generalized here
+    def map[V2 >: V](f: ((K, V2)) => (K, V2)): SmartMap[K, V2] = SmartMap.from(content.map(f)) //TODO: type can be generalized here
     // FOR TESTING PURPOSES
     private def computeHash: Int = content.map(_.hashCode).sum
 // assert(computeHash == hashCode) <- enable to test

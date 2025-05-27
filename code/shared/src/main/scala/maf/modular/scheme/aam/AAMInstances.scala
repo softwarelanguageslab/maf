@@ -10,4 +10,7 @@ class SchemeAAMAnalysis(prg: SchemeExp, k: Int)
     with AAMCallSiteSensitivity(k)
     with FIFOWorklistAlgorithm[SchemeExp]
 
-class SchemeAAMGCAnalysis(prg: SchemeExp, k: Int) extends SchemeAAMAnalysis(prg, k) with AAMAbstractCounting with AAMGC with AAMAnalysisResults
+class SchemeAAMGCAnalysis(prg: SchemeExp, k: Int) extends SchemeAAMAnalysis(prg, k) 
+                                                    with AAMAbstractCounting 
+                                                    with AAMGC 
+                                                    with AAMAnalysisResults
