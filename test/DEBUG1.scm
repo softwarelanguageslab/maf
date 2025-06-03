@@ -1,7 +1,7 @@
-; Verder aangepaste WCR 3-5 reductie
-(letrec ((fun
-           (lambda (l)
-             (if (null? l)
-               (set! l l)
-               (<change> (fun (cdr l)) ())))))
-  (fun (cons 'f ())))
+; Gereduceerd van "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm"
+(letrec ((f (lambda ()
+              (<change>
+                ()
+                (f))
+              ())))
+  (f))

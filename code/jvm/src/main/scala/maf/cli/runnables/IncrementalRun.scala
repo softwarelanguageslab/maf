@@ -174,16 +174,12 @@ object IncrementalRun extends App:
         false
 
     List(
-        // Nog imprecies zelfs met bottomen van cycles. Niet door heuristieken.
-        //"test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
+        //"test/DEBUG1.scm", // Gereduceerd van "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm"
+        //"test/DEBUG2.scm", // "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm"
+        "test/DEBUG3.scm", // "test/changes/scheme/generated/R5RS_scp1_dedouble-2.scm"
 
-        //"test/DEBUG3.scm",
-        //"test/DEBUG1.scm",
-        //"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm",
-        "test/DEBUG1.scm",
-        /*
+      /*
         // Not precise yet.
-        "test/DEBUG2.scm",
         "test/changes/scheme/generated/R5RS_WeiChenRompf2019_the-little-schemer_ch3-5.scm",
         "test/changes/scheme/generated/R5RS_gabriel_puzzle-4.scm",
         "test/changes/scheme/generated/R5RS_scp1_all-but-interval-5.scm",
@@ -196,7 +192,7 @@ object IncrementalRun extends App:
         "test/changes/scheme/generated/R5RS_sigscheme_mem-1.scm",
         "test/changes/scheme/generated/R5RS_various_church-4.scm",
         "test/changes/scheme/generated/R5RS_various_four-in-a-row-5.scm", */
-    ).slice(0,1).foreach { bench =>
+    ).foreach { bench =>
         try {
             println(markTask(s"***** $bench *****"))
             val text = CSchemeParser.parseProgram(Reader.loadFile(bench))
@@ -208,7 +204,8 @@ object IncrementalRun extends App:
             if anly
             then
                 println(text)
-                println(!analyse(text, false, logging = logging && anly, images = images && anly, Some(bench)))
+                val r = analyse(text, false, logging = logging && anly, images = images && anly, Some(bench))
+                if r then println(greenText("PRECISE")) else println(redText("IMPRECISE"))
             else
                 val reduced = reduceImprecise(text)
                 println(reduced)

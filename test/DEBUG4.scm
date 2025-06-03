@@ -29,7 +29,7 @@
                 (equal? (all-but-interval)))))
   ())
 
-;"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm"
+;"test/changes/scheme/generated/R5RS_scp1_count-pairs2-1.scm" v
 ;(letrec ((count-pairs (lambda (lst)
 ;                        (letrec ((count (lambda (current)
 ;                                          (count current))))
@@ -58,7 +58,7 @@
                              (ontdubbel-iter ())))))
   (ontdubbel-iter #f))
 
-; "test/changes/scheme/generated/R5RS_scp1_deep-map-combine-4.scm"
+; "test/changes/scheme/generated/R5RS_scp1_deep-map-combine-4.scm" v
 (letrec ((__toplevel_cons cons)
           (_0 (letrec ((deep-combine (lambda (l)
                                        (if (null? l)
@@ -111,7 +111,7 @@
             (best1 (__toplevel_cons 'Brussel ())))
     (merge best1)))
 
-;"test/changes/scheme/generated/R5RS_scp1_merge-5.scm"
+;"test/changes/scheme/generated/R5RS_scp1_merge-5.scm" v
 (letrec ((not (lambda (x)
                 (if x #f #t)))
           (_0 (letrec ((first-el (lambda ()
@@ -120,7 +120,7 @@
                 ())))
   ())
 
-; Verdere reductie met SCA refinement:
+; Verdere reductie met SCA refinement: v
 (letrec ((not (lambda (x)
                 (if x #f #t))))
   (if (<change> #f (not #f))
@@ -135,7 +135,7 @@
                   (foo)))))
   (foo))
 
-;"test/changes/scheme/generated/R5RS_various_church-4.scm"
+;"test/changes/scheme/generated/R5RS_various_church-4.scm" v
 (letrec ((plus (lambda (n1 n2)
                  (lambda (f)
                    (lambda (x)
