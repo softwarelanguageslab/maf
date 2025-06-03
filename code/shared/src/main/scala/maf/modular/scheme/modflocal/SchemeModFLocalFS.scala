@@ -95,8 +95,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
                 val gcs = LocalStoreGC().collect(sto, rs)
                 blk(anl, env, sto, ctx).map { (vlu, dlt, upd, all) =>
                     val gcu = upd.filter(gcs.contains)
-                    val gca = all.filter(dlt.delta.contains)
                     val gcd = DeltaGC(gcs).collect(dlt, lattice.refs(vlu) ++ gcu)
+                    val gca = all.filter(gcd.delta.contains)
                     (vlu, gcd, gcu, gca)
                 }
         else blk

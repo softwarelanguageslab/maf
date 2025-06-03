@@ -38,7 +38,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
             case Result.Timeout(abs) => s"TIMEOUT (>= $abs)"
             case Result.Errored      => "ERROR"
 
-    var precisionResults:   Table[Result]         = Table.empty
+    var precisionResults:   Table[Result] = Table.empty
     var performanceResults: Table[Option[Double]] = Table.empty 
 
     protected def additionalCounts(analysisName: String, path: Benchmark, r1: ResultMap, r2: ResultMap): Unit = ()
@@ -65,11 +65,15 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
             val (lessPrecise, size) = otherResult match
                 case Terminated(analysisResult) =>
                     additionalCounts(name, path, analysisResult, concreteResult)
+                    performanceResults = performanceResults.add(path, name, Some(duration))
                     (Result.Success(compareOrdered(analysisResult, concreteResult).size), Result.Success(analysisResult.keys.size))
                 case TimedOut(partialResult) =>
                     additionalCounts(name, path, partialResult, concreteResult)
+                    performanceResults = performanceResults.add(path, name, None)
                     (Result.Timeout(compareOrdered(partialResult, concreteResult, check = false).size), Result.Timeout(partialResult.keys.size))
-                case Errored(_) => (Result.Errored, Result.Errored)
+                case Errored(_) => 
+                    performanceResults = performanceResults.add(path, name, None)
+                    (Result.Errored, Result.Errored)
             precisionResults = precisionResults.add(path, name, lessPrecise)
             //precisionResults = precisionResults.add(path, s"$name-total", size)
         }
@@ -80,6 +84,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
       showResults(outputFolder)
     
     protected def showResults(outputFolder: Option[String]) =
+      println()
       println("PRECISION RESULTS")
       println("=================")
       println()

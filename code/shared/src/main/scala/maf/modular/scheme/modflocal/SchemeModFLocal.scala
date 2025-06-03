@@ -93,8 +93,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             val gcs = LocalStoreGC().collect(sto, rs)
             blk(anl, env, gcs, ctx).map { (v, d, u, a) =>
                 val gcu = u.filter(gcs.contains)
-                val gca = a.filter(d.delta.contains)
                 val gcd = DeltaGC(gcs).collect(d, lattice.refs(v) ++ gcu)
+                val gca = a.filter(gcd.delta.contains)
                 (v, gcd, gcu, gca)
             }
 

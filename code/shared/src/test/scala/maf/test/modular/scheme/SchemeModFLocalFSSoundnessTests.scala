@@ -23,7 +23,7 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
             with SchemeModFLocalNoSensitivity
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalFSAnalysisResults
-    override def benchmarks = Set("test/R5RS/various/mceval.scm")
+    override def benchmarks = Set("test/R5RS/gabriel/puzzle.scm")
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
