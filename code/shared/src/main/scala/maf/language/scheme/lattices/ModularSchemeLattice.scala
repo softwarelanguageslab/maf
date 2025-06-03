@@ -768,9 +768,12 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 else schemeLattice.bottom
                 /* Don't perform bound checks here because we would get too many spurious flows */
                 val f: L = schemeLattice.bottom
+                //println(s"(vector-ref $vector $index) = ${schemeLattice.join(t,f)}")
                 MayFail.success(schemeLattice.join(t, f))
-            case (_: Vec, _) => MayFail.failure(TypeError("expecting int to access vector", index))
-            case _           => MayFail.failure(TypeError("vector-ref: expecting vector", vector))
+            case (_: Vec, _) => 
+                MayFail.failure(TypeError("expecting int to access vector", index))
+            case _           => 
+                MayFail.failure(TypeError("vector-ref: expecting vector", vector))
 
         // This implementation is not suited for use in a concrete machine!
         def vectorSet(
@@ -809,6 +812,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                     // For example, vector-set! called with Int as first argument would result in
                     // a possible out-of-bound access
                     val f: L = schemeLattice.bottom
+                    //println(s"(vector-set! $vector $index $newval) = ${schemeLattice.join(t,f)}")
                     MayFail.success(schemeLattice.join(t, f))
                 case (_: Vec, _) => MayFail.failure(TypeError("expecting int to set vector", index))
                 case _           => MayFail.failure(TypeError("vector-set!: expecting vector", vector))

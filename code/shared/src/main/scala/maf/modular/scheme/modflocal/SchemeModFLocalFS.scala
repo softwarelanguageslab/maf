@@ -75,6 +75,12 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     var stores: Sts = Map.empty
     case class AddrDependencyFS(cmp: Cmp, adr: Adr) extends Dependency
 
+    override def triggeredComponents(dep: Dep): Set[Cmp] = 
+        dep match
+            case AddrDependencyFS(cmp, _) => Set(cmp)
+            case _ => super.triggeredComponents(dep)
+
+
     //
     // STORE STUFF
     //
@@ -204,9 +210,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
             iterations = iterations + 1
             // get the (widened) store
             val sto = stores.getOrElse(cmp, LocalStore.empty)
-            // register dependencies on all addresses
-            sto.content.keys.foreach(adr => register(AddrDependencyFS(cmp, adr)))
-            // GC the result
+            // compute the result
             val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx)
             // update the result of this component
             val old = results.get(cmp)
@@ -219,12 +223,13 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
             spawn(cll)
             // add bindings to its store
             val stw = stores.getOrElse(cll, LocalStore.empty)
-            val (upd, dty) = sto.content.foldLeft((stw, false)) { case (acc, (adr, (vlu, cnt))) =>
-                acc._1.joinAt(adr, vlu, cnt) match
-                    case None => acc
-                    case Some(upd) =>
-                        trigger(AddrDependencyFS(cll, adr))
-                        (upd, true)
+            val (upd, dty) = sto.content.foldLeft((stw, false)) { 
+                case (acc, (adr, (vlu, cnt))) =>
+                    acc._1.joinAt(adr, vlu, cnt) match
+                        case None => acc
+                        case Some(upd) =>
+                            trigger(AddrDependencyFS(cll, adr))
+                            (upd, true)
             }
             if dty then stores += cll -> upd
             register(ResultDependency(cll))
@@ -233,7 +238,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         override def doWrite(dep: Dependency): Boolean = dep match
             case ResultDependency(cmp) =>
                 val old = inter.results.get(cmp)
-                val cur = intra.results(cmp)        // we are certain to have a result here!
+                val cur = intra.results(cmp)    // we are certain to have a result here!
                 if !old.isDefined || old.get != cur then
                     inter.results += cmp -> cur
                     true
@@ -247,7 +252,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
                     case Some(upd) =>
                         inter.stores += cmp -> upd
                         true
-            case _ => super.doWrite(dep)
+            case _ => 
+                super.doWrite(dep)
 
 
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp]:

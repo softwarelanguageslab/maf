@@ -82,7 +82,9 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     /** Keeps track of the components depending on a given "effect" (~ read dependencies). */
     var deps: Map[Dependency, Set[Component]] = Map[Dependency, Set[Component]]().withDefaultValue(Set.empty)
     def register(target: Component, dep: Dependency): Unit = deps += dep -> (deps(dep) + target)
-    def trigger(dep: Dependency): Unit = deps(dep).foreach(addToWorkList)
+    def trigger(dep: Dependency): Unit = triggeredComponents(dep).foreach(addToWorkList)
+
+    def triggeredComponents(dep: Dependency): Set[Component] = deps(dep)
 
     /**
      * Performs a deep copy of this analysis.
