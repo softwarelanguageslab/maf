@@ -14,6 +14,9 @@ import maf.util._
 import maf.core.IdentityMonad.given
 import maf.core.Monad.MonadIterableOps
 import maf.core.Monad.MonadSyntaxOps
+import maf.save.SaveModF
+import maf.save.Savable
+import maf.save.LoadModF
 
 trait BaseEvalM[M[_]] extends Monad[M] with MonadError[M, Error] with MonadJoin[M]
 
@@ -71,7 +74,7 @@ trait BaseSchemeModFSemanticsM
             caller: Component
           ): M[ComponentContext] = Monad[M].unit(allocCtx(clo, args, call, caller))
 
-    lazy val mainBody = program
+    var mainBody = program
     def expr(cmp: Component): SchemeExp = body(cmp)
     def body(cmp: Component): SchemeExp = body(view(cmp))
     def body(cmp: SchemeModFComponent): SchemeExp = cmp match

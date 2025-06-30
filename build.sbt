@@ -23,6 +23,8 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies += ("com.typesafe.akka" %% "akka-actor-typed" % "2.6.18").cross(CrossVersion.for3Use2_13),
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.10",
     libraryDependencies += "com.typesafe" % "config" % "1.4.1",
+	libraryDependencies += "io.bullet" %% "borer-core" % "1.10.0",
+	libraryDependencies += "io.bullet" %% "borer-derivation" % "1.10.0",
     /** Compilation options */
     maxErrors := 5,
     /** Configuration for running the tests */

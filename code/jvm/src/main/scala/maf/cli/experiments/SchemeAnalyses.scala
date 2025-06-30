@@ -22,6 +22,9 @@ import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
 import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
 import maf.language.racket.RacketLoaderSemantics
 import maf.language.racket.RacketLoader
+import maf.save.LoadFIFOWorklist
+import maf.save.LoadModF
+import maf.save.SaveModF
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -56,8 +59,15 @@ object SchemeAnalyses:
 
     def contextInsensitiveAnalysis(
         prg: SchemeExp
-      ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
+      ) = new SimpleSchemeModFAnalysis(prg)
+        with SchemeModFNoSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp]
+        with SaveModF
+        with LoadModF
+        with LoadFIFOWorklist[SchemeExp] {
         override def toString = "no-sensitivity"
+        override val analysisName: String = "modf"
     }
 
     //def contextInsensitiveAnalysisRacket(

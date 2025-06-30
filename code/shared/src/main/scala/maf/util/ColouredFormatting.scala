@@ -1,5 +1,5 @@
 package maf.util
-import io.AnsiColor.*
+import scala.io.AnsiColor.*
 
 /**
  * Wrapper for io.AnsiColor.
