@@ -17,3 +17,4 @@ VOLUME /results
 
 # compile
 RUN sbt maf/compile
+RUN sbt maf/Test/compile
