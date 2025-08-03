@@ -15,6 +15,6 @@ trait RealBug4 extends SchemeSemantics:
     eps match
       case Nil => unit(lattice.void)
       case last :: Nil => eval(last)
-      case next :: rest => nontail {
+      case next :: rest => nontail(???) {
         eval(next)
       } >>> evalSequence(rest.tail) //off-by-one error

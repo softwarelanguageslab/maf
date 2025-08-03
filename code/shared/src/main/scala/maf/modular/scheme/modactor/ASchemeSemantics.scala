@@ -136,7 +136,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             case ASchemeCreate(beh, ags, idn) =>
                 for
                     env <- getEnv
-                    evaluatedBeh <- nontail(eval(beh))
+                    evaluatedBeh <- nontail(???)(eval(beh))
                     evaluatedAgs <- evalAll(ags)
                     actorRef <- create(evaluatedBeh, evaluatedAgs, idn)
                 yield lattice.actor(actorRef)
@@ -144,7 +144,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             // Sending a message is atomic (asynchronous) and results in nil
             case ASchemeSend(actorRef, messageTpy, ags, idn) =>
                 for
-                    evaluatedActorRef <- nontail(eval(actorRef))
+                    evaluatedActorRef <- nontail(???)(eval(actorRef))
                     evaluatedAgs <- evalAll(ags)
                     _ = { log(s"++ intra - actor/send $evaluatedActorRef $messageTpy $evaluatedAgs") }
                     // TODO: the context should be inherited from the current context.
@@ -157,7 +157,7 @@ trait ASchemeSemantics extends SchemeSemantics, SchemeModFLocalSensitivity, Sche
             // Change the behavior of the current actor, and return nil
             case ASchemeBecome(beh, ags, idn) =>
                 for
-                    evaluatedBeh <- nontail(eval(beh))
+                    evaluatedBeh <- nontail(???)(eval(beh))
                     evaluatedAgs <- evalAll(ags)
                     _ <- become(evaluatedBeh, evaluatedAgs, idn)
                     // we stop the analysis here because the actor is in a suspended state,

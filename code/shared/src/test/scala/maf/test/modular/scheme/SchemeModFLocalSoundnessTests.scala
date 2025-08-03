@@ -7,6 +7,7 @@ import maf.modular.scheme._
 import maf.modular.worklist._
 import maf.language.scheme.primitives.SchemePrelude
 import maf.core.Position
+import maf.cli.experiments.*
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
     override def parseProgram(txt: String, benchmark: String): SchemeExp =
@@ -23,6 +24,24 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
             with SchemeModFLocalNoSensitivity
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
+    override def isSlow(b: Benchmark): Boolean =
+        Set(
+          // these time out in the analysis
+          "test/R5RS/various/SICP-compiler.scm",
+          "test/R5RS/various/mceval.scm",
+          "test/R5RS/various/church-6.scm",
+          "test/R5RS/various/church-2-num.scm",
+          "test/R5RS/various/four-in-a-row.scm",
+          // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
+          "test/R5RS/various/infinite-1.scm",
+          "test/R5RS/various/infinite-2.scm",
+          "test/R5RS/various/infinite-3.scm",
+        ).contains(b)
+
+class SchemeModFADITests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
+
+    def name = s"ADI (with GC)"
+    def analysis(prg: SchemeExp) = SchemeAnalyses.modfADIAnalysis(prg, 0)
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these time out in the analysis

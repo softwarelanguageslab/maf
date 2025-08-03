@@ -127,7 +127,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
             super.applyClosure(app, lam, ags, fvs)
         }
 
-    override protected def nontail[X](blk: => A[X]) =  
+    override protected def nontail[X](ignore: => Set[Adr]) (blk: => A[X]) =  
         if gc then 
             (anl, env, sto, ctx) =>
                 blk(anl, env, sto, ctx).map { (v, d, u, a) =>
@@ -197,6 +197,28 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     //
 
     var iterations = 0
+    
+    def computeOneCounts: (Int, Int) = 
+        stores.foldLeft((0,0)) { 
+            case (acc, (_, store)) =>
+                store.content.foldLeft(acc) {
+                    case (acc2@(countOne, total), (adr, (_ , count))) =>
+                        if shouldCount(adr) then 
+                            count match
+                                case CountZero => throw new Exception("Should not happen ...")
+                                case CountOne => (countOne + 1, total + 1)
+                                case CountInf => (countOne,     total + 1)
+                        else 
+                            acc2
+                }
+        }
+
+    def computeOneCountsPercentage: Option[Double] =
+        val (one, total) = computeOneCounts
+        if total == 0 then
+            None
+        else 
+            Some(one.toDouble / total.toDouble)
 
     def intraAnalysis(cmp: Component) = new SchemeModFLocalFSIntraAnalysis(cmp)
     class SchemeModFLocalFSIntraAnalysis(cmp: Component) extends IntraAnalysis(cmp):

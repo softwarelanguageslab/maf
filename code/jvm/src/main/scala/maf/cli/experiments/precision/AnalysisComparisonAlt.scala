@@ -23,10 +23,10 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     // - the number of runs for the concrete interpreter
     def analyses: List[(SchemeExp => Analysis, String)]
     def benchmarks: List[Benchmark]
-    def runs = 3 // number of runs for the concrete interpreter
+    def runs = 1 // number of runs for the concrete interpreter
 
     // and can, optionally, be configured in its timeouts (default: 10min.) and the number of concrete runs
-    def timeout() = Timeout.start(Duration(10, MINUTES)) // timeout for the analyses
+    def timeout() = Timeout.start(Duration(5, MINUTES)) // timeout for the analyses
 
     // keep the results of the benchmarks in a table
     enum Result:
@@ -80,10 +80,13 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
 
     private def runBenchmarks(benchmarks: List[Benchmark], outputFolder: Option[String] = None) =
       assert(benchmarks.size == benchmarks.toSet.size) // sanity check to make sure we don't have duplicates
-      benchmarks.foreach(runBenchmark)
-      showResults(outputFolder)
+      benchmarks.foreach { benchmark =>
+        runBenchmark(benchmark)
+        writeResultsToFile(outputFolder)
+      }
+      showResults()
     
-    protected def showResults(outputFolder: Option[String]) =
+    protected def showResults() =
       println()
       println("PRECISION RESULTS")
       println("=================")
@@ -94,15 +97,17 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
       println("===================")
       println()
       println(performanceResults.prettyString())
-      outputFolder.foreach { dir => 
-        writeToFile(precisionResults,   s"$dir/precision-benchmarks.csv")
-        writeToFile(performanceResults, s"$dir/performance-benchmarks.csv")      
-      }
 
     protected def writeToFile[X](results: Table[X], path: String) =
       val writer = Writer.open(path)
       Writer.write(writer, results.toCSVString(rowName = "benchmark"))
       Writer.close(writer)
+
+    protected def writeResultsToFile(outputFolder: Option[String]) =
+      outputFolder.foreach { dir => 
+        writeToFile(precisionResults,   s"$dir/precision-benchmarks.csv")
+        writeToFile(performanceResults, s"$dir/performance-benchmarks.csv")      
+      }
 
     def main(args: Array[String]) = runBenchmarks(benchmarks, args.headOption)
 
@@ -123,6 +128,9 @@ abstract class SASBenchmarks
     lazy val dss0: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 0),          "0-CFA DSS")
     lazy val dss1: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 1),          "1-CFA DSS")
     lazy val dss2: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 2),          "2-CFA DSS")
+    lazy val adi0: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 0),            "0-CFA ADI")
+    lazy val adi1: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 1),            "1-CFA ADI")
+    lazy val adi2: (SchemeExp => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 2),            "2-CFA ADI")
     lazy val dssFS0: (SchemeExp => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 0, true),  "0-CFA DSS-FS")
     lazy val dssFS1: (SchemeExp => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 1, true),  "1-CFA DSS-FS")
     lazy val dssFS2: (SchemeExp => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 2, true),  "2-CFA DSS-FS")
@@ -143,6 +151,18 @@ abstract class SASBenchmarks
         "takl",
         //"triangl" <- times out in concrete interpreter
       ).map(name => s"test/R5RS/gabriel/$name.scm")
+
+    def slowBenchmarks = 
+      List(
+        "boyer",
+        "browse",
+        "destruc"
+      ).map(name => s"test/R5RS/gabriel/$name.scm")
+      ++
+      List(
+          "test/R5RS/gambit/matrix.scm",
+          "test/R5RS/various/mceval.scm",
+      )
 
     def extraBenchmarks = 
       List(
@@ -188,26 +208,44 @@ object Table4Benchmarks extends SASBenchmarks:
     dssFS0NoGC, dssFS1NoGC, dssFS2NoGC
   )
 
+object ADIBenchmarks extends SASBenchmarks:
+  def analyses = List(
+    dss0, dss1, dss2,
+    adi0, adi1, adi2
+  )
+
+object DSS2Benchmark extends SASBenchmarks:
+  def analyses = List(dssFS2NoGC)
+  override def benchmarks = List("test/R5RS/gabriel/boyer.scm")
+
 object CountIterationBenchmark extends SASBenchmarks:
 
   def analyses = List(
     dssFS0, dssFS0NoGC
   )
 
-  var results: Table[Int] = Table.empty 
+  var results: Table[Option[Long]] = Table.empty 
 
   override protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit =
     println(s"ANALYZING $path")
     analyses.foreach { case (analysis, name) => 
       val anl = analysis(program)
       anl.analyzeWithTimeout(Timeout.start(Duration(15, MINUTES)))
-      results = results.add(path, name, anl.asInstanceOf[SchemeModFLocalFS].iterations)
+      val res = anl.asInstanceOf[SchemeModFLocalFS].computeOneCountsPercentage.map(_ * 100)
+      results = results.add(path, name, res.map(_.round))
     }
 
   override def timeout() = Timeout.none
 
-  override protected def showResults(outputFolder: Option[String]) =
-    println(results.prettyString())
+  private def showResult(res: Option[Long]): String = 
+    res match
+      case None => "N/A"
+      case Some(value) => s"$value%"
+  
+  override protected def showResults() =
+    println(results.prettyString(format=showResult))
+
+  override protected def writeResultsToFile(outputFolder: Option[String]) = 
     outputFolder.foreach { dir => 
       writeToFile(results, s"$dir/iteration-benchmarks.csv") 
     }
