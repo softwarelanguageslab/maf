@@ -155,13 +155,6 @@ trait BaseSchemeCompiler:
         // case Ident("syntax") :::: obj :::: line :::: col => ???
         case SExpPair(SExpId(Identifier("or", _)), args, _) =>
             tailcall(compileBody(args)).map(SchemeOr(_, exp.idn))
-        case SExpPair(SExpId(Identifier("<change>", _)), SExpPair(old, SExpPair(nw, SExpValue(Value.Nil, _), _), _), _) =>
-            for
-                oldv <- tailcall(this._compile(old))
-                newv <- tailcall(this._compile(nw))
-            yield SchemeCodeChange(oldv, newv, exp.idn)
-        case SExpPair(SExpId(Identifier("<change>", _)), _, _) =>
-            throw new Exception(s"Invalid code change: $exp (${exp.idn}).")
         case SExpPair(SExpId(Identifier("assert", _)), SExpPair(exp, SExpValue(Value.Nil, _), _), _) =>
             tailcall(this._compile(exp).map(SchemeAssert(_, exp.idn)))
         case SExpPair(SExpId(Identifier("assert", _)), _, _) =>

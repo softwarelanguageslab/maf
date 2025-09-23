@@ -4,7 +4,7 @@ import maf.core._
 import maf.modular._
 import maf.lattice._
 import maf.language.scheme._
-import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
+import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice, AnnotatedSchemeLattice}
 import maf.language.scheme.primitives._
 
 /** The abstract domain used for Scheme analyses. */
@@ -139,3 +139,7 @@ class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWra
 trait SchemeBoundedDomain(bound: Int) extends ModularSchemeDomain:
     val modularLatticeWrapper = new SchemeBoundedDomainWrapper(bound)
     override def domainName: String = "modular bounded Scheme domain"
+
+// annotated scheme domain
+trait AnnotatedSchemeDomain extends AnnotatedAbstractDomain[SchemeExp] with SchemeDomain:
+    implicit override lazy val lattice: AnnotatedSchemeLattice[Value, Address]

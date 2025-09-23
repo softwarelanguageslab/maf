@@ -2,7 +2,6 @@ package maf.language.scheme.primitives
 
 import maf.core._
 import maf.language.scheme._
-import maf.language.CScheme._
 
 class BaseSchemePrelude:
 

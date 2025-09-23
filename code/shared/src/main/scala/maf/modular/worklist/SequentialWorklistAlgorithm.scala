@@ -170,12 +170,6 @@ object BiggerEnvironmentFirstWorklistAlgorithm:
             case Main              => 0
             case Call((_, env), _) => env.size
 
-    import maf.modular.scheme.modconc._
-    trait ModConc extends BiggerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModConcComponents:
-        def environmentSize(cmp: Component): Int = cmp match
-            case MainThread        => 0
-            case Thread(_, env, _) => env.size
-
 trait SmallerEnvironmentFirstWorklistAlgorithm[Expr <: Expression] extends BiggerEnvironmentFirstWorklistAlgorithm[Expr]:
     override lazy val ordering: Ordering[Component] = Ordering.by(environmentSize).reverse
 
@@ -187,9 +181,3 @@ object SmallerEnvironmentFirstWorklistAlgorithm:
         def environmentSize(cmp: Component): Int = cmp match
             case Main              => 0
             case Call((_, env), _) => env.size
-
-    import maf.modular.scheme.modconc._
-    trait ModConc extends SmallerEnvironmentFirstWorklistAlgorithm[SchemeExp] with StandardSchemeModConcComponents:
-        def environmentSize(cmp: Component): Int = cmp match
-            case MainThread        => 0
-            case Thread(_, env, _) => env.size

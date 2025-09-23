@@ -1,6 +1,5 @@
 package maf.core
 
-import maf.language.change.ChangeExp
 import maf.language.scheme.SchemeExp
 import maf.language.sexp.SExp
 import maf.util.SmartHash

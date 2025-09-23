@@ -1,7 +1,6 @@
 package maf.language.scheme.interpreter
 
 import maf.core.*
-import maf.language.change.CodeVersion.*
 import maf.language.scheme.*
 import maf.util.*
 import maf.util.benchmarks.Timeout
@@ -33,11 +32,10 @@ class SchemeInterpreter(
     /** Evaluates `program`. Will check the analysis result by calling `compare` on all encountered values. */
     def run(
         program: SchemeExp,
-        timeout: Timeout.T,
-        version: Version = New
+        timeout: Timeout.T
       ): Value =
         setStore(initialSto)
-        eval(program, initialEnv, timeout, version).result
+        eval(program, initialEnv, timeout).result
 
     def safeFuture(bdy: => Value): Future[Value] = Future {
         try bdy
@@ -56,16 +54,15 @@ class SchemeInterpreter(
     def evalSequence(
         exps: List[SchemeExp],
         env: Env,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): TailRec[Value] =
         exps match
             case Nil      => done(Value.Void)
-            case e :: Nil => tailcall(eval(e, env, timeout, version))
+            case e :: Nil => tailcall(eval(e, env, timeout))
             case e1 :: exps =>
                 for
-                    v1 <- tailcall(eval(e1, env, timeout, version))
-                    vn <- tailcall(evalSequence(exps, env, timeout, version))
+                    v1 <- tailcall(eval(e1, env, timeout))
+                    vn <- tailcall(evalSequence(exps, env, timeout))
                 yield vn
 
     def evalLet(
@@ -74,17 +71,16 @@ class SchemeInterpreter(
         pos: Identity,
         envExt: Env,
         env: Env,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): TailRec[Value] =
         bindings match
-            case Nil => tailcall(evalSequence(body, envExt, timeout, version))
+            case Nil => tailcall(evalSequence(body, envExt, timeout))
             case binding :: bindings =>
                 val addr = newAddr(AddrInfo.VarAddr(binding._1))
                 for
-                    bindingv <- tailcall(eval(binding._2, env, timeout, version))
+                    bindingv <- tailcall(eval(binding._2, env, timeout))
                     _ = extendStore(addr, bindingv)
-                    res <- tailcall(evalLet(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout, version))
+                    res <- tailcall(evalLet(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout))
                 yield res
 
     def evalLetStar(
@@ -93,17 +89,16 @@ class SchemeInterpreter(
         pos: Identity,
         envExt: Env,
         env: Env,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): TailRec[Value] =
         bindings match
-            case Nil => tailcall(evalSequence(body, envExt, timeout, version))
+            case Nil => tailcall(evalSequence(body, envExt, timeout))
             case binding :: bindings =>
                 val addr = newAddr(AddrInfo.VarAddr(binding._1))
                 for
-                    bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
+                    bindingv <- tailcall(eval(binding._2, envExt, timeout))
                     _ = extendStore(addr, bindingv)
-                    res <- tailcall(evalLetStar(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout, version))
+                    res <- tailcall(evalLetStar(bindings, body, pos, envExt + (binding._1.name -> addr), env, timeout))
                 yield res
 
     def evalLetrec(
@@ -112,16 +107,15 @@ class SchemeInterpreter(
         pos: Identity,
         envExt: Env,
         env: Env,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): TailRec[Value] =
         bindings match
-            case Nil => tailcall(evalSequence(body, envExt, timeout, version))
+            case Nil => tailcall(evalSequence(body, envExt, timeout))
             case binding :: bindings =>
                 for
-                    bindingv <- tailcall(eval(binding._2, envExt, timeout, version))
+                    bindingv <- tailcall(eval(binding._2, envExt, timeout))
                     _ = extendStore(envExt(binding._1.name), bindingv)
-                    res <- tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
+                    res <- tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout))
                 yield res
 
     //determines whether a given value should be checked or not
@@ -143,15 +137,14 @@ class SchemeInterpreter(
     def evalArgs(
         args: List[SchemeExp],
         env: Env,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): TailRec[List[Value]] =
         args match
             case Nil => done(Nil)
             case arg :: args =>
                 for
-                    argv <- tailcall(eval(arg, env, timeout, version))
-                    argsv <- tailcall(evalArgs(args, env, timeout, version))
+                    argv <- tailcall(eval(arg, env, timeout))
+                    argsv <- tailcall(evalArgs(args, env, timeout))
                 yield argv :: argsv
 
     protected def isProcedure(v: Value): Boolean = v match
@@ -164,8 +157,7 @@ class SchemeInterpreter(
         argsv: List[Value],
         args: List[SchemeExp],
         idn: Identity,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): TailRec[Value] =
         f match
             // A regular closure with a fixed amount of parameters
@@ -181,7 +173,7 @@ class SchemeInterpreter(
                         extendStore(addr, arg._2)
                         (env3 + (arg._1.name -> addr))
                     }
-                    ret <- tailcall(evalSequence(body, envExt, timeout, version))
+                    ret <- tailcall(evalSequence(body, envExt, timeout))
                 yield ret
 
             // A closure with a variable amount of parameters
@@ -201,7 +193,7 @@ class SchemeInterpreter(
                     varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
                     _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                     envExt2 = envExt + (vararg.name -> varArgAddr)
-                    ret <- evalSequence(body, envExt2, timeout, version)
+                    ret <- evalSequence(body, envExt2, timeout)
                 yield ret
 
             case Value.Primitive(p) => tailcall(done(Primitives.allPrimitives(p).call(call, args.zip(argsv))))
@@ -215,18 +207,16 @@ class SchemeInterpreter(
 
     def runWithMaxSteps(
                          program: SchemeExp,
-                         maxSteps: Long,
-                         version: Version = New
+                         maxSteps: Long
                        ): Value =
         setStore(initialSto)
         maxEvalSteps = maxSteps
-        eval(program, initialEnv, Timeout.start(Duration(5, SECONDS)), version).result
+        eval(program, initialEnv, Timeout.start(Duration(5, SECONDS))).result
 
     def eval(
         e: SchemeExp,
         env: Env,
-        timeout: Timeout.T,
-        version: Version,
+        timeout: Timeout.T
       ): TailRec[Value] =
         evalSteps += 1
         if (evalSteps - buffer) > maxEvalSteps then throw new TimeoutException()
@@ -235,7 +225,7 @@ class SchemeInterpreter(
             case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))
             case call @ SchemeFuncall(f, args, idn) =>
                 for
-                    fv <- tailcall(eval(f, env, timeout, version))
+                    fv <- tailcall(eval(f, env, timeout))
                     res <- fv match
                         case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
                             if argsNames.length != args.length then
@@ -244,13 +234,13 @@ class SchemeInterpreter(
                                   ArityError(pos2.pos, argsNames.length, args.length)
                                 )
                             for
-                                argsv <- evalArgs(args, env, timeout, version)
+                                argsv <- evalArgs(args, env, timeout)
                                 envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
                                     val addr = newAddr(AddrInfo.VarAddr(arg._1))
                                     extendStore(addr, arg._2)
                                     (env3 + (arg._1.name -> addr))
                                 }
-                                res <- tailcall(evalSequence(body, envExt, timeout, version))
+                                res <- tailcall(evalSequence(body, envExt, timeout))
                             yield res
                         case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
                             val arity = argsNames.length
@@ -259,7 +249,7 @@ class SchemeInterpreter(
                                   VarArityError(pos2.pos, argsNames.length, args.length)
                                 )
                             for
-                                argsv <- evalArgs(args, env, timeout, version)
+                                argsv <- evalArgs(args, env, timeout)
                                 envExt = argsNames.zip(argsv).foldLeft(env2) { (env3, arg) =>
                                     val addr = newAddr(AddrInfo.VarAddr(arg._1))
                                     extendStore(addr, arg._2)
@@ -268,25 +258,25 @@ class SchemeInterpreter(
                                 varArgAddr = newAddr(AddrInfo.VarAddr(vararg))
                                 _ = extendStore(varArgAddr, makeList(args.drop(arity).zip(argsv.drop(arity))))
                                 envExt2 = envExt + (vararg.name -> varArgAddr)
-                                res <- evalSequence(body, envExt2, timeout, version)
+                                res <- evalSequence(body, envExt2, timeout)
                             yield res
                         case Value.Primitive(p) =>
-                            for argsv <- tailcall(evalArgs(args, env, timeout, version))
+                            for argsv <- tailcall(evalArgs(args, env, timeout))
                             yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
                         case v =>
                             signalException(ValueNotApplicable(v, idn))
                 yield res
             case SchemeIf(cond, cons, alt, _) =>
                 for
-                    condv <- eval(cond, env, timeout, version)
+                    condv <- eval(cond, env, timeout)
                     res <- condv match
-                        case Value.Bool(false) => tailcall(eval(alt, env, timeout, version))
-                        case _                 => tailcall(eval(cons, env, timeout, version))
+                        case Value.Bool(false) => tailcall(eval(alt, env, timeout))
+                        case _                 => tailcall(eval(cons, env, timeout))
                 yield res
             case SchemeLet(bindings, body, pos) =>
-                tailcall(evalLet(bindings, body, pos, env, env, timeout, version))
+                tailcall(evalLet(bindings, body, pos, env, env, timeout))
             case SchemeLetStar(bindings, body, pos) =>
-                tailcall(evalLetStar(bindings, body, pos, env, env, timeout, version))
+                tailcall(evalLetStar(bindings, body, pos, env, env, timeout))
             case SchemeLetrec(bindings, body, pos) =>
                 /* First extend the environment with all bindings set to unbound */
                 val envExt = bindings.foldLeft(env) { (env2, binding) =>
@@ -294,18 +284,18 @@ class SchemeInterpreter(
                     env2 + (binding._1.name -> addr)
                 }
                 /* Then evaluate all bindings in the extended environment */
-                tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout, version))
+                tailcall(evalLetrec(bindings, body, pos, envExt, env, timeout))
             case SchemeSet(id, v, pos) =>
                 /* TODO: primitives can be reassigned with set! without being redefined */
                 val addr = env.get(id.name) match
                     case Some(addr) => addr
                     case None       => signalException(UndefinedVariableError(id))
                 for
-                    v <- eval(v, env, timeout, version)
+                    v <- eval(v, env, timeout)
                     _ = extendStore(addr, v)
                 yield Value.Void
             case SchemeBegin(exps, _) =>
-                evalSequence(exps, env, timeout, version)
+                evalSequence(exps, env, timeout)
             case SchemeAssert(_, _) =>
                 done(Value.Void)
             case SchemeDefineVariable(_, _, _) => ???
@@ -320,17 +310,15 @@ class SchemeInterpreter(
                 done(evalLiteral(v, e))
             case CSchemeFork(body, _) =>
                 // TODO: This is a bit hacky in terms of tailcalls
-                done(Value.Thread(safeFuture(eval(body, env, timeout, version).result)))
+                done(Value.Thread(safeFuture(eval(body, env, timeout).result)))
             case CSchemeJoin(tExp, _) =>
                 for
-                    threadv <- eval(tExp, env, timeout, version)
+                    threadv <- eval(tExp, env, timeout)
                     res <- threadv match
                         case Value.Thread(fut) =>
                             done(Await.result(fut, timeout.timeLeft.map(Duration(_, TimeUnit.NANOSECONDS)).getOrElse(Duration.Inf)))
                         case v => signalException(TypeError("Join expected thread", v))
                 yield res
-            case SchemeCodeChange(old, nw, _) =>
-                if version == Old then tailcall(eval(old, env, timeout, version)) else tailcall(eval(nw, env, timeout, version))
             case _ => throw new Exception(s"Unsupported Scheme expression: $e")
 
 object SchemeInterpreter:

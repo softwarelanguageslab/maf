@@ -1,6 +1,5 @@
 package maf.cli.runnables
 
-import maf.language.CScheme.CSchemeParser
 import maf.language.scheme.SchemeExp
 import maf.modular.ReturnAddr
 import maf.modular.adaptive.AdaptiveModAnalysis
@@ -20,8 +19,9 @@ import maf.cli.experiments.SchemeAnalyses
 import maf.language.scheme.interpreter._
 import maf.language.scheme.SchemeMutableVarBoxer
 import maf.language.scheme.primitives.SchemePrelude
-import maf.language.CScheme.CSchemeLexicalAddresser
 import maf.core._
+
+import maf.language.scheme._
 
 object AdaptiveRun:
 
@@ -68,10 +68,10 @@ object AdaptiveRun:
     lazy val grid = parse(Reader.loadFile("test/R5RS/various/grid.scm"))
 
     def parse(txt: String): SchemeExp =
-        val parsed = CSchemeParser.parse(txt)
+        val parsed = SchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
-        CSchemeParser.undefine(transf)
+        SchemeParser.undefine(transf)
 
     def runDSS(prg: SchemeExp) =
         val anl = new SchemeDSSAnalysis(prg, 0) //with LoggingEval //with NameBasedAllocator

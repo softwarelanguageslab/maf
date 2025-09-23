@@ -3,7 +3,6 @@ package maf.language.scheme.primitives
 import maf.core._
 import maf.core.Position._
 import maf.language.scheme._
-import maf.language.CScheme._
 import maf.language.scheme.lattices.SchemeLattice
 import maf.lattice.interfaces.BoolLattice
 import maf.core.Monad.MonadSyntaxOps
@@ -39,8 +38,7 @@ trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with
     //    flatMap(lookupSto(a))(inject)
     // exotic -- not so important if not implemented yet
     def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
-    def currentThread: M[TID] = throw new Exception("Not supported")
-
+    
 trait SchemePrimitive[V: Lattice, A <: Address] extends Primitive:
     // Every primitive in Scheme has a unique name
     def name: String
@@ -71,7 +69,6 @@ trait SchemeInterpreterBridge[V, A <: Address]:
       ): V
     def readSto(a: A): V
     def writeSto(a: A, v: V): Unit
-    def currentThread: TID
     def addrEq: MaybeEq[A] =
         new MaybeEq[A] {
             def apply[B: BoolLattice](a1: A, a2: A) =
@@ -94,7 +91,6 @@ given MFInstance[A <: Address, V](using bri: SchemeInterpreterBridge[V, A]): Sch
     def mbottom[X]: MF[X] = MayFailError(Set.empty)
     def mjoin[X: Lattice](x: MF[X], y: MF[X]): MF[X] = x.join(y, Lattice[X].join)
     override def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): MF[V] = MayFail.success(bri.callcc(clo, pos))
-    override def currentThread: MF[TID] = MayFail.success(bri.currentThread)
 
 // Primitive-specific errors
 case class PrimitiveArityError(

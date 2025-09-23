@@ -10,7 +10,6 @@ import maf.language.scheme._
 import maf.language.scheme.primitives._
 import maf.util.benchmarks.Timeout
 import maf.language.sexp
-import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import maf.util.graph.{Graph, GraphElement}
@@ -54,9 +53,6 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
 
         def writeSto(a: Address, value: LatVal): Unit =
             sto = outer.writeSto(sto, a, Storable.V(value))
-
-        def currentThread: TID =
-            throw new Exception("unsupported")
 
         def updatedSto: Sto =
             sto
@@ -171,7 +167,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
     private def preprocessProgram(program: List[SchemeExp]): SchemeExp =
         val originalProgram = program
         val preludedProgram = SchemePrelude.addPrelude(originalProgram)
-        CSchemeUndefiner.undefine(preludedProgram)
+        SchemeUndefiner.undefine(preludedProgram)
 
     lazy val initialBds: Iterable[(String, Address, Storable)] =
         primitives.allPrimitives.view

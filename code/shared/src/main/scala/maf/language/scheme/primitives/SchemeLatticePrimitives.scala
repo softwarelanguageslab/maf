@@ -2,7 +2,6 @@ package maf.language.scheme.primitives
 
 import maf.core._
 import maf.language.scheme._
-import maf.language.ContractScheme.ContractValues
 import maf.language.scheme.lattices.{SchemeLattice, SchemeOp}
 
 class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLattice: SchemeLattice[V, A]) extends SchemePrimitives[V, A]:
@@ -32,7 +31,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
     def isInteger[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsInteger)(v)
     def isPointer[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsPointer)(v)
     def isVector[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsVector)(v)
-    def isLock[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.IsLock)(v)
     def vectorLength[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.VectorLength)(v)
     def inexactToExact[M[_]: PrimM](v: V): M[V] = unaryOp(SchemeOp.InexactToExact)(v)
     def makeString[M[_]: PrimM](l: V, c: V): M[V] = binaryOp(SchemeOp.MakeString)(l, c)
@@ -143,24 +141,11 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
             `write`,
             `display`,
             `eof-object?`,
-            // primitives to support structs
-            StructRef,
             /* Other primitives that are not R5RS */
             `random`,
             `error`,
             `bool-top`,
-          ) ++ CSchemePrimitives
-        )
-
-    /** Primitives for a concurrent Scheme that are not part of R5RS. */
-    def CSchemePrimitives: List[SchemePrimitive[V, A]] =
-        import PrimitiveDefs._
-        List(
-          `new-lock`,
-          `acquire`,
-          `release`,
-          `lock?`,
-          `thread?`
+          )
         )
 
     abstract class SchemePrim0(val name: String) extends SchemePrimitive[V, A]:
@@ -486,18 +471,6 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                     yield unspecified
                 }
 
-        case object StructRef extends SchemePrim2("__struct_ref"):
-            def call[M[_]: PrimM](fpos: SchemeExp, s: V, field: V): M[V] =
-                MonadJoin[M].mjoin(
-                  lat
-                      .getStructs(s)
-                      .flatMap(s =>
-                          // TODO: this is sound but very imprecise; use the value "field" and a corresponding operation in the lattice to make this more precise
-                          // and fetch the actual field whenever possible
-                          s.fields.contents.map(Monad[M].unit)
-                      ) ++ (if lat.isOpq(s) then Set(Monad[M].unit(lat.opq(ContractValues.Opq()))) else Set())
-                )
-
         case object `call/cc` extends SchemePrim1("call/cc"):
             def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
                 getClosures(x).foldMapM { clo =>
@@ -646,28 +619,3 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                 /* TODO: there is no specific encoding for EOF objects, but they can only arise in scenarios where charTop is produced. So we can approximate them as follows */
                 if subsumes(x, charTop) then PrimM[M].unit(boolTop)
                 else PrimM[M].unit(bool(false))
-
-        case object `new-lock` extends SchemePrim0("new-lock"):
-            def call[M[_]: PrimM](fpos: SchemeExp): M[V] =
-                for adr <- PrimM[M].allocVal(fpos, lat.lock(Set.empty))
-                yield lat.pointer(adr)
-
-        case object `acquire` extends SchemePrim1("acquire"):
-            def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-                dereferencePointer(x) { (addr, lock) =>
-                    for
-                        thread <- PrimM[M].currentThread
-                        locked <- fromMF(lat.acquire(lock, thread))
-                        _ <- PrimM[M].updateSto(addr, locked)
-                    yield unspecified
-                }
-
-        case object `release` extends SchemePrim1("release"):
-            def call[M[_]: PrimM](fpos: SchemeExp, x: V): M[V] =
-                dereferencePointer(x) { (addr, lock) =>
-                    for
-                        thread <- PrimM[M].currentThread
-                        unlocked <- fromMF(lat.release(lock, thread))
-                        _ <- PrimM[M].updateSto(addr, unlocked)
-                    yield unspecified
-                }

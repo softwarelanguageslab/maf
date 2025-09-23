@@ -1,6 +1,5 @@
 package maf.language.scheme.interpreter
 
-import maf.language.change.CodeVersion.{New, Version}
 import maf.language.scheme._
 import maf.language.sexp
 import maf.language.sexp.{SExp, SExpId, SExpPair, SExpValue}
@@ -19,8 +18,7 @@ trait BaseSchemeInterpreter[V]:
 
     def run(
         program: SchemeExp,
-        timeout: Timeout.T,
-        version: Version = New
+        timeout: Timeout.T
       ): Value
 
     lazy val (initialEnv, initialSto) =

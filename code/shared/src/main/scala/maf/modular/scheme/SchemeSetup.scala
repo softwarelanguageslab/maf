@@ -1,7 +1,6 @@
 package maf.modular.scheme
 
 import maf.core._
-import maf.language.CScheme._
 import maf.language.scheme._
 import maf.language.scheme.primitives._
 import maf.modular._

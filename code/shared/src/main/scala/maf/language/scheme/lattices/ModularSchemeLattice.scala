@@ -4,16 +4,11 @@ import maf.language.racket.*
 import maf.core._
 import maf.lattice.{AbstractSetType, AbstractType, AbstractWrapType, HMap, HMapKey, NoExtract, NoInject}
 import maf.util.MonoidImplicits.*
-import maf.language.CScheme.TID
-import maf.language.ContractScheme.ContractValues._
-import maf.language.AScheme.ASchemeValues.{Actor, Behavior}
 import maf.language.scheme.primitives.SchemePrimitive
 import maf.lattice.interfaces._
 import maf.util.datastructures.SmartUnion._
 import maf.util._
 import smtlib.theories.Core.False
-import maf.language.AScheme.ASchemeValues.Future
-import maf.language.AScheme.ASchemeLattice
 
 /**
  * Defines a Scheme lattice based on other lattices. Example usage: val address = NameAddress val lattice = new ModularSchemeLattice[SchemeExp,
@@ -151,12 +146,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
     object KontT extends AbstractSetType[K, Kont]:
         def wrap = Kont.apply
 
-    object ThreadT extends AbstractSetType[TID, Thread]:
-        def wrap = Thread.apply
-
-    object LockT extends AbstractSetType[TID, Lock]:
-        def wrap = Lock.apply
-
     object VoidT extends AbstractType[Unit, Void.type]:
         type Extract = NoExtract
         type Inject = NoInject
@@ -173,36 +162,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         type Extract = NoExtract
         type Inject = NoInject
         def wrap = OutputPort.apply
-
-    object BlameT extends AbstractSetType[Blame, Blames]:
-        def wrap = Blames.apply
-
-    object ArrT extends AbstractSetType[Arr[L], Arrs]:
-        def wrap = Arrs.apply
-
-    object GrdT extends AbstractSetType[Grd[L], Grds]:
-        def wrap = Grds.apply
-
-    object Arrs extends AbstractSetType[Arr[L], Arrs]:
-        def wrap = Arrs.apply
-
-    object FlatT extends AbstractSetType[Flat[L], Flats]:
-        def wrap = Flats.apply
-
-    object OpqT extends AbstractSetType[Opq, Opqs]:
-        def wrap = Opqs.apply
-
-    object StructT extends AbstractSetType[Struct[L], Structs]:
-        def wrap = Structs.apply
-
-    object StructSetterGetterT extends AbstractSetType[StructSetterGetter, StructSetterGetters]:
-        def wrap = StructSetterGetters.apply
-
-    object StructConstructorT extends AbstractSetType[StructConstructor, StructConstructors]:
-        def wrap = StructConstructors.apply
-
-    object StructPredicateT extends AbstractSetType[StructPredicate, StructPredicates]:
-        def wrap = StructPredicates.apply
 
     /**
      * We first implement all possible operations on single values, that can be only joined when compatible. This therefore is not a lattice but will
@@ -298,19 +257,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "KONT"
         val tpy = KontT
         override def toString: String = "<continuation>"
-    case class Thread(threads: Set[TID]) extends Value, Product1[Set[TID]]:
-        def ord = 13
-        val tpy = ThreadT
-        def typeName = "THRD"
-        override def toString: String = threads.mkString("Thread{", ", ", "}")
-    // Could also store (a) Thread(s) here, but this seems to be simpler.
-    // An empty set indicates the lock is not held, but a non-empty set may also indicate this... (due to the monotonicity of the analysis, threads will only increase in size).
-    // This should correspond to the formalisation of ModConc and \lambda_\tau.
-    case class Lock(threads: Set[TID]) extends Value, Product1[Set[TID]]:
-        def ord = 14
-        def typeName = "LOCK"
-        val tpy = LockT
-        override def toString: String = threads.mkString("Lock{", ", ", "}")
 
     case object Void extends Value:
         def ord = 15
@@ -328,59 +274,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         val tpy = OutputPortT
         override def toString: String = s"OutputPort{$id}"
 
-    case class Blames(blames: Set[Blame]) extends Value, Product1[Set[Blame]]:
-        def ord = 18
-        def typeName = "BLAME"
-        val tpy = BlameT
-        override def toString: String = s"<blame: ${blames.map(_.toString).mkString(",")}>"
-
-    case class Grds(grds: Set[Grd[L]]) extends Value, Product1[Set[Grd[L]]]:
-        def ord = 19
-        def typeName = "GRD"
-        val tpy = GrdT
-        override def toString: String = s"<grd: ${grds.map(_.toString).mkString(",")}>"
-
-    case class Arrs(arrs: Set[Arr[L]]) extends Value, Product1[Set[Arr[L]]]:
-        def ord = 20
-        def typeName = "ARR"
-        val tpy = ArrT
-        override def toString: String = s"<arr: ${arrs.map(_.toString).mkString(",")}>"
-
-    case class Flats(flats: Set[Flat[L]]) extends Value, Product1[Set[Flat[L]]]:
-        def ord = 21
-        def typeName = "FLT"
-        val tpy = FlatT
-        override def toString: String = s"<flat: ${flats.map(_.toString).mkString(",")}>"
-
-    case class Opqs(opqs: Set[Opq]) extends Value, Product1[Set[Opq]]:
-        def ord = 22
-        def typeName = "OPQ"
-        val tpy = OpqT
-        override def toString: String = s"<opq>"
-
-    case class Structs(structs: Set[Struct[L]]) extends Value, Product1[Set[Struct[L]]]:
-        def ord = 23
-        def typeName = "STRUCT"
-        val tpy = StructT
-        override def toString: String = s"<struct: ${structs.map(_.tag).mkString(",")}>"
-
-    case class StructSetterGetters(getterSetters: Set[StructSetterGetter]) extends Value, Product1[Set[StructSetterGetter]]:
-        def ord = 24
-        def typeName = "STRUCTGETTERSETTER"
-        val tpy = StructSetterGetterT
-        override def toString: String = "<struct-getter-setter>"
-
-    case class StructConstructors(constructors: Set[StructConstructor]) extends Value, Product1[Set[StructConstructor]]:
-        def ord = 25
-        def typeName = "STRUCTCONSTRUCTOR"
-        val tpy = StructConstructorT
-        override def toString: String = "<struct-constructor>"
-
-    case class StructPredicates(predicates: Set[StructPredicate]) extends Value, Product1[Set[StructPredicate]]:
-        def ord = 26
-        def typeName = "STRUCTPREDICATE"
-        val tpy = StructPredicateT
-        override def toString: String = "<struct-predicate>"
 
     /** The injected true value */
     val True: Bool = Bool(BoolLattice[B].inject(true))
@@ -405,13 +298,9 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case _       => true
         def isFalse(x: Value): Boolean = x match
             case Bool(b) => BoolLattice[B].isFalse(b)
-            case Opqs(_) => true
             case _       => false
         def isBoolean(x: Value): Boolean = x match
             case Bool(_) => true
-            case _       => false
-        def isOpq(x: Value): Boolean = x match
-            case Opqs(_) => true
             case _       => false
 
         def op(op: SchemeOp)(args: List[Value]): MayFail[Value, Error] =
@@ -429,9 +318,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         case Nil => True
                         case _   => False
                     })
-
-                case _: TypeOp if isOpq(args(0)) =>
-                    MayFail.success(Bool(BoolLattice[B].top))
 
                 case IsCons =>
                     MayFail.success(args(0) match {
@@ -489,16 +375,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                     MayFail.success(args(0) match {
                         case _: Vec => True
                         case _      => False
-                    })
-                case IsThread =>
-                    MayFail.success(args(0) match {
-                        case _: Thread => True
-                        case _         => False
-                    })
-                case IsLock =>
-                    MayFail.success(args(0) match {
-                        case _: Lock => True
-                        case _       => False
                     })
                 case IsProcedure =>
                     MayFail.success(args(0) match {
@@ -829,35 +705,17 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 })
             case _ => MayFail.failure(TypeError("expected int size when constructing vector", size))
 
-        // Indicates whether a lock is held.
-        //def isHeld(lock: Value): MayFail[L, Error] = lock match {
-        //  case Lock(tids) => MayFail.success(Element(bool(tids.nonEmpty)))
-        //  case _          => MayFail.failure(TypeError("acquire: expected a lock", lock))
-        //}
-
-        // Acquire creates a new lock to which the given TID is added.
-        def acquire(lock: Value, tid: TID): MayFail[L, Error] = lock match
-            case Lock(tids) => MayFail.success(Element(Lock(tids + tid)))
-            case _          => MayFail.failure(TypeError("acquire: expected a lock", lock))
-
-        def release(lock: Value, tid: TID): MayFail[L, Error] = lock match
-            case Lock(tids) if tids.contains(tid) => MayFail.success(Element(Lock(tids - tid)))
-            case Lock(_) => MayFail.failure(InvalidRelease("Cannot release lock since it is not held by the requesting thread.", lock))
-            case _       => MayFail.failure(TypeError("release: expected a lock", lock))
-
+       
         def refs(x: Value): Set[Address] = x match
-            case Bool(_) | Char(_) | Int(_) | Real(_) | Str(_) | Symbol(_) | Prim(_) | Void | Nil | Blames(_) => Set.empty
+            case Bool(_) | Char(_) | Int(_) | Real(_) | Str(_) | Symbol(_) | Prim(_) | Void | Nil             => Set.empty
             case InputPort(id)                                                                                => schemeLattice.refs(id)
             case OutputPort(id)                                                                               => schemeLattice.refs(id)
-            case Thread(_) | Lock(_) | Kont(_) => ??? // TODO: don't know enough about these types to compute refs
+            case Kont(_)                       => ??? // TODO: don't know enough about this type to compute refs
             case Pointer(ptrs)                 => ptrs.toSet[Address]
             case Cons(car, cdr)                => sunion(schemeLattice.refs(car), schemeLattice.refs(cdr))
             case Vec(_, els)                   => els.flatMap(elm => schemeLattice.refs(elm._2)).toSet
             case Clo(cls)                      => cls.flatMap(clo => clo._2.addrs)
-            case Arrs(arrs)  => arrs.flatMap(arr => schemeLattice.refs(schemeLattice.grd(arr.contract)) ++ schemeLattice.refs(arr.e))
-            case Grds(grds)  => grds.flatMap(grd => grd.domain.flatMap(schemeLattice.refs(_)) ++ schemeLattice.refs(grd.rangeMaker))
-            case Flats(flts) => flts.flatMap(flt => schemeLattice.refs(flt.contract))
-
+           
         // TODO: this should be the eql method instead?
         def eq(x: Value, y: Value)(comparePtr: MaybeEq[A]): Value = (x, y) match
             case (Bool(b1), Bool(b2))     => Bool(BoolLattice[B].eql(b1, b2))
@@ -869,7 +727,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             case (Prim(p1), Prim(p2))     => if p1.intersect(p2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             // TODO: eq of closures could be improved, but is not really permitted by R5RS anyway ...
             case (Clo(c1), Clo(c2))       => if c1.intersect(c2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
-            case (Blames(b1), Blames(b2)) => if b1.intersect(b2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             // TODO: implement eq for contract values and opq values
             case (_: Cons, _: Cons) => throw new Exception("should not happen")
             case (_: Vec, _: Vec)   => throw new Exception("should not happen")
@@ -880,8 +737,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         BoolLattice[B].join(acc2, comparePtr(ptr1, ptr2))
                     }
                 })
-            // We can't know for sure that equal addresses are eq (in the abstract). This implementation is not suited for use in a concrete machine!
-            case (Thread(t1), Thread(t2)) => if t1.intersect(t2).isEmpty then Bool(BoolLattice[B].inject(false)) else Bool(BoolLattice[B].top)
             case _                        => False
 
     type L = HMap
@@ -932,8 +787,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def isFalse(x: L): Boolean = x.elements[Value].foldMap(Value.isFalse(_))(boolOrMonoid)
         def isBoolean(x: L): Boolean = x.elements[Value].foldMap(Value.isBoolean(_))(boolOrMonoid)
         def retractBool(x: L): L = ??? // TODO: implement (does anybody uses this)?
-        def isOpq(x: L): Boolean = x.elements[Value].foldMap(Value.isOpq(_))(boolOrMonoid)
-
+        
         def op(op: SchemeOp)(args: List[L]): MayFail[L, Error] =
             def fold(argsToProcess: List[L], argsvRev: List[Value]): MayFail[L, Error] = argsToProcess match
                 case arg :: args =>
@@ -969,21 +823,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def getContinuations(x: L): Set[lat.K] = x.get(KontT)
         def getPrimitives(x: L): Set[String] = x.get(PrimT)
         def getPointerAddresses(x: L): Set[A] = x.get(PointerT)
-        def getBlames(x: L): Set[Blame] = x.get(BlameT)
-        def getGrds(x: L): Set[Grd[L]] = x.get(GrdT)
-        def getArrs(x: L): Set[Arr[L]] = x.get(ArrT)
-        def getFlats(x: L): Set[Flat[L]] = x.get(FlatT)
-        def getStructs(x: L): Set[Struct[L]] = x.get(StructT)
-        def getGetterSetter(x: L): Set[StructSetterGetter] = x.get(StructSetterGetterT)
-        def getStructConstructor(x: L): Set[StructConstructor] = x.get(StructConstructorT)
-        def getStructPredicates(x: L): Set[StructPredicate] = x.get(StructPredicateT)
-        def getThreads(x: L): Set[TID] = x.get(ThreadT)
-
-        def acquire(lock: L, tid: TID): MayFail[L, Error] =
-            lock.elements[Value].foldMap(l => Value.acquire(l, tid))
-        def release(lock: L, tid: TID): MayFail[L, Error] =
-            lock.elements[Value].foldMap(l => Value.release(l, tid))
-
+        
         def bottom: L = Lattice[L].bottom
 
         def number(x: BigInt): L = HMap.injected(IntT, x)
@@ -1003,23 +843,10 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def symbol(x: String): L = HMap.injected(SymbolT, x)
         def cons(car: L, cdr: L): L = HMap.wrapInserted(ConsT, Cons(car, cdr))
         def pointer(a: A): L = HMap.injected(PointerT, a)
-        def thread(tid: TID): L = HMap.injected(ThreadT, tid)
-        def lock(threads: Set[TID]): L = HMap.inserted(LockT, threads)
-        def blame(blame: Blame): L = HMap.injected(BlameT, blame)
-        def grd(grd: Grd[L]): L = HMap.injected(GrdT, grd)
-        def arr(arr: Arr[L]): L = HMap.injected(ArrT, arr)
-        def flat(flt: Flat[L]): L = HMap.injected(FlatT, flt)
-        def opq(opq: Opq): L = HMap.injected(OpqT, opq)
-
+        
         def rmods(mod: HMap): Set[RMod[HMap]] = mod.get(RModT)
         def rmod(mod: RMod[HMap]): HMap = HMap.injected(RModT, mod)
 
-        def struct(struct: Struct[L]): L = HMap.injected(StructT, struct)
-        def structPredicate(struct: StructPredicate): L = HMap.injected(StructPredicateT, struct)
-        def structSetterGetter(setterGetter: StructSetterGetter): L =
-            HMap.injected(StructSetterGetterT, setterGetter)
-        def structConstructor(constructor: StructConstructor): L =
-            HMap.injected(StructConstructorT, constructor)
         def nil: L = HMap.wrapInserted(NilT, Nil)
         def void: L = HMap.wrapInserted(VoidT, Void)
         def eql[B2: BoolLattice](x: L, y: L): B2 =
@@ -1065,8 +892,6 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             //TODO:case Pointer(ps)  => baseDomain.Pointer(ps.map(aux.convertAddr))
             case Vec(s, e)    => baseDomain.Vec(s, e.view.mapValues(aux.convertValue(baseDomain)).toMap)
             case Void         => baseDomain.Void
-            case Lock(tids)   => baseDomain.Lock(tids)
-            case Thread(tids) => baseDomain.Thread(tids)
             case v            => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
     // Make this an instance of SchemeLattice

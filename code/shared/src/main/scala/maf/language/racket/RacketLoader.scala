@@ -6,11 +6,9 @@ import maf.core.Monad.*
 import maf.language.scheme.lattices.*
 import maf.core.{Address, Expression, Identifier, Identity}
 import maf.util.Reader
-//import javax.lang.model.element.ModuleElement.ProvidesDirective
 import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.modular.scheme.SchemeDomain
 import maf.modular.scheme.modflocal.SchemeModFLocalSensitivity
-import maf.language.AScheme.ASchemeParser
 import maf.lattice.HMap
 import maf.lattice.AbstractSetType
 import maf.util.graph.TopSort
@@ -210,12 +208,6 @@ trait RacketLoader:
           )
         )
 
-object ASchemeRacketLoader extends RacketLoader:
-    override def parse(prg: String): SchemeExp =
-        ASchemeParser.parseProgramDefines(prg)
-
-    override def undefine(exp: SchemeExp): SchemeExp =
-        SchemeUndefiner.undefine(List(exp))
 
 /**
  * A loader that is generic over the parser, note that the parser should NOT undefine the program.
@@ -229,7 +221,3 @@ class GenericRacketLoader(parser: String => SchemeExp) extends RacketLoader:
 
     override def undefine(exp: SchemeExp): SchemeExp =
         SchemeUndefiner.undefine(List(exp))
-
-object Test:
-    def main(args: Array[String]): Unit =
-        println(ASchemeRacketLoader.load(Modules.path("test.rkt")))

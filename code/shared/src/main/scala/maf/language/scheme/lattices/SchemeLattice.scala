@@ -2,11 +2,10 @@ package maf.language.scheme.lattices
 
 import maf.core._
 import maf.lattice.interfaces._
-import maf.language.CScheme.TID
-import maf.language.ContractScheme.ContractValues._
 import maf.language.scheme._
 import maf.lattice.ConstantPropagation
 import maf.language.racket.RMod
+import maf.util.datastructures.SmartUnion
 
 /** A lattice for Scheme should support the following operations */
 trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L, Address]:
@@ -23,9 +22,6 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** Can this value be considered false for conditionals? */
     def isFalse(x: L): Boolean
-
-    /* Can this value be considered an opaque value */
-    def isOpq(x: L): Boolean
 
     /** Is this value a boolean */
     def isBoolean(x: L): Boolean
@@ -65,33 +61,6 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** Extract pointers contained in this value */
     def getPointerAddresses(x: L): Set[A]
-
-    /** Extract the thread identifiers in this value */
-    def getThreads(x: L): Set[TID]
-
-    /** Extract the blames in this value */
-    def getBlames(x: L): Set[Blame]
-
-    /** Extract the guard values in this value */
-    def getGrds(x: L): Set[Grd[L]]
-
-    /** Extract the arrow values in this value */
-    def getArrs(x: L): Set[Arr[L]]
-
-    /** Extract the flat contract vlaues in this value */
-    def getFlats(x: L): Set[Flat[L]]
-
-    /** Extract the struct values from this abstract value */
-    def getStructs(x: L): Set[Struct[L]]
-
-    /** Extract the constructor from the abstract domain */
-    def getStructConstructor(x: L): Set[StructConstructor]
-
-    /** Extract the struct predicates from the abstract domain */
-    def getStructPredicates(x: L): Set[StructPredicate]
-
-    /** Extract the getters/setter values from this abstract value */
-    def getGetterSetter(x: L): Set[StructSetterGetter]
 
     /** Injection of an integer */
     def number(x: BigInt): L
@@ -166,45 +135,6 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
         newval: L
       ): MayFail[L, Error] = op(SchemeOp.VectorSet)(List(vector, index, newval))
 
-    /** Injection of a thread identifier */
-    def thread(tid: TID): L
-
-    /** Creates a new lock. */
-    def lock(threads: Set[TID]): L
-
-    /** Acquires a given lock. */
-    def acquire(lock: L, caller: TID): MayFail[L, Error]
-
-    /** Releases a given lock. */
-    def release(lock: L, caller: TID): MayFail[L, Error]
-
-    /** Injection of a blame in the abstract domain */
-    def blame(blame: Blame): L
-
-    /** Injection of a guard value in the abstract domain */
-    def grd(grd: Grd[L]): L
-
-    /** Injection of an arrow value in the abstract domain */
-    def arr(arr: Arr[L]): L
-
-    /** Injection of a flat value in the abstract domain */
-    def flat(flt: Flat[L]): L
-
-    /** Injection of an opaque value in the abstract domain */
-    def opq(o: Opq): L
-
-    /** Injection of a struct in the abstract domain */
-    def struct(struct: Struct[L]): L
-
-    /** Injection of a struct field setter/getter in the abstract domain */
-    def structSetterGetter(setterGetter: StructSetterGetter): L
-
-    /** Injection of a struct constructor in the abstract domain */
-    def structConstructor(constr: StructConstructor): L
-
-    /** Injection of struct predicate in the abstract domain */
-    def structPredicate(pred: StructPredicate): L
-
     def void: L
 
     def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L
@@ -238,3 +168,18 @@ object SchemeLattice:
     def apply[L, A <: Address](
         implicit lat: SchemeLattice[L, A]
       ): SchemeLattice[L, A] = lat
+
+/** An annotated lattice for Scheme. */
+trait AnnotatedSchemeLattice[AL, A <: Address] extends AnnotatedLattice[AL, A] with SchemeLattice[AL, A]:
+
+    override def and(x: AL, y: => AL): AL =
+        val addr = SmartUnion.sunion(getAddresses(x), getAddresses(y))
+        val res = super.and(x, y)
+        addAddresses(res, addr)
+
+    override def or(x: AL, y: => AL): AL =
+        val addr = SmartUnion.sunion(getAddresses(x), getAddresses(y))
+        val res = super.or(x, y)
+        addAddresses(res, addr)
+
+end AnnotatedSchemeLattice

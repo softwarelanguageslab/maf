@@ -6,7 +6,6 @@ import maf.core._
 import maf.language.scheme._
 import maf.language.scheme.primitives._
 import maf.util.benchmarks.Timeout
-import maf.language.CScheme._
 import maf.lattice.interfaces.BoolLattice
 import maf.lattice.interfaces.LatticeWithAddrs
 import akka.actor.ProviderSelection.Local

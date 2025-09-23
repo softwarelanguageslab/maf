@@ -2,8 +2,7 @@ package maf.language.scheme
 
 import maf.core.*
 import maf.util.Trampoline
-import maf.language.CScheme.CSchemeParser
-import maf.language.ContractScheme.*
+import maf.language.scheme._
 
 /**
  * Remove defines from a Scheme expression, replacing them by let bindings. For example: (define foo 1) (define (f x) x) (f foo) Will be converted to:
@@ -23,7 +22,7 @@ object BaseSchemeMonadicUndefiner:
     /**
      * The scope is a list of bindings and a reference to the outer scope
      *
-     * @param bindigns
+     * @param bindings
      *   a list of bindings in the current scope
      * @param uses
      *   a list of uses of variables in the current scope
@@ -249,106 +248,6 @@ trait BaseSchemeMonadicUndefiner:
         case SchemeAssert(exp, idn) =>
             undefineSingle(exp) flatMap (exp => mk(SchemeAssert(exp, idn)))
 
-        // Fork introduces a new body
-        case CSchemeFork(body, idn) =>
-            undefineSingle(body) flatMap (body => mk(CSchemeFork(body, idn)))
-
-        case CSchemeJoin(texp, idn) =>
-            undefineSingle(texp) flatMap (texp => mk(CSchemeJoin(texp, idn)))
-
-        case SchemeCodeChange(old, nw, idn) =>
-            for
-                undefineOld <- undefineSingle(old)
-                undefineNew <- undefineSingle(nw)
-                result <- mk(SchemeCodeChange(undefineOld, undefineNew, idn))
-            yield result
-
-        // define's are not allowed in the expressions of the domain and rangeMaker,
-        // unless they themselves introduce bodies in which case it has already
-        // been handled inside of the recursion
-        case ContractSchemeDepContract(domains, rangeMaker, idn) =>
-            for
-                undefineDomains <- domains.mapM(undefineSingle)
-                undefineRangeMaker <- undefineSingle(rangeMaker)
-                result <- mk(ContractSchemeDepContract(domains, rangeMaker, idn))
-            yield result
-
-        case ContractSchemeMon(contract, expression, idn) =>
-            for
-                undefineContract <- undefineSingle(contract)
-                undefineExpression <- undefineSingle(expression)
-                result <- mk(ContractSchemeMon(undefineContract, undefineExpression, idn))
-            yield result
-
-        case ContractSchemeCheck(contract, valueExpression, idn) =>
-            for
-                undefineContract <- undefineSingle(contract)
-                undefineValue <- undefineSingle(valueExpression)
-                result <- mk(ContractSchemeCheck(undefineContract, undefineValue, idn))
-            yield result
-
-        case ContractSchemeFlatContract(expression, idn) =>
-            undefineSingle(expression) flatMap (e => mk(ContractSchemeFlatContract(e, idn)))
-        case MatchExpr(value, clauses, idn) =>
-            for
-                undefinedValue <- undefineSingle(value)
-                undefinedClauses <- Monad.sequence(clauses.map(cl => subexpression { undefine(cl.expr).map(MatchExprClause(cl.pat, _, cl.whenExpr)) }))
-                result <- mk(MatchExpr(undefinedValue, undefinedClauses, idn))
-            yield result
-
-        case ContractSchemeDefineContract(name, params, contract, expression, idn) =>
-            throw new Exception("should be translated in the ContractSchemeCompiler")
-        case ContractSchemeProvide(outs, idn) =>
-            mk(ContractSchemeProvide(outs, idn))
-        case _: MakeStruct => mk(exps)
-        case ASchemeSend(actorRef, msgTpy, arguments, idn) =>
-            for
-                undefinedRef <- undefineSingle(actorRef)
-                undefinedArgs <- arguments.mapM(undefineSingle)
-                result <- mk(ASchemeSend(undefinedRef, msgTpy, undefinedArgs, idn))
-            yield result
-
-        case ASchemeAsk(actorRef, msgTpy, arguments, idn) =>
-            for
-                undefinedRef <- undefineSingle(actorRef)
-                undefinedArgs <- arguments.mapM(undefineSingle)
-                result <- mk(ASchemeAsk(undefinedRef, msgTpy, undefinedArgs, idn))
-            yield result
-
-        case ASchemeAwait(future, idn) =>
-            for
-                undefinedFuture <- undefineSingle(future)
-                result <- mk(ASchemeAwait(undefinedFuture, idn))
-            yield result
-        case ASchemeCreate(beh, arguments, idn) =>
-            for
-                undefinedBeh <- undefineSingle(beh)
-                undefinedArgs <- arguments.mapM(undefineSingle)
-                result <- mk(ASchemeCreate(undefinedBeh, undefinedArgs, idn))
-            yield result
-        case ASchemeBecome(beh, arguments, idn) =>
-            for
-                undefinedBeh <- undefineSingle(beh)
-                undefinedArgs <- arguments.mapM(undefineSingle)
-                result <- mk(ASchemeBecome(undefinedBeh, undefinedArgs, idn))
-            yield result
-        case ASchemeActor(parameters, ASchemeSelect(handlers, selIdn), idn, name, isMirror) =>
-            for
-                undefinedHandlers <- handlers
-                    .mapM { case (id, (prs, bdy)) =>
-                        usingNewScope { undefine(bdy) }.map(letrectify).map(bdy => (id -> (prs, bdy)))
-                    }
-                    .map(_.toMap)
-                result <- mk(ASchemeActor(parameters, ASchemeSelect(undefinedHandlers, selIdn), idn, name, isMirror))
-            yield result
-
-        case AContractSchemeMessage(tag, contracts, ensureContract, idn) =>
-            for
-                `contracts′` <- contracts.mapM(undefineSingle)
-                `ensureContract′` <- undefineSingle(ensureContract)
-                result <- mk(AContractSchemeMessage(tag, `contracts′`, `ensureContract′`, idn))
-            yield result
-
         case RacketRequire(clauses, _) =>
             clauses.mapM(undefineSingle).flatMap(clauses => mk(RacketRequire(clauses, exps.idn)))
 
@@ -377,14 +276,14 @@ object SchemeMonadicUndefiner extends BaseSchemeMonadicUndefiner, UndefinerTeste
         yield letrectify(undefinedExps, bindings, topLevel))
         Trampoline.run[List[SchemeExp]](computation.runValue(State.empty))
 
-def test(): Unit =
-    import maf.util.Reader
-    import maf.language.scheme.*
-    val contents = Reader.loadFile("/tmp/test.scm")
-    val parsed = List(ContractSchemeParser.compile(contents))
-    println(parsed.map(_.prettyString(0)).mkString("\n"))
-    //val output = CSchemeParser.parseProgram(contents)
-    val output = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsed, true), Identity.none)
-    println(contents)
-    println("================== translated ==================")
-    println(output.prettyString(0))
+// def test(): Unit =
+//     import maf.util.Reader
+//     import maf.language.scheme.*
+//     val contents = Reader.loadFile("/tmp/test.scm")
+//     val parsed = List(SchemeParser.compile(contents))
+//     println(parsed.map(_.prettyString(0)).mkString("\n"))
+//     //val output = SchemeParser.parseProgram(contents)
+//     val output = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsed, true), Identity.none)
+//     println(contents)
+//     println("================== translated ==================")
+//     println(output.prettyString(0))

@@ -1,7 +1,6 @@
 package maf.language.scheme.interpreter
 
 import maf.core._
-import maf.language.change.CodeVersion.{New, Old, Version}
 import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues._
 import maf.util.benchmarks.Timeout
@@ -35,8 +34,8 @@ class CPSSchemeInterpreter(
         tid = tid + 1
         tid
 
-    protected def next(st: State, version: Version): Either[Value, State] = st match
-        case Step(exp, env, cc) => Right(eval(exp, env, version, cc))
+    protected def next(st: State): Either[Value, State] = st match
+        case Step(exp, env, cc) => Right(eval(exp, env, cc))
         case Kont(v, EndC())    => Left(v)
         case Kont(v, TrdC(tid)) =>
             val blocked = waiting(tid)
@@ -50,8 +49,7 @@ class CPSSchemeInterpreter(
 
     override def run(
         program: SchemeExp,
-        timeout: Timeout.T,
-        version: Version
+        timeout: Timeout.T
       ): Value =
         work = Queue()
         waiting = Map().withDefaultValue(Left(Set()))
@@ -65,7 +63,7 @@ class CPSSchemeInterpreter(
                     work = work.enqueue(state)
                     scheduleNext()
                 steps = steps - 1
-                state = next(state, version) match
+                state = next(state) match
                     case Left(vlu) => return vlu
                     case Right(st) => st
             throw new TimeoutException()
@@ -149,15 +147,12 @@ class CPSSchemeInterpreter(
     def eval(
         exp: SchemeExp,
         env: Env,
-        version: Version,
         cc: Continuation
       ): State = exp match
         case SchemeAssert(_, _)                            => Kont(Value.Void, cc) // Currently ignored.
         case SchemeBegin(Nil, _)                           => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
         case SchemeBegin(first :: Nil, _)                  => Step(first, env, cc)
         case SchemeBegin(first :: rest, _)                 => Step(first, env, BegC(rest, env, cc))
-        case SchemeCodeChange(old, _, _) if version == New => Step(old, env, cc)
-        case SchemeCodeChange(_, nw, _) if version == Old  => Step(nw, env, cc)
         case SchemeDefineVariable(_, _, idn)               => signalException(UndefinedExpressionExpected(idn))
         case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
         case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))

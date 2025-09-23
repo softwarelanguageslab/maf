@@ -2,7 +2,7 @@ package maf.cli.experiments.preprocessing
 
 import maf.language.scheme.*
 import maf.language.scheme.primitives.SchemePrelude
-import maf.language.CScheme.*
+
 import maf.bench.scheme.*
 import maf.util.Reader
 import maf.core.Identity
@@ -17,8 +17,8 @@ object DefineTester extends UndefinerTester:
             //val programs = SchemeBenchmarkPrograms.fromFolderR(directory)(".DS_Store")
             val programs = List("test/changes/cscheme/threads/crypt.scm")
             val parsed = programs.map(name => (Reader.loadFile(name), name)).flatMap { (s, name) =>
-                CSchemeParser.parse(s)
-                Try(CSchemeParser.parse(s)).toOption.map((e) => (e, name))
+                SchemeParser.parse(s)
+                Try(SchemeParser.parse(s)).toOption.map((e) => (e, name))
             }
             val results = parsed.map { case (e, name) =>
                 (check(e, true), name)

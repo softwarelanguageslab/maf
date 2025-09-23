@@ -7,14 +7,11 @@ import scala.io.StdIn.readLine
 import maf.language.scheme.*
 import concurrent.duration.*
 import maf.cli.experiments.SchemeAnalyses
-import maf.language.CScheme.CSchemeParser
 import maf.util.Reader
 import maf.util.benchmarks.Timeout
-import maf.language.AScheme.ASchemeParser
 import maf.util.benchmarks.Timer
 import maf.util.benchmarks.Statistics
 import maf.cli.experiments.aam.AAMAnalyses
-import maf.language.racket.ASchemeRacketLoader
 import maf.modular.scheme.monadic.SimpleModFAnalysis
 
 object Repl:
@@ -39,14 +36,11 @@ object Repl:
       "modf" -> "Normal ModF Analysis",
       "aam" -> "AAM-style analysis",
       "ci" -> "context-insensitive analysis",
-      "actor" -> "default analysis for actors",
-      "mirror" -> "actor analysis with mirrors",
       "modfMonad" -> "default modf analysis with state as case class"
     )
 
     private val parserHelp: Map[String, String] = Map(
-      "actor" -> "A parser for actor programs.",
-      "default" -> "The default Scheme parser.",
+      "default" -> "The default Scheme parser."
     )
 
     private val configurations: Map[String, (SchemeExp) => AnalysisEntry[SchemeExp]] = Map(
@@ -54,8 +48,6 @@ object Repl:
       "modf" -> SchemeAnalyses.contextInsensitiveAnalysis,
       "modfFS" -> SchemeAnalyses.modFFlowSensitive,
       "ci" -> SchemeAnalyses.contextInsensitiveAnalysis,
-      "actor" -> SchemeAnalyses.modActorAnalysis,
-      "mirror" -> SchemeAnalyses.modActorWithMirrors,
       "modfMonad" -> ((exp) => new SimpleModFAnalysis(exp))
     )
 
@@ -139,20 +131,14 @@ object Repl:
     private type A = (SchemeExp) => AnalysisEntry[SchemeExp]
 
     private def setupParser(parser: Option[String]): P = parser match
-        case Some("actor") =>
-            new {
-                def parse(e: String): SchemeExp =
-                    ASchemeParser.parseProgram(e)
-                def parseDefines(e: String): SchemeExp =
-                    ASchemeParser.parseProgramDefines(e)
-            }
         case _ =>
             // there is only one parser supported at the moment, so return that one
             new {
                 def parse(e: String): SchemeExp =
-                    CSchemeParser.parseProgram(e)
+                    SchemeParser.parseProgram(e)
                 def parseDefines(e: String): SchemeExp =
-                    CSchemeParser.parseProgramDefines(e)
+                    // SchemeParser.parseProgramDefines(e)
+                    SchemeParser.parseProgram(e)
             }
 
     private type Path = String

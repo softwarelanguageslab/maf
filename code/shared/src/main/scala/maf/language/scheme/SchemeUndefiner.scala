@@ -67,9 +67,6 @@ trait UndefinerTester:
                 if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
             case (e @ SchemeBegin(_, _)) :: rest =>
                 check(e, allowed) ||> checkSequence(rest)
-            case (e @ SchemeCodeChange(nw, old, _)) :: rest =>
-                // ignore the old expression (TODO verify)
-                check(nw, allowed) ||> checkSequence(rest)
 
             case (vrr: SchemeVarExp) :: rest if isAnnotation(vrr) =>
                 // annotations of the form @... are ignored as expressions
@@ -130,49 +127,11 @@ trait UndefinerTester:
             case CSchemeJoin(texp, _) =>
                 check(texp, false)
 
-            // Change expressions
-            case SchemeCodeChange(old, nw, _) =>
-                // ignore the old expression while checking (TODO: verify)
-                check(nw, allowed)
-
-            // Tains
+            // Taints
             case SchemeSource(name, _)    => false
             case SchemeSink(name, _)      => false
             case SchemeSanitizer(name, _) => false
-
-            // ContractScheme
-            case ContractSchemeDepContract(domains, rangeMaker, _) =>
-                domains.foldLeft[Result](false)(_ || check(_, false)) || check(rangeMaker, false)
-            case ContractSchemeFlatContract(expression, _) =>
-                check(expression, false)
-            case ContractSchemeMon(contract, expression, _) =>
-                check(contract, false) || check(expression, false)
-            case ContractSchemeDefineContract(name, params, contract, expression, _) =>
-                if allowed then check(contract, false) || check(expression, true) else true
-            case ContractSchemeCheck(contract, valueExpression, _) =>
-                check(contract, false) || check(valueExpression, false)
-            case ContractSchemeProvide(outs, idn) => false // TODO: actually only allowed on the top-level, but we don't have any information about the level of the definition yet
-            case _: MakeStruct => false
-            case m: MatchExpr =>
-                m.clauses.foldLeft[Result](false)((acc, cl) => acc || checkSequence(cl.expr)(false))
-
-            case ASchemeCreate(beh, args, _) =>
-                check(beh, false) || args.foldLeft[Result](false)(_ || check(_, false))
-            case ASchemeBecome(beh, args, _) =>
-                check(beh, false) || args.foldLeft[Result](false)(_ || check(_, false))
-            case ASchemeSend(actorRef, _, args, _) =>
-                check(actorRef, false) || args.foldLeft[Result](false)(_ || check(_, false))
-            case ASchemeAsk(actorRef, _, args, _) =>
-                check(actorRef, false) || args.foldLeft[Result](false)(_ || check(_, false))
-            case ASchemeAwait(future, _) =>
-                check(future, false)
-            case ASchemeActor(_, ASchemeSelect(handlers, _), _, _, _) =>
-                handlers.values.foldLeft[Result](false) { case (result, (_, bdy)) => result || check(bdy, true) }
-
-            case AContractSchemeMessage(tag, argumentContracts, ensureContract, _) =>
-                // Nothing is allowed to have defines in them
-                argumentContracts.foldLeft[Result](false) { case (result, contract) => check(contract, false) } || check(ensureContract, false)
-
+            
             // Racket modules
             case RacketRequire(clauses, _) =>
                 clauses.foldLeft[Result](false)((result, clause) => result || check(clause, false))

@@ -2,11 +2,9 @@ package maf.cli.experiments.clients
 
 import maf.language.symbolic.lattices.*
 import maf.bench.scheme.SchemeBenchmarkPrograms
-import maf.cli.modular.scv.*
 import maf.modular.*
 import maf.modular.worklist.*
 import maf.modular.scheme.modf.*
-import maf.modular.scv.*
 import maf.modular.scheme.*
 import maf.language.scheme.lattices.*
 import maf.language.scheme.*
@@ -116,39 +114,3 @@ trait DependencyAnalysisRunner extends ClientAnalysisRunner:
           "callSelfTotal" -> callSelfTotal,
           "maxCallDepth" -> maximumDepth
         )
-
-trait ScvDependencyAnalysisRunner extends DependencyAnalysisRunner with ScvClientAnalysis:
-    type Analysis = ScvDependencyAnalysis
-
-    class ScvDependencyAnalysis(program: SchemeExp)
-        extends ModAnalysis(program)
-        with ScvBigStepSemantics
-        with ScvBigStepWithProvides
-        with ScvWithStructs
-        with SymbolicSchemeConstantPropagationDomain
-        with StandardSchemeModFComponents
-        with FIFOWorklistAlgorithm[SchemeExp]
-        with SchemeModFSemanticsM
-        with ScvOneContextSensitivity(0)
-        with DependencyAnalysis:
-
-        override def viewComponent(dep: Dependency): Component = dep match
-            case AddrDependency(adr) =>
-                adr match
-                    case ScvExceptionAddr(component, _) => component.asInstanceOf[Component]
-                    case _                              => super.viewComponent(dep)
-
-        protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
-
-        override def intraAnalysis(
-            cmp: Component
-          ) = new IntraScvSemantics(cmp) with IntraScvSemanticsWithProvides with IntraScvSemanticsWithStructs with IntraDependencyAnalysis
-
-        override val sat: ScvSatSolver[Value] =
-            given SchemeLattice[Value, Address] = lattice
-            new JVMSatSolver(this)
-
-    def createAnalysis(exp: SchemeExp): Analysis = new ScvDependencyAnalysis(exp)
-
-object NguyenScvDependencyAnalysisRunner extends ScvDependencyAnalysisRunner:
-    def benchmarks: Set[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks

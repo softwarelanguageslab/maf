@@ -4,7 +4,6 @@ import maf.cli.experiments.performance.*
 import maf.aam.*
 import maf.language.scheme.*
 import maf.modular.Metric
-import maf.language.ContractScheme.*
 import maf.core.*
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.benchmarks.*
@@ -48,45 +47,4 @@ object AAMModFPerformanceComparison extends AAMPerformanceComparison:
           (wrapModF(SchemeAnalyses.kCFAAnalysis(_, 1)), "1cfaModf")
         )
     def main(args: Array[String]): Unit =
-        run(timeoutFast = false)
-
-object ScvPerformanceComparison extends AAMPerformanceComparison:
-    override def maxWarmupRuns = 5
-    override def analysisRuns = 20
-
-    override def analysisTime = ??? //Timeout.start(Duration(180, MINUTES)) // maximum time to spend *on a single analysis run*
-
-    override def parseProgram(txt: String): SchemeExp =
-        val result = SchemeBegin(ContractSchemeMutableVarBoxer.transform(List(ContractSchemeParser.parse(txt))), Identity.none)
-        println(s"input program ${result.prettyString(0)}")
-        result
-
-    override protected val nameSuffix: String = "_time"
-
-    def benchmarks = SchemeBenchmarkPrograms.scvNguyenBenchmarks
-
-    //SchemeBenchmarkPrograms.scvNguyenBenchmarks
-
-    def analyses: List[(SchemeExp => Analysis, String)] =
-        List(
-          //(wrap(AAMAnalyses.scvAAMFnCallBoundaries), "scvAAMFfn"),
-          (wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeatures), "scvModf"),
-          (wrapModF(SchemeAnalyses.scvModAnalysisFunctionSummary), "scvFunctionSummaries"),
-          (wrapModF(SchemeAnalyses.scvModAnalysisFunctionSummaryTopSort), "scvFunctionSummariesTopSort"),
-          (wrapModF(SchemeAnalyses.scvModAnalysisRktFsR), "scvRktFsR")
-          //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithPathSensitiveStore), "scvModF-sensitive"),
-          //(wrapModF(SchemeAnalyses.scvModAnalysisWithRacketFeaturesWithIncomingFlow), "scvModF-incoming-flow")
-        )
-
-    def main(args: Array[String]): Unit =
-        run(timeoutFast = false)
-
-object ModFSingleBenchmark extends AAMPerformanceComparison with ParallelPerformanceEvaluation(6):
-    def benchmarks = SchemeBenchmarkPrograms.various
-
-    def analyses: List[(SchemeExp => Analysis, String)] =
-        List((wrapModF(SchemeAnalyses.kCFAAnalysis(_, 0)), "0cfaModf"))
-
-    def main(args: Array[String]): Unit =
-        Thread.sleep(20000)
         run(timeoutFast = false)

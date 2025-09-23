@@ -1,7 +1,6 @@
 package maf.cli.experiments.performance
 
 import maf.language.scheme._
-import maf.language.CScheme._
 import maf.modular.{AnalysisEntry, Metric, ModAnalysis}
 import maf.util._
 import maf.util.benchmarks._
@@ -50,7 +49,7 @@ trait PerformanceEvaluation:
         case TimedOut           => "TIMEOUT"
         case NoData             => "_"
 
-    def parseProgram(txt: String): SchemeExp = CSchemeParser.parseProgram(txt)
+    def parseProgram(txt: String): SchemeExp = SchemeParser.parseProgram(txt)
 
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
     def measureAnalysis(

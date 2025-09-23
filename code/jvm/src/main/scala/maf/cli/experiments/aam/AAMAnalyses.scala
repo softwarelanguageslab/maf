@@ -1,15 +1,11 @@
 package maf.cli.experiments.aam
 
-import maf.aam.scv.*
 import maf.aam.scheme.*
 import maf.aam.{BaseSimpleWorklistSystem, SimpleWorklistSystem}
 import maf.language.scheme.*
-import maf.modular.scv.*
 import maf.modular.scheme.*
 import maf.modular.AnalysisEntry
-import maf.cli.modular.scv.*
 import maf.language.scheme.lattices.SchemeLattice
-import maf.language.ContractScheme.*
 import maf.core.*
 import maf.aam.AAMAnalysis
 import maf.aam.scheme.stores.SchemeImperativeStoreWidening
@@ -112,39 +108,3 @@ object AAMAnalyses:
             with BaseSchemeDependencyLoggingStore
             with BaseSimpleWorklistSystem
             with SchemeAAMAnalysisResults
-
-    def scvAAMbase(b: SchemeExp): ScvAAMSemantics with AAMPeformanceMetrics[SchemeExp] =
-        new ScvAAMSemantics(b)
-            with BaseSchemeAAMSemantics
-            with AAMAnalysis[SchemeExp]
-            with SchemeAAMContextInsensitivity
-            with SchemeConstantPropagationDomain
-            with SchemeAAMLocalStore
-            with SimpleWorklistSystem[SchemeExp]
-            with SchemeAAMAnalysisResults
-            with ScvReporter {
-            //with SchemeStoreAllocateReturn
-            lazy val satSolver: ScvSatSolver[LatVal] =
-                given lat: SchemeLattice[LatVal, Address] = lattice
-                new JVMSatSolver(this)
-        }
-
-    def scvAAMFnCallBoundaries(
-        b: SchemeExp
-      ): AnalysisEntry[SchemeExp] with ScvAAMSemantics with AAMPeformanceMetrics[SchemeExp] with ModularSchemeDomain =
-        new ScvAAMSemantics(b)
-            with BaseSchemeAAMSemantics
-            with AAMAnalysis[SchemeExp]
-            with SchemeAAMContextInsensitivity
-            with SchemeConstantPropagationDomain
-            with SchemeFunctionCallBoundary
-            //with SchemeAAMLocalStore
-            with BaseSchemeLoggingLocalStore
-            with BaseSimpleWorklistSystem[SchemeExp]
-            with SchemeAAMAnalysisResults
-            with ScvReporter {
-            //with SchemeStoreAllocateReturn
-            lazy val satSolver: ScvSatSolver[LatVal] =
-                given lat: SchemeLattice[LatVal, Address] = lattice
-                new JVMSatSolver(this)
-        }

@@ -9,7 +9,6 @@ import maf.modular._
 import maf.modular.components.ContextSensitiveComponents
 import maf.modular.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
-import maf.language.CScheme.TID
 import maf.util._
 import maf.core.IdentityMonad.given
 import maf.core.Monad.MonadIterableOps
@@ -295,8 +294,6 @@ trait BaseSchemeModFSemanticsM
           ): Unit =
             pars.zip(args).foreach { case (par, arg) => bindArg(component, par, arg) }
 
-        protected def currentThread: TID =
-            throw new Exception("Concurrency not available in ModF")
         given interpreterBridge: SchemeInterpreterBridge[Value, Addr] with
             def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)
             def readSto(adr: Addr): Value = readAddr(adr)
@@ -305,7 +302,6 @@ trait BaseSchemeModFSemanticsM
                 clo: (SchemeLambdaExp, Environment[Address]),
                 fpos: Position
               ): Value = modf.callcc(clo, fpos)
-            def currentThread = modf.currentThread
         protected def applyPrimitives(
             fexp: SchemeFuncall,
             fval: Value,

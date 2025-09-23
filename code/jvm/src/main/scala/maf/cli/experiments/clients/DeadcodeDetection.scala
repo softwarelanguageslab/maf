@@ -16,14 +16,11 @@ import maf.modular.worklist.FIFOWorklistAlgorithm
 import scala.reflect.ClassTag
 import maf.language.scheme.lattices.SchemeLattice
 import maf.core.Address
-import maf.cli.modular.scv.JVMSatSolver
 import maf.modular.scheme.modf.BigStepModFSemanticsT
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.util.benchmarks.Timeout
-import maf.language.ContractScheme.ContractSchemeParser
 import java.util.concurrent.TimeoutException
 import maf.util.MAFLogger
-import maf.language.CScheme.CSchemeParser
 
 /** A dead code detection analysis, is a client analysis of the ModF analysis */
 trait DeadcodeDetection extends BigStepModFSemanticsT:
@@ -59,38 +56,9 @@ object DeadcodeDetection:
             override def intraAnalysis(cmp: Component): AnalysisIntra =
                 new AnalysisIntra(cmp)
 
-    /**
-     * Creates a dead code detection analysis for SCV programs
-     *
-     * @param program
-     *   the program to analyze
-     */
-    def createScvAnalysis(program: SchemeExp): DeadcodeDetection =
-        import maf.modular.scv.ScvSymbolicStore.given
-        import maf.modular.scv.*
-        new ModAnalysis(program)
-            with ScvBigStepSemantics
-            with ScvBigStepWithProvides
-            with ScvWithStructs
-            with SymbolicSchemeConstantPropagationDomain
-            with StandardSchemeModFComponents
-            with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFSemanticsM
-            with ScvOneContextSensitivity(0)
-            with DeadcodeDetection:
-            protected val valueClassTag: ClassTag[Value] = summon[ClassTag[Value]]
-
-            override def intraAnalysis(
-                cmp: Component
-              ) = new IntraScvSemantics(cmp) with IntraScvSemanticsWithProvides with IntraScvSemanticsWithStructs with DeadcodeDetectionIntra
-
-            override val sat: ScvSatSolver[Value] =
-                given SchemeLattice[Value, Address] = lattice
-                new JVMSatSolver(this)
-
     /** Parses the given program text to a SchemeExp */
     def parseProgram(txt: String): SchemeExp =
-        CSchemeParser.parseProgram(txt)
+        SchemeParser.parseProgram(txt)
 
     /**
      * Returns a set of expressions that was not visited during the analysis.
@@ -148,12 +116,3 @@ object DeadcodeSchemeBenchmarks extends DeadcodeMain:
         // progamatically disable the logger
         MAFLogger.disable()
         run("dead-code-scheme.csv", DeadcodeDetection.createAnalysis)
-
-/** Runs the dead code analysis using the SCV analyser on the Nguyen scv benchmark */
-object DeadCodeScvBenchmarks extends DeadcodeMain:
-    val benchmarks: List[String] = SchemeBenchmarkPrograms.scvNguyenBenchmarks.toList
-
-    def main(args: Array[String]): Unit =
-        // progamatically disable the logger
-        MAFLogger.disable()
-        run("dead-code-scv.csv", DeadcodeDetection.createScvAnalysis)
