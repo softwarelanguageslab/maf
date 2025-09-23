@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.soundnessDD.evaluation
 
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeExp, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeSanitizer, SchemeSetExp, SchemeSink, SchemeSource, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.language.scheme._
 
 object CountLambdaBindings:
   private var lambdaBindings = 0

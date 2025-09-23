@@ -3,7 +3,6 @@ package maf.test.modular.scheme
 import java.util.concurrent.TimeoutException
 import org.scalatest.Tag
 import maf.core._
-import maf.language.CScheme._
 import maf.language.scheme.interpreter.ConcreteValues._
 import maf.language.scheme._
 import maf.language.scheme.interpreter._
@@ -118,8 +117,6 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             case Value.Character(c)  => lat.subsumes(abs, lat.char(c))
             case Value.Nil           => lat.subsumes(abs, lat.nil)
             case Value.Pointer(a)    => lat.getPointerAddresses(abs).exists(_.idn == a._2.idn)
-            case Value.Thread(_)     => lat.getThreads(abs).nonEmpty
-            case Value.Lock(l)       => lat.isTrue(lat.op(SchemeOp.IsLock)(List(abs)).getOrElse(lat.bottom))
             case Value.InputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
             case Value.OutputPort(h) => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
             case Value.EOF           => lat.subsumes(abs, lat.charTop)
@@ -167,7 +164,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         else Seq(SoundnessTest)
 
     def parseProgram(txt: String, benchmark: String): SchemeExp =
-        CSchemeParser.parseProgram(txt, Position.withSourcePath(benchmark))
+        SchemeParser.parseProgram(txt)
 
     def onBenchmark(benchmark: Benchmark): Unit =
         property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {

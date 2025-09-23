@@ -3,9 +3,9 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 lazy val root = project
   .in(file("."))
-  .aggregate(mafJVM, mafJS)
+  .aggregate(mafJVM)
 
-lazy val maf = crossProject(JVMPlatform, JSPlatform)
+lazy val maf = crossProject(JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("code"))
@@ -95,10 +95,5 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     run / fork := false,
   )
   .jvmConfigure(_.enablePlugins(JmhPlugin))
-  .jsSettings(
-    /** Dependencies */
-    libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "1.1.0").cross(CrossVersion.for3Use2_13)
-  )
 
 lazy val mafJVM = maf.jvm
-lazy val mafJS = maf.js

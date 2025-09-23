@@ -2,7 +2,6 @@ package maf.test.language.scheme
 
 import maf.bench.scheme.SchemeBenchmarkPrograms
 import maf.core.Identity
-import maf.language.CScheme._
 import maf.language.scheme._
 import maf.language.scheme.interpreter.ConcreteValues.Addr
 import maf.language.scheme.interpreter._
@@ -61,7 +60,7 @@ class InterpreterTests() extends AnyPropSpec:
         case _ => Some(v1 == v2)
 
     def onBenchmark(benchmark: String): Unit =
-        val program: SchemeExp = CSchemeParser.parseProgram(Reader.loadFile(benchmark))
+        val program: SchemeExp = SchemeParser.parseProgram(Reader.loadFile(benchmark))
         property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
             try
                 // TODO (maybe): run in parallel?

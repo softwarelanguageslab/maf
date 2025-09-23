@@ -4,7 +4,7 @@ import maf.core._
 import maf.modular._
 import maf.lattice._
 import maf.language.scheme._
-import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice, AnnotatedSchemeLattice}
+import maf.language.scheme.lattices.{ModularSchemeLattice, SchemeLattice}
 import maf.language.scheme.primitives._
 
 /** The abstract domain used for Scheme analyses. */

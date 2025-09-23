@@ -1,6 +1,6 @@
 package maf.test.deltaDebugging.schemeExp
 
-import maf.language.scheme.{AContractSchemeMessage, ASchemeExp, CSchemeExp, ContractSchemeExp, MatchExpr, SchemeAssert, SchemeBegin, SchemeCodeChange, SchemeDefineVariable, SchemeFuncall, SchemeIf, SchemeLambdaExp, SchemeLettishExp, SchemeParser, SchemeSetExp, SchemeValue, SchemeVarExp, SymbolicHole, SymbolicVar}
+import maf.language.scheme._
 import maf.language.sexp.Value
 import org.scalatest.flatspec.AnyFlatSpec
 

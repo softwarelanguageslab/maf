@@ -1,6 +1,6 @@
 package maf.test
 
-import maf.bench.scheme.{ContractBenchmarkPrograms, IncrementalSchemeBenchmarkPrograms, SchemeBenchmarkPrograms}
+import maf.bench.scheme.{SchemeBenchmarkPrograms}
 import maf.util.datastructures.SmartUnion
 
 trait VariousSequentialBenchmarks extends SchemeBenchmarkTests:
@@ -27,25 +27,6 @@ trait AllBenchmarks extends SchemeBenchmarkTests:
 /** Benchmarks from the JSS 2021 paper titled: A parallel worklist algorithm and its exploration heuristics for static modular analyses */
 trait JSS2021Benchmarks extends SchemeBenchmarkTests:
     override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, SchemeBenchmarkPrograms.jss2021)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-trait ConcurrentIncrementalBenchmarks extends SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, IncrementalSchemeBenchmarkPrograms.threads)
-
-trait SequentialIncrementalBenchmarks extends SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, IncrementalSchemeBenchmarkPrograms.sequential)
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-trait ContractBenchmarks extends maf.test.SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, ContractBenchmarkPrograms.allBenchmarks)
-
-trait ContractSafetyTestsBenchmarks extends SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, ContractBenchmarkPrograms.manualSafe)
-
-trait ContractSoundnessTestsBenchmarks extends SchemeBenchmarkTests:
-    override def benchmarks: Set[Benchmark] = SmartUnion.sunion(super.benchmarks, ContractBenchmarkPrograms.manualUnsafe)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
