@@ -168,18 +168,3 @@ object SchemeLattice:
     def apply[L, A <: Address](
         implicit lat: SchemeLattice[L, A]
       ): SchemeLattice[L, A] = lat
-
-/** An annotated lattice for Scheme. */
-trait AnnotatedSchemeLattice[AL, A <: Address] extends AnnotatedLattice[AL, A] with SchemeLattice[AL, A]:
-
-    override def and(x: AL, y: => AL): AL =
-        val addr = SmartUnion.sunion(getAddresses(x), getAddresses(y))
-        val res = super.and(x, y)
-        addAddresses(res, addr)
-
-    override def or(x: AL, y: => AL): AL =
-        val addr = SmartUnion.sunion(getAddresses(x), getAddresses(y))
-        val res = super.or(x, y)
-        addAddresses(res, addr)
-
-end AnnotatedSchemeLattice

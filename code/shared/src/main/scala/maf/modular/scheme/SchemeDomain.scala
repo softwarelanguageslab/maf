@@ -139,7 +139,3 @@ class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWra
 trait SchemeBoundedDomain(bound: Int) extends ModularSchemeDomain:
     val modularLatticeWrapper = new SchemeBoundedDomainWrapper(bound)
     override def domainName: String = "modular bounded Scheme domain"
-
-// annotated scheme domain
-trait AnnotatedSchemeDomain extends AnnotatedAbstractDomain[SchemeExp] with SchemeDomain:
-    implicit override lazy val lattice: AnnotatedSchemeLattice[Value, Address]
