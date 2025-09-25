@@ -13,6 +13,7 @@ import maf.util.benchmarks.Timer
 import maf.util.benchmarks.Statistics
 import maf.cli.experiments.aam.AAMAnalyses
 import maf.modular.scheme.monadic.SimpleModFAnalysis
+import maf.cli.experiments.precision.{SingleBenchmark}
 
 object Repl:
     val about: String = """
@@ -22,6 +23,7 @@ object Repl:
     |
     | Arguments:
     | * -a ANALYSIS: change the type of analysis 
+    | * -kcfa CALLSITE SENSITIVITY: use a k-call-site sensitive analysis. Cannot be used at the same time as "-a"
     | * -f FILENAME: the name of the Scheme file to analyze 
     | * -p PARSER: the parser to use 
     | * -i interactive, means that a REPL-like structure will be spawned, but each line in the REPL is ran in an isolated environment
@@ -68,8 +70,10 @@ object Repl:
         filename: Option[String] = None,
         parser: Option[String] = None,
         module: Option[String] = None,
+        kcfa: Option[Int] = None,
         interactive: Boolean = false,
         performance: Boolean = false,
+        precision: Boolean = false,
         dot: Boolean = false,
         timeout: Long = 10):
         def isEmpty: Boolean = remaining.isEmpty
@@ -89,6 +93,10 @@ object Repl:
         def setModule(moduleName: String): ArgParser =
             ensureNotSet(this.module, "module")
             this.copy(module = Some(moduleName))
+
+        def setKcfa(k: String): ArgParser =
+            ensureNotSet(this.kcfa, "kcfa")
+            this.copy(kcfa = Some(k.toInt))
 
         def ensureNotSet[T](vlu: Option[T], field: String): Unit =
             if vlu.isDefined then throw new Exception(s"$field already set")
@@ -118,11 +126,17 @@ object Repl:
                 case "-perf" :: rest =>
                     parse(parser.copy(performance = true).continue(rest))
 
+                case "-prec" :: rest =>
+                    parse(parser.copy(precision = true).continue(rest))
+
                 case "-t" :: timeout :: rest =>
                     parse(parser.copy(timeout = timeout.toLong).continue(rest))
 
                 case "-dot" :: rest =>
                     parse(parser.copy(dot = true).continue(rest))
+
+                case "-kcfa" :: k :: rest => 
+                    parse(parser.setKcfa(k).continue(rest))
 
                 case arg =>
                     throw new Exception(s"invalid arguments $arg")
@@ -146,8 +160,11 @@ object Repl:
         if enableModuleLoader then Modules.path andThen GenericRacketLoader(parser.parseDefines).load
         else parser.parse
 
-    private def setupAnalysis(analysis: String): (SchemeExp) => AnalysisEntry[SchemeExp] =
-        configurations.get(analysis).getOrElse(throw new Exception(s"$analysis analysis not found"))
+    private def setupAnalysis(kcfa: Option[Int], analysis: Option[String]): (SchemeExp) => AnalysisEntry[SchemeExp] =
+        kcfa match {
+            case Some(k) => SchemeAnalyses.kCFAAnalysis(_, k)
+            case None    => configurations.get(analysis.get).getOrElse(throw new Exception(s"$analysis analysis not found"))
+        }
 
     /** Method to run the application in file-mode, which reads the file from disk and analyzes it using the configured analysis */
     private def runFile(
@@ -157,7 +174,8 @@ object Repl:
         performance: Boolean,
         timeout: Long,
         dot: Boolean,
-        someLoader: Option[String => SchemeExp] = None
+        someLoader: Option[String => SchemeExp] = None,
+        precision: Boolean
       ): Unit =
         val loader: String => SchemeExp = someLoader.getOrElse(Reader.loadFile andThen parser.parse)
         // Regardless of the performance mode, we parse the file only once.
@@ -173,6 +191,11 @@ object Repl:
             // Print a dot graph if the dot option has been enabled
             if dot then anl.toDot(filename.replace("/", "_").nn + ".dot")
             elapsed
+        
+        def runPrecision(): Unit = 
+            val anl = makeAnalysis(exp)
+            val benchmarkRunner = new SingleBenchmark(anl, filename)
+            benchmarkRunner.main(Array.empty[String])
 
         val warmUpTimes = 5
         val analysisTimes = 10
@@ -204,6 +227,8 @@ object Repl:
             val stddev = Statistics.stddev(elapseds)
             println(s"Average analysis time: $elapsedMean ms")
             println(s"Standard devitation: $stddev ms")
+        else if precision then 
+            runPrecision()
         else runSingle()
 
     /** Runs a REPL that can be used to interactively test the abstract interpreter */
@@ -229,8 +254,7 @@ object Repl:
             // ensure that either "-f" or "-i" is set, but not both
             assert(!((options.filename.isDefined || options.module.isDefined) && options.interactive), "cannot use both -f and -i at the same time")
             assert(!(options.filename.isEmpty && options.module.isEmpty && !options.interactive), "provide either -f or -i")
-            // ensure that the analysis is defined
-            assert(options.analysis.isDefined, "define an analysis type using the -a argument")
+            assert(!(options.kcfa.isEmpty && options.analysis.isEmpty && !options.interactive), "provide either -kcfa or -a")
             // ensure that -perf is only used in combination with -f
             assert(if options.performance then options.filename.isDefined else true, "performance measuring mode must be used in file mode")
             // ensure that "-dot" is combined with "-f"
@@ -244,11 +268,11 @@ object Repl:
                 if options.module.isDefined then Some(setupLoader(parser, options.module.isDefined))
                 else None
             // setup the analysis
-            val analysisFactory = setupAnalysis(options.analysis.get)
+            val analysisFactory = setupAnalysis(options.kcfa, options.analysis)
             // setup the loader of the file/module
             // either run the file or the repl
             if options.interactive then runRepl(parser, analysisFactory)
             else
                 // retrieve the file or module name
                 val path = options.filename.getOrElse(options.module.get)
-                runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, loader)
+                runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, loader, options.precision)

@@ -3,6 +3,7 @@ package maf.cli.experiments.precision
 import maf.cli.experiments._
 import maf.language.scheme._
 import maf.lattice._
+import maf.modular.AnalysisEntry
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util.benchmarks._
 import maf.util.{Reader, Writer}
@@ -111,6 +112,27 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
 
     def main(args: Array[String]) = runBenchmarks(benchmarks, args.headOption)
 
+
+class SingleBenchmark(analysis: AnalysisEntry[SchemeExp], benchmark: String) 
+  extends AnalysisComparisonAlt[
+    ConstantPropagation.I,
+    ConstantPropagation.R,
+    ConstantPropagation.B,
+    ConstantPropagation.C,
+    ConstantPropagation.S,
+    ConstantPropagation.Sym]:
+
+  def analyses = List((((_: SchemeExp) => analysis.asInstanceOf[Analysis]), analysis.toString()))
+  // def analyses = List((SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA analysis"))
+  def benchmarks = List(benchmark)
+
+  override protected def showResults() =
+      println()
+      println("PRECISION RESULTS")
+      println(precisionResults.get(benchmark, analysis.toString())getOrElse("n/a"))
+      println()
+      println("PERFORMANCE RESULTS")
+      println(performanceResults.get(benchmark, analysis.toString()).flatten.getOrElse("n/a"))
 
 abstract class SASBenchmarks
     extends AnalysisComparisonAlt[
