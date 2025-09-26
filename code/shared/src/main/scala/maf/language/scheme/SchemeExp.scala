@@ -3,7 +3,6 @@ package maf.language.scheme
 import maf.core.*
 import maf.language.sexp.*
 import Label.*
-import maf.deltaDebugging.primitiveOpNames.PrimitiveOpNames
 import maf.language.scheme
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show
@@ -47,14 +46,6 @@ sealed trait SchemeExp extends Expression:
       def add(i: Identifier): Unit =
         if !usedSet.exists(id => id.name equals i.name) then
           usedSet = usedSet.::(i)
-
-      this.forEach(e => {
-        e match
-          case exp: SchemeVarExp =>
-            if !(PrimitiveOpNames.allNames contains exp.id.name) then
-              add(exp.id)
-          case _ =>
-      })
 
       usedSet
     /** definedSet */
