@@ -4,6 +4,8 @@ import maf.language.scheme.SchemeExp
 import maf.modular.{AnalysisEntry, ModAnalysis}
 import maf.util.Reader
 import maf.util.benchmarks.{Table, Timeout}
+import maf.util.MAFLogger
+
 
 trait ClientAnalysisRunner:
     import scala.concurrent.duration.*
@@ -44,6 +46,7 @@ trait ClientAnalysisRunner:
         toTable(Map(name -> results(analysis)), table)
 
     def main(args: Array[String]): Unit =
+        MAFLogger.disable()
         val table: Table[Result] = Table.empty
         val resultTable = benchmarks.foldLeft(table)(runBenchmark)
         println(resultTable.prettyString())
