@@ -15,6 +15,8 @@ import maf.cli.experiments.aam.AAMAnalyses
 import maf.modular.scheme.monadic.SimpleModFAnalysis
 import maf.cli.experiments.precision.{SingleBenchmark}
 
+import scala.language.unsafeNulls
+
 object Repl:
     val about: String = """
     | A simple configurable abstract interpreter for Scheme.
@@ -23,7 +25,7 @@ object Repl:
     |
     | Arguments:
     | * -a ANALYSIS: change the type of analysis 
-    | * -kcfa CALLSITE SENSITIVITY: use a k-call-site sensitive analysis. Cannot be used at the same time as "-a"
+    | * -kcfa CALLSITE SENSITIVITY: use a selective k-call-site sensitive analysis. Cannot be used at the same time as "-a"
     | * -f FILENAME: the name of the Scheme file to analyze 
     | * -p PARSER: the parser to use 
     | * -i interactive, means that a REPL-like structure will be spawned, but each line in the REPL is ran in an isolated environment
@@ -70,7 +72,7 @@ object Repl:
         filename: Option[String] = None,
         parser: Option[String] = None,
         module: Option[String] = None,
-        kcfa: Option[Int] = None,
+        kcfa: Option[Map[String, Int]] = None,
         interactive: Boolean = false,
         performance: Boolean = false,
         precision: Boolean = false,
@@ -94,12 +96,20 @@ object Repl:
             ensureNotSet(this.module, "module")
             this.copy(module = Some(moduleName))
 
-        def setKcfa(k: String): ArgParser =
+        def setKcfa(ks: String): ArgParser =
             ensureNotSet(this.kcfa, "kcfa")
-            this.copy(kcfa = Some(k.toInt))
+            val parsedKs = ks.stripPrefix("{")
+                             .stripSuffix("}")
+                             .split(",")
+                             .map(_.split(":"))
+                             .map { case Array(k, v) => (k, v.toInt)}
+                             .toMap
+            this.copy(kcfa = Some(parsedKs))
 
         def ensureNotSet[T](vlu: Option[T], field: String): Unit =
             if vlu.isDefined then throw new Exception(s"$field already set")
+
+
 
     object ArgParser:
         def init(remaining: List[String]): ArgParser = ArgParser(remaining)
@@ -135,8 +145,8 @@ object Repl:
                 case "-dot" :: rest =>
                     parse(parser.copy(dot = true).continue(rest))
 
-                case "-kcfa" :: k :: rest => 
-                    parse(parser.setKcfa(k).continue(rest))
+                case "-kcfa" :: ks :: rest => 
+                    parse(parser.setKcfa(ks).continue(rest))
 
                 case arg =>
                     throw new Exception(s"invalid arguments $arg")
@@ -160,9 +170,9 @@ object Repl:
         if enableModuleLoader then Modules.path andThen GenericRacketLoader(parser.parseDefines).load
         else parser.parse
 
-    private def setupAnalysis(kcfa: Option[Int], analysis: Option[String]): (SchemeExp) => AnalysisEntry[SchemeExp] =
+    private def setupAnalysis(kcfa: Option[Map[String, Int]], analysis: Option[String]): (SchemeExp) => AnalysisEntry[SchemeExp] =
         kcfa match {
-            case Some(k) => SchemeAnalyses.kCFAAnalysis(_, k)
+            case Some(k) => SchemeAnalyses.selectiveKCFAAnalysis(_, Map.empty)
             case None    => configurations.get(analysis.get).getOrElse(throw new Exception(s"$analysis analysis not found"))
         }
 
@@ -276,3 +286,4 @@ object Repl:
                 // retrieve the file or module name
                 val path = options.filename.getOrElse(options.module.get)
                 runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, loader, options.precision)
+

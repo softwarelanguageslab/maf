@@ -53,6 +53,22 @@ trait SchemeModFKCallSiteSensitivity extends SchemeModFSensitivity:
 trait SchemeModFCallSiteSensitivity extends SchemeModFKCallSiteSensitivity:
     override val k = 1
 
+// selective call-site sensitivity
+trait SchemeModFSelectiveKCallSiteSensitivity extends SchemeModFSensitivity: 
+    type ComponentContext = CallSiteContext
+    val ks: Map[String, Int] // the k's for each function (map of function name to k)
+    val defaultK: Int = 0
+    def allocCtx(
+        clo: (SchemeLambdaExp, Environment[Address]),
+        args: List[Value],
+        call: Position,
+        caller: Component
+      ) = context(caller) match
+        case None                           => CallSiteContext(List(call).take(ks.getOrElse(clo._1.lambdaName, defaultK)))
+        case Some(CallSiteContext(callers)) => CallSiteContext((call :: callers).take(ks.getOrElse(clo._1.lambdaName, defaultK)))
+    override def configString(): String = super.configString() + "\n  with selective call-site sensitivity"
+
+
 /* Call-site x full-argument sensitivity for ModF */
 case class ArgCallSiteContext(
     fn: Position,

@@ -74,6 +74,15 @@ object SchemeAnalyses:
         override def toString = s"kCFA (k = $kcfa)"
         val k = kcfa
     }
+
+    def selectiveKCFAAnalysis(prg: SchemeExp, kcfas: Map[String, Int]) = new SimpleSchemeModFAnalysis(prg)
+        with SchemeModFSelectiveKCallSiteSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = "selective kCFA"
+        val ks = kcfas
+    }
+
     def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
         with SchemeModFFullArgumentSensitivity
         with SchemeConstantPropagationDomain

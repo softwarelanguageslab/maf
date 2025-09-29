@@ -122,6 +122,8 @@ class SingleBenchmark(analysis: AnalysisEntry[SchemeExp], benchmark: String)
     ConstantPropagation.S,
     ConstantPropagation.Sym]:
 
+  override def runs = 1
+
   def analyses = List((((_: SchemeExp) => analysis.asInstanceOf[Analysis]), analysis.toString()))
   // def analyses = List((SchemeAnalyses.kCFAAnalysis(_, k), s"$k-CFA analysis"))
   def benchmarks = List(benchmark)
