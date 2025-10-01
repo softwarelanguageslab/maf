@@ -40,7 +40,7 @@ trait CharacteristicsAnalysis extends ModAnalysis[SchemeExp]:
 
 trait CharacteristicsAnalysisRunner extends ClientAnalysisRunner:
     override type Analysis <: CharacteristicsAnalysis
-    override type Result = Double
+    override type Result = Option[Double]
 
     def setToMap[T](set: Set[(T, T)]): Map[T, List[T]] =
         set.foldLeft(Map[T, List[T]]()) { case (result, (from, to)) =>
@@ -82,18 +82,18 @@ trait CharacteristicsAnalysisRunner extends ClientAnalysisRunner:
         resultTable
 
     def resultsPerComponent(analysis: Analysis, f: analysis.Component): Map[String, Result] =
-        val filteredCalls = analysis.calls.filter(dep => dep._1 == f)
+        val filteredCalls = analysis.calls.filter(dep => dep._1 == f || dep._2 == f)
         val (callNoSelfAvg, callNoSelfTotal) = computeAverageAndTotal(analysis, filteredCalls.filter(dep => dep._1 != dep._2))
         val (callSelfAvg, callSelfTotal) = computeAverageAndTotal(analysis, filteredCalls.filter(dep => dep._1 == dep._2))
 
         val maximumDepth = computeMaximumCallDepth(analysis, filteredCalls)
 
         Map(
-          "callDepsNoSelf" -> callNoSelfAvg,
-          "callNoSelfTotal" -> callNoSelfTotal,
-          "callDepsSelf" -> callSelfAvg,
-          "callSelfTotal" -> callSelfTotal,
-          "maxCallDepth" -> maximumDepth
+          "callDepsNoSelf" -> None,
+          "callNoSelfTotal" -> Some(callNoSelfTotal),
+          "callDepsSelf" -> None,
+          "callSelfTotal" -> Some(callSelfTotal),
+          "maxCallDepth" -> Some(maximumDepth)
         )
 
     def results(analysis: Analysis): Map[String, Result] =
@@ -103,11 +103,11 @@ trait CharacteristicsAnalysisRunner extends ClientAnalysisRunner:
         val maximumDepth = computeMaximumCallDepth(analysis, analysis.calls)
 
         Map(
-          "callDepsNoSelf" -> callNoSelfAvg,
-          "callNoSelfTotal" -> callNoSelfTotal,
-          "callDepsSelf" -> callSelfAvg,
-          "callSelfTotal" -> callSelfTotal,
-          "maxCallDepth" -> maximumDepth
+          "callDepsNoSelf" -> Some(callNoSelfAvg),
+          "callNoSelfTotal" -> Some(callNoSelfTotal),
+          "callDepsSelf" -> Some(callSelfAvg),
+          "callSelfTotal" -> Some(callSelfTotal),
+          "maxCallDepth" -> Some(maximumDepth)
         )
 
 object Characteristics extends CharacteristicsAnalysisRunner:
