@@ -35,7 +35,7 @@ trait CharacteristicsAnalysis extends ModAnalysis[SchemeExp]:
 
         override def spawn(cmp: Component): Unit =
             calls = calls + (this.component -> cmp)
-            functions = functions + this.component
+            functions = functions + cmp
             super.spawn(cmp)
 
 trait CharacteristicsAnalysisRunner extends ClientAnalysisRunner:

@@ -29,17 +29,22 @@ abstract class AdaptiveAnalysisComparison[
     // keep the results of the benchmarks in a table
     var results: Table[Option[Int]] = Table.empty.withDefaultValue(None)
 
-    private def compareUntilTimeout(
+    protected def compareUntilTimeout(
         analyses: List[(SchemeExp => Analysis, String)],
         path: String,
         program: SchemeExp,
         concreteResult: ResultMap
       ): Unit =
         analyses.foreach { case (analysis, name) =>
+            val start = System.nanoTime()
             runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match
                 case Terminated(store) =>
                     val lessPrecise = compareOrdered(store, concreteResult).size
+                    val end = System.nanoTime()
+                    val duration = (System.nanoTime() - start).nanos.toMillis
+                    val time = Some(duration.toInt)
                     results = results.add(path, name, Some(lessPrecise))
+                    results = results.add(path, name ++ "(ms)", time)
                 case _ => return // don't run the other analyses anymore
         }
 
@@ -60,3 +65,76 @@ abstract class AdaptiveAnalysisComparison[
         compareUntilTimeout(baseAnalyses, path, program, concreteResult)
         // find the most precise adaptive analysis
         compareUntilTimeout(adaptiveAnalyses, path, program, concreteResult)
+
+    protected def runBenchmarks(benchmarks: List[Benchmark]) =
+      assert(benchmarks.size == benchmarks.toSet.size) // sanity check to make sure we don't have duplicates
+      benchmarks.foreach { benchmark =>
+        runBenchmark(benchmark)
+      }
+      showResults()
+    
+    protected def showResults() =
+      println()
+      println("RESULTS")
+      println("=================")
+      println()
+      println(results.prettyString())
+
+object SelectiveAnalysisComparison extends AdaptiveAnalysisComparison[
+      ConstantPropagation.I,
+      ConstantPropagation.R,
+      ConstantPropagation.B,
+      ConstantPropagation.C,
+      ConstantPropagation.S,
+      ConstantPropagation.Sym
+    ]:
+
+    def findKs(path: Benchmark, program: SchemeExp) = 
+        var analysis = SchemeAnalyses.charachteristicsAnalysis(program)
+        analysis.analyze()
+        val functions = analysis.functions
+        var result = Map.empty[String, Int]
+        for (f <- analysis.functions)
+            result = result + (f.functionName -> 1)
+        println(result)
+        result
+
+    override def forBenchmark(path: Benchmark, program: SchemeExp) =
+        // run the concrete interpreter analysis first
+        val concreteResult = runInterpreter(program, path, Timeout.none, concreteRuns).get // no timeout set for the concrete interpreter
+        // find the most precise non-adaptive analysis
+        compareUntilTimeout(baseAnalyses, path, program, concreteResult)
+
+        // find the k's for this program 
+        val ks = findKs(path, program)
+        
+        // find the most precise adaptive analysis
+        compareUntilTimeout(List((SchemeAnalyses.selectiveKCFAAnalysis(_, ks), "selective")), path, program, concreteResult)
+
+    override def concreteRuns = 1
+
+    override def baseAnalyses = List((SchemeAnalyses.contextInsensitiveAnalysis(_), "0 kcfa"),
+                                     (SchemeAnalyses.kCFAAnalysis(_, 1), "1 kcfa"))
+    override def adaptiveAnalyses = List((SchemeAnalyses.selectiveKCFAAnalysis(_, Map.empty), "selective"))
+
+    def gabrielBenchmarks = 
+      List(
+        "boyer",
+        "browse",
+        "cpstak",
+        "dderiv",
+        "deriv",
+        "destruc",
+        "diviter",
+        "divrec",
+        "takl",
+        //"triangl" <- times out in concrete interpreter
+      ).map(name => s"test/R5RS/gabriel/$name.scm")
+
+    def benchmarks = List("test/R5RS/various/example.scm")
+
+    def main(args: Array[String]): Unit = {
+        MAFLogger.disable()
+        runBenchmarks(benchmarks)
+   }
+

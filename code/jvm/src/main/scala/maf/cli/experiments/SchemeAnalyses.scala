@@ -16,6 +16,7 @@ import maf.core.Address
 import scala.reflect.ClassTag
 import maf.language.racket.RacketLoaderSemantics
 import maf.language.racket.RacketLoader
+import maf.cli.experiments.clients._
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -115,3 +116,17 @@ object SchemeAnalyses:
     // Flow sensitive analysis
     def modFFlowSensitive(prg: SchemeExp) =
         new SimpleFlowSensitiveAnalysis(prg)
+
+    def charachteristicsAnalysis(prg: SchemeExp) = 
+        new ModAnalysis[SchemeExp](prg)
+            with StandardSchemeModFComponents
+            with SchemeModFSemanticsM
+            with SchemeModFNoSensitivity
+            with BigStepModFSemantics
+            with SymbolicSchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with CharacteristicsAnalysis:
+
+            class AnalysisIntra(cmp: Component) extends IntraAnalysis(cmp) with IntraCharacteristicsAnalysis with BigStepModFIntra
+            override def intraAnalysis(cmp: Component): AnalysisIntra =
+                new AnalysisIntra(cmp)

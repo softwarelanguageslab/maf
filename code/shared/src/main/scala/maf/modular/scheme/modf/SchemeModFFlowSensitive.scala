@@ -48,7 +48,8 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
         cmp.modfComponent
 
     /** Flow sensitive components that keep track of a local store in their context. */
-    case class FlowSensitiveComponent(modfComponent: SchemeModFComponent, localStore: Store) extends SchemeModFComponent
+    case class FlowSensitiveComponent(modfComponent: SchemeModFComponent, localStore: Store) extends SchemeModFComponent:
+        override def functionName: String = modfComponent.functionName
 
     /** A map from components to their (cached) results */
     private var componentStores: Map[Component, Store] = Map()

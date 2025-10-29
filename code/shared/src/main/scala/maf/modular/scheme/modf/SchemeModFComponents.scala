@@ -5,12 +5,14 @@ import maf.util._
 import maf.language.scheme._
 
 // A SchemeModFComponent represents function calls
-trait SchemeModFComponent extends SmartHash
+trait SchemeModFComponent extends SmartHash: 
+  def functionName: String
 
 object SchemeModFComponent:
     // The main function call, i.e. the entry point of the program (corresponding to all top-level code)
     case object Main extends SchemeModFComponent:
         override def toString: String = "main"
+        override def functionName: String = "main"
     // A call to a specific closure
     case class Call[Context](
         clo: (SchemeLambdaExp, Environment[Address]),
@@ -19,6 +21,8 @@ object SchemeModFComponent:
         // convenience accessors
         lazy val (lambda, env) = clo
         override def toString: String = s"${lambda.lambdaName} [$ctx]"
+        override def functionName: String = lambda.lambdaName
+
 
 trait StandardSchemeModFComponents extends BaseSchemeModFSemantics:
     import SchemeModFComponent._

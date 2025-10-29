@@ -63,10 +63,12 @@ trait SchemeModFSelectiveKCallSiteSensitivity extends SchemeModFSensitivity:
         args: List[Value],
         call: Position,
         caller: Component
-      ) = context(caller) match
-        case None                           => CallSiteContext(List(call).take(ks.getOrElse(clo._1.lambdaName, defaultK)))
-        case Some(CallSiteContext(callers)) => CallSiteContext((call :: callers).take(ks.getOrElse(clo._1.lambdaName, defaultK)))
+      ) = 
+        context(caller) match
+            case None                           => CallSiteContext(List(call).take(ks.getOrElse(clo._1.lambdaName, defaultK)))
+            case Some(CallSiteContext(callers)) => CallSiteContext((call :: callers).take(ks.getOrElse(clo._1.lambdaName, defaultK)))
     override def configString(): String = super.configString() + "\n  with selective call-site sensitivity"
+
 
 
 /* Call-site x full-argument sensitivity for ModF */
