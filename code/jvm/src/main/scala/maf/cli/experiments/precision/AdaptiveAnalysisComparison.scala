@@ -6,6 +6,7 @@ import maf.lattice._
 import maf.lattice.interfaces.{BoolLattice, CharLattice, IntLattice, RealLattice, StringLattice, SymbolLattice}
 import maf.util._
 import maf.util.benchmarks._
+import maf.bench.scheme._
 
 import scala.concurrent.duration._
 
@@ -19,12 +20,14 @@ abstract class AdaptiveAnalysisComparison[
     extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
 
     // the precision comparison is parameterized by:
-    // - a timeout and number of concrete runs
+    // - a timeout and number of concrete runs and whether or not to time the analyses
     def timeout = Duration(30, MINUTES) // timeout for the analyses
     def concreteRuns = 3
+    def timed = true
     // - a list of non-adaptive analysis and adaptive analyses (with increasing precision)
     def baseAnalyses: List[(SchemeExp => Analysis, String)]
     def adaptiveAnalyses: List[(SchemeExp => Analysis, String)]
+
 
     // keep the results of the benchmarks in a table
     var results: Table[Option[Int]] = Table.empty.withDefaultValue(None)
@@ -44,7 +47,7 @@ abstract class AdaptiveAnalysisComparison[
                     val duration = (System.nanoTime() - start).nanos.toMillis
                     val time = Some(duration.toInt)
                     results = results.add(path, name, Some(lessPrecise))
-                    results = results.add(path, name ++ "(ms)", time)
+                    if (timed) then results = results.add(path, name ++ "(ms)", time)
                 case _ => return // don't run the other analyses anymore
         }
 
@@ -60,11 +63,28 @@ abstract class AdaptiveAnalysisComparison[
      */
     protected def forBenchmark(path: Benchmark, program: SchemeExp) =
         // run the concrete interpreter analysis first
-        val concreteResult = runInterpreter(program, path, Timeout.none, concreteRuns).get // no timeout set for the concrete interpreter
-        // find the most precise non-adaptive analysis
-        compareUntilTimeout(baseAnalyses, path, program, concreteResult)
-        // find the most precise adaptive analysis
-        compareUntilTimeout(adaptiveAnalyses, path, program, concreteResult)
+        val concreteResult = runInterpreter(program, path, Timeout.start(timeout), concreteRuns)
+
+        concreteResult match 
+          case None => return
+          case Some(v) =>
+            // find the most precise non-adaptive analysis
+            compareUntilTimeout(baseAnalyses, path, program, v)
+            // find the most precise adaptive analysis
+            compareUntilTimeout(adaptiveAnalyses, path, program, v)
+            // write the results to a file
+            val csv = results.toCSVString(rows = List(path), format = _.map(_.toString()).getOrElse("TIMEOUT"))
+            writeToFile(csv, benchmarkFolder ++ path.stripPrefix("test/R5RS/").stripSuffix(".scm") ++ ".csv")
+
+    override protected def addPreviousBenchmarkResult(path: String) = 
+      val csv = Reader.loadFile(path)
+      val table: Table[Option[Int]] = Table.fromCSVString(csv, _.toIntOption)
+      results = Table.append(results, table)
+
+    protected def writeToFile(output: String, path: String) = 
+      val writer = Writer.open(path)
+      Writer.write(writer, output)
+      Writer.close(writer)
 
     protected def runBenchmarks(benchmarks: List[Benchmark]) =
       assert(benchmarks.size == benchmarks.toSet.size) // sanity check to make sure we don't have duplicates
@@ -80,6 +100,9 @@ abstract class AdaptiveAnalysisComparison[
       println()
       println(results.prettyString())
 
+
+
+
 object SelectiveAnalysisComparison extends AdaptiveAnalysisComparison[
       ConstantPropagation.I,
       ConstantPropagation.R,
@@ -88,6 +111,8 @@ object SelectiveAnalysisComparison extends AdaptiveAnalysisComparison[
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
+
+    def benchmarkFolder = "out/selective/"
 
     def findKs(path: Benchmark, program: SchemeExp) = 
         var analysis = SchemeAnalyses.charachteristicsAnalysis(program)
@@ -101,15 +126,17 @@ object SelectiveAnalysisComparison extends AdaptiveAnalysisComparison[
 
     override def forBenchmark(path: Benchmark, program: SchemeExp) =
         // run the concrete interpreter analysis first
-        val concreteResult = runInterpreter(program, path, Timeout.none, concreteRuns).get // no timeout set for the concrete interpreter
-        // find the most precise non-adaptive analysis
-        compareUntilTimeout(baseAnalyses, path, program, concreteResult)
+        val concreteResult = runInterpreter(program, path, Timeout.start(timeout), concreteRuns)
 
-        // find the k's for this program 
-        val ks = findKs(path, program)
-        
-        // find the most precise adaptive analysis
-        compareUntilTimeout(List((SchemeAnalyses.selectiveKCFAAnalysis(_, ks), "selective")), path, program, concreteResult)
+        concreteResult match 
+          case None => return
+          case Some(v) =>
+            // find the most precise non-adaptive analysis
+            compareUntilTimeout(baseAnalyses, path, program, v)
+            // find the k's for this program 
+            val ks = findKs(path, program) 
+            // find the most precise adaptive analysis
+            compareUntilTimeout(List((SchemeAnalyses.selectiveKCFAAnalysis(_, ks), "selective")), path, program, v)
 
     override def concreteRuns = 1
 
@@ -138,3 +165,76 @@ object SelectiveAnalysisComparison extends AdaptiveAnalysisComparison[
         runBenchmarks(benchmarks)
    }
 
+
+
+object AdaptiveContextSensitivityAnalysisComparison
+    extends AdaptiveAnalysisComparison[
+      ConstantPropagation.I,
+      ConstantPropagation.R,
+      ConstantPropagation.B,
+      ConstantPropagation.C,
+      ConstantPropagation.S,
+      ConstantPropagation.Sym
+    ]:
+
+    def benchmarkFolder = "out/adaptive/"
+
+    override def timeout = Duration(30, MINUTES)
+
+    override def concreteRuns = 1
+
+    override def baseAnalyses = List((SchemeAnalyses.contextInsensitiveAnalysis(_), "0 kcfa"),
+                                     (SchemeAnalyses.kCFAAnalysis(_, 1), "1 kcfa"),
+                                     (SchemeAnalyses.kCFAAnalysis(_, 2), "2 kcfa"),
+                                     (SchemeAnalyses.kCFAAnalysis(_, 3), "3 kcfa")
+                                     )
+    override def adaptiveAnalyses = List((SchemeAnalyses.adaptiveContextSensitiveAnalysis(_), "adaptive"))    
+
+    // def benchmarks: List[String] = List(
+    //       "test/R5RS/WeiChenRompf2019/meta-circ.scm",
+    //       "test/R5RS/WeiChenRompf2019/earley.sch",
+    //       "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
+    //       "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+    //       "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+    //       // "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // concrete times out
+    //       "test/R5RS/gabriel/boyer.scm",
+    //       "test/R5RS/gambit/peval.scm",
+    //       "test/R5RS/gambit/scheme.scm",
+    //       "test/R5RS/gambit/sboyer.scm",
+    //       "test/R5RS/gambit/nboyer.scm",
+    //       "test/R5RS/gambit/matrix.scm",
+    //       "test/R5RS/gambit/browse.scm",
+    //       "test/R5RS/scp1-compressed/all.scm",
+    //       "test/R5RS/ad/all.scm",
+    //       "test/R5RS/various/SICP-compiler.scm",
+    //       "test/R5RS/icp/icp_1c_ambeval.scm",
+    //       "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+    //       "test/R5RS/icp/icp_1c_ontleed.scm",
+    //       "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+    //       "test/R5RS/icp/icp_7_eceval.scm",
+    //       "test/R5RS/icp/icp_8_compiler.scm",
+    //       "test/R5RS/icp/icp_5_regsim.scm",
+    //       "test/R5RS/icp/icp_3_leval.scm",
+    //       "test/R5RS/icp/icp_2_aeval.scm",
+    //     )
+
+    def gabrielBenchmarks = 
+      List(
+        "boyer",
+        "browse",
+        "cpstak",
+        "dderiv",
+        "deriv",
+        "destruc",
+        "diviter",
+        "divrec",
+        "takl",
+        //"triangl" <- times out in concrete interpreter
+      ).map(name => s"test/R5RS/gabriel/$name.scm")
+    
+    def benchmarks = gabrielBenchmarks
+
+    def main(args: Array[String]): Unit = {
+        MAFLogger.disable()
+        runBenchmarks(benchmarks)
+    }

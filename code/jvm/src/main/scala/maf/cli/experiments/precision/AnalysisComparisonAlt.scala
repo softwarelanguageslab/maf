@@ -122,6 +122,7 @@ class SingleBenchmark(analysis: AnalysisEntry[SchemeExp], benchmark: String)
     ConstantPropagation.S,
     ConstantPropagation.Sym]:
 
+  def benchmarkFolder = "out/singlebenchmark/"
   override def runs = 1
 
   def analyses = List((((_: SchemeExp) => analysis.asInstanceOf[Analysis]), analysis.toString()))
@@ -145,6 +146,8 @@ abstract class SASBenchmarks
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
+
+    def benchmarkFolder = "out/sas/"
 
     lazy val aam0: (SchemeExp => Analysis, String)        = (SchemeAnalyses.aamGCAnalysis(_, 0),              "0-CFA AAM")
     lazy val aam1: (SchemeExp => Analysis, String)        = (SchemeAnalyses.aamGCAnalysis(_, 1),              "1-CFA AAM")

@@ -1,5 +1,7 @@
 package maf.util.benchmarks
 
+import scala.language.unsafeNulls
+
 object Table:
 
     /**
@@ -8,6 +10,26 @@ object Table:
      *   a new empty table
      */
     def empty[V]: Table[V] = Table(Map[(String, String), V](), None)
+
+    // append two tables to eachother (assuming they have the same columns)
+    def append[V](table1: Table[V], table2: Table[V]): Table[V] = 
+      var result = table1
+      for ((row, column), value) <- table2.data do 
+        result = result.add(row, column, value)
+      result
+
+    def fromCSVString[V](csv: String, stringToData: String => V): Table[V] = 
+      var result = Table.empty[V]
+      def splitCSV = csv.split("\n").map(_.split(","))
+      val columns = splitCSV(0)
+      for row <- 1 to splitCSV.length - 1 do 
+        for column <- 1 to columns.length - 1 do 
+          result = result.add(row = splitCSV(row)(0), 
+                            column = columns(column), 
+                            elem = stringToData(splitCSV(row)(column)))
+      result
+
+
 
 case class Table[V](data: Map[(String, String), V], default: Option[V]):
 

@@ -6,7 +6,7 @@ import java.io.*
 import maf.util.Writer.Writer
 import maf.util.benchmarks.Clock
 
-import java.nio.file.{Paths, StandardCopyOption}
+import java.nio.file.{Paths, StandardCopyOption, Files}
 
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
@@ -19,6 +19,9 @@ object Reader:
         val content = fHandle.getLines().mkString("\n")
         fHandle.close()
         content
+
+    def fileExists(file: String): Boolean = 
+        Files.exists(Paths.get(file))
 
 /**
  * Utility to write to plain text files. Can also be modified to write to csv files using a CSVWriter, CSVWriter.NO_QUOTE_CHARACTER and the writeNext

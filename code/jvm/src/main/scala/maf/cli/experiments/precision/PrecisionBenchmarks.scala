@@ -26,6 +26,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         }
     }
 
+    def benchmarkFolder: String
+
     implicit def cpAnalysis(anl: ModularSchemeDomain): Analysis = anl.asInstanceOf[Analysis]
 
     private def convertAddr(addr: Address): BaseAddr = addr match
@@ -288,12 +290,17 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
 
     protected def parseProgram(txt: String): SchemeExp = SchemeParser.parseProgram(txt)
 
+    protected def addPreviousBenchmarkResult(path: String): Unit = return
+
     /**
      * Run a benchmark
      * @param benchmark
      *   the benchmark program to run
      */
     def runBenchmark(benchmark: Benchmark) =
-        val txt = Reader.loadFile(benchmark)
-        val prg = parseProgram(txt)
-        forBenchmark(benchmark, prg)
+        val path = benchmarkFolder ++ benchmark.stripPrefix("test/R5RS/").stripSuffix(".scm") ++ ".csv"
+        if(!Reader.fileExists(path)) then
+            val txt = Reader.loadFile(benchmark)
+            val prg = parseProgram(txt)
+            forBenchmark(benchmark, prg)
+        else addPreviousBenchmarkResult(path)

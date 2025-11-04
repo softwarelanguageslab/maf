@@ -27,6 +27,7 @@ object PrecisionComparison
               "test/R5RS/mceval.scm"
             )
 
+    val benchmarkFolder = "out/precision/"
     var path: String = "<none>"
 
     // The base analysis

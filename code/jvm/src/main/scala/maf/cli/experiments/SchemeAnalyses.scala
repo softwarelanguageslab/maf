@@ -47,9 +47,10 @@ object SchemeAnalysesBoundedDomain:
 
 object SchemeAnalyses:
 
-    def contextInsensitiveAnalysis(
-        prg: SchemeExp
-      ) = new SimpleSchemeModFAnalysis(prg) with SchemeModFNoSensitivity with SchemeConstantPropagationDomain with FIFOWorklistAlgorithm[SchemeExp] {
+    def contextInsensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg) 
+        with SchemeModFNoSensitivity 
+        with SchemeConstantPropagationDomain 
+        with FIFOWorklistAlgorithm[SchemeExp] {
         override def toString = "no-sensitivity"
     }
 
@@ -76,6 +77,14 @@ object SchemeAnalyses:
         val k = kcfa
     }
 
+    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
+        with SchemeModFFullArgumentSensitivity
+        with SchemeConstantPropagationDomain
+        with FIFOWorklistAlgorithm[SchemeExp] {
+        override def toString = "full-argument-sensitivity"
+    }
+
+    // selective context-sensitive analysis
     def selectiveKCFAAnalysis(prg: SchemeExp, kcfas: Map[String, Int]) = new SimpleSchemeModFAnalysis(prg)
         with SchemeModFSelectiveKCallSiteSensitivity
         with SchemeConstantPropagationDomain
@@ -84,13 +93,16 @@ object SchemeAnalyses:
         val ks = kcfas
     }
 
-    def fullArgContextSensitiveAnalysis(prg: SchemeExp) = new SimpleSchemeModFAnalysis(prg)
-        with SchemeModFFullArgumentSensitivity
-        with SchemeConstantPropagationDomain
-        with FIFOWorklistAlgorithm[SchemeExp] {
-        override def toString = "full-argument-sensitivity"
+    // adaptive context-sensitive analysis
+    def adaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
+      with AdaptiveContextSensitivity
+      with AdaptiveKCFA
+      with SchemeConstantPropagationDomain
+      with FIFOWorklistAlgorithm[SchemeExp]
+      {
+        override def toString = "adaptive-context-sensitivity"
     }
-
+  
 
     def aamGCAnalysis(prg: SchemeExp, k: Int) = 
       new SchemeAAMGCAnalysis(prg, k)

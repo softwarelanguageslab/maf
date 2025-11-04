@@ -18,6 +18,8 @@ object DailyPrecisionBenchmarks
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
+
+    def benchmarkFolder = "out/daily/"
     // analyses to compare
     def baseAnalysis(prg: SchemeExp): Analysis =
         SchemeAnalyses.contextInsensitiveAnalysis(prg)

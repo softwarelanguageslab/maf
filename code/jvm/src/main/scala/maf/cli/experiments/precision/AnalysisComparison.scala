@@ -65,6 +65,7 @@ object AnalysisComparison1
       ConstantPropagation.S,
       ConstantPropagation.Sym
     ]:
+    def benchmarkFolder = "out/analysiscomparison1/"
 
     val k = 0
 
