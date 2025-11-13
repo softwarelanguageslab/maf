@@ -25,8 +25,8 @@ object Table:
       for row <- 1 to splitCSV.length - 1 do 
         for column <- 1 to columns.length - 1 do 
           result = result.add(row = splitCSV(row)(0), 
-                            column = columns(column), 
-                            elem = stringToData(splitCSV(row)(column)))
+                              column = columns(column), 
+                              elem = stringToData(splitCSV(row)(column)))
       result
 
 

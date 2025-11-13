@@ -143,7 +143,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @param check
      *   a boolean indicating whether it should be checked explicitly that b1 is less precise than b2 (default: true)
      * @return
-     *   the set of addresses that have been refined in b2 w.r.t. b1
+     *   the set of identities that have been refined in b2 w.r.t. b1
      */
     protected def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
         def errorMessage(pos: Identity): String =
@@ -304,3 +304,17 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
             val prg = parseProgram(txt)
             forBenchmark(benchmark, prg)
         else addPreviousBenchmarkResult(path)
+
+
+trait ResultsPerCmp[
+    Num: IntLattice,
+    Rea: RealLattice,
+    Bln: BoolLattice,
+    Chr: CharLattice,
+    Str: StringLattice,
+    Smb: SymbolLattice] extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
+    override protected def extract(analysis: Analysis): ResultMap =
+        analysis.resultsPerFun.view
+            .mapValues(vs => analysis.lattice.join(vs))
+            .mapValues(convertValue(analysis))
+            .toMap

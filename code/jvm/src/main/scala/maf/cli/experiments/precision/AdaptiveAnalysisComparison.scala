@@ -17,7 +17,7 @@ abstract class AdaptiveAnalysisComparison[
     Chr: CharLattice,
     Str: StringLattice,
     Smb: SymbolLattice]
-    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]:
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] with ResultsPerCmp[Num, Rea, Bln, Chr, Str, Smb]:
 
     // the precision comparison is parameterized by:
     // - a timeout and number of concrete runs and whether or not to time the analyses
@@ -30,7 +30,7 @@ abstract class AdaptiveAnalysisComparison[
 
 
     // keep the results of the benchmarks in a table
-    var results: Table[Option[Int]] = Table.empty.withDefaultValue(None)
+    var results: Table[Option[String]] = Table.empty.withDefaultValue(None)
 
     protected def compareUntilTimeout(
         analyses: List[(SchemeExp => Analysis, String)],
@@ -42,12 +42,14 @@ abstract class AdaptiveAnalysisComparison[
             val start = System.nanoTime()
             runAnalysis(analysis, name, program, path, Timeout.start(timeout)) match
                 case Terminated(store) =>
-                    val lessPrecise = compareOrdered(store, concreteResult).size
+                    val compared = compareOrdered(store, concreteResult, check=false)
+                    // println(compared)
+                    val lessPrecise = compared.size
                     val end = System.nanoTime()
                     val duration = (System.nanoTime() - start).nanos.toMillis
-                    val time = Some(duration.toInt)
-                    results = results.add(path, name, Some(lessPrecise))
-                    if (timed) then results = results.add(path, name ++ "(ms)", time)
+                    results = results.add(path, name, Some(lessPrecise.toString))
+                    results = results.add(path, name ++ " ids", Some(compared.toString.replace(",", "").nn)) // add the set of less precise identifiers
+                    if (timed) then results = results.add(path, name ++ "(ms)", Some(duration.toString))
                 case _ => return // don't run the other analyses anymore
         }
 
@@ -78,7 +80,7 @@ abstract class AdaptiveAnalysisComparison[
 
     override protected def addPreviousBenchmarkResult(path: String) = 
       val csv = Reader.loadFile(path)
-      val table: Table[Option[Int]] = Table.fromCSVString(csv, _.toIntOption)
+      val table: Table[Option[String]] = Table.fromCSVString(csv, Some(_))
       results = Table.append(results, table)
 
     protected def writeToFile(output: String, path: String) = 
@@ -190,33 +192,33 @@ object AdaptiveContextSensitivityAnalysisComparison
                                      )
     override def adaptiveAnalyses = List((SchemeAnalyses.adaptiveContextSensitiveAnalysis(_), "adaptive"))    
 
-    // def benchmarks: List[String] = List(
-    //       "test/R5RS/WeiChenRompf2019/meta-circ.scm",
-    //       "test/R5RS/WeiChenRompf2019/earley.sch",
-    //       "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
-    //       "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
-    //       "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
-    //       // "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // concrete times out
-    //       "test/R5RS/gabriel/boyer.scm",
-    //       "test/R5RS/gambit/peval.scm",
-    //       "test/R5RS/gambit/scheme.scm",
-    //       "test/R5RS/gambit/sboyer.scm",
-    //       "test/R5RS/gambit/nboyer.scm",
-    //       "test/R5RS/gambit/matrix.scm",
-    //       "test/R5RS/gambit/browse.scm",
-    //       "test/R5RS/scp1-compressed/all.scm",
-    //       "test/R5RS/ad/all.scm",
-    //       "test/R5RS/various/SICP-compiler.scm",
-    //       "test/R5RS/icp/icp_1c_ambeval.scm",
-    //       "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-    //       "test/R5RS/icp/icp_1c_ontleed.scm",
-    //       "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-    //       "test/R5RS/icp/icp_7_eceval.scm",
-    //       "test/R5RS/icp/icp_8_compiler.scm",
-    //       "test/R5RS/icp/icp_5_regsim.scm",
-    //       "test/R5RS/icp/icp_3_leval.scm",
-    //       "test/R5RS/icp/icp_2_aeval.scm",
-    //     )
+    def variousBenchmarks: List[String] = List(
+          "test/R5RS/WeiChenRompf2019/meta-circ.scm",
+          "test/R5RS/WeiChenRompf2019/earley.sch",
+          "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
+          "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+          "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+          // "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // concrete times out
+          "test/R5RS/gabriel/boyer.scm",
+          "test/R5RS/gambit/peval.scm",
+          "test/R5RS/gambit/scheme.scm",
+          // "test/R5RS/gambit/sboyer.scm",
+          // "test/R5RS/gambit/nboyer.scm",
+          "test/R5RS/gambit/matrix.scm",
+          "test/R5RS/gambit/browse.scm",
+          // "test/R5RS/scp1-compressed/all.scm",
+          "test/R5RS/ad/all.scm",
+          "test/R5RS/various/SICP-compiler.scm",
+          "test/R5RS/icp/icp_1c_ambeval.scm",
+          "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+          "test/R5RS/icp/icp_1c_ontleed.scm",
+          "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+          "test/R5RS/icp/icp_7_eceval.scm",
+          "test/R5RS/icp/icp_8_compiler.scm",
+          "test/R5RS/icp/icp_5_regsim.scm",
+          "test/R5RS/icp/icp_3_leval.scm",
+          "test/R5RS/icp/icp_2_aeval.scm",
+        )
 
     def gabrielBenchmarks = 
       List(
@@ -232,9 +234,11 @@ object AdaptiveContextSensitivityAnalysisComparison
         //"triangl" <- times out in concrete interpreter
       ).map(name => s"test/R5RS/gabriel/$name.scm")
     
-    def benchmarks = gabrielBenchmarks
+    def benchmarks = variousBenchmarks
 
     def main(args: Array[String]): Unit = {
         MAFLogger.disable()
         runBenchmarks(benchmarks)
+        val csv = results.toCSVString(rowName = "benchmark", format = _.map(_.toString()).getOrElse("TIMEOUT"))
+        writeToFile(csv, benchmarkFolder.stripSuffix("/") ++ ".csv")
     }
