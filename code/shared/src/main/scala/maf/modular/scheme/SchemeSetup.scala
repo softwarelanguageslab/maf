@@ -31,6 +31,16 @@ trait SchemeSetup
             .view
             .mapValues(_.values.toSet)
             .toMap
+    def resultsPerFun: Map[Identity, Set[Value]] = 
+        store
+            .filter(_._1 match {
+                case _: ReturnAddr[_] => true 
+                case _                => false
+            })
+            .groupBy(_._1.idn)
+            .view 
+            .mapValues(_.values.toSet)
+            .toMap
     final lazy val initialBds: Iterable[(String, Addr, Value)] = primitives.allPrimitives.map { case (name, p) =>
         (name, PrmAddr(name), lattice.primitive(p.name))
     }

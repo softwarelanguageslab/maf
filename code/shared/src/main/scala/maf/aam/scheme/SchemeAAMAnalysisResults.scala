@@ -6,10 +6,13 @@ import maf.language.scheme.*
 
 trait SchemeAAMAnalysisResults extends BaseSchemeAAMSemantics with AnalysisResults[SchemeExp]:
     var resultsPerIdn = Map().withDefaultValue(Set.empty[LatVal])
+    var resultsPerFun = Map().withDefaultValue(Set.empty[LatVal])
 
     abstract override def writeSto(sto: Sto, addr: Address, value: Storable): Sto =
         (addr, value) match
             case (_: VarAddr, Storable.V(value)) =>
                 resultsPerIdn += addr.idn -> (resultsPerIdn(addr.idn) + value)
+            case (_: FunRetAddr, Storable.V(value)) =>
+                resultsPerFun += addr.idn -> (resultsPerFun(addr.idn) + value)
             case _ => ()
         super.writeSto(sto, addr, value)

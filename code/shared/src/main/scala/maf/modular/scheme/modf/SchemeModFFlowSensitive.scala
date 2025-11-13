@@ -21,6 +21,7 @@ import maf.core.MonadStateT
 import maf.core.Monad
 import maf.core.MonadJoin
 import maf.core
+import maf.core.Identity
 import maf.modular.Dependency
 import maf.lattice.interfaces.LatticeWithAddrs
 
@@ -50,6 +51,7 @@ trait SchemeModFFlowSensitive extends BigStepModFSemanticsT:
     /** Flow sensitive components that keep track of a local store in their context. */
     case class FlowSensitiveComponent(modfComponent: SchemeModFComponent, localStore: Store) extends SchemeModFComponent:
         override def functionName: String = modfComponent.functionName
+        override def idn: Identity = modfComponent.idn
 
     /** A map from components to their (cached) results */
     private var componentStores: Map[Component, Store] = Map()

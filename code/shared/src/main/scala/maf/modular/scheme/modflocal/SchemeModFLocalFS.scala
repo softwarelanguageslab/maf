@@ -280,10 +280,13 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
+    var resultsPerFun = Map.empty.withDefaultValue(Set.empty)
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+            case _: ReturnAddr[_] => 
+                resultsPerFun += adr.idn -> (resultsPerFun(adr.idn) + vlu)
             case _ => ()
         super.extendV(sto, adr, vlu)
 
@@ -291,5 +294,7 @@ trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisRe
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+            case _: ReturnAddr[_] => 
+                resultsPerFun += adr.idn -> (resultsPerFun(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)

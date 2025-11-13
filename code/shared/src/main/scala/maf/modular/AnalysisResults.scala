@@ -4,3 +4,4 @@ import maf.core._
 
 trait AnalysisResults[Expr <: Expression] extends AbstractDomain[Expr]:
     def resultsPerIdn: Map[Identity, Set[Value]]
+    def resultsPerFun: Map[Identity, Set[Value]]

@@ -10,6 +10,7 @@ trait AAMAnalysisResults extends AAMScheme with AnalysisResults[SchemeExp]:
     this: AAMSchemeSensitivity with SchemeDomain =>
 
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
+    var resultsPerFun = Map.empty.withDefaultValue(Set.empty) // todo
 
     sealed trait InstrumentedStore[S] extends Store[S]
     given instrumented[S](using base: Store[S]): InstrumentedStore[S] with
