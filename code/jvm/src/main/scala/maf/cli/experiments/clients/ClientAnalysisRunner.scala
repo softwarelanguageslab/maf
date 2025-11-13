@@ -3,8 +3,9 @@ package maf.cli.experiments.clients
 import maf.language.scheme.SchemeExp
 import maf.modular.{AnalysisEntry, ModAnalysis}
 import maf.util.Reader
-import maf.util.benchmarks.{Table, Timeout}
 import maf.util.MAFLogger
+import maf.util.benchmarks._
+import maf.util._
 
 
 trait ClientAnalysisRunner:
@@ -32,6 +33,12 @@ trait ClientAnalysisRunner:
      *   the analysis to extract the results from
      */
     def results(analysis: Analysis): Map[String, Result]
+
+    protected def writeToFile(output: String, path: String) = 
+      val writer = Writer.open(path)
+      Writer.write(writer, output)
+      Writer.close(writer)
+
 
     protected def toTable(results: Map[String, Map[String, Result]], inTable: Table[Result] = Table.empty): Table[Result] =
         results.foldLeft(inTable) { case (table, (programName, metrics)) =>

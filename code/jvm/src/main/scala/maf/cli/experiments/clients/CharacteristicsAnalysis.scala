@@ -12,6 +12,7 @@ import maf.core.Address
 import scala.reflect.ClassTag
 import maf.util.Reader
 import maf.util.benchmarks.{Table, Timeout}
+import maf.util.MAFLogger
 
 /**
  * An analysis that computes certain characteristics of a program
@@ -78,7 +79,7 @@ trait CharacteristicsAnalysisRunner extends ClientAnalysisRunner:
         var resultTable = table
         resultTable = toTable(Map(name -> results(analysis)), resultTable)
         for (f <- analysis.functions)
-            resultTable = toTable(Map(s"$name ${f.toString()}" -> resultsPerComponent(analysis, f)), resultTable)
+            resultTable = toTable(Map(s"$name ${f.asInstanceOf[SchemeModFComponent].idn.toString()}" -> resultsPerComponent(analysis, f)), resultTable)
         resultTable
 
     def resultsPerComponent(analysis: Analysis, f: analysis.Component): Map[String, Result] =
@@ -126,7 +127,10 @@ object Characteristics extends CharacteristicsAnalysisRunner:
     //       "test/R5RS/various/strong-update.scm", // not sure what's wrong here? thought we fixed that.
     //     ))
 
-    val benchmarks: Set[String] = Set("test/R5RS/gabriel/puzzle.scm")
+    val benchmarks: Set[String] = Set(
+        "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+        // "test/R5RS/icp/icp_8_compiler.scm"
+        )
 
     def createAnalysis(exp: SchemeExp): Analysis =
         new ModAnalysis[SchemeExp](exp)
@@ -145,3 +149,11 @@ object Characteristics extends CharacteristicsAnalysisRunner:
     /** Parses the given program text to a SchemeExp */
     def parseProgram(txt: String): SchemeExp =
         SchemeParser.parseProgram(txt)
+
+    override def main(args: Array[String]): Unit =
+        MAFLogger.disable()
+        val table: Table[Result] = Table.empty
+        val resultTable = benchmarks.foldLeft(table)(runBenchmark)
+        println(resultTable.prettyString())
+        val csv = resultTable.toCSVString(format = _.map(_.toString()).getOrElse("n/a"))
+        writeToFile(csv, "out/characteristics.csv")
