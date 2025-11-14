@@ -102,6 +102,26 @@ object SchemeAnalyses:
       {
         override def toString = "adaptive-context-sensitivity"
     }
+
+    def randomAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
+      with AdaptiveContextSensitivity
+      with TooManyRandom
+      with AdaptiveKCFA
+      with SchemeConstantPropagationDomain
+      with FIFOWorklistAlgorithm[SchemeExp]
+      {
+        override def toString = "adaptive-context-sensitivity (when: random)"
+    }
+
+    def alwaysAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
+      with AdaptiveContextSensitivity
+      with TooManyAlways
+      with AdaptiveKCFA
+      with SchemeConstantPropagationDomain
+      with FIFOWorklistAlgorithm[SchemeExp]
+      {
+        override def toString = "adaptive-context-sensitivity (when: always)"
+    }
   
 
     def aamGCAnalysis(prg: SchemeExp, k: Int) = 

@@ -10,6 +10,8 @@ import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.datastructures.MultiSet
 
+import scala.util.Random
+
 trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     this: AdaptiveContextSensitivityPolicy =>
 
@@ -27,10 +29,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
 
     // use a different context-sensitivity policy per closure
 
-    private var policyPerFn: Map[LambdaModule, ContextSensitivityPolicy] = Map.empty
-    private def getCurrentPolicy(fn: LambdaModule): ContextSensitivityPolicy =
+    protected var policyPerFn: Map[LambdaModule, ContextSensitivityPolicy] = Map.empty
+    protected def getCurrentPolicy(fn: LambdaModule): ContextSensitivityPolicy =
         policyPerFn.getOrElse(fn, defaultPolicy)
-    private def setCurrentPolicy(fn: LambdaModule, ply: ContextSensitivityPolicy): Unit =
+    protected def setCurrentPolicy(fn: LambdaModule, ply: ContextSensitivityPolicy): Unit =
         policyPerFn += fn -> ply
 
     def allocCtx(
@@ -64,10 +66,10 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     // - dependencies (per component) that triggered a component
     // - the number of times a dependency has been triggered
 
-    private var allCmpsPerFn: Map[LambdaModule, Set[Call[ComponentContext]]] = Map.empty
-    private var cmpsPerFn: Map[SchemeModule, MultiSet[Component]] = Map.empty
-    private var depsPerCmp: Map[Component, Set[Dependency]] = Map.empty
-    private var depCounts: Map[Dependency, Int] = Map.empty
+    protected var allCmpsPerFn: Map[LambdaModule, Set[Call[ComponentContext]]] = Map.empty
+    protected var cmpsPerFn: Map[SchemeModule, MultiSet[Component]] = Map.empty
+    protected var depsPerCmp: Map[Component, Set[Dependency]] = Map.empty
+    protected var depCounts: Map[Dependency, Int] = Map.empty
 
     override def spawn(cmp: Component) =
         if !visited(cmp) then
@@ -90,8 +92,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     // - modules that have been reduced
     // - dependencies that have been reduced
 
-    private var reducedModules: Set[SchemeModule] = Set.empty
-    private var reducedDeps: Set[Dependency] = Set.empty
+    protected var reducedModules: Set[SchemeModule] = Set.empty
+    protected var reducedDeps: Set[Dependency] = Set.empty
 
     // adapting the analysis
 
@@ -109,11 +111,26 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         reducedModules = Set.empty
         reducedDeps = Set.empty
 
-    private def reduceModule(module: SchemeModule) =
-        val moduleCmps = cmpsPerFn(module)
+    // WHEN TO ADAPT?
+    protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
         val numberOfComponents = moduleCmps.distinctCount
         val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
-        if numberOfComponents > maximumComponentCost then reduceComponentsForModule(module.asInstanceOf[LambdaModule])
+        numberOfComponents > maximumComponentCost
+
+    protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
+        val numberOfDependencies = deps.size
+        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
+        numberOfDependencies > maximumDependencyCost
+
+    protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean = 
+        val groupedByClo = calls.groupBy(_.clo)
+        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
+        cloMaxContexts > groupedByClo.size
+
+    private def reduceModule(module: SchemeModule) =
+        val moduleCmps = cmpsPerFn(module)
+        val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
+        if tooManyComponents(moduleCmps) then reduceComponentsForModule(module.asInstanceOf[LambdaModule])
         else
             val selectedCmps = selectLargest[(Component, Int)](
               moduleCmps.content,
@@ -129,28 +146,31 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         selected.foreach { case (loc, deps) => reduceTriggersForLocation(loc, deps) }
 
     private def reduceTriggersForLocation(loc: Expression, deps: Set[Dependency]) =
-        val numberOfDependencies = deps.size
         val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
-        if numberOfDependencies > maximumDependencyCost then reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
+        if tooManyDependencies(deps) then reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
         else
             val selected = selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
             selected.foreach { dep => reduceDep(dep) }
 
     private def reduceComponentsForModule(module: LambdaModule): Unit =
         val calls = allCmpsPerFn(module)
-        val groupedByClo = calls.groupBy(_.clo)
-        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
-        if cloMaxContexts > groupedByClo.size then reduceContextsForModule(module)
-        else reduceComponentsForModule(getParentModule(calls.head.clo).asInstanceOf[LambdaModule])
+        if tooManyContexts(calls) then reduceContextsForModule(module)
+        // else reduceComponentsForModule(getParentModule(calls.head.clo).asInstanceOf[LambdaModule])
+        else getParentModule(calls.head.clo) match {
+            case m : LambdaModule => reduceComponentsForModule(m)
+            case MainModule       => return
+            // case _                => return 
+        }
 
     // find a fitting policy
-    private def reduceContextsForModule(module: LambdaModule): Unit =
+    protected def reduceContextsForModule(module: LambdaModule): Unit =
         if !reducedModules(module) then // ensure this is only done once per module per adaptation
             reducedModules += module
             // find a fitting CS policy
             var ctxs = allCmpsPerFn(module).map(_.ctx)
             var plcy = getCurrentPolicy(module)
-            val target = Math.max(1, ctxs.size * reduceFactor)
+            val target = Math.max(1, ctxs.size * reduceFactor) 
+
             while ctxs.size > target do
                 // need to decrease precision further
                 plcy = nextPolicy(module.lambda, plcy, ctxs)
@@ -247,3 +267,30 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         case modularLatticeWrapper.modularLattice.Cons(car, cdr)   => sizeOfValue(car) + sizeOfValue(cdr)
         case modularLatticeWrapper.modularLattice.Vec(_, elements) => elements.map(_._2).map(sizeOfValue).sum
         case _                                                     => 0
+
+
+trait TooManyRandom extends AdaptiveContextSensitivity: 
+    this: AdaptiveContextSensitivityPolicy =>
+
+    override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
+        Random.nextBoolean()
+        
+
+    override protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
+        Random.nextBoolean()
+
+    override protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean = 
+        Random.nextBoolean()
+
+trait TooManyAlways extends AdaptiveContextSensitivity: 
+    this: AdaptiveContextSensitivityPolicy =>
+
+    override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
+        true
+        
+
+    override protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
+        true
+
+    override protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean = 
+        true

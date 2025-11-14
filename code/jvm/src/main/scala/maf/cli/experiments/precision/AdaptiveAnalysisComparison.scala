@@ -17,7 +17,7 @@ abstract class AdaptiveAnalysisComparison[
     Chr: CharLattice,
     Str: StringLattice,
     Smb: SymbolLattice]
-    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb] with ResultsPerCmp[Num, Rea, Bln, Chr, Str, Smb]:
+    extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]: //with ResultsPerCmp[Num, Rea, Bln, Chr, Str, Smb]:
 
     // the precision comparison is parameterized by:
     // - a timeout and number of concrete runs and whether or not to time the analyses
@@ -48,7 +48,7 @@ abstract class AdaptiveAnalysisComparison[
                     val end = System.nanoTime()
                     val duration = (System.nanoTime() - start).nanos.toMillis
                     results = results.add(path, name, Some(lessPrecise.toString))
-                    results = results.add(path, name ++ " ids", Some(compared.toString.replace(",", "").nn)) // add the set of less precise identifiers
+                    // results = results.add(path, name ++ " ids", Some(compared.toString.replace(",", "").nn)) // add the set of less precise identifiers
                     if (timed) then results = results.add(path, name ++ "(ms)", Some(duration.toString))
                 case _ => return // don't run the other analyses anymore
         }
@@ -190,7 +190,12 @@ object AdaptiveContextSensitivityAnalysisComparison
                                      (SchemeAnalyses.kCFAAnalysis(_, 2), "2 kcfa"),
                                      (SchemeAnalyses.kCFAAnalysis(_, 3), "3 kcfa")
                                      )
-    override def adaptiveAnalyses = List((SchemeAnalyses.adaptiveContextSensitiveAnalysis(_), "adaptive"))    
+    override def adaptiveAnalyses = List(
+      (SchemeAnalyses.adaptiveContextSensitiveAnalysis(_), "adaptive"),
+      (SchemeAnalyses.randomAdaptiveContextSensitiveAnalysis(_), "random"),                  
+      (SchemeAnalyses.alwaysAdaptiveContextSensitiveAnalysis(_), "always"),                  
+      // (SchemeAnalyses.neverAdaptiveContextSensitiveAnalysis(_), "never"),                
+      )    
 
     def variousBenchmarks: List[String] = List(
           "test/R5RS/WeiChenRompf2019/meta-circ.scm",
@@ -234,7 +239,8 @@ object AdaptiveContextSensitivityAnalysisComparison
         //"triangl" <- times out in concrete interpreter
       ).map(name => s"test/R5RS/gabriel/$name.scm")
     
-    def benchmarks = variousBenchmarks
+    // def benchmarks = variousBenchmarks
+    def benchmarks = gabrielBenchmarks
 
     def main(args: Array[String]): Unit = {
         MAFLogger.disable()
