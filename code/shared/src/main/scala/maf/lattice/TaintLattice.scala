@@ -25,6 +25,11 @@ object TaintLattice:
             case _         => x
         }
 
+        def elementSize(x: TL): Int = x match {
+            case MayBeTainted => 1
+            case Untainted    => 0
+        }
+
         def subsumes(x: TL, y: => TL): Boolean = x match {
             case MayBeTainted => true
             case _            => y == Untainted

@@ -93,6 +93,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             def subsumes(x: (L, L), y: => (L, L)): Boolean =
                 (schemeLattice.subsumes(x._1, y._1) && schemeLattice.subsumes(x._2, y._2))
             def eql[B: BoolLattice](x: (L, L), y: (L, L)): B = ???
+            def elementSize(x: (L, L)) = 
+                math.max(schemeLattice.elementSize(x._1), schemeLattice.elementSize(x._2))
         }
 
     object VecT extends AbstractType[Vec, Vec]:
@@ -140,6 +142,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
                     }
                 }
+            def elementSize(x: Vec) = x.elements.foldLeft(0){case (n, (_, v)) => n + schemeLattice.elementSize(v)}
             def eql[B: BoolLattice](x: Vec, y: Vec): B = ???
         }
 
@@ -818,6 +821,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def join(x: L, y: => L): L = Lattice[L].join(x, y)
         def subsumes(x: L, y: => L): Boolean = Lattice[L].subsumes(x, y)
         def top: L = throw LatticeTopUndefined
+
+        def elementSize(x: L) = Lattice[L].elementSize(x)
 
         def getClosures(x: L): Set[Closure] = x.get(CloT)
         def getContinuations(x: L): Set[lat.K] = x.get(KontT)

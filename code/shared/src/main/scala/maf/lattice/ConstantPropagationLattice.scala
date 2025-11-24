@@ -32,6 +32,10 @@ object ConstantPropagation:
                         else Top
                     case Bottom => x
             case Bottom => y
+        def elementSize(x: L[A]): Int = x match
+            case Top => 2 
+            case Constant(_) => 1 
+            case Bottom => 0
         def meet(x: L[A], y: => L[A]): L[A] = x match
             case Bottom => Bottom
             case Constant(_) =>

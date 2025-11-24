@@ -39,6 +39,9 @@ class ConcreteLattice:
                 y match
                     case Top              => Top
                     case Values(content2) => makeValues(sunion(content1.toSet[A], content2.toSet[A]))
+        def elementSize(x: L[A]): Int = x match 
+            case Top => Int.MaxValue
+            case Values(content) => content.size
         def subsumes(x: L[A], y: => L[A]): Boolean = x match
             case Top => true
             case Values(content1) =>

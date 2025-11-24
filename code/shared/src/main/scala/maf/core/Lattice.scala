@@ -16,6 +16,9 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
     /** A lattice has a top element (might be undefined) */
     def top: L
 
+    // every element of the lattice has a size (larger size = more imprecise)
+    def elementSize(x: L): Int
+
     /**
      * Elements of the lattice can be joined together
      * @note
@@ -51,6 +54,7 @@ object Lattice:
         def show(x: Set[A]): String = "{" ++ x.map(Show[A].show _).mkString(",") ++ "}"
         def top = throw LatticeTopUndefined
         def bottom: Set[A] = Set.empty
+        def elementSize(x: Set[A]): Int = x.size
         def join(x: Set[A], y: => Set[A]): Set[A] = x.union(y)
         def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
         def eql[B: BoolLattice](x: Set[A], y: Set[A]) = ???
@@ -62,6 +66,7 @@ object Lattice:
         def show(v: Unit): String = "()"
         def top = throw LatticeTopUndefined
         def bottom = ()
+        def elementSize(x: Unit): Int = 0
         def join(x: Unit, y: => Unit): Unit = ()
         def subsumes(x: Unit, y: => Unit): Boolean = true
         def eql[B: BoolLattice](x: Unit, y: Unit): B = BoolLattice[B].inject(true)

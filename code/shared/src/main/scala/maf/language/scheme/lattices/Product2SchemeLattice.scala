@@ -51,6 +51,8 @@ class Product2ModularSchemeLattice[
         def subsumes(x: PL, y: => PL): Boolean =
             schemeLattice.subsumes(x.left, y.left) && Lattice[O].subsumes(x.right, y.right)
         def top: PL = throw LatticeTopUndefined
+        def elementSize(x: PL) = 
+            math.max(schemeLattice.elementSize(x.left), Lattice[O].elementSize(x.right))
 
         def getClosures(x: PL): Set[Closure] = schemeLattice.getClosures(x.left)
         def getContinuations(x: PL): Set[K] = schemeLattice.getContinuations(x.left)

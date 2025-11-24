@@ -79,6 +79,8 @@ class SymbolicLattice[B: BoolLattice] extends Lattice[Set[Symbolic]]:
 
     def subsumes(x: L, y: => L): Boolean =
         y subsetOf x
+    
+    def elementSize(x: L) = x.size
 
     def eql[B: BoolLattice](x: L, y: L): B = BoolLattice[B].inject(x == y)
     def show(v: L): String = s"{${v.mkString(",")}}"

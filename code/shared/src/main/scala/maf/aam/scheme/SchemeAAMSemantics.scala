@@ -97,6 +97,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
                 throw new Exception(s"joining elements $x and $y not supported in storable lattice")
 
         def subsumes(x: Storable, y: => Storable): Boolean = throw new Exception("NYI")
+        def elementSize(x: Storable) = throw new Exception("NYI")
         def eql[B: BoolLattice](x: Storable, y: Storable): B = throw new Exception("NYI")
         def show(v: Storable): String = v match
             case V(v1) => s"V($v1)"

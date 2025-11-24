@@ -140,3 +140,4 @@ object HMap:
         def join(x: HMap, y: => HMap): HMap = x.join(y)
         def subsumes(x: HMap, y: => HMap): Boolean = x.subsumes(y)
         def eql[B: BoolLattice](x: HMap, y: HMap): B = ???
+        def elementSize(x: HMap): Int = x.contents.size

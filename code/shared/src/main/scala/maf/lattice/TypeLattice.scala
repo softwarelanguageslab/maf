@@ -20,6 +20,9 @@ object Type:
         def join(x: T, y: => T): T = x match
             case Top    => Top
             case Bottom => y
+        def elementSize(x: T): Int = x match 
+            case Top => 1 
+            case Bottom => 0
         def meet(x: T, y: => T): T = x match
             case Bottom => Bottom
             case Top    => y
