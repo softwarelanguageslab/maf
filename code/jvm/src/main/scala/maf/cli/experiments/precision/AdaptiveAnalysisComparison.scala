@@ -185,16 +185,23 @@ object AdaptiveContextSensitivityAnalysisComparison
 
     override def concreteRuns = 1
 
-    override def baseAnalyses = List((SchemeAnalyses.contextInsensitiveAnalysis(_), "0 kcfa"),
-                                     (SchemeAnalyses.kCFAAnalysis(_, 1), "1 kcfa"),
-                                     (SchemeAnalyses.kCFAAnalysis(_, 2), "2 kcfa"),
-                                     (SchemeAnalyses.kCFAAnalysis(_, 3), "3 kcfa")
+    override def baseAnalyses = List(
+                                    // (SchemeAnalyses.contextInsensitiveAnalysis(_), "0 kcfa"),
+                                    // (SchemeAnalyses.kCFAAnalysis(_, 1), "1 kcfa"),
+                                    // (SchemeAnalyses.kCFAAnalysis(_, 2), "2 kcfa"),
+                                    // (SchemeAnalyses.kCFAAnalysis(_, 3), "3 kcfa")
                                      )
     override def adaptiveAnalyses = List(
-      (SchemeAnalyses.adaptiveContextSensitiveAnalysis(_), "adaptive"),
-      (SchemeAnalyses.randomAdaptiveContextSensitiveAnalysis(_), "random"),                  
-      (SchemeAnalyses.alwaysAdaptiveContextSensitiveAnalysis(_), "always"),                  
-      // (SchemeAnalyses.neverAdaptiveContextSensitiveAnalysis(_), "never"),                
+      // (SchemeAnalyses.standardAdaptiveContextSensitiveAnalysis(_), "select: most contexts"),
+      // (SchemeAnalyses.fullyRandomAdaptiveContextSensitiveAnalysis(_), "fully random"),                  
+      // (SchemeAnalyses.selectRandomAdaptiveContextSensitiveAnalysis(_), "select: random"),                  
+      // (SchemeAnalyses.selectMostDependenciesAdaptiveContextSensitiveAnalysis(_), "select: most dependencies"),                  
+      // (SchemeAnalyses.selectLeastDependenciesAdaptiveContextSensitiveAnalysis(_), "select: least dependencies"),                  
+      // (SchemeAnalyses.selectMostContextsLeastDependenciesAdaptiveContextSensitiveAnalysis(_), "select: combined"),                  
+      (SchemeAnalyses.selectDifferentValuesAdaptiveContextSensitiveAnalysis(_), "select: different values"),                  
+      // (SchemeAnalyses.selectImpreciseAdaptiveContextSensitiveAnalysis(_), "select: imprecise"),                  
+      // (SchemeAnalyses.randomAdaptiveContextSensitiveAnalysis(_), "when: random"),                  
+      // (SchemeAnalyses.alwaysAdaptiveContextSensitiveAnalysis(_), "when: always")             
       )    
 
     def variousBenchmarks: List[String] = List(
@@ -225,7 +232,7 @@ object AdaptiveContextSensitivityAnalysisComparison
           "test/R5RS/icp/icp_2_aeval.scm",
         )
 
-    def gabrielBenchmarks = 
+    def gabrielBenchmarks: List[String] = 
       List(
         "boyer",
         "browse",
@@ -238,9 +245,20 @@ object AdaptiveContextSensitivityAnalysisComparison
         "takl",
         //"triangl" <- times out in concrete interpreter
       ).map(name => s"test/R5RS/gabriel/$name.scm")
-    
+
+    def interestingBenchmarks: List[String] = List(
+      "test/R5RS/gambit/browse.scm",
+      "test/R5RS/gambit/matrix.scm",
+      "test/R5RS/icp/icp_8_compiler.scm",
+      "test/R5RS/various/SICP-compiler.scm",
+      "test/R5RS/gabriel/boyer.scm",
+      "test/R5RS/gabriel/browse.scm",
+    )
+
+
+    def benchmarks = interestingBenchmarks
     // def benchmarks = variousBenchmarks
-    def benchmarks = gabrielBenchmarks
+    // def benchmarks = gabrielBenchmarks
 
     def main(args: Array[String]): Unit = {
         MAFLogger.disable()
