@@ -29,6 +29,11 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int):
             val m = acc.getOrElse(k, MultiSet.empty)
             acc + (k -> MultiSet(m.content + (elm -> cnt), m.cardinality + cnt))
         }
+    def toCSVString = 
+        content.foldLeft("") { case (csv, (value, n)) => 
+            csv + value.toString() + "," + n.toString() + "\n"
+        }
+
 object MultiSet:
     def empty[X] = MultiSet[X](Map.empty, 0)
     def apply[X](map: Map[X, Int]): MultiSet[X] = MultiSet(map, map.values.sum)

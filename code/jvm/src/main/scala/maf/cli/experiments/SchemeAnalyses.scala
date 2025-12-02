@@ -94,7 +94,7 @@ object SchemeAnalyses:
     }
 
     // adaptive context-sensitive analysis
-    def standardAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
+    def selectMostContextsAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
       with AdaptiveContextSensitivity
       with TooManyCost
       with SelectMostContexts
@@ -105,7 +105,16 @@ object SchemeAnalyses:
         override def toString = "adaptive-context-sensitivity"
     }
 
-    // variations on when to adapt
+    def selectBudgetAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
+      with AdaptiveContextSensitivity
+      with TooManyCost
+      with SelectBudget
+      with AdaptiveKCFA
+      with SchemeConstantPropagationDomain
+      with FIFOWorklistAlgorithm[SchemeExp]
+      {
+        override def toString = "adaptive-context-sensitivity"
+    }
     def randomAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
       with AdaptiveContextSensitivity
       with TooManyRandom
@@ -160,17 +169,6 @@ object SchemeAnalyses:
       with FIFOWorklistAlgorithm[SchemeExp]
       {
         override def toString = "adaptive-context-sensitivity (select: least dependencies)"
-    }
-
-    def selectMostContextsLeastDependenciesAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
-      with TooManyCost
-      with SelectMostContextsLeastDependencies
-      with AdaptiveKCFA
-      with SchemeConstantPropagationDomain
-      with FIFOWorklistAlgorithm[SchemeExp]
-      {
-        override def toString = "adaptive-context-sensitivity (select: most contexts, least dependencies)"
     }
 
     def selectImpreciseAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)

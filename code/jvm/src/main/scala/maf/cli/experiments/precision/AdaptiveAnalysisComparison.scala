@@ -16,7 +16,7 @@ abstract class AdaptiveAnalysisComparison[
     Bln: BoolLattice,
     Chr: CharLattice,
     Str: StringLattice,
-    Smb: SymbolLattice]
+    Smb: SymbolLattice] 
     extends PrecisionBenchmarks[Num, Rea, Bln, Chr, Str, Smb]: //with ResultsPerCmp[Num, Rea, Bln, Chr, Str, Smb]:
 
     // the precision comparison is parameterized by:
@@ -192,12 +192,12 @@ object AdaptiveContextSensitivityAnalysisComparison
                                     // (SchemeAnalyses.kCFAAnalysis(_, 3), "3 kcfa")
                                      )
     override def adaptiveAnalyses = List(
-      // (SchemeAnalyses.standardAdaptiveContextSensitiveAnalysis(_), "select: most contexts"),
+      // (SchemeAnalyses.selectMostContextsAdaptiveContextSensitiveAnalysis(_), "select: most contexts"),
+      // (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_), "select: budget (10)"),
       // (SchemeAnalyses.fullyRandomAdaptiveContextSensitiveAnalysis(_), "fully random"),                  
-      // (SchemeAnalyses.selectRandomAdaptiveContextSensitiveAnalysis(_), "select: random"),                  
+      (SchemeAnalyses.selectRandomAdaptiveContextSensitiveAnalysis(_), "select: random"),                  
       // (SchemeAnalyses.selectMostDependenciesAdaptiveContextSensitiveAnalysis(_), "select: most dependencies"),                  
-      // (SchemeAnalyses.selectLeastDependenciesAdaptiveContextSensitiveAnalysis(_), "select: least dependencies"),                  
-      // (SchemeAnalyses.selectMostContextsLeastDependenciesAdaptiveContextSensitiveAnalysis(_), "select: combined"),                  
+      // (SchemeAnalyses.selectLeastDependenciesAdaptiveContextSensitiveAnalysis(_), "select: least dependencies"),                
       (SchemeAnalyses.selectDifferentValuesAdaptiveContextSensitiveAnalysis(_), "select: different values"),                  
       // (SchemeAnalyses.selectImpreciseAdaptiveContextSensitiveAnalysis(_), "select: imprecise"),                  
       // (SchemeAnalyses.randomAdaptiveContextSensitiveAnalysis(_), "when: random"),                  
@@ -256,9 +256,11 @@ object AdaptiveContextSensitivityAnalysisComparison
     )
 
 
-    def benchmarks = interestingBenchmarks
+    // def benchmarks = interestingBenchmarks
     // def benchmarks = variousBenchmarks
     // def benchmarks = gabrielBenchmarks
+
+    def benchmarks = List("test/R5RS/gambit/matrix.scm")
 
     def main(args: Array[String]): Unit = {
         MAFLogger.disable()

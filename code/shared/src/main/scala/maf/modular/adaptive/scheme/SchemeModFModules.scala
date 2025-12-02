@@ -14,7 +14,7 @@ trait SchemeModFModules extends BaseSchemeModFSemantics with ModularSchemeDomain
     case object MainModule extends SchemeModule:
         override def toString = "main"
     case class LambdaModule(lambda: SchemeLambdaExp) extends SchemeModule:
-        override def toString = lambda.lambdaName
+        override def toString = s"${lambda.lambdaName} ${lambda.idn.toString}" 
         override def hashCode = lambda.idn.hashCode
         override def equals(other: Any) = other match
             case lm: LambdaModule if lm.lambda.idn == this.lambda.idn => true

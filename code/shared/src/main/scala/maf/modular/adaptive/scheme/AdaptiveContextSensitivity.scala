@@ -9,15 +9,21 @@ import maf.modular._
 import maf.modular.scheme.modf.SchemeModFComponent
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.datastructures.MultiSet
+import maf.util.benchmarks.Table
+import maf.util._
 
 import scala.util.Random
 
-trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
+trait AdaptiveContextSensitivity() extends AdaptiveSchemeModFSemantics:
     this: AdaptiveContextSensitivityPolicy =>
 
     import modularLattice.Elements.*
 
-    // disable warning messages and debug logging by default (can be override for c3ustom logging)
+    val strategy: String
+
+    var inspectCount = 0
+
+    // disable warning messages and debug logging by default (can be override for custom logging)
     protected def warn(message: => String): Unit = ()
     protected def debug(message: => String): Unit = ()
 
@@ -26,6 +32,7 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     // - `cutoffFactor`: determines the cutoff for selecting "culprits" to be reduced in the adaptation
     val reduceFactor = 0.5
     val cutoffFactor = 0.5
+    val budget: Int = 10
 
     // use a different context-sensitivity policy per closure
 
@@ -95,20 +102,30 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
     protected var reducedModules: Set[SchemeModule] = Set.empty
     protected var reducedDeps: Set[Dependency] = Set.empty
 
+    // data collection
+    protected var chosenModules: Table[Int] = Table.empty.withDefaultValue(0)
+
     // adapting the analysis
     def inspect() =
-        // start the adaptation
-        def modulesToAdapt = selectStartingModule(cmpsPerFn)
-        modulesToAdapt.foreach { case (module, _) =>
-            reduceModule(module)
+        if tooManyIntraanalyses(cmpsPerFn) then {
+            inspectCount = inspectCount + 1
+            def modulesToAdapt = selectStartingModule(cmpsPerFn)
+            // start the adaptation
+            modulesToAdapt.foreach { case (module, _) =>
+                chosenModules = chosenModules.add(module.toString(), inspectCount.toString(), 1)
+                reduceModule(module)
+            }
+            // update the analysis
+            if reducedModules.nonEmpty then { adaptAnalysis() }
+            // data collection: save the modules that have been adapted
+            writeToFile(chosenModules.toCSVString(rows = chosenModules.allRows.toList), s"out/adaptive-context-sensitivity/chosenModules-$strategy.csv")
+            // clear the set of reduced modules
+            reducedModules = Set.empty
+            reducedDeps = Set.empty
         }
-        // update the analysis
-        if reducedModules.nonEmpty then { adaptAnalysis() }
-        // clear the set of reduced modules
-        reducedModules = Set.empty
-        reducedDeps = Set.empty
 
     // WHEN TO ADAPT
+    protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean
     protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean
     protected def tooManyDependencies(deps: Set[Dependency]): Boolean
     protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean
@@ -224,6 +241,11 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
      * (TODO: factor our some of these ...)
      */
 
+    def writeToFile(output: String, path: String) = 
+      val writer = Writer.open(path)
+      Writer.write(writer, output)
+      Writer.close(writer)
+
     def selectLargest[D](data: Iterable[D], size: D => Int): Iterable[D] =
         if !data.isEmpty then
             selectLargest(data, size, size(data.maxBy(size)))
@@ -272,6 +294,9 @@ trait TooManyRandom extends AdaptiveContextSensitivity:
     // randomly choose to adapt
     this: AdaptiveContextSensitivityPolicy =>
 
+    override protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean = 
+        Random.nextBoolean()
+
     override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
         Random.nextBoolean()
         
@@ -286,6 +311,9 @@ trait TooManyAlways extends AdaptiveContextSensitivity:
     // always choose to adapt
     this: AdaptiveContextSensitivityPolicy =>
 
+    override protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean = 
+        true
+
     override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
         true
         
@@ -298,9 +326,15 @@ trait TooManyAlways extends AdaptiveContextSensitivity:
 trait TooManyCost extends AdaptiveContextSensitivity:
     // choose when to adapt based on a maximum cost
     this: AdaptiveContextSensitivityPolicy => 
+
+
+    override protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean = 
+        !cmpsPerFn.filter({(_: SchemeModule, cmps: MultiSet[Component]) => cmps.toMap.values.exists(_ > budget)}).isEmpty
+
     override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
         val numberOfComponents = moduleCmps.distinctCount
         val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
+        // val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
         numberOfComponents > maximumComponentCost
 
     override protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
@@ -316,6 +350,8 @@ trait TooManyCost extends AdaptiveContextSensitivity:
 trait SelectRandom extends AdaptiveContextSensitivity: 
     // select randomly
     this: AdaptiveContextSensitivityPolicy =>
+
+    val strategy: String = "select-random"
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
         Random.shuffle(cmpsPerFn.toList).take(1)
 
@@ -337,19 +373,47 @@ trait SelectRandom extends AdaptiveContextSensitivity:
 trait SelectMostContexts extends AdaptiveContextSensitivity: 
     // select the components with the most different contexts
     this: AdaptiveContextSensitivityPolicy =>
-    override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
-        selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality)
+    val strategy: String = "select-mostcontexts"
+
+    override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) =
+        // the module with the most components 
+        selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.distinctCount) 
 
     override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
-        selectLargest[(Component, Int)](moduleCmps.content, _._2, maximumComponentCost)
+        // the component that was triggered the most
+        selectLargest[(Component, Int)](moduleCmps.content, _._2)
     
     override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
+        // the expression that triggered the reanalysis the most often
         selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size)
 
     override protected def selectTrigger(deps: Set[Dependency]) = 
-        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
-        selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
+        // the dependencies that have been triggered the most often
+        selectLargest[Dependency](deps, depCounts)
+
+    override protected def selectClosure(groupByFunction: Map[SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])]]) = 
+        selectLargest[(SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])])](groupByFunction, _._2.size)
+
+    override protected def selectAddress(groupByLocation: Map[Expression, Set[Addr]]) = 
+        selectLargest[(Expression, Set[Addr])](groupByLocation, _._2.size)
+
+trait SelectBudget extends AdaptiveContextSensitivity: 
+    // select the components that go over the given budget
+    this: AdaptiveContextSensitivityPolicy =>
+
+    val strategy: String = s"select-budget-$budget"
+
+    override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
+        selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality, budget)
+
+    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
+        selectLargest[(Component, Int)](moduleCmps.content, _._2, budget)
+    
+    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
+        selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size, budget)
+
+    override protected def selectTrigger(deps: Set[Dependency]) = 
+        selectLargest[Dependency](deps, depCounts, budget)
 
     override protected def selectClosure(groupByFunction: Map[SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])]]) = 
         selectLargest[(SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])])](groupByFunction, _._2.size)
@@ -360,6 +424,8 @@ trait SelectMostContexts extends AdaptiveContextSensitivity:
 trait SelectMostDependencies extends AdaptiveContextSensitivity: 
     // select the components with the most dependencies
     this: AdaptiveContextSensitivityPolicy => 
+
+    val strategy: String = "select-mostdependencies"
 
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, ((_: SchemeModule, cmps: MultiSet[Component]) => 
@@ -385,6 +451,8 @@ trait SelectLeastDependencies extends AdaptiveContextSensitivity:
     // select the components with the least dependencies
     this: AdaptiveContextSensitivityPolicy => 
 
+    val strategy: String = "select-leastdependencies"
+
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, ((_: SchemeModule, cmps: MultiSet[Component]) => 
                                                                             cmps.distinctElements.foldLeft(0) { (x: Int, cmp: Component) => 
@@ -405,40 +473,11 @@ trait SelectLeastDependencies extends AdaptiveContextSensitivity:
     override protected def selectAddress(groupByLocation: Map[Expression, Set[Addr]]) = 
         selectLargest[(Expression, Set[Addr])](groupByLocation, _._2.size)
 
-trait SelectMostContextsLeastDependencies extends AdaptiveContextSensitivity: 
-    // select the components with the most contexts and from those the ones with the least dependencies
-    // TODO: this could probably be implemented smarter (now, very little is adapted because we filter twice)
-    this: AdaptiveContextSensitivityPolicy => 
-
-    override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
-        def mostContexts = selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality)
-        selectLargest[(SchemeModule, MultiSet[Component])](mostContexts, ((_: SchemeModule, cmps: MultiSet[Component]) => 
-                                                                            cmps.distinctElements.foldLeft(0) { (x: Int, cmp: Component) => 
-                                                                                                                 - (depsPerCmp.getOrElse(cmp, Set.empty).size + x)} ))
-
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
-        def mostContexts = selectLargest[(Component, Int)](moduleCmps.content, _._2, maximumComponentCost)
-        selectLargest[(Component, Int)](mostContexts, (cmp: Component, _: Int) => - depsPerCmp.getOrElse(cmp, Set.empty).size)
-    
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
-        def mostContexts = selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size)
-        selectLargest[(Expression, Set[Dependency])](mostContexts, (_: Expression, deps: Set[Dependency]) => - deps.size)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = 
-        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
-        def mostContexts = selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
-        selectLargest[Dependency](mostContexts, depCounts mapValues {(v: Int) => - v})
-
-    override protected def selectClosure(groupByFunction: Map[SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])]]) = 
-        selectLargest[(SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])])](groupByFunction, _._2.size)
-
-    override protected def selectAddress(groupByLocation: Map[Expression, Set[Addr]]) = 
-        selectLargest[(Expression, Set[Addr])](groupByLocation, _._2.size)
-
 trait SelectImprecise extends AdaptiveContextSensitivity: 
     // select the components with the most imprecise values (ie highest in the lattice)
     this: AdaptiveContextSensitivityPolicy => 
+
+    val strategy: String = "select-imprecise"
 
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, ((_: SchemeModule, cmps: MultiSet[Component]) => 
@@ -463,6 +502,8 @@ trait SelectImprecise extends AdaptiveContextSensitivity:
 
 trait SelectDifferentValues extends AdaptiveContextSensitivity: 
     this: AdaptiveContextSensitivityPolicy => 
+
+    val strategy: String = "select-differentvalues"
 
     // select modules where the contexts do not represent many different abstract values
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
