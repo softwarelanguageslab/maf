@@ -236,7 +236,7 @@ object MAFLogger:
     def enable(): Unit = disabled = false
     def disable(): Unit = disabled = true
 
-    def log(level: LogLevel, msg: String): Unit =
+    def log(level: LogLevel, msg: => String): Unit =
         if disabled then return
 
         val policy = currentConfig(level)

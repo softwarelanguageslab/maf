@@ -22,6 +22,7 @@ import maf.modular.scheme.modactor.mirrors.ModActorWithMirrors
 import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
 import maf.language.racket.RacketLoaderSemantics
 import maf.language.racket.RacketLoader
+import maf.core.Store
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -101,10 +102,16 @@ object SchemeAnalyses:
         with SchemeModFKCallSiteSensitivity
         with SchemeConstantPropagationDomain {
 
+        type AnalysisState = Map[Addr, Value]
+        def analysisState = store 
+
         override def toString = s"parallel k-CFA (n = $n ; k = $kcfa)"
         val k = kcfa
         override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
+        override def intraAnalysis(cmp: Component) = 
+          new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra { intra => 
+            def setLocalState(st: AnalysisState): Unit = intra.store = st 
+          }
     }
     def modConcAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModConcAnalysis(prg)
         with SchemeModConcStandardSensitivity
@@ -127,18 +134,28 @@ object SchemeAnalyses:
         with SchemeConstantPropagationDomain
         with CallDepthFirstWorklistAlgorithm[SchemeExp]
         with ParallelWorklistAlgorithm[SchemeExp] {
+
+        type AnalysisState = Map[Addr, Value]
+        def analysisState = store
+
         override def workers = n
         override def toString = s"parallel modconc (n = $n ; m = $m)"
-        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra
+        override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra { intra => 
+          def setLocalState(st: AnalysisState) = intra.store = st 
+        }
         override def modFAnalysis(
             intra: SchemeModConcIntra
           ) = new InnerModFAnalysis(intra)
             with SchemeModFKCallSiteSensitivity
             with CallDepthFirstWorklistAlgorithm[SchemeExp]
             with ParallelWorklistAlgorithm[SchemeExp] {
+            type AnalysisState = Map[Addr, Value]
+            def analysisState = store   
             val k = kcfa
             override def workers = m
-            override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra
+            override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra { intraModF => 
+              def setLocalState(st: AnalysisState) = intraModF.store = st   
+            }
         }
     }
 

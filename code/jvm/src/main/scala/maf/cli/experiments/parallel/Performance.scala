@@ -9,176 +9,143 @@ import maf.modular._
 import maf.modular.scheme._
 import maf.modular.scheme.modf._
 import maf.modular.worklist._
+import maf.modular.worklist.LeastVisitedFirstWorklistAlgorithm
+import maf.modular.worklist.LeastVisitedFirstWorklistAlgorithm
+import maf.modular.worklist.DeepExpressionsFirstWorklistAlgorithm
+import maf.modular.worklist.LeastDependenciesFirstWorklistAlgorithm
+import maf.util._
+import maf.modular.scheme.modflocal._
+import maf.language.scheme.primitives.SchemePrelude
+
+object ParallelDSSAnalyses:
+
+    abstract class ParallelDSSAnalysis(prg: SchemeExp, n: Int, kcfa: Int) 
+        extends SchemeModFLocal(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(kcfa)
+            with ParallelWorklistAlgorithm[SchemeExp] {
+
+        type AnalysisState = Map[Component, Set[(Val, Dlt, Set[Adr], Set[Adr])]] 
+        def analysisState = results 
+    
+        override def workers = n 
+        override def intraAnalysis(cmp: Component) = 
+            new SchemeLocalIntraAnalysis(cmp) with ParallelIntra { intra => 
+                def setLocalState(st: AnalysisState) = intra.results = st 
+            }
+    }
+
+    abstract class ParallelDSSFSAnalysis(prg: SchemeExp, n: Int, kcfa: Int) 
+        extends SchemeModFLocalFS(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(kcfa)
+            with ParallelWorklistAlgorithm[SchemeExp] {
+
+        type AnalysisState = (Res, Sts)
+        def analysisState = (results, stores)
+    
+        override def workers = n 
+        override def intraAnalysis(cmp: Component) = 
+            new SchemeModFLocalFSIntraAnalysis(cmp) with ParallelIntra { intra => 
+                def setLocalState(st: AnalysisState) = 
+                    intra.results = st._1
+                    intra.stores = st._2
+            }
+    }
+
+    def parallelDSS(prg: SchemeExp, n: Int, kcfa: Int) = 
+        new ParallelDSSAnalysis(prg, n, kcfa) with MostVisitedFirstWorklistAlgorithm[SchemeExp]
 
 object ParallelModFAnalyses:
+
+    abstract class ParallelModFAnalysis(prg: SchemeExp, n: Int, kcfa: Int)
+        extends ModAnalysis(prg) with SchemeModFSemanticsM
+                                 with StandardSchemeModFComponents
+                                 with BigStepModFSemantics
+                                 with ParallelWorklistAlgorithm[SchemeExp]
+                                 with SchemeModFKCallSiteSensitivity
+                                 with SchemeConstantPropagationDomain {
+
+        type AnalysisState = Map[Addr, Value]
+        def analysisState = store 
+        
+        override val k = kcfa
+        override def workers = n 
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra { intra => 
+            def setLocalState(st: AnalysisState) = intra.store = st 
+        }
+    }
+
     def callDepthFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with CallDepthFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with CallDepthFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
+
     def leastVisitedFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with LeastVisitedFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"least-visited-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def mostVisitedFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with MostVisitedFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with MostVisitedFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"most-visited-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def deepExpressionsFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with MostVisitedFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with DeepExpressionsFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"deep-expressions-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def shallowExpressionsFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa)  with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"deep-expressions-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def mostDependenciesFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with MostDependenciesFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with MostDependenciesFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def leastDependenciesFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with LeastVisitedFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with LeastDependenciesFirstWorklistAlgorithm[SchemeExp] {
         override def toString() = s"least-dependencies-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def biggerEnvironmentFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with BiggerEnvironmentFirstWorklistAlgorithm.ModF
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with BiggerEnvironmentFirstWorklistAlgorithm.ModF {
         override def toString() = s"bigger-env-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
     def smallerEnvironmentFirst(
         prg: SchemeExp,
         n: Int,
         kcfa: Int
-      ) = new ModAnalysis(prg)
-        with SchemeModFSemanticsM
-        with StandardSchemeModFComponents
-        with BigStepModFSemantics
-        with SmallerEnvironmentFirstWorklistAlgorithm.ModF
-        with ParallelWorklistAlgorithm[SchemeExp]
-        with SchemeModFKCallSiteSensitivity
-        with SchemeConstantPropagationDomain {
-
+      ) = new ParallelModFAnalysis(prg, n, kcfa) with SmallerEnvironmentFirstWorklistAlgorithm.ModF {
         override def toString() = s"smaller-env-first (n = $n ; k = $kcfa)"
-        val k = kcfa
-        override def workers = n
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
     }
 
 object ParallelModFBenchmarks:
@@ -210,16 +177,17 @@ object ParallelModFBenchmarks:
     ).toMap
     def all = List(
       // TODO: commented for locally testing only, everything should be uncommented here
-      "test/R5RS/WeiChenRompf2019/meta-circ.scm",
-      "test/R5RS/WeiChenRompf2019/earley.sch",
-      "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
-      "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
-      "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
-      "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
-      "test/R5RS/gambit/peval.scm",
-      "test/R5RS/gambit/scheme.scm",
-      "test/R5RS/gambit/sboyer.scm",
-      "test/R5RS/gambit/nboyer.scm"
+      "test/R5RS/gabriel/cpstak.scm"
+      //"test/R5RS/WeiChenRompf2019/meta-circ.scm"
+      //"test/R5RS/WeiChenRompf2019/earley.sch",
+      //"test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
+      //"test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
+      //"test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
+      //"test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
+      //"test/R5RS/gambit/peval.scm",
+      //"test/R5RS/gambit/scheme.scm",
+      //"test/R5RS/gambit/sboyer.scm",
+      //"test/R5RS/gambit/nboyer.scm"
 //    "test/R5RS/gambit/matrix.scm",
 //    "test/R5RS/gambit/browse.scm",
 //    "test/R5RS/scp1-compressed/all.scm",
@@ -249,6 +217,19 @@ object ParallelModFBenchmarks:
     )
 
     def for2CFA = all.filter(b => !(excludedFor2CFA.contains(b)))
+
+    def forDSS = List(
+        "boyer",
+        "browse",
+        "cpstak",
+        "dderiv",
+        "deriv",
+        "destruc",
+        "diviter",
+        "divrec",
+        "takl",
+        //"triangl" <- times out in concrete interpreter
+      ).map(name => s"test/R5RS/gabriel/$name.scm")
 
 trait BaseResultsModFSetup extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
@@ -304,9 +285,15 @@ trait ParallelModFPerformance extends PerformanceEvaluation:
     def outputFile: String
     def cores = List(1, 2, 4, 8)
     def benchmarks: Iterable[Benchmark]
+    override def parseProgram(txt: String): SchemeExp =
+        val parsed = SchemeParser.parse(txt)
+        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val transf = SchemeMutableVarBoxer.transform(prelud)
+        SchemeParser.undefine(transf)
     def analyses: List[(SchemeExp => Analysis, String)] =
-        cores.map(n => (SchemeAnalyses.parallelKCFAAnalysis(_, n, k), s"parallel (n = $n, $k-CFA)"))
+        cores.map(n => (ParallelDSSAnalyses.parallelDSS(_, n, k), s"parallel (n = $n, $k-CFA)"))
     def main(args: Array[String]) =
+        MAFLogger.disable()
         run()
         exportCSV(outputFile, format _, timestamped = false)
         exportCSV(outputFile + "-stddev", formatStddev _, timestamped = false)
@@ -314,7 +301,7 @@ trait ParallelModFPerformance extends PerformanceEvaluation:
 object ParallelModFPerformance0CFA extends ParallelModFPerformance:
     def k = 0
     def outputFile = "data/modf-context-insensitive.csv"
-    def benchmarks = ParallelModFBenchmarks.all
+    def benchmarks = ParallelModFBenchmarks.forDSS
 
 object ParallelModFPerformance2CFA extends ParallelModFPerformance:
     def k = 2
@@ -381,4 +368,4 @@ object ParallelPerformanceModConc extends PerformanceEvaluation:
             }
     def main(args: Array[String]) =
         run()
-        exportCSV("data/modconc.csv", format _, timestamped = false)
+        exportCSV("data/modconc.csv", format, timestamped = false)
