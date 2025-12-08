@@ -21,6 +21,7 @@ trait AdaptiveContextSensitivityPolicy extends AdaptiveContextSensitivity:
             caller: Component
           ): ComponentContext
         def adaptCtx(ctx: ComponentContext): ComponentContext
+        def isLowestPolicy: Boolean
 
     val defaultPolicy: ContextSensitivityPolicy
     def nextPolicy(
@@ -48,6 +49,7 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy:
             call: Position,
             caller: Component
           ): ComponentContext = call :: getContext(caller)
+        def isLowestPolicy: Boolean = false
 
     case class KCallSites(k: Int) extends ContextSensitivityPolicy:
         override def toString = s"k = $k"
@@ -58,16 +60,19 @@ trait AdaptiveKCFA extends AdaptiveContextSensitivityPolicy:
             call: Position,
             caller: Component
           ): ComponentContext = (call :: getContext(caller)).take(k)
+        def isLowestPolicy: Boolean = k == 0
 
     val defaultPolicy = KCallSites(10) // start with 10-cfa
+    // val defaultPolicy = KUnlimited
     def nextPolicy(
         fun: SchemeLambdaExp,
         cur: ContextSensitivityPolicy,
         cts: Set[ComponentContext]
       ): ContextSensitivityPolicy = cur match
         case KUnlimited =>
-            val highestK = cts.maxBy(_.length).length
-            KCallSites(highestK - 1)
+            // val highestK = cts.maxBy(_.length).length
+            // KCallSites(highestK - 1)
+            KCallSites(10)
         case KCallSites(k) if k > 0 => KCallSites(k - 1)
         case _                      => throw new Exception("Can not lower precision any further!")
 
@@ -94,6 +99,7 @@ trait AdaptiveArgSensitivity extends AdaptiveContextSensitivityPolicy:
         def adaptCtx(ctx: ComponentContext): ComponentContext = filterArgs(ctx)
         private def filterArgs(argValues: Map[Identifier, Value]): Map[Identifier, Value] =
             argValues.filter { case (id, _) => !excluded(id) }
+        def isLowestPolicy: Boolean = ???
 
     val defaultPolicy = ArgValues(Set.empty)
     def nextPolicy(

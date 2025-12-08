@@ -95,7 +95,7 @@ object SchemeAnalyses:
 
     // adaptive context-sensitive analysis
     def selectMostContextsAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyCost
       with SelectMostContexts
       with AdaptiveKCFA
@@ -105,8 +105,8 @@ object SchemeAnalyses:
         override def toString = "adaptive-context-sensitivity"
     }
 
-    def selectBudgetAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+    def selectBudgetAdaptiveContextSensitiveAnalysis(prg: SchemeExp, budget: Int) = new AdaptiveModAnalysis(prg)
+      with AdaptiveContextSensitivity(budget)
       with TooManyCost
       with SelectBudget
       with AdaptiveKCFA
@@ -116,7 +116,7 @@ object SchemeAnalyses:
         override def toString = "adaptive-context-sensitivity"
     }
     def randomAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyRandom
       with SelectMostContexts
       with AdaptiveKCFA
@@ -127,7 +127,7 @@ object SchemeAnalyses:
     }
 
     def alwaysAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyAlways
       with SelectMostContexts
       with AdaptiveKCFA
@@ -139,7 +139,7 @@ object SchemeAnalyses:
 
     // variations on what to adapt
     def selectRandomAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyCost
       with SelectRandom
       with AdaptiveKCFA
@@ -150,7 +150,7 @@ object SchemeAnalyses:
     }
 
     def selectMostDependenciesAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyCost
       with SelectMostDependencies
       with AdaptiveKCFA
@@ -161,7 +161,7 @@ object SchemeAnalyses:
     }
 
     def selectLeastDependenciesAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyCost
       with SelectLeastDependencies
       with AdaptiveKCFA
@@ -172,7 +172,7 @@ object SchemeAnalyses:
     }
 
     def selectImpreciseAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyCost
       with SelectImprecise
       with AdaptiveKCFA
@@ -183,7 +183,7 @@ object SchemeAnalyses:
     }
 
     def selectDifferentValuesAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with TooManyCost
       with SelectDifferentValues
       with AdaptiveKCFA
@@ -195,7 +195,7 @@ object SchemeAnalyses:
 
   // FULLY RANDOM ADAPTIVE CONTEXT SENSITIVITY
     def fullyRandomAdaptiveContextSensitiveAnalysis(prg: SchemeExp) = new AdaptiveModAnalysis(prg)
-      with AdaptiveContextSensitivity
+      with AdaptiveContextSensitivity()
       with SelectRandom
       with TooManyRandom
       with AdaptiveKCFA

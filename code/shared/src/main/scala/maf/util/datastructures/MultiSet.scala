@@ -33,6 +33,9 @@ case class MultiSet[X](content: Map[X, Int], cardinality: Int):
         content.foldLeft("") { case (csv, (value, n)) => 
             csv + value.toString() + "," + n.toString() + "\n"
         }
+    def filter(p: X => Boolean) = 
+        val newContent = this.content.filter({(x, _) => p(x)})
+        MultiSet(newContent, newContent.foldLeft(0){case (n, (_, mult)) => n + mult})
 
 object MultiSet:
     def empty[X] = MultiSet[X](Map.empty, 0)
