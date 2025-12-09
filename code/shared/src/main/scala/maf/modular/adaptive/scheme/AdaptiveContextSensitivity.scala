@@ -128,19 +128,21 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
 
     // WHEN TO ADAPT
     protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean
+    
+    // todo: factor these back in... (see whiteboard)
     protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean
     protected def tooManyDependencies(deps: Set[Dependency]): Boolean
     protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean
 
     // WHAT TO ADAPT
     protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Iterable[(SchemeModule, MultiSet[Component])]
+   
+   
+   // todo: factor these back in.. should simply select largest
     protected def selectComponent(moduleCmps:  MultiSet[Component]): Iterable[(Component, Int)]
     protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]): Iterable[(Expression, Set[Dependency])]
     protected def selectTrigger(deps: Set[Dependency]): Iterable[Dependency]
-    protected def selectClosure(groupByFunction: Map[SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])]]) = 
-        selectLargest[(SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])])](groupByFunction, _._2.size)
-    protected def selectAddress(groupByLocation: Map[Expression, Set[Addr]]) = 
-        selectLargest[(Expression, Set[Addr])](groupByLocation, _._2.size)
+         
 
 
     // REDUCING
@@ -215,7 +217,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
 
     private def reduceAddresses(addrs: Set[Addr]) =
         val groupByLocation = addrs.groupBy[Expression](getAddrExp)
-        val selected = selectAddress(groupByLocation)
+        val selected = selectLargest[(Expression, Set[Addr])](groupByLocation, _._2.size)
         selected.foreach { case (loc, addrs) => reduceAddressesForLocation(loc, addrs) }
 
     private def reduceAddressesForLocation(loc: Expression, addrs: Set[Addr]): Unit =
@@ -227,7 +229,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
 
     private def reduceClosures(cls: Set[(SchemeLambdaExp, Environment[Addr])]) =
         val groupByFunction = cls.groupBy[SchemeLambdaExp](_._1)
-        val selected = selectClosure(groupByFunction)
+        val selected = selectLargest[(SchemeLambdaExp, Set[(SchemeLambdaExp, Environment[Addr])])](groupByFunction, _._2.size)
         selected.foreach { case (fn, closures) => reduceClosuresForFunction(fn, closures) }
 
     private def reduceClosuresForFunction(fn: SchemeLambdaExp, closures: Set[(SchemeLambdaExp, Environment[Addr])]): Unit =
