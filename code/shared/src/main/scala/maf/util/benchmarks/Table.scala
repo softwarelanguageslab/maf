@@ -20,7 +20,7 @@ object Table:
 
     def fromCSVString[V](csv: String, stringToData: String => V): Table[V] = 
       var result = Table.empty[V]
-      def splitCSV = csv.split("\n").map(_.split(","))
+      val splitCSV = csv.split("\n").map(_.split(","))
       val columns = splitCSV(0)
       for row <- 1 to splitCSV.length - 1 do 
         for column <- 1 to columns.length - 1 do 

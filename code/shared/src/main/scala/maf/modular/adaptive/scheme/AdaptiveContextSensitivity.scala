@@ -136,13 +136,6 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
 
     // WHAT TO ADAPT
     protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Iterable[(SchemeModule, MultiSet[Component])]
-   
-   
-   // todo: factor these back in.. should simply select largest
-    protected def selectComponent(moduleCmps:  MultiSet[Component]): Iterable[(Component, Int)]
-    protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]): Iterable[(Expression, Set[Dependency])]
-    protected def selectTrigger(deps: Set[Dependency]): Iterable[Dependency]
-         
 
 
     // REDUCING
@@ -156,20 +149,21 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         else
             val adaptationCandidates = moduleCmps.filter({case m: LambdaModule => !getCurrentPolicy(m).isLowestPolicy
                                                           case _               => true})
-            val selectedCmps = selectComponent(adaptationCandidates)
+            val selectedCmps = selectLargest[(Component, Int)](moduleCmps.content, _._2)
             selectedCmps.foreach { case (cmp, _) => reduceReanalysesForComponent(cmp) }
 
     private def reduceReanalysesForComponent(cmp: Component) =
         val deps = depsPerCmp.getOrElse(cmp, Set.empty)
         val groupedByLoc = deps.groupBy(getDepExp)
         val adaptationCandidates = groupedByLoc.filter((_, deps) => deps.size > 1)
-        val selected = selectReanalysis(adaptationCandidates)
+        val selected = selectLargest[(Expression, Set[Dependency])](groupedByLoc, (_: Expression, deps: Set[Dependency]) => deps.size)
         selected.foreach { case (loc, deps) => reduceTriggersForLocation(loc, deps) }
 
     private def reduceTriggersForLocation(loc: Expression, deps: Set[Dependency]) =
         if tooManyDependencies(deps) then reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
         else
-            val selected = selectTrigger(deps)
+            val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
+            val selected = selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
             selected.foreach { dep => reduceDep(dep) }
 
     private def reduceComponentsForModule(module: LambdaModule): Unit =
@@ -365,15 +359,6 @@ trait SelectRandom extends AdaptiveContextSensitivity:
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
         Random.shuffle(cmpsPerFn.toList).take(1)
 
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        Random.shuffle(moduleCmps.toList).take(1)
-
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
-        Random.shuffle(groupedByLoc.toList).take(1)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = 
-        Random.shuffle(deps.toList).take(1)
-
 trait SelectMostContexts extends AdaptiveContextSensitivity: 
     // select the components with the most different contexts
     this: AdaptiveContextSensitivityPolicy =>
@@ -382,18 +367,6 @@ trait SelectMostContexts extends AdaptiveContextSensitivity:
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) =
         // the module with the most components 
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.distinctCount) 
-
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        // the component that was triggered the most
-        selectLargest[(Component, Int)](moduleCmps.content, _._2)
-    
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
-        // the expression that triggered the reanalysis the most often
-        selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = 
-        // the dependencies that have been triggered the most often
-        selectLargest[Dependency](deps, depCounts)
 
 trait SelectBudget extends AdaptiveContextSensitivity: 
     // select the components that go over the given budget
@@ -408,18 +381,6 @@ trait SelectBudget extends AdaptiveContextSensitivity:
     override protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]) = 
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, _._2.cardinality, budget)
 
-    // select the components that have been reanalysed more than allowed by the budget
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        selectLargest[(Component, Int)](moduleCmps.content, _._2, budget)
-    
-    // select the reanalyses with more dependencies than allowed by the budget
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
-        selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size, budget)
-
-    // select the triggers that have been triggered more than allowed by the budget
-    override protected def selectTrigger(deps: Set[Dependency]) = 
-        selectLargest[Dependency](deps, depCounts, budget)
-
 trait SelectMostDependencies extends AdaptiveContextSensitivity: 
     // select the components with the most dependencies
     this: AdaptiveContextSensitivityPolicy => 
@@ -431,15 +392,6 @@ trait SelectMostDependencies extends AdaptiveContextSensitivity:
                                                                             cmps.distinctElements.foldLeft(0) { (x: Int, cmp: Component) => 
                                                                                                                  depsPerCmp.getOrElse(cmp, Set.empty).size + x} ))
 
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        selectLargest[(Component, Int)](moduleCmps.content, (cmp: Component, _: Int) => depsPerCmp.getOrElse(cmp, Set.empty).size)
-    
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
-        selectLargest[(Expression, Set[Dependency])](groupedByLoc, _._2.size)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = 
-        selectLargest[Dependency](deps, depCounts)
-
 trait SelectLeastDependencies extends AdaptiveContextSensitivity: 
     // select the components with the least dependencies
     this: AdaptiveContextSensitivityPolicy => 
@@ -450,16 +402,7 @@ trait SelectLeastDependencies extends AdaptiveContextSensitivity:
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, ((_: SchemeModule, cmps: MultiSet[Component]) => 
                                                                             cmps.distinctElements.foldLeft(0) { (x: Int, cmp: Component) => 
                                                                                                                  - (depsPerCmp.getOrElse(cmp, Set.empty).size + x)} ))
-
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        selectLargest[(Component, Int)](moduleCmps.content, (cmp: Component, _: Int) => - depsPerCmp.getOrElse(cmp, Set.empty).size)
-    
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = 
-        selectLargest[(Expression, Set[Dependency])](groupedByLoc, (_: Expression, deps: Set[Dependency]) => - deps.size)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = 
-        selectLargest[Dependency](deps, depCounts mapValues {(v: Int) => - v})
-
+ 
 trait SelectImprecise extends AdaptiveContextSensitivity: 
     // select the components with the most imprecise values (ie highest in the lattice)
     this: AdaptiveContextSensitivityPolicy => 
@@ -470,16 +413,6 @@ trait SelectImprecise extends AdaptiveContextSensitivity:
         selectLargest[(SchemeModule, MultiSet[Component])](cmpsPerFn, ((_: SchemeModule, cmps: MultiSet[Component]) => 
                                                                             cmps.distinctElements.foldLeft(0) { (x: Int, cmp: Component) => 
                                                                                                                  x + lattice.elementSize(returnValue(cmp))} ))
-
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        selectLargest[(Component, Int)](moduleCmps.toMap, (cmp: Component, _: Int) => lattice.elementSize(returnValue(cmp)))
-    
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = // TODO
-        selectLargest[(Expression, Set[Dependency])](groupedByLoc, (_: Expression, deps: Set[Dependency]) => deps.size)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = // TODO
-        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
-        selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
 
 trait SelectDifferentValues extends AdaptiveContextSensitivity: 
     this: AdaptiveContextSensitivityPolicy => 
@@ -492,14 +425,3 @@ trait SelectDifferentValues extends AdaptiveContextSensitivity:
                                                             Math.round((MultiSet(cmps.content.map({ (cmp: Component, x: Int) => (returnValue(cmp), x)}), 
                                                                      cmps.cardinality).distinctCount / cmps.cardinality) * 10)
                                                               ))
-    // select components that have imprecise values as well as many contexts
-    override protected def selectComponent(moduleCmps:  MultiSet[Component]) = 
-        selectLargest[(Component, Int)](moduleCmps.toMap, (cmp: Component, x: Int) => Math.round((lattice.elementSize(returnValue(cmp)) + (x / moduleCmps.cardinality)) * 10))
-    
-    override protected def selectReanalysis(groupedByLoc: Map[Expression, Set[Dependency]]) = // TODO
-        selectLargest[(Expression, Set[Dependency])](groupedByLoc, (_: Expression, deps: Set[Dependency]) => deps.size)
-
-    override protected def selectTrigger(deps: Set[Dependency]) = // TODO
-        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
-        selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
-
