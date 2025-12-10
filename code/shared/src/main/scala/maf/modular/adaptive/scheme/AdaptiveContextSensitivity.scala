@@ -126,22 +126,17 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
             reducedDeps = Set.empty
         }
 
-    // WHEN TO ADAPT
+    // selecting a starting module + when to start adapting
     protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean
-    
-    // todo: factor these back in... (see whiteboard)
-    protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean
-    protected def tooManyDependencies(deps: Set[Dependency]): Boolean
-    protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean
-
-    // WHAT TO ADAPT
     protected def selectStartingModule(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Iterable[(SchemeModule, MultiSet[Component])]
 
 
     // REDUCING
     private def reduceModule(module: SchemeModule): Unit =
         val moduleCmps = cmpsPerFn(module)
-        if tooManyComponents(moduleCmps) then 
+        val numberOfComponents = moduleCmps.distinctCount
+        val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
+        if numberOfComponents > maximumComponentCost then 
             module match {
                 case m : LambdaModule => reduceComponentsForModule(m)
                 case _                => return
@@ -160,7 +155,9 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         selected.foreach { case (loc, deps) => reduceTriggersForLocation(loc, deps) }
 
     private def reduceTriggersForLocation(loc: Expression, deps: Set[Dependency]) =
-        if tooManyDependencies(deps) then reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
+        val numberOfDependencies = deps.size
+        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
+        if numberOfDependencies > maximumDependencyCost then reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
         else
             val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
             val selected = selectLargest[Dependency](deps, depCounts, maximumDependencyCost)
@@ -168,7 +165,9 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
 
     private def reduceComponentsForModule(module: LambdaModule): Unit =
         val calls = allCmpsPerFn(module)
-        if tooManyContexts(calls) then reduceContextsForModule(module)
+        val groupedByClo = calls.groupBy(_.clo)
+        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
+        if cloMaxContexts > groupedByClo.size then reduceContextsForModule(module)
         else getParentModule(calls.head.clo) match {
             case m : LambdaModule => reduceComponentsForModule(m)
             case MainModule       => return
@@ -301,30 +300,11 @@ trait TooManyRandom extends AdaptiveContextSensitivity:
     override protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean = 
         Random.nextBoolean()
 
-    override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
-        Random.nextBoolean()
-        
-
-    override protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
-        Random.nextBoolean()
-
-    override protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean = 
-        Random.nextBoolean()
-
 trait TooManyAlways extends AdaptiveContextSensitivity: 
     // always choose to adapt
     this: AdaptiveContextSensitivityPolicy =>
 
     override protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean = 
-        true
-
-    override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
-        true
-        
-    override protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
-        true
-
-    override protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean = 
         true
 
 trait TooManyCost extends AdaptiveContextSensitivity:
@@ -333,22 +313,7 @@ trait TooManyCost extends AdaptiveContextSensitivity:
 
 
     override protected def tooManyIntraanalyses(cmpsPerFn: Map[SchemeModule, MultiSet[Component]]): Boolean = 
-        !cmpsPerFn.filter({(_: SchemeModule, cmps: MultiSet[Component]) => cmps.cardinality > budget}).isEmpty
-
-    override protected def tooManyComponents(moduleCmps: MultiSet[Component]): Boolean = 
-        val numberOfComponents = moduleCmps.distinctCount
-        val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
-        numberOfComponents > maximumComponentCost
-
-    override protected def tooManyDependencies(deps: Set[Dependency]): Boolean = 
-        val numberOfDependencies = deps.size
-        val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
-        numberOfDependencies > maximumDependencyCost
-
-    override protected def tooManyContexts(calls: Set[Call[ComponentContext]]): Boolean = 
-        val groupedByClo = calls.groupBy(_.clo)
-        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
-        cloMaxContexts > groupedByClo.size
+        !cmpsPerFn.filter({(_: SchemeModule, cmps: MultiSet[Component]) => cmps.cardinality > budget}).isEmpty  
 
 // adaptation target
 trait SelectRandom extends AdaptiveContextSensitivity: 
