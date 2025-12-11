@@ -24,14 +24,10 @@ trait SimpleSchemeModConc extends SchemeModConcSoundnessTests:
     override def testTags(b: Benchmark) = super.testTags(b) :+ BigStepTest
     def name = "ModConc + big-step ModF (parallel n = 4)"
     def analysis(program: SchemeExp) = new SimpleSchemeModConcAnalysis(program)
-        with SchemeModConcStandardSensitivity
-        with SchemeConstantPropagationDomain
-        with CallDepthFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp] {
-        override def workers: Int = 4
-        override def intraAnalysis(cmp: SchemeModConcComponent) = new SchemeModConcIntra(cmp) with ParallelIntra
+                                            with SchemeModConcStandardSensitivity
+                                            with SchemeConstantPropagationDomain
+                                            with RandomWorklistAlgorithm[SchemeExp]:
         def modFAnalysis(intra: SchemeModConcIntra) = new InnerModFAnalysis(intra) with SchemeModFNoSensitivity with RandomWorklistAlgorithm[SchemeExp]
-    }
 
 class SimpleSchemeModConcSoundnessTests
     extends SchemeModConcSoundnessTests

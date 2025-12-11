@@ -73,13 +73,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     case class ResultDependency(cmp: Cmp) extends Dependency
 
     var stores: Sts = Map.empty
-    case class AddrDependencyFS(cmp: Cmp, adr: Adr) extends Dependency
-
-    override def triggeredComponents(dep: Dep): Set[Cmp] = 
-        dep match
-            case AddrDependencyFS(cmp, _) => Set(cmp)
-            case _ => super.triggeredComponents(dep)
-
+    case class StoreDependency(cmp: Cmp) extends Dependency
 
     //
     // STORE STUFF
@@ -110,11 +104,11 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     import analysisM_._
     override def eval(exp: Exp): A[Val] =
         withEnv(_.restrictTo(exp.fv)) {
-            getEnv >>= { env =>
-                withRestrictedStore(env.addrs) {
+            //getEnv >>= { env =>
+                //withRestrictedStore(env.addrs) { // GC at every eval is too expensive
                     super.eval(exp)
-               }
-            }
+               //}
+            //}
         }
         
     override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
@@ -228,9 +222,12 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         var results = inter.results
         var stores = inter.stores
 
+        private var addrWritten: Map[Cmp, Set[Adr]] = Map.empty
+
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
             iterations = iterations + 1
             // get the (widened) store
+            register(StoreDependency(cmp))
             val sto = stores.getOrElse(cmp, LocalStore.empty)
             // compute the result
             val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx)
@@ -245,15 +242,16 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
             spawn(cll)
             // add bindings to its store
             val stw = stores.getOrElse(cll, LocalStore.empty)
-            val (upd, dty) = sto.content.foldLeft((stw, false)) { 
+            val (upd, ads) = sto.content.foldLeft((stw, List.empty[Adr])) { 
                 case (acc, (adr, (vlu, cnt))) =>
                     acc._1.joinAt(adr, vlu, cnt) match
                         case None => acc
-                        case Some(upd) =>
-                            trigger(AddrDependencyFS(cll, adr))
-                            (upd, true)
+                        case Some(upd) => (upd, adr :: acc._2)
             }
-            if dty then stores += cll -> upd
+            if ads.nonEmpty then 
+                stores += cll -> upd
+                addrWritten += cll -> (addrWritten.getOrElse(cll, Set.empty) ++ ads)
+                trigger(StoreDependency(cll))
             register(ResultDependency(cll))
             results.get(cll)
 
@@ -265,15 +263,22 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
                     inter.results += cmp -> cur
                     true
                 else false
-            case AddrDependencyFS(cmp, adr) =>
+            case StoreDependency(cmp) =>
                 val oldS = inter.stores.getOrElse(cmp, LocalStore.empty)
                 val newS = intra.stores(cmp) // we are certain to have a store here!
-                val (newV, newC) = newS.content(adr) // we are certain to have a binding here!
-                oldS.joinAt(adr, newV, newC) match
-                    case None => false
-                    case Some(upd) =>
-                        inter.stores += cmp -> upd
-                        true
+                val adrs = addrWritten(cmp)  // we are certain to have addresses written here!
+                val (upd, dty) = adrs.foldLeft((oldS, false)) {
+                    case (acc@(accS, _), adr) =>
+                        val (newV, newC) = newS.content(adr)
+                        accS.joinAt(adr, newV, newC) match
+                            case None => acc
+                            case Some(upd) => (upd, true)
+                }
+                if dty then
+                    inter.stores += cmp -> upd
+                    true 
+                else
+                    false 
             case _ => 
                 super.doWrite(dep)
 

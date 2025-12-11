@@ -260,7 +260,17 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             case None => Some(LocalStore(content + (adr -> (vlu, cnt))))
             case Some(old @ (oldV, oldC)) =>
                 val upd = (lat.join(oldV, vlu), oldC.join(cnt))
-                if upd == old then None else Some(LocalStore(content + (adr -> upd)))
+                if upd == old 
+                then None 
+                else Some(LocalStore(content + (adr -> upd)))
+    def joinAtDelta(adr: A, vlu: V, cnt: AbstractCount): Option[Delta[A,V]] =
+        get(adr) match
+            case None => Some(Delta(SmartMap(adr -> (vlu, cnt))))
+            case Some(old @ (oldV, oldC)) =>
+                val upd = (lat.join(oldV, vlu), oldC.join(cnt))
+                if upd == old 
+                then None 
+                else Some(Delta(SmartMap(adr -> upd))) 
     // contains check
     def contains(adr: A): Boolean =
         content.contains(adr)

@@ -10,6 +10,7 @@ import maf.modular.scheme.modf._
 import maf.modular.worklist._
 import maf.test._
 import maf.language.symbolic.Formula
+import maf.cli.experiments.SchemeAnalyses
 
 trait SchemeModFSoundnessTests extends SchemeSoundnessTests:
     override def testTags(b: Benchmark) = super.testTags(b) :+ SchemeModFTest
@@ -34,14 +35,7 @@ trait SmallStepSchemeModF extends SchemeModFSoundnessTests:
 
 trait ParallelSchemeModF extends SchemeModFSoundnessTests:
     def name = "parallel analysis (n = 8)"
-    def analysis(program: SchemeExp) = new SimpleSchemeModFAnalysis(program)
-        with SchemeConstantPropagationDomain
-        with SchemeModFNoSensitivity
-        with CallDepthFirstWorklistAlgorithm[SchemeExp]
-        with ParallelWorklistAlgorithm[SchemeExp] {
-        override def workers = 8
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra
-    }
+    def analysis(program: SchemeExp) = SchemeAnalyses.parallelKCFAAnalysis(program, 8, 0)
 
 trait ScvModF extends SchemeModFSoundnessTests:
     def name = "soft-contract verification soudness"

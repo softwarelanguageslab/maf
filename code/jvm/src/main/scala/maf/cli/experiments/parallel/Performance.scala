@@ -16,6 +16,7 @@ import maf.modular.worklist.LeastDependenciesFirstWorklistAlgorithm
 import maf.util._
 import maf.modular.scheme.modflocal._
 import maf.language.scheme.primitives.SchemePrelude
+import maf.modular.worklist.MostVisitedFirstWorklistAlgorithm
 
 object ParallelDSSAnalyses:
 
@@ -55,6 +56,9 @@ object ParallelDSSAnalyses:
 
     def parallelDSS(prg: SchemeExp, n: Int, kcfa: Int) = 
         new ParallelDSSAnalysis(prg, n, kcfa) with MostVisitedFirstWorklistAlgorithm[SchemeExp]
+
+    def parallelDSSFS(prg: SchemeExp, n: Int, kcfa: Int) = 
+        new ParallelDSSFSAnalysis(prg, n, kcfa) with MostVisitedFirstWorklistAlgorithm[SchemeExp]
 
 object ParallelModFAnalyses:
 
@@ -231,6 +235,18 @@ object ParallelModFBenchmarks:
         //"triangl" <- times out in concrete interpreter
       ).map(name => s"test/R5RS/gabriel/$name.scm")
 
+    def forDSSFS(k: Int) = 
+        List(
+            //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+            //"test/R5RS/icp/icp_1c_ontleed.scm",
+            //"test/R5RS/icp/icp_1c_prime-sum-pair.scm"
+           //"test/R5RS/icp/icp_7_eceval.scm",
+           //"test/R5RS/gambit/peval.scm",
+            //"test/R5RS/gambit/scheme.scm",
+           //"test/R5RS/gambit/sboyer.scm"    
+           "test/R5RS/icp/icp_3_leval.scm"       
+        )
+
 trait BaseResultsModFSetup extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
@@ -280,7 +296,7 @@ object BaseResultsModF:
 trait ParallelModFPerformance extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
-    override def analysisTime = Timeout.start(Duration(10, MINUTES))
+    override def analysisTime = Timeout.start(Duration(30, MINUTES))
     def k: Int
     def outputFile: String
     def cores = List(1, 2, 4, 8)
@@ -291,7 +307,7 @@ trait ParallelModFPerformance extends PerformanceEvaluation:
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
     def analyses: List[(SchemeExp => Analysis, String)] =
-        cores.map(n => (ParallelDSSAnalyses.parallelDSS(_, n, k), s"parallel (n = $n, $k-CFA)"))
+        cores.map(n => (ParallelDSSAnalyses.parallelDSSFS(_, n, k), s"parallel (n = $n, $k-CFA)"))
     def main(args: Array[String]) =
         MAFLogger.disable()
         run()
@@ -301,7 +317,7 @@ trait ParallelModFPerformance extends PerformanceEvaluation:
 object ParallelModFPerformance0CFA extends ParallelModFPerformance:
     def k = 0
     def outputFile = "data/modf-context-insensitive.csv"
-    def benchmarks = ParallelModFBenchmarks.forDSS
+    def benchmarks = ParallelModFBenchmarks.forDSSFS(0)
 
 object ParallelModFPerformance2CFA extends ParallelModFPerformance:
     def k = 2
