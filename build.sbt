@@ -23,6 +23,14 @@ lazy val maf = crossProject(JVMPlatform)
     libraryDependencies += ("com.typesafe.akka" %% "akka-actor-typed" % "2.6.18").cross(CrossVersion.for3Use2_13),
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.10",
     libraryDependencies += "com.typesafe" % "config" % "1.4.1",
+    // visualisation
+    
+    libraryDependencies += ("io.github.cibotech" %% "evilplot" % "0.9.2").cross(CrossVersion.for3Use2_13),
+                            // .exclude("org.typelevel", "cats-kernel_2.13")
+                            // .exclude("org.typelevel", "cats-core_2.13"),
+    libraryDependencies += ("io.github.cibotech" %% "evilplot-repl" % "0.9.0").cross(CrossVersion.for3Use2_13),
+                            // .exclude("org.typelevel", "cats-kernel_2.13")
+                            // .exclude("org.typelevel", "cats-core_2.13"),
     /** Compilation options */
     maxErrors := 5,
     /** Configuration for running the tests */
@@ -34,10 +42,10 @@ lazy val maf = crossProject(JVMPlatform)
     libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.62.2" % Test,
     resolvers += "bramvdbogaerde" at "https://raw.githubusercontent.com/bramvdbogaerde/maven-repo/master",
     libraryDependencies += ("space.vdb" %% "scala-smtlib" % "0.4.4"),
-    libraryDependencies ++= Seq(
-       "dev.optics" %% "monocle-core"  % "3.1.0",
-       "dev.optics" %% "monocle-macro" % "3.1.0",
-      ),
+    // libraryDependencies ++= Seq(
+    //    "dev.optics" %% "monocle-core"  % "3.1.0",
+    //    "dev.optics" %% "monocle-macro" % "3.1.0",
+    //   ),
     /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
     scalacOptions ++= Seq(
       "-deprecation", // Emit warning and location for usages of deprecated APIs.

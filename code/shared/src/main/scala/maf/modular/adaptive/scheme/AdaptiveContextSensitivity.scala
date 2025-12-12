@@ -14,12 +14,20 @@ import maf.util._
 
 import scala.util.Random
 
+import com.cibo.evilplot._
+import com.cibo.evilplot.plot._
+import com.cibo.evilplot.plot.aesthetics.DefaultTheme._
+import com.cibo.evilplot.numeric.Point
+
+import java.io.File
+
 trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics:
     this: AdaptiveContextSensitivityPolicy =>
 
     import modularLattice.Elements.*
 
     val strategy: String
+    val visualise = true
 
     var inspectCount = 0
 
@@ -157,6 +165,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
     private def reduceTriggersForLocation(loc: Expression, deps: Set[Dependency]) =
         val numberOfDependencies = deps.size
         val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
+        
         if numberOfDependencies > maximumDependencyCost then reduceAddressesForLocation(loc, deps.map(_.asInstanceOf[AddrDependency].addr))
         else
             val maximumDependencyCost = depCounts(deps.maxBy(depCounts))
@@ -164,14 +173,43 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
             selected.foreach { dep => reduceDep(dep) }
 
     private def reduceComponentsForModule(module: LambdaModule): Unit =
+        if visualise then visualiseReduceComponentsForModule(module)
         val calls = allCmpsPerFn(module)
-        val groupedByClo = calls.groupBy(_.clo)
-        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
+        val groupedByClo = calls.groupBy(_.clo) 
+        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size 
         if cloMaxContexts > groupedByClo.size then reduceContextsForModule(module)
         else getParentModule(calls.head.clo) match {
             case m : LambdaModule => reduceComponentsForModule(m)
             case MainModule       => return
         }
+
+    // VISUALISATIONS
+
+    var moduleChart: Map[LambdaModule, Seq[Plot]] = Map.empty
+    var largestBoundsModuleChart: Map[LambdaModule, (Int, Int)] = Map.empty
+        
+    private def visualiseReduceComponentsForModule(module: LambdaModule): Unit = 
+        val calls = allCmpsPerFn(module)
+        val groupedByClo = calls.groupBy(_.clo) 
+        val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
+        val moreContexts = cloMaxContexts > groupedByClo.size
+
+        val prevBounds = largestBoundsModuleChart.getOrElse(module, (1,1))
+        val currentBounds = (Math.max(prevBounds._1, groupedByClo.size), Math.max(prevBounds._2, cloMaxContexts))
+        largestBoundsModuleChart = largestBoundsModuleChart + (module -> currentBounds)
+        val plot = BarChart(groupedByClo.toSeq.map(_._2.size))
+                        .title(moreContexts.toString)
+                        .xAxis()
+                        .yAxis()
+                        .frame()
+        moduleChart = moduleChart + (module -> (moduleChart.getOrElse(module, Seq.empty) ++ Seq(plot)))
+        // ensure every chart for this module has the same bounds
+        moduleChart = moduleChart + (module -> (moduleChart.getOrElse(module, Seq.empty).map(_.xbounds(0, currentBounds._1).ybounds(0, currentBounds._2))))
+        val facets = Facets(moduleChart.get(module).toSeq).title(module.toString).xLabel("closures").yLabel("contexts")
+        val file = new File(s"out/adaptive-viz/${module.toString.replace(" ", "_")}.png")
+        file.mkdirs()
+        facets.render().write(file)
+        // todo: show this also after the adaptation to see the difference the adaptation makes
 
     // find a fitting policy
     protected def reduceContextsForModule(module: LambdaModule): Unit =
@@ -282,6 +320,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         case None          => MainModule
         case Some((_, lm)) => lm
     def getParentModule(clo: (SchemeLambdaExp, Environment[Addr])): SchemeModule =
+        // gets the enclosing lambda
         clo._2.asInstanceOf[WrappedEnv[Addr, SchemeModule]].data
     private def sizeOfValue(value: Value): Int =
         value.vs.map(sizeOfV).sum
@@ -291,6 +330,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         case modularLatticeWrapper.modularLattice.Cons(car, cdr)   => sizeOfValue(car) + sizeOfValue(cdr)
         case modularLatticeWrapper.modularLattice.Vec(_, elements) => elements.map(_._2).map(sizeOfValue).sum
         case _                                                     => 0
+
 
 // STRATEGIES
 trait TooManyRandom extends AdaptiveContextSensitivity: 
@@ -338,8 +378,6 @@ trait SelectBudget extends AdaptiveContextSensitivity:
     this: AdaptiveContextSensitivityPolicy =>
 
     val strategy: String = s"select-budget-$budget"
-
-    // TODO: these probably should be different budgets?
 
     // select the modules with more reanalyses than allowed by the budget 
     // (combined reanalyses for every component of the module)

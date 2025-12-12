@@ -194,8 +194,8 @@ object AdaptiveContextSensitivityAnalysisComparison
     override def adaptiveAnalyses = List(
       // (SchemeAnalyses.selectMostContextsAdaptiveContextSensitiveAnalysis(_), "select: most contexts"),
       (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 10), "select: budget (10)"),
-      (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 50), "select: budget (50)"),
-      (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 100), "select: budget (100)"),
+      // (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 50), "select: budget (50)"),
+      // (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 100), "select: budget (100)"),
       // (SchemeAnalyses.fullyRandomAdaptiveContextSensitiveAnalysis(_), "fully random"),                  
       // (SchemeAnalyses.selectRandomAdaptiveContextSensitiveAnalysis(_), "select: random"),                  
       // (SchemeAnalyses.selectMostDependenciesAdaptiveContextSensitiveAnalysis(_), "select: most dependencies"),                  
@@ -262,7 +262,7 @@ object AdaptiveContextSensitivityAnalysisComparison
     // def benchmarks = variousBenchmarks
     // def benchmarks = gabrielBenchmarks
 
-    def benchmarks = List("test/R5RS/icp/icp_7_eceval.scm")
+    def benchmarks = List("test/R5RS/gambit/matrix.scm")
 
     def main(args: Array[String]): Unit = {
         MAFLogger.disable()
