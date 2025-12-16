@@ -21,14 +21,24 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
         new SchemeModFLocalFS(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalFSAnalysisResults
+            //with FIFOWorklistAlgorithm[SchemeExp]
+            with ParallelWorklistAlgorithm[SchemeExp]
+            with MostVisitedFirstWorklistAlgorithm[SchemeExp]:
+                type AnalysisState = Unit
+                def analysisState = ()
+                override def workers = 4
+                override def intraAnalysis(cmp: Component) = 
+                    new SchemeModFLocalFSIntraAnalysis(cmp) with ParallelIntra: 
+                        def setLocalState(st: AnalysisState) = ()
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
           "test/R5RS/various/infinite-1.scm",
           "test/R5RS/various/infinite-2.scm",
           "test/R5RS/various/infinite-3.scm",
+          "test/R5RS/various/SICP-compiler.scm",
+          "test/R5RS/various/mceval.scm"
         ).contains(b)
 
 class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:

@@ -42,15 +42,13 @@ object ParallelDSSAnalyses:
             with SchemeModFLocalCallSiteSensitivity(kcfa)
             with ParallelWorklistAlgorithm[SchemeExp] {
 
-        type AnalysisState = (Res, Sts)
-        def analysisState = (results, stores)
+        type AnalysisState = Unit
+        def analysisState = ()
     
         override def workers = n 
         override def intraAnalysis(cmp: Component) = 
             new SchemeModFLocalFSIntraAnalysis(cmp) with ParallelIntra { intra => 
-                def setLocalState(st: AnalysisState) = 
-                    intra.results = st._1
-                    intra.stores = st._2
+                def setLocalState(st: AnalysisState) = ()
             }
     }
 

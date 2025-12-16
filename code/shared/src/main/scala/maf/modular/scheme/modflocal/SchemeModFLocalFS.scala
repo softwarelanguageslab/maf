@@ -69,10 +69,10 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     // STATE = RESULTS + STORE
     //
 
-    var results: Res = Map.empty
+    @volatile var results: Res = Map.empty
     case class ResultDependency(cmp: Cmp) extends Dependency
 
-    var stores: Sts = Map.empty
+    @volatile var stores: Sts = Map.empty
     case class StoreDependency(cmp: Cmp) extends Dependency
 
     //
@@ -219,10 +219,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         intra =>
         
         // local state
-        var results = inter.results
-        var stores = inter.stores
-
-        private var addrWritten: Map[Cmp, Set[Adr]] = Map.empty
+        var result: Option[(Val, Dlt, Set[Adr], Set[Adr])] = None
+        var localStores: Map[Cmp, Sto] = Map.empty 
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
             iterations = iterations + 1
@@ -234,23 +232,31 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
             // update the result of this component
             val old = results.get(cmp)
             if (old != rgc) then
-                results += cmp -> rgc.get
+                result = Some(rgc.get)
                 trigger(ResultDependency(cmp))
+
+        def getComponentStore(cmp: Cmp) =
+            localStores.get(cmp) match
+                case None =>
+                    val sto = inter.stores.getOrElse(cmp, LocalStore.empty)
+                    localStores += cmp -> sto 
+                    sto
+                case Some(sto) => 
+                    sto
 
         def call(cll: Cll, sto: Sto): Option[(Val, Dlt, Set[Adr], Set[Adr])] =
             // spawn the component
             spawn(cll)
             // add bindings to its store
-            val stw = stores.getOrElse(cll, LocalStore.empty)
-            val (upd, ads) = sto.content.foldLeft((stw, List.empty[Adr])) { 
-                case (acc, (adr, (vlu, cnt))) =>
-                    acc._1.joinAt(adr, vlu, cnt) match
-                        case None => acc
-                        case Some(upd) => (upd, adr :: acc._2)
+            val prv = getComponentStore(cll)    // get the store from the global analysis state
+            val (upd, dty) = sto.content.foldLeft((prv, false)) { 
+                case (acc@(accS, _) , (adr, (vlu, cnt))) =>
+                    accS.joinAt(adr, vlu, cnt) match
+                        case None        => acc
+                        case Some(sto2)  => (sto2, true)
             }
-            if ads.nonEmpty then 
-                stores += cll -> upd
-                addrWritten += cll -> (addrWritten.getOrElse(cll, Set.empty) ++ ads)
+            if dty then 
+                localStores += cll -> upd
                 trigger(StoreDependency(cll))
             register(ResultDependency(cll))
             results.get(cll)
@@ -258,21 +264,19 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         override def doWrite(dep: Dependency): Boolean = dep match
             case ResultDependency(cmp) =>
                 val old = inter.results.get(cmp)
-                val cur = intra.results(cmp)    // we are certain to have a result here!
-                if !old.isDefined || old.get != cur then
-                    inter.results += cmp -> cur
+                if old != result then
+                    inter.results += cmp -> result.get
                     true
-                else false
+                else 
+                    false
             case StoreDependency(cmp) =>
-                val oldS = inter.stores.getOrElse(cmp, LocalStore.empty)
-                val newS = intra.stores(cmp) // we are certain to have a store here!
-                val adrs = addrWritten(cmp)  // we are certain to have addresses written here!
-                val (upd, dty) = adrs.foldLeft((oldS, false)) {
-                    case (acc@(accS, _), adr) =>
-                        val (newV, newC) = newS.content(adr)
+                val old = inter.stores.getOrElse(cmp, LocalStore.empty)
+                val sto = localStores(cmp)  // we are certain to have a delta here!
+                val (upd, dty) = sto.content.foldLeft((old, false)) {
+                    case (acc@(accS, _), (adr, (newV, newC))) =>
                         accS.joinAt(adr, newV, newC) match
-                            case None => acc
-                            case Some(upd) => (upd, true)
+                            case None       => acc
+                            case Some(sto2) => (sto2, true)
                 }
                 if dty then
                     inter.stores += cmp -> upd
