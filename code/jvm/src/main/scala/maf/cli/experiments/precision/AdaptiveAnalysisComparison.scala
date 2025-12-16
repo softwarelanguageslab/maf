@@ -194,6 +194,7 @@ object AdaptiveContextSensitivityAnalysisComparison
     override def adaptiveAnalyses = List(
       // (SchemeAnalyses.selectMostContextsAdaptiveContextSensitiveAnalysis(_), "select: most contexts"),
       (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 10), "select: budget (10)"),
+      (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 20), "select: budget (20)"),
       // (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 50), "select: budget (50)"),
       // (SchemeAnalyses.selectBudgetAdaptiveContextSensitiveAnalysis(_, 100), "select: budget (100)"),
       // (SchemeAnalyses.fullyRandomAdaptiveContextSensitiveAnalysis(_), "fully random"),                  

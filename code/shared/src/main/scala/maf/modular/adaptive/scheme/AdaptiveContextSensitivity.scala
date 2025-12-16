@@ -128,7 +128,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
             // update the analysis
             if reducedModules.nonEmpty then { adaptAnalysis() }
             // data collection: save the modules that have been adapted
-            writeToFile(chosenModules.toCSVString(rows = chosenModules.allRows.toList), s"out/adaptive-context-sensitivity/chosenModules-$strategy.csv")
+            if visualise then writeToFile(chosenModules.toCSVString(rows = chosenModules.allRows.toList), s"out/adaptive-viz/chosenModules/$strategy.csv")
             // clear the set of reduced modules
             reducedModules = Set.empty
             reducedDeps = Set.empty
@@ -144,7 +144,12 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         val moduleCmps = cmpsPerFn(module)
         val numberOfComponents = moduleCmps.distinctCount
         val maximumComponentCost = moduleCmps.content.maxBy(_._2)._2
-        if numberOfComponents > maximumComponentCost then 
+        val judgement = numberOfComponents > maximumComponentCost 
+
+        module match {
+            case m: LambdaModule => if visualise then visualiseComponentsForModule(m, judgement)}
+
+        if judgement then 
             module match {
                 case m : LambdaModule => reduceComponentsForModule(m)
                 case _                => return
@@ -173,7 +178,6 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
             selected.foreach { dep => reduceDep(dep) }
 
     private def reduceComponentsForModule(module: LambdaModule): Unit =
-        if visualise then visualiseReduceComponentsForModule(module)
         val calls = allCmpsPerFn(module)
         val groupedByClo = calls.groupBy(_.clo) 
         val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size 
@@ -188,17 +192,16 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
     var moduleChart: Map[LambdaModule, Seq[Plot]] = Map.empty
     var largestBoundsModuleChart: Map[LambdaModule, (Int, Int)] = Map.empty
         
-    private def visualiseReduceComponentsForModule(module: LambdaModule): Unit = 
+    private def visualiseComponentsForModule(module: LambdaModule, judgement: Boolean): Unit = 
         val calls = allCmpsPerFn(module)
         val groupedByClo = calls.groupBy(_.clo) 
         val cloMaxContexts = groupedByClo.maxBy(_._2.size)._2.size
-        val moreContexts = cloMaxContexts > groupedByClo.size
 
         val prevBounds = largestBoundsModuleChart.getOrElse(module, (1,1))
         val currentBounds = (Math.max(prevBounds._1, groupedByClo.size), Math.max(prevBounds._2, cloMaxContexts))
         largestBoundsModuleChart = largestBoundsModuleChart + (module -> currentBounds)
         val plot = BarChart(groupedByClo.toSeq.map(_._2.size))
-                        .title(moreContexts.toString)
+                        .title(s"$inspectCount ${judgement.toString}")
                         .xAxis()
                         .yAxis()
                         .frame()
@@ -206,7 +209,7 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         // ensure every chart for this module has the same bounds
         moduleChart = moduleChart + (module -> (moduleChart.getOrElse(module, Seq.empty).map(_.xbounds(0, currentBounds._1).ybounds(0, currentBounds._2))))
         val facets = Facets(moduleChart.get(module).toSeq).title(module.toString).xLabel("closures").yLabel("contexts")
-        val file = new File(s"out/adaptive-viz/${module.toString.replace(" ", "_")}.png")
+        val file = new File(s"out/adaptive-viz/componentsForModule/${strategy}/${module.toString.replace(" ", "_")}.png")
         file.mkdirs()
         facets.render().write(file)
         // todo: show this also after the adaptation to see the difference the adaptation makes
