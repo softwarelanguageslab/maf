@@ -22,8 +22,19 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
         new SchemeModFLocal(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
+            with CallDepthFirstWorklistAlgorithm[SchemeExp]
+            with ParallelWorklistAlgorithm[SchemeExp] {
+
+        type AnalysisState = Unit
+        def analysisState = () 
+    
+        override def workers = 4
+        override def intraAnalysis(cmp: Component) = 
+            new SchemeLocalIntraAnalysis(cmp) with ParallelIntra { intra => 
+                def setLocalState(st: AnalysisState) = ()
+            }
+    }
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these time out in the analysis
@@ -37,6 +48,10 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
           "test/R5RS/various/infinite-2.scm",
           "test/R5RS/various/infinite-3.scm",
         ).contains(b)
+    override def run() =
+        (1 to 100).foreach { _ => 
+            super.run()    
+        }
 
 class SchemeModFADITests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
 

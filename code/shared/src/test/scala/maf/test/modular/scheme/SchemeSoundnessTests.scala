@@ -169,8 +169,10 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     def parseProgram(txt: String, benchmark: String): SchemeExp =
         CSchemeParser.parseProgram(txt, Position.withSourcePath(benchmark))
 
+    private var count = 0
     def onBenchmark(benchmark: Benchmark): Unit =
-        property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
+        count = count + 1
+        property(s"[$count] Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {
             // load the benchmark program
             val content = Reader.loadFile(benchmark)
             val program = parseProgram(content, benchmark)

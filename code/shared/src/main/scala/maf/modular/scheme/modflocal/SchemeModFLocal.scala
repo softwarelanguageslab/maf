@@ -181,7 +181,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         intra =>
 
         // local state
-        var results = inter.results
+        var updatedResult: Set[(Val, Dlt, Set[Adr], Set[Adr])] = _
 
         def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx): Set[(Val, Dlt, Set[Adr], Set[Adr])] =
             val cmp = CallComponent(lam, env, sto, ctx)
@@ -190,39 +190,44 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             results.getOrElse(cmp, Set.empty)
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val rgc = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
-            val old = results.getOrElse(cmp, Set.empty)
-            if rgc != old then
-                intra.results += cmp -> rgc
+            val cur = results.getOrElse(cmp, Set.empty) // NOTE: no other thread can modify this ... 
+            updatedResult = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
+            if cur != updatedResult then
                 trigger(ResultDependency(cmp))
 
         override def doWrite(dep: Dependency): Boolean = dep match
-            case ResultDependency(cmp) =>
-                val old = inter.results.getOrElse(cmp, Set.empty)
-                val cur = intra.results(cmp)
-                if old != cur then
-                    inter.results += cmp -> cur
-                    true
-                else false
-            case _ => super.doWrite(dep)
+            case ResultDependency(cmp) => // NOTE: no other thread can modify this ... 
+                //val cur = results.getOrElse(cmp, Set.empty)
+                //if cur != updatedResult then
+                results += cmp -> updatedResult
+                true
+                //else 
+                //    false
+            case _ => 
+                super.doWrite(dep)
 
 
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
+    object ResultLock
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
 
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                ResultLock.synchronized { 
+                    resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu) 
+                }
             case _ => ()
         super.extendV(sto, adr, vlu)
 
     override def updateV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                ResultLock.synchronized { 
+                    resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu) 
+                }
             case _ => ()
         super.updateV(sto, adr, vlu)
 

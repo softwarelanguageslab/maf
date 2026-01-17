@@ -25,12 +25,15 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
             //with FIFOWorklistAlgorithm[SchemeExp]
             with ParallelWorklistAlgorithm[SchemeExp]
             with MostVisitedFirstWorklistAlgorithm[SchemeExp]:
-                type AnalysisState = Unit
-                def analysisState = ()
+                type AnalysisState = (Res, Sts)
+                def analysisState = (results, stores)
                 override def workers = 4
                 override def intraAnalysis(cmp: Component) = 
-                    new SchemeModFLocalFSIntraAnalysis(cmp) with ParallelIntra: 
-                        def setLocalState(st: AnalysisState) = ()
+                    new SchemeModFLocalFSIntraAnalysis(cmp) with ParallelIntra { intra => 
+                        def setLocalState(st: AnalysisState) = 
+                            intra.results = st._1
+                            intra.stores = st._2
+                    }
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons

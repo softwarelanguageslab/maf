@@ -69,10 +69,10 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     // STATE = RESULTS + STORE
     //
 
-    @volatile var results: Res = Map.empty
+    var results: Res = Map.empty
     case class ResultDependency(cmp: Cmp) extends Dependency
 
-    @volatile var stores: Sts = Map.empty
+    var stores: Sts = Map.empty
     case class StoreDependency(cmp: Cmp) extends Dependency
 
     //
@@ -219,8 +219,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         intra =>
         
         // local state
-        var result: Option[(Val, Dlt, Set[Adr], Set[Adr])] = None
-        var localStores: Map[Cmp, Sto] = Map.empty 
+        var updatedResult: (Val, Dlt, Set[Adr], Set[Adr]) = _
+        var updatedStores: Map[Cmp, Dlt] = Map.empty 
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
             iterations = iterations + 1
@@ -228,58 +228,51 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
             register(StoreDependency(cmp))
             val sto = stores.getOrElse(cmp, LocalStore.empty)
             // compute the result
-            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx)
+            val res = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx)
             // update the result of this component
             val old = results.get(cmp)
-            if (old != rgc) then
-                result = Some(rgc.get)
+            if (old != res) then
+                updatedResult = res.get
                 trigger(ResultDependency(cmp))
-
-        def getComponentStore(cmp: Cmp) =
-            localStores.get(cmp) match
-                case None =>
-                    val sto = inter.stores.getOrElse(cmp, LocalStore.empty)
-                    localStores += cmp -> sto 
-                    sto
-                case Some(sto) => 
-                    sto
 
         def call(cll: Cll, sto: Sto): Option[(Val, Dlt, Set[Adr], Set[Adr])] =
             // spawn the component
             spawn(cll)
             // add bindings to its store
-            val prv = getComponentStore(cll)    // get the store from the global analysis state
-            val (upd, dty) = sto.content.foldLeft((prv, false)) { 
-                case (acc@(accS, _) , (adr, (vlu, cnt))) =>
-                    accS.joinAt(adr, vlu, cnt) match
-                        case None        => acc
-                        case Some(sto2)  => (sto2, true)
+            val stw = stores.getOrElse(cll, LocalStore.empty)
+            val dlt = updatedStores.getOrElse(cll, Delta.emptyDelta)
+            val cur = stw.integrate(dlt)
+            val (upd, dty) = sto.content.foldLeft((dlt, false)) { 
+                case (acc, (adr, (vlu, cnt))) =>
+                    cur.joinAtDelta(adr, vlu, cnt) match
+                        case None       => acc
+                        case Some(upd)  => (Delta.compose(acc._1, upd), true)
             }
             if dty then 
-                localStores += cll -> upd
+                updatedStores += cll -> upd
                 trigger(StoreDependency(cll))
             register(ResultDependency(cll))
             results.get(cll)
 
         override def doWrite(dep: Dependency): Boolean = dep match
-            case ResultDependency(cmp) =>
-                val old = inter.results.get(cmp)
-                if old != result then
-                    inter.results += cmp -> result.get
-                    true
-                else 
-                    false
+            case ResultDependency(_) => // NOTE: no other thread can modify this, so _ == cmp ...
+                //val old = inter.results.get(cmp)
+                //val cur = intra.results(cmp)    // we are certain to have a result here!
+                //if !old.isDefined || old.get != cur then
+                results += cmp -> updatedResult
+                true
+                //else false
             case StoreDependency(cmp) =>
-                val old = inter.stores.getOrElse(cmp, LocalStore.empty)
-                val sto = localStores(cmp)  // we are certain to have a delta here!
-                val (upd, dty) = sto.content.foldLeft((old, false)) {
-                    case (acc@(accS, _), (adr, (newV, newC))) =>
-                        accS.joinAt(adr, newV, newC) match
-                            case None       => acc
-                            case Some(sto2) => (sto2, true)
+                val stw = stores.getOrElse(cmp, LocalStore.empty)
+                val dlt = updatedStores(cmp) // we are certain to have a delta here
+                val (upd, dty) = dlt.delta.foldLeft((stw, false)) {
+                    case (acc, (adr, (vlu, cnt))) =>
+                        acc._1.joinAt(adr, vlu, cnt) match
+                            case None      => acc
+                            case Some(upd) => (upd, true)
                 }
                 if dty then
-                    inter.stores += cmp -> upd
+                    stores += cmp -> upd
                     true 
                 else
                     false 
@@ -289,17 +282,25 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
 
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
+    
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
+
+    object ResultsLock
+
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                ResultsLock.synchronized {
+                    resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                }
             case _ => ()
         super.extendV(sto, adr, vlu)
 
     override def updateV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                ResultsLock.synchronized { 
+                    resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                }
             case _ => ()
         super.updateV(sto, adr, vlu)

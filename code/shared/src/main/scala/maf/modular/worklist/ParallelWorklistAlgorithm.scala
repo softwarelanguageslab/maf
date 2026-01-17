@@ -88,7 +88,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
 
     private def processTerminated(intra: ParallelIntra): Unit =
         intra.commit()
-        latest = (analysisState, depVersion, deps, visited)
+        setLatest((analysisState, depVersion, deps, visited))
         if intra.isDone then 
             queued -= intra.component
         else 
@@ -100,7 +100,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
         if !finished then
             // initialize timeout and initial analysis state
             currentTimeout = timeout
-            latest = (analysisState, depVersion, deps, visited)
+            setLatest((analysisState, depVersion, deps, visited))
             // spawn the workers
             workerThreads = List.tabulate(this.workers)(spawnWorker)
             // fill the worklist with initial items
@@ -124,7 +124,10 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
                         Map[Dependency, Set[Component]], // <- deps
                         Set[Component]
     ) // <- visited
-    @volatile var latest: GlobalState = _
+    object GlobalStateLock
+    var latest: GlobalState = _
+    def getLatest = GlobalStateLock.synchronized { latest } 
+    def setLatest(upd: GlobalState) = GlobalStateLock.synchronized { latest = upd }
 
     // keep track for every dependency of its "version number"
     var depVersion = Map[Dependency, Int]().withDefaultValue(0)
@@ -136,7 +139,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
 
         def setLocalState(st: AnalysisState): Unit 
 
-        val (latestState, depVersion, deps, visited) = latest
+        val (latestState, depVersion, deps, visited) = getLatest
         setLocalState(latestState)
         var toCheck = Set[Dependency]()
 
