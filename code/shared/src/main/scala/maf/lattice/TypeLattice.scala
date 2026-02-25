@@ -12,6 +12,9 @@ object Type:
     case object Bottom extends T
 
     abstract class BaseInstance(typeName: String) extends Lattice[T]:
+        def level(x: T): Int = x match
+            case Top    => 2
+            case Bottom => 1
         def show(x: T): String = x match
             case Top    => typeName
             case Bottom => s"$typeName.⊥"

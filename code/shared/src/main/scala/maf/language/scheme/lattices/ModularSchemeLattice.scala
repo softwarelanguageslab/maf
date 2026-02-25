@@ -91,6 +91,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
         // TODO: this in ad-hoc lattice, we should make a PairLattice instead somewhere
         val lattice: Lattice[Abstract] = new Lattice[Abstract] {
+            def level(v: (L, L)): scala.Int = Lattice[L].level(v._1) * Lattice[L].level(v._2)
             def show(v: (L, L)): String = s"(${v._1},${v._2})"
             def top = throw LatticeTopUndefined
             def bottom = ???
@@ -108,6 +109,14 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         override def extract(v: Vec) = v
         // TODO: ad-hoc implementation, should create a VectorLattice
         val lattice: Lattice[Vec] = new Lattice[Vec] {
+            def level(v: Vec): scala.Int =
+                Lattice[I]
+                    .level(v.size) *
+                    v.elements.keys.map(Lattice[I].level).foldLeft(1)(_ * _) *
+                    v.elements.values
+                        .map(Lattice[L].level)
+                        .foldLeft(1)(_ * _)
+
             def show(v: Vec) = v.toString
             def top = throw LatticeTopUndefined
             def bottom = Vec(IntLattice[I].bottom, Map())
@@ -271,8 +280,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
         def typeName = "PNTR"
         val tpy = PointerT
         override def toString: String =
-            if ptrs.size > 3
-            then s"{${ptrs.size} pointers}"
+            if ptrs.size > 3 then s"{${ptrs.size} pointers}"
             else ptrs.mkString("Pointers{", ", ", "}")
 
     case class Cons(car: L, cdr: L) extends Value:
@@ -927,6 +935,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     // TODO: field SchemeLattice only exists for backwards compatibility reasons, but for the sake of simplification should also be removed, and the methods be included within the class itself
     val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] { lat =>
+        def level(x: L): scala.Int = x.keys.map(key => x.getAbstract(key).map(key.lattice.level(_)).foldLeft(1)(_ * _)).foldLeft(1)(_ * _)
         def show(x: L): String = x.toString /* TODO[easy]: implement better */
         def isTrue(x: L): Boolean = x.elements[Value].foldMap(Value.isTrue(_))(boolOrMonoid)
         def isFalse(x: L): Boolean = x.elements[Value].foldMap(Value.isFalse(_))(boolOrMonoid)

@@ -65,6 +65,7 @@ class ConcreteLattice:
                 content.foldLeft(Lattice[Y].bottom)((acc, v) => Lattice[Y].join(acc, f(v)))
 
         implicit val stringConcrete: StringLattice[S] = new BaseInstance[String]("Str") with StringLattice[S] {
+            def level(s: S): Int = ???
             def inject(x: String): S = makeValues(Set(x))
             def length[I2: IntLattice](s: S): I2 = s.foldMap(s => IntLattice[I2].inject(s.length))
             def append(s1: S, s2: S): S = (s1, s2) match
@@ -141,6 +142,7 @@ class ConcreteLattice:
                     }
         }
         implicit val boolConcrete: BoolLattice[B] = new BaseInstance[Boolean]("Bool") with BoolLattice[B] {
+            def level(v: B): Int = ???
             def inject(x: Boolean): B = makeValues(Set(x))
             def isTrue(b: B): Boolean = b match
                 case Top             => true
@@ -154,6 +156,7 @@ class ConcreteLattice:
         }
 
         implicit val intConcrete: IntLattice[I] = new BaseInstance[BigInt]("Int") with IntLattice[I] {
+            def level(i: I) = ???
             def inject(x: BigInt): I = makeValues(Set(x))
 
             def toReal[R2: RealLattice](n: I): R2 = n match
@@ -207,6 +210,7 @@ class ConcreteLattice:
         }
 
         implicit val realConcrete: RealLattice[R] = new BaseInstance[Double]("Real") with RealLattice[R] {
+            def level(v: R): Int = ???
             def inject(x: Double): R = makeValues(Set(x))
             def toInt[I2: IntLattice](n: R): I2 = n.foldMap(n => IntLattice[I2].inject(n.toInt))
             def ceiling(n: R): R = n.map(_.ceil)
@@ -235,6 +239,7 @@ class ConcreteLattice:
                 n.foldMap(n => StringLattice[S2].inject(n.toString))
         }
         implicit val charConcrete: CharLattice[C] = new BaseInstance[Char]("Char") with CharLattice[C] {
+            def level(v: C): Int = ???
             def inject(x: Char): C = makeValues(Set(x))
             def downCase(c: C): C = c.map(_.toLower)
             def upCase(c: C): C = c.map(_.toUpper)
@@ -258,6 +263,7 @@ class ConcreteLattice:
             }
         }
         implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")(Show.symShow) with SymbolLattice[Sym] {
+            def level(s: Sym): Int = ???
             def inject(x: String): Sym = makeValues(Set(x))
             def toString[S2: StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))
         }

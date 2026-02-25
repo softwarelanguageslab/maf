@@ -11,11 +11,8 @@ import maf.modular.scheme._
 import maf.util._
 import maf.util.benchmarks.Timeout
 import maf.language.scheme.interpreter.EmptyIO
+import maf.core.address.*
 
-sealed trait BaseAddr extends Address { def printable = true; def idn: Identity }
-case class VarAddr(vrb: Identifier) extends BaseAddr { def idn: Identity = vrb.idn; override def toString = s"<variable $vrb>" }
-case class PtrAddr(exp: Expression) extends BaseAddr { def idn = exp.idn; override def toString = s"<pointer $exp>" }
-case class PrmAddr(nam: String) extends BaseAddr { def idn: Identity = Identity.none; override def toString = s"<primitive $nam>" }
 
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
@@ -29,9 +26,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
     implicit def cpAnalysis(anl: ModularSchemeDomain): Analysis = anl.asInstanceOf[Analysis]
 
     private def convertAddr(addr: Address): BaseAddr = addr match
-        case maf.modular.scheme.VarAddr(vrb, _) => VarAddr(vrb)
-        case maf.modular.scheme.PtrAddr(exp, _) => PtrAddr(exp)
-        case maf.modular.scheme.PrmAddr(nam)    => PrmAddr(nam)
+        case maf.modular.scheme.VarAddr(vrb, _) => maf.core.address.VarAddr(vrb)
+        case maf.modular.scheme.PtrAddr(exp, _) => maf.core.address.PtrAddr(exp)
+        case maf.modular.scheme.PrmAddr(nam)    => maf.core.address.PrmAddr(nam)
         case a: maf.modular.scheme.aam.AAMScheme#SchemeAddress => a.toBaseAddr
 
     val baseDomain = new ModularSchemeLattice[BaseAddr, Str, Bln, Num, Rea, Chr, Smb]
@@ -61,9 +58,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
 
     private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match
-        case ConcreteValues.AddrInfo.VarAddr(v) => VarAddr(v)
-        case ConcreteValues.AddrInfo.PtrAddr(p) => PtrAddr(p)
-        case ConcreteValues.AddrInfo.PrmAddr(p) => PrmAddr(p)
+        case ConcreteValues.AddrInfo.VarAddr(v) => maf.core.address.VarAddr(v)
+        case ConcreteValues.AddrInfo.PtrAddr(p) => maf.core.address.PtrAddr(p)
+        case ConcreteValues.AddrInfo.PrmAddr(p) => maf.core.address.PrmAddr(p)
 
     protected def convertConcreteValue(value: ConcreteValues.Value): BaseValue = value match
         case ConcreteValues.Value.Nil          => baseLattice.nil

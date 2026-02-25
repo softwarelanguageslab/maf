@@ -70,6 +70,7 @@ object SymbolicLattice:
  * used in an actual analysis. Such a widening operation is implemented in the `widen` function
  */
 class SymbolicLattice[B: BoolLattice] extends Lattice[Set[Symbolic]]:
+    def level(v: Set[Symbolic]) = v.size
     type L = Set[Symbolic]
     def bottom: L = Set()
     override def isBottom(x: L): Boolean = x.isEmpty

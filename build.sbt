@@ -14,7 +14,7 @@ lazy val maf = crossProject(JVMPlatform, JSPlatform)
     name := "maf",
     organization := "soft",
     version := "2.0",
-    scalaVersion := "3.1.0",
+    scalaVersion := "3.3.7",
     //crossScalaVersions ++= Seq("2.13.6", "3.1.0"),
     /** Dependencies */
     libraryDependencies += "org.scala-lang.modules" %%% "scala-parser-combinators" % "2.0.0",

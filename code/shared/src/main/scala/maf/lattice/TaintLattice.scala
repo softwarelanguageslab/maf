@@ -16,6 +16,9 @@ object TaintLattice:
     case object MayBeTainted extends TL
 
     class TaintLattice extends Lattice[TL]:
+        def level(v: TL): Int = v match
+            case Untainted    => 1
+            case MayBeTainted => 2
         val bottom: TL = Untainted
         override def isBottom(x: TL): Boolean = x == Untainted
         val top: TL = MayBeTainted

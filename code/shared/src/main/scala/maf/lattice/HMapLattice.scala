@@ -80,6 +80,9 @@ case class HMap(contents: Map[HMapKey, Any]):
           )
         )
 
+    /** Returns all the keys in the HMap */
+    def keys: Iterable[HMapKey] = this.contents.keys
+
     /** Checks subsumptions of `this` with y */
     def subsumes(y: HMap): Boolean =
         val x = this
@@ -140,3 +143,4 @@ object HMap:
         def join(x: HMap, y: => HMap): HMap = x.join(y)
         def subsumes(x: HMap, y: => HMap): Boolean = x.subsumes(y)
         def eql[B: BoolLattice](x: HMap, y: HMap): B = ???
+        def level(x: HMap): scala.Int = x.keys.map(key => x.getAbstract(key).map(key.lattice.level(_)).foldLeft(1)(_ * _)).foldLeft(1)(_ * _)

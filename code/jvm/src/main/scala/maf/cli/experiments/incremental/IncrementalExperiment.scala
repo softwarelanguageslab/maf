@@ -18,8 +18,10 @@ trait IncrementalExperiment[E <: Expression]:
     // Analysis construction.
     def analysis(e: E, config: IncrementalConfiguration): Analysis
 
+    protected var dynamicConfigurations: List[IncrementalConfiguration] = List()
+    
     // The analysis configurations to use.
-    var configurations: List[IncrementalConfiguration] = List()
+    def configurations: List[IncrementalConfiguration] = dynamicConfigurations
 
     // Parsing.
     def parse(string: String): E
@@ -42,7 +44,8 @@ trait IncrementalExperiment[E <: Expression]:
     def createOutput(): String
 
     // Can be used for debugging.
-    var catchErrors: Boolean = true
+    protected var catchErrorsDynamic = true
+    def catchErrors: Boolean = catchErrorsDynamic
 
     // Runs measurements on the benchmarks in a given trait, or uses specific benchmarks if passed as an argument.
     def measure(bench: Set[String]): Unit =
@@ -76,8 +79,8 @@ trait IncrementalExperiment[E <: Expression]:
     /** Runs the benchmarks. Returns the path to the output file. */
     def execute(bench: Set[String], args: IncArgs): String =
         if executed then throw new Exception("Evaluation using this instance already executed. Create new instance of evaluation class.")
-        if args.stopOnError then catchErrors = false
-        if args.config.nonEmpty then configurations = List(args.config.get) else configurations = allConfigurations // Allows to override the default list of configurations of a setup.
+        if args.stopOnError then catchErrorsDynamic = false
+        if args.config.nonEmpty then dynamicConfigurations = List(args.config.get) else dynamicConfigurations = allConfigurations // Allows to override the default list of configurations of a setup.
         if args.timeout >= 0 then minutes = args.timeout
         executed = true
         val (writer, file): (Writer, String) = openTimeStampedGetName(outputDir + s"$minutes MIN " + outputFile)

@@ -64,6 +64,7 @@ class IncrementalModularSchemeLattice[
 
     /** The actual lattice implementation for AL and A. */
     val incrementalSchemeLattice: IncrementalSchemeLattice[AL, A] = new IncrementalSchemeLattice[AL, A] {
+        def level(x: AL): scala.Int = Lattice[L].level(x.toL())
 
         //private var implicitFlows: Set[A] = Set()
         //def setContext(addr: Set[A]): Unit = implicitFlows = addr
@@ -198,6 +199,7 @@ class IncrementalModularSchemeLattice[
             }
             table.prettyString(columns = List("diff", xname, yname))
     }
+
 
     object AL:
         implicit val lattice: IncrementalSchemeLattice[AL, A] = incrementalSchemeLattice

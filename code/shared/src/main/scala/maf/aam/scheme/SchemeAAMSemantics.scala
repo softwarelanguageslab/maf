@@ -106,6 +106,7 @@ trait BaseSchemeAAMSemantics(prog: SchemeExp) extends maf.aam.AAMAnalysis[Scheme
             case V(v1) => s"V($v1)"
             case K(k1) => s"K($k1)"
         def refs(x: Storable): Set[Address] = throw new Exception("NYI -- storableLattice.refs(x)")
+        def level(x: Storable): Int = ???
 
     /**
      * An address under which a continuation is stored. To preserve call-return semantics, this address should be (e, p) where e is the call targets

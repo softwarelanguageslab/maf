@@ -1,6 +1,7 @@
 package maf.modular.scheme.aam
 
-import maf.core.* 
+import maf.core.*
+import maf.core.address.*
 import maf.language.scheme.*
 import maf.language.scheme.lattices.*
 import maf.language.scheme.primitives.*
@@ -52,20 +53,20 @@ abstract class AAMScheme(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg):
     // addresses
 
     sealed trait SchemeAddress extends Address:
-        def toBaseAddr: maf.cli.experiments.precision.BaseAddr 
+        def toBaseAddr: maf.core.address.BaseAddr 
 
     case class NAdr(nat: String) extends SchemeAddress:
         def idn = Identity.none
         def printable = false
-        def toBaseAddr = maf.cli.experiments.precision.PrmAddr(nat)
+        def toBaseAddr = maf.core.address.PrmAddr(nat)
     case class VAdr(vrb: Var, ctx: Ctx) extends SchemeAddress:
         def idn = vrb.idn
         def printable = true 
-        def toBaseAddr = maf.cli.experiments.precision.VarAddr(vrb)
+        def toBaseAddr = maf.core.address.VarAddr(vrb)
     case class PAdr(exp: Exp, ctx: Ctx) extends SchemeAddress:
         def idn = exp.idn
         def printable = true
-        def toBaseAddr = maf.cli.experiments.precision.PtrAddr(exp)
+        def toBaseAddr = maf.core.address.PtrAddr(exp)
     trait KAdr extends Address:
         def printable = false
     case class KA(ev: Ev, sto: Sto) extends KAdr:

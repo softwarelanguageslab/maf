@@ -37,6 +37,14 @@ trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
     /** For PartialOrdering[L]: a lattice has a partial order, defined by subsumes... */
     final def lteq(x: L, y: L): Boolean = subsumes(y, x)
 
+    /** Computes the number of levels upto the current value */
+    def level(v: L): Int
+    /** Computes the number of levels to the top value if one exists,
+        otherwise Int.MAX_INT is returned */
+    def levelToTop(v: L): Int =
+        try level(top) - level(v)
+        catch { case _ => Int.MaxValue }
+
     /** ...and elements of the lattice can be compared */
     final def tryCompare(x: L, y: L): Option[Int] = (subsumes(x, y), subsumes(y, x)) match
         case (true, true)   => Some(0) // x >= y and y >= x => x = y
@@ -55,6 +63,7 @@ object Lattice:
         def subsumes(x: Set[A], y: => Set[A]): Boolean = y.subsetOf(x)
         def eql[B: BoolLattice](x: Set[A], y: Set[A]) = ???
         def ceq(x: Set[A], y: => Set[A]): Boolean = x == y
+        def level(v: Set[A]): Int = v.size // the number of levels is the amount of elements in the size
 
     implicit def setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
 
@@ -65,6 +74,7 @@ object Lattice:
         def join(x: Unit, y: => Unit): Unit = ()
         def subsumes(x: Unit, y: => Unit): Boolean = true
         def eql[B: BoolLattice](x: Unit, y: Unit): B = BoolLattice[B].inject(true)
+        def level(v: Unit): Int = 1
 
     def foldMapL[X, L: Lattice](xs: Iterable[X], f: X => L): L =
         if xs.isEmpty then Lattice[L].bottom

@@ -40,6 +40,7 @@ class Product2ModularSchemeLattice[
             PL(f(left), right)
 
     def product2Lattice: Product2SchemeLattice[PL, O, A] = new Product2SchemeLattice:
+        def level(v: PL): scala.Int = Lattice[L].level(v.left) * Lattice[O].level(v.right)
         def show(x: PL): String = x.toString
         def refs(x: PL): Set[Address] = schemeLattice.refs(x.left)
         def isTrue(x: PL): Boolean = schemeLattice.isTrue(x.left)
