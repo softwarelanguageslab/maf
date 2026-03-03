@@ -21,6 +21,14 @@ import com.cibo.evilplot.numeric.Point
 
 import java.io.File
 
+import com.cibo.evilplot.colors.RGB
+import com.cibo.evilplot.geometry.{Align, Drawable, Extent, Rect, Text}
+import com.cibo.evilplot.plot._
+import com.cibo.evilplot.plot.aesthetics.DefaultTheme.{DefaultFonts, DefaultTheme}
+import com.cibo.evilplot.plot.renderers.BarRenderer
+import com.cibo.evilplot.geometry.Placeable
+import com.cibo.evilplot.geometry.SeqPlaceable
+
 trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics:
     this: AdaptiveContextSensitivityPolicy =>
 
@@ -200,8 +208,21 @@ trait AdaptiveContextSensitivity(b: Int = 0) extends AdaptiveSchemeModFSemantics
         val prevBounds = largestBoundsModuleChart.getOrElse(module, (1,1))
         val currentBounds = (Math.max(prevBounds._1, groupedByClo.size), Math.max(prevBounds._2, cloMaxContexts))
         largestBoundsModuleChart = largestBoundsModuleChart + (module -> currentBounds)
-        val plot = BarChart(groupedByClo.toSeq.map(_._2.size))
-                        .title(s"$inspectCount ${judgement.toString}")
+        val plotRenderer = new BarRenderer {
+            val red = RGB(222, 51, 29)
+            val green = RGB(50, 168, 82)
+
+            def render(plot: Plot, extent: Extent, category: Bar): Drawable = 
+                val rect = Rect(extent)
+                val value = category.values.head
+                val color = if judgement then green else red 
+                Align.center(rect filled color, Text(s"$value", size = 20))
+                     .group
+        }
+
+        val plot = BarChart
+                        .custom(groupedByClo.toSeq.map(_._2.size.toDouble).map(Bar.apply), barRenderer = Some(plotRenderer))
+                        .title(s"$inspectCount")
                         .xAxis()
                         .yAxis()
                         .frame()
