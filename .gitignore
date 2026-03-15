@@ -32,3 +32,4 @@ out/
 *.zo
 __pycache__
 stats/
+res.json

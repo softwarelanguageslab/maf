@@ -18,6 +18,9 @@ case class Metric(name: String, result: Double)
 
 /** Super type of all analyses in MAF, provides basic entry points to the analysis */
 trait AnalysisEntry[Exp <: Expression]:
+    /** The name of the analysis */
+    val analysisName: String = "None"
+
     /** Returns a boolean indicating whether the analysis has finished. Implementation should be provided by the work list algorithm. */
     def finished: Boolean
 
@@ -39,6 +42,42 @@ trait AnalysisEntry[Exp <: Expression]:
 
     /** Method that defines how to print the result of the analysis */
     def printResult: Unit = println(result)
+
+    /**
+     * This saves the current analysis to a file
+     *
+     * @param filename
+     *   The file to save to
+     */
+    def save(filename: String): Unit = System.err.nn.println("Save functionality is not implemented for this analysis")
+
+    /**
+     * This saves the current analysis to a file, but only the elements that are in save
+     *
+     * @param filename
+     *   The file to save to
+     * @param save
+     *   The elements to save
+     */
+    def save(filename: String, save: Set[String]): Unit = System.err.nn.println("Save functionality is not implemented for this analysis")
+
+    /**
+     * Load an analysis from a given file
+     *
+     * @param filename
+     *   The file to load the analysis from
+     */
+    def load(filename: String): Unit = System.err.nn.println("Load functionality is not implemented for this analysis")
+
+    /**
+     * Load the given elements of an analysis from a given file
+     *
+     * @param filename
+     *   The file to load the analysis from
+     * @param load
+     *   The elements to load
+     */
+    def load(filename: String, load: Set[String]): Unit = System.err.nn.println("Load functionality is not implemented for this analysis")
 
     /**
      * Method that renders a Dot graph of the components and the dependencies between them and writes it to a file
@@ -136,6 +175,8 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
 
     // flag to indicate if the analysis has already been initialized (see method `init`)
     private var initialized: Boolean = false
+    def analysisInitialized = initialized
+    def analysisInitialized_=(init: Boolean) = initialized = init
 
     /* Runs the analysis with a timeout. Implementation should be provided by the worklist algorithm. */
     protected def run(timeout: Timeout.T): Unit
@@ -169,5 +210,4 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     // Print analysis information.
 
     def configString(): String = "Modular analysis"
-
 }

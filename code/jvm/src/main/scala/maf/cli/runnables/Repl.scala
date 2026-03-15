@@ -32,6 +32,8 @@ object Repl:
     | * -t TIMEOUT: run the analysis with the given timeout (in seconds). Defaults to 10.
     | * -dot  set flag to enable outputting a FILENAME.dot file that contains a visualisation of results of the analysis, only works with "-f"
     | * -m load the given Racket module, use instead of "-f"
+    | * -s FILENAME: the name of the file where the analysis should be saved to when finished
+    | * -l FILENAME: the name of the file where the analysis should be loaded from
     """.stripMargin
 
     private val configurationsHelp: Map[String, String] = Map(
@@ -79,7 +81,9 @@ object Repl:
         interactive: Boolean = false,
         performance: Boolean = false,
         dot: Boolean = false,
-        timeout: Long = 10):
+        timeout: Long = 10,
+        saveFile: Option[String] = None,
+        loadFile: Option[String] = None):
         def isEmpty: Boolean = remaining.isEmpty
         def continue(remaining: List[String]): ArgParser = this.copy(remaining = remaining)
         def setAnalysis(analysis: String): ArgParser =
@@ -89,6 +93,14 @@ object Repl:
         def setFilename(filename: String): ArgParser =
             ensureNotSet(this.filename, "filename")
             this.copy(filename = Some(filename))
+
+        def setSaveFilename(filename: String): ArgParser =
+            ensureNotSet(this.saveFile, "saveFile")
+            this.copy(saveFile = Some(filename))
+
+        def setLoadFilename(filename: String): ArgParser =
+            ensureNotSet(this.loadFile, "loadFile")
+            this.copy(loadFile = Some(filename))
 
         def setParser(parser: String): ArgParser =
             ensureNotSet(this.parser, "parser")
@@ -132,6 +144,12 @@ object Repl:
                 case "-dot" :: rest =>
                     parse(parser.copy(dot = true).continue(rest))
 
+                case "-s" :: filename :: rest =>
+                    parse(parser.setSaveFilename(filename).continue(rest))
+
+                case "-l" :: filename :: rest =>
+                    parse(parser.setLoadFilename(filename).continue(rest))
+
                 case arg =>
                     throw new Exception(s"invalid arguments $arg")
 
@@ -171,6 +189,8 @@ object Repl:
         performance: Boolean,
         timeout: Long,
         dot: Boolean,
+        saveFile: Option[String] = None,
+        loadFile: Option[String] = None,
         someLoader: Option[String => SchemeExp] = None
       ): Unit =
         val loader: String => SchemeExp = someLoader.getOrElse(Reader.loadFile andThen parser.parse)
@@ -178,12 +198,16 @@ object Repl:
         val exp = loader(filename)
         def runSingle(): Long =
             val anl = makeAnalysis(exp)
-            val (elapsed, _) = Timer.time { anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
+            if loadFile.isDefined then
+                val (elapsed, _) = Timer.time { anl.load(loadFile.get) } //anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
+                println(s"load time: ${elapsed / 1000000}")
+            val (elapsed, _) = Timer.time { anl.analyze() } //anl.analyzeWithTimeout(Timeout.start(timeout.seconds)) }
             // Do not print results if we are in perfomance testing mode
             if !performance then
                 if !anl.finished then println("Analysis timed out")
                 anl.printResult
                 println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
+                if saveFile.isDefined then anl.save(saveFile.get)
             // Print a dot graph if the dot option has been enabled
             if dot then anl.toDot(filename.replace("/", "_").nn + ".dot")
             elapsed
@@ -221,7 +245,7 @@ object Repl:
         else runSingle()
 
     /** Runs a REPL that can be used to interactively test the abstract interpreter */
-    private def runRepl(parser: P, makeAnalysis: A): Unit =
+    private def runRepl(parser: P, makeAnalysis: A, saveFile: Option[String]): Unit =
         def repl(): Unit =
             print(">")
             val program = readLine().trim().nn
@@ -232,6 +256,7 @@ object Repl:
 
                 anl.printResult
                 println(s"Analysis took ${elapsed / (1000 * 1000)} ms")
+                if saveFile.isDefined then anl.save(saveFile.get)
                 repl()
         repl()
 
@@ -251,6 +276,8 @@ object Repl:
             assert(if options.dot then options.filename.isDefined else true, "-dot can only be combined with -f")
             // ensure that "-m" is not combined with "-f"
             assert(if options.module.isDefined then !options.filename.isDefined else true, "-m can not be combined with -f")
+            // ensure that "-i" is not combined with "-l"
+            assert(!(options.interactive && options.loadFile.isDefined), "-i can not be combined with -l")
             // setup the parser
             val parser = setupParser(options.parser)
             // setup the loader
@@ -261,8 +288,8 @@ object Repl:
             val analysisFactory = setupAnalysis(options.analysis.get)
             // setup the loader of the file/module
             // either run the file or the repl
-            if options.interactive then runRepl(parser, analysisFactory)
+            if options.interactive then runRepl(parser, analysisFactory, options.saveFile)
             else
                 // retrieve the file or module name
                 val path = options.filename.getOrElse(options.module.get)
-                runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, loader)
+                runFile(path, parser, analysisFactory, options.performance, options.timeout, options.dot, options.saveFile, options.loadFile, loader)
