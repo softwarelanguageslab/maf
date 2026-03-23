@@ -183,8 +183,8 @@ trait ParallelMetrics extends Metrics:
         exportCSV("data/modf-context-insensitive-metrics-mean.csv", formatMean _, timestamped = false)
         exportCSV("data/modf-context-insensitive-metrics-stddev.csv", formatStddev _, timestamped = false)
         exportCSV("data/modf-context-insensitive-metrics-max.csv", formatMax _, timestamped = false)
-        ParallelModFBenchmarks.all.foreach { (benchmark: String) =>
-            val shortName = ParallelModFBenchmarks.paperName(benchmark)
+        ParallelBenchmarks.all.foreach { (benchmark: String) =>
+            val shortName = ParallelBenchmarks.paperName(benchmark)
             val expDepth = results.get(benchmark, "exp-depth").get
             val callDepth = results.get(benchmark, "call-depth").get
             val leastVisited = results.get(benchmark, "least-visited").get
@@ -197,8 +197,8 @@ trait ParallelMetrics extends Metrics:
 
 object ParallelMetrics0CFA extends ParallelMetrics:
     def k = 0
-    def benchmarks = ParallelModFBenchmarks.all
+    def benchmarks = ParallelBenchmarks.all
 
 object ParallelMetrics2CFA extends ParallelMetrics:
     def k = 2
-    def benchmarks = ParallelModFBenchmarks.for2CFA
+    def benchmarks = ParallelBenchmarks.for2CFA

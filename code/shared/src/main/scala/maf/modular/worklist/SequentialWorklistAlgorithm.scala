@@ -111,7 +111,7 @@ trait PriorityQueueWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Exp
 /** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
 trait CallDepthFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr]:
     var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
-    lazy val ordering: Ordering[Component] = Ordering.by(depth)
+    lazy val ordering: Ordering[Component] = Ordering.by(c => depth(c))
     override def spawn(cmp: Component, from: Component): Unit =
         if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
             visited += cmp

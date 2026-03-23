@@ -84,7 +84,6 @@ trait PerformanceEvaluation:
                     metrics = analysisMetrics.foldLeft(metrics)((metrics, metric) =>
                         metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
                     )
-
                     times = (t.toDouble / 1000000) :: times
                 else return (TimedOut, List()) // immediately return
             print("\n")
@@ -97,7 +96,6 @@ trait PerformanceEvaluation:
             val resultMetrics = metrics.map { case (name, metrics) =>
                 Metrics(name, Statistics.all(metrics))
             }.toList
-
             (Completed(result), resultMetrics)
         Future { run() }
 

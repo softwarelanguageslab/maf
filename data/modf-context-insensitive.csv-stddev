@@ -1,2 +1,2 @@
-,parallel (n = 1, 0-CFA),parallel (n = 2, 0-CFA),parallel (n = 4, 0-CFA),parallel (n = 8, 0-CFA)
-test/R5RS/icp/icp_3_leval.scm,19359,30626,16962,16307
+,DSS-FS,DSS-FS-NAIVE,DSS-FS-NAIVE_iterations,DSS-FS_iterations
+test/R5RS/various/mceval.scm,6,8,0,0

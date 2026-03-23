@@ -30,9 +30,7 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
                 override def workers = 4
                 override def intraAnalysis(cmp: Component) = 
                     new SchemeModFLocalFSIntraAnalysis(cmp) with ParallelIntra { intra => 
-                        def setLocalState(st: AnalysisState) = 
-                            intra.results = st._1
-                            intra.stores = st._2
+                        override def setLocalState(st: AnalysisState) = ()
                     }
     override def isSlow(b: Benchmark): Boolean =
         Set(

@@ -69,10 +69,11 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     // STATE = RESULTS + STORE
     //
 
-    var results: Res = Map.empty
+    @volatile var results: Res = Map.empty
+    
     case class ResultDependency(cmp: Cmp) extends Dependency
 
-    var stores: Sts = Map.empty
+    @volatile var stores: Sts = Map.empty
     case class StoreDependency(cmp: Cmp) extends Dependency
 
     //
@@ -112,9 +113,9 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         }
         
     override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
-        withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
+        //withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
             super.applyPrimitive(app, prm, ags)
-        }
+        //}
 
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
         withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
@@ -189,8 +190,6 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
     //
     // THE INTRA-ANALYSIS
     //
-
-    var iterations = 0
     
     def computeOneCounts: (Int, Int) = 
         stores.foldLeft((0,0)) { 
@@ -223,7 +222,6 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
         var updatedStores: Map[Cmp, Dlt] = Map.empty 
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            iterations = iterations + 1
             // get the (widened) store
             register(StoreDependency(cmp))
             val sto = stores.getOrElse(cmp, LocalStore.empty)

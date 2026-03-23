@@ -1,0 +1,17 @@
+,DSS-FS,DSS-FS-NAIVE,DSS-FS-NAIVE_iterations,DSS-FS_iterations
+test/R5RS/gabriel/boyer.scm,684,780,0,0
+test/R5RS/gabriel/browse.scm,10,7,0,0
+test/R5RS/gabriel/cpstak.scm,0,0,0,0
+test/R5RS/gabriel/dderiv.scm,2,5,0,0
+test/R5RS/gabriel/deriv.scm,1,2,0,0
+test/R5RS/gabriel/destruc.scm,1,4,0,0
+test/R5RS/gabriel/diviter.scm,1,15,0,0
+test/R5RS/gabriel/divrec.scm,2,22,0,0
+test/R5RS/gabriel/puzzle.scm,1,1,0,0
+test/R5RS/gabriel/takl.scm,0,0,0,0
+test/R5RS/gabriel/triangl.scm,0,1,0,0
+test/R5RS/gambit/matrix.scm,11,7,0,0
+test/R5RS/gambit/tak.scm,0,0,0,0
+test/R5RS/various/mceval.scm,6,7,0,0
+test/R5RS/various/regex.scm,2,2,0,0
+test/R5RS/various/rsa.scm,0,0,0,0

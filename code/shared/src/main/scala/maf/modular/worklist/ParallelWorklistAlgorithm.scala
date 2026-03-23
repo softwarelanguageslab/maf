@@ -88,7 +88,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
 
     private def processTerminated(intra: ParallelIntra): Unit =
         intra.commit()
-        setLatest((analysisState, depVersion, deps, visited))
+        latest = (analysisState, depVersion, deps, visited)
         if intra.isDone then 
             queued -= intra.component
         else 
@@ -100,7 +100,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
         if !finished then
             // initialize timeout and initial analysis state
             currentTimeout = timeout
-            setLatest((analysisState, depVersion, deps, visited))
+            latest = (analysisState, depVersion, deps, visited)
             // spawn the workers
             workerThreads = List.tabulate(this.workers)(spawnWorker)
             // fill the worklist with initial items
@@ -124,10 +124,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
                         Map[Dependency, Set[Component]], // <- deps
                         Set[Component]
     ) // <- visited
-    object GlobalStateLock
-    var latest: GlobalState = _
-    def getLatest = GlobalStateLock.synchronized { latest } 
-    def setLatest(upd: GlobalState) = GlobalStateLock.synchronized { latest = upd }
+    @volatile var latest: GlobalState = _
 
     // keep track for every dependency of its "version number"
     var depVersion = Map[Dependency, Int]().withDefaultValue(0)
@@ -137,9 +134,9 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     def intraAnalysis(component: Component): ParallelIntra
     trait ParallelIntra extends IntraAnalysis { intra =>
 
-        def setLocalState(st: AnalysisState): Unit 
+        def setLocalState(st: AnalysisState): Unit = ()
 
-        val (latestState, depVersion, deps, visited) = getLatest
+        val (latestState, depVersion, deps, visited) = latest
         setLocalState(latestState)
         var toCheck = Set[Dependency]()
 

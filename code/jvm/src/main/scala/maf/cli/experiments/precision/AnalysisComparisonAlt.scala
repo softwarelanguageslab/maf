@@ -219,7 +219,7 @@ object CountIterationBenchmark extends SASBenchmarks:
     analyses.foreach { case (analysis, name) => 
       val anl = analysis(program)
       anl.analyzeWithTimeout(Timeout.start(Duration(15, MINUTES)))
-      results = results.add(path, name, anl.asInstanceOf[SchemeModFLocalFS].iterations)
+      //results = results.add(path, name, anl.asInstanceOf[SchemeModFLocalFS].iterations)
     }
 
   override def timeout() = Timeout.none

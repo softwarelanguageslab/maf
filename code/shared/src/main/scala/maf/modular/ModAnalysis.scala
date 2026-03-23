@@ -62,6 +62,11 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     type Component <: Serializable
     def initialComponent: Component
     def expr(cmp: Component): Expr
+    
+    var iterations = 0
+
+    override def metrics: List[Metric] =
+        List(Metric("iterations", iterations))
 
     // some form of "worklist" is required to keep track of which components need to be (re-)analyzed
     // this method is responsible for adding a given component to that worklist
@@ -125,6 +130,7 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
 
         /** Pushes the local changes to the global analysis state. */
         def commit(): Unit =
+            iterations = iterations + 1
             R.foreach(inter.register(component, _))
             W.foreach(dep => if doWrite(dep) then inter.trigger(dep))
             C.foreach(inter.spawn(_, component))
@@ -171,3 +177,26 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     def configString(): String = "Modular analysis"
 
 }
+
+trait NaiveAnalysis[E <: Expression] extends ModAnalysis[E]:
+
+    private var dirty = true 
+
+    override def register(target: Component, dep: Dependency): Unit = () // no need to register dependencies
+    override def trigger(dep: Dependency): Unit = dirty = true 
+    override def spawn(cmp: Component): Unit =
+        if !visited(cmp) then
+            visited += cmp
+            dirty = true
+
+    protected def run(timeout: Timeout.T): Unit = 
+        while dirty do
+            dirty = false
+            visited.foreach { cmp => 
+                val intra = intraAnalysis(cmp)
+                intra.analyzeWithTimeout(timeout)
+                if !timeout.reached then intra.commit()
+            }
+
+    def addToWorkList(cmp: Component): Unit = throw new Exception("Worklistless algorithm: This method should not be used.")
+    def finished = !dirty

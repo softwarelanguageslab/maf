@@ -23,6 +23,8 @@ import maf.modular.scheme.modactor.mirrors.SimpleModActorWithMirrors
 import maf.language.racket.RacketLoaderSemantics
 import maf.language.racket.RacketLoader
 import maf.core.Store
+import maf.modular.NaiveAnalysis
+import maf.modular.NaiveAnalysis
 
 object SchemeAnalysesBoundedDomain:
     object NoSensitivity:
@@ -110,7 +112,7 @@ object SchemeAnalyses:
         override def workers = n
         override def intraAnalysis(cmp: Component) = 
           new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra { intra => 
-            def setLocalState(st: AnalysisState): Unit = intra.store = st 
+            override def setLocalState(st: AnalysisState): Unit = intra.store = st 
           }
     }
     def modConcAnalysis(prg: SchemeExp, kcfa: Int) = new SimpleSchemeModConcAnalysis(prg)
@@ -141,7 +143,7 @@ object SchemeAnalyses:
         override def workers = n
         override def toString = s"parallel modconc (n = $n ; m = $m)"
         override def intraAnalysis(cmp: Component) = new SchemeModConcIntra(cmp) with ParallelIntra { intra => 
-          def setLocalState(st: AnalysisState) = intra.store = st 
+          override def setLocalState(st: AnalysisState) = intra.store = st 
         }
         override def modFAnalysis(
             intra: SchemeModConcIntra
@@ -154,7 +156,7 @@ object SchemeAnalyses:
             val k = kcfa
             override def workers = m
             override def intraAnalysis(cmp: SchemeModFComponent) = new InnerModFIntra(cmp) with ParallelIntra { intraModF => 
-              def setLocalState(st: AnalysisState) = intraModF.store = st   
+              override def setLocalState(st: AnalysisState) = intraModF.store = st   
             }
         }
     }
@@ -169,11 +171,25 @@ object SchemeAnalyses:
             with FIFOWorklistAlgorithm[SchemeExp]
             with SchemeModFLocalAnalysisResults
 
+    def modflocalAnalysisNaive(prg: SchemeExp, k: Int) =
+        new SchemeModFLocal(prg)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalCallSiteSensitivity(k)
+            with NaiveAnalysis[SchemeExp]
+            with SchemeModFLocalAnalysisResults
+
     def modflocalFSAnalysis(prg: SchemeExp, k: Int, gc: Boolean = true) =
       new SchemeModFLocalFS(prg, gc)
           with SchemeConstantPropagationDomain
           with SchemeModFLocalCallSiteSensitivity(k)
           with FIFOWorklistAlgorithm[SchemeExp]
+          with SchemeModFLocalFSAnalysisResults
+
+    def modflocalFSAnalysisNaive(prg: SchemeExp, k: Int, gc: Boolean = true) =
+      new SchemeModFLocalFS(prg, gc)
+          with SchemeConstantPropagationDomain
+          with SchemeModFLocalCallSiteSensitivity(k)
+          with NaiveAnalysis[SchemeExp]
           with SchemeModFLocalFSAnalysisResults
 
     def modfADIAnalysis(prg: SchemeExp, k: Int) = 

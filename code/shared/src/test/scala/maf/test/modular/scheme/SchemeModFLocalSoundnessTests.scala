@@ -8,6 +8,7 @@ import maf.modular.worklist._
 import maf.language.scheme.primitives.SchemePrelude
 import maf.core.Position
 import maf.cli.experiments.*
+import maf.modular.NaiveAnalysis
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
     override def parseProgram(txt: String, benchmark: String): SchemeExp =
@@ -23,17 +24,15 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
             with SchemeModFLocalAnalysisResults
-            with CallDepthFirstWorklistAlgorithm[SchemeExp]
-            with ParallelWorklistAlgorithm[SchemeExp] {
+            //with CallDepthFirstWorklistAlgorithm[SchemeExp]
+            with NaiveAnalysis[SchemeExp] {
 
         type AnalysisState = Unit
         def analysisState = () 
     
-        override def workers = 4
+        //override def workers = 4
         override def intraAnalysis(cmp: Component) = 
-            new SchemeLocalIntraAnalysis(cmp) with ParallelIntra { intra => 
-                def setLocalState(st: AnalysisState) = ()
-            }
+            new SchemeLocalIntraAnalysis(cmp)
     }
     override def isSlow(b: Benchmark): Boolean =
         Set(
@@ -48,10 +47,6 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
           "test/R5RS/various/infinite-2.scm",
           "test/R5RS/various/infinite-3.scm",
         ).contains(b)
-    override def run() =
-        (1 to 100).foreach { _ => 
-            super.run()    
-        }
 
 class SchemeModFADITests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
 

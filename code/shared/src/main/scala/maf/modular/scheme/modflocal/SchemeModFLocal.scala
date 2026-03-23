@@ -13,6 +13,7 @@ import akka.actor.ProviderSelection.Local
 import maf.util.datastructures.SmartMap
 import maf.modular.scheme.modf.SchemeModFComponent.Call
 import maf.core.Monad.MonadSyntaxOps
+import maf.util.SmartHash
 
 abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
@@ -47,7 +48,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // COMPONENTS
     //
 
-    sealed trait Component extends Serializable:
+    sealed trait Component extends Serializable with SmartHash:
         val exp: Exp
         val env: Env
         val sto: Sto
@@ -69,7 +70,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     // RESULTS
     //
 
-    var results: Map[Component, Set[(Val, Dlt, Set[Adr], Set[Adr])]] = Map.empty
+    @volatile var results: Map[Component, Set[(Val, Dlt, Set[Adr], Set[Adr])]] = Map.empty
 
     case class ResultDependency(cmp: Component) extends Dependency
 
@@ -101,17 +102,17 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     import analysisM_._
     override def eval(exp: Exp): A[Val] =
         withEnv(_.restrictTo(exp.fv)) {
-            getEnv >>= { env =>
-                withRestrictedStore(env.addrs) {
+            //getEnv >>= { env =>
+            //    withRestrictedStore(env.addrs) {
                     super.eval(exp)
-                }
-            }
+            //    }
+            //}
         }
 
     override protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
-        withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
+        //withRestrictedStore(ags.flatMap(lattice.refs).toSet) {
             super.applyPrimitive(app, prm, ags)
-        }
+        //}
 
     override protected def applyClosure(app: App, lam: Lam, ags: List[Val], fvs: Iterable[(Adr, Val)]): A[Val] =
         withRestrictedStore(ags.flatMap(lattice.refs).toSet ++ fvs.flatMap((_, vlu) => lattice.refs(vlu))) {
@@ -181,17 +182,18 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         intra =>
 
         // local state
+        var results: Map[Component, Set[(Val, Dlt, Set[Adr], Set[Adr])]] = _ 
         var updatedResult: Set[(Val, Dlt, Set[Adr], Set[Adr])] = _
 
         def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx): Set[(Val, Dlt, Set[Adr], Set[Adr])] =
             val cmp = CallComponent(lam, env, sto, ctx)
             spawn(cmp)
             register(ResultDependency(cmp))
-            results.getOrElse(cmp, Set.empty)
+            inter.results.getOrElse(cmp, Set.empty)
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val cur = results.getOrElse(cmp, Set.empty) // NOTE: no other thread can modify this ... 
             updatedResult = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
+            val cur = inter.results.getOrElse(cmp, Set.empty) // NOTE: no other thread can modify this ... 
             if cur != updatedResult then
                 trigger(ResultDependency(cmp))
 
@@ -199,7 +201,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             case ResultDependency(cmp) => // NOTE: no other thread can modify this ... 
                 //val cur = results.getOrElse(cmp, Set.empty)
                 //if cur != updatedResult then
-                results += cmp -> updatedResult
+                inter.results += cmp -> updatedResult
                 true
                 //else 
                 //    false
