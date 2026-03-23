@@ -70,89 +70,16 @@ object ParallelModFAnalyses:
                                  with BigStepModFSemantics
                                  with ParallelWorklistAlgorithm[SchemeExp]
                                  with SchemeModFKCallSiteSensitivity
-                                 with SchemeConstantPropagationDomain {
+                                 with SchemeConstantPropagationDomain:
 
         type AnalysisState = Map[Addr, Value]
         def analysisState = store 
         
         override val k = kcfa
         override def workers = n 
-        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra { intra => 
+        override def intraAnalysis(cmp: Component) = new IntraAnalysis(cmp) with BigStepModFIntra with ParallelIntra: 
+            intra => 
             override def setLocalState(st: AnalysisState) = intra.store = st 
-        }
-    }
-
-    def callDepthFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with CallDepthFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
-    }
-
-    def leastVisitedFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with LeastVisitedFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"least-visited-first (n = $n ; k = $kcfa)"
-    }
-
-    def mostVisitedFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with MostVisitedFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"most-visited-first (n = $n ; k = $kcfa)"
-    }
-
-    def deepExpressionsFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with DeepExpressionsFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"deep-expressions-first (n = $n ; k = $kcfa)"
-    }
-
-    def shallowExpressionsFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with ShallowExpressionsFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"deep-expressions-first (n = $n ; k = $kcfa)"
-    }
-
-    def mostDependenciesFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with MostDependenciesFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"call-depth-first (n = $n ; k = $kcfa)"
-    }
-
-    def leastDependenciesFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with LeastDependenciesFirstWorklistAlgorithm[SchemeExp] {
-        override def toString() = s"least-dependencies-first (n = $n ; k = $kcfa)"
-    }
-
-    def biggerEnvironmentFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with BiggerEnvironmentFirstWorklistAlgorithm.ModF {
-        override def toString() = s"bigger-env-first (n = $n ; k = $kcfa)"
-    }
-
-    def smallerEnvironmentFirst(
-        prg: SchemeExp,
-        n: Int,
-        kcfa: Int
-      ) = new ParallelModFAnalysis(prg, n, kcfa) with SmallerEnvironmentFirstWorklistAlgorithm.ModF {
-        override def toString() = s"smaller-env-first (n = $n ; k = $kcfa)"
-    }
 
 object ParallelBenchmarks:
     def paperName: Map[String, String] = List(
@@ -269,6 +196,10 @@ object ParallelBenchmarks:
            "test/R5RS/gambit/tak.scm"
         )
 
+//
+// MODF BASE RESULTS
+//
+
 trait BaseResultsModFSetup extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
@@ -315,6 +246,10 @@ object BaseResultsModF:
             println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
         }
 
+//
+// DSS EVALUATION
+//
+
 trait ParallelDSSPerformance extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
     override def analysisRuns = 10 // reduced for getting results faster
@@ -349,30 +284,10 @@ object ParallelModFPerformance2CFA extends ParallelDSSPerformance:
     def outputFile = "data/modf-context-sensitive.csv"
     def benchmarks = ParallelBenchmarks.for2CFA
 
-trait ParallelModFPerformanceMetrics extends ParallelDSSPerformance:
-    def n = 8
-    override def cores = List(n)
-    override def analyses = List(
-      (ParallelModFAnalyses.callDepthFirst(_, n, k), "call-depth"),
-      (ParallelModFAnalyses.leastVisitedFirst(_, n, k), "least-visited"),
-      (ParallelModFAnalyses.mostVisitedFirst(_, n, k), "most-visited"),
-      (ParallelModFAnalyses.deepExpressionsFirst(_, n, k), "deep-exp"),
-      (ParallelModFAnalyses.shallowExpressionsFirst(_, n, k), "shallow-exp"),
-      (ParallelModFAnalyses.mostDependenciesFirst(_, n, k), "most-deps"),
-      (ParallelModFAnalyses.leastDependenciesFirst(_, n, k), "least-deps"),
-      (ParallelModFAnalyses.biggerEnvironmentFirst(_, n, k), "bigger-env"),
-      (ParallelModFAnalyses.smallerEnvironmentFirst(_, n, k), "smaller-env")
-    )
 
-object ParallelPerformanceMetrics0CFA extends ParallelModFPerformanceMetrics:
-    def k = 0
-    def outputFile = "data/modf-context-insensitive-metrics.csv"
-    def benchmarks = ParallelBenchmarks.all
-
-object ParallelPerformanceMetrics2CFA extends ParallelModFPerformanceMetrics:
-    def k = 2
-    def outputFile = "data/modf-context-sensitive-metrics.csv"
-    def benchmarks = ParallelBenchmarks.for2CFA
+//
+// MODCONC EVALUATION
+//
 
 object ParallelPerformanceModConc extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
