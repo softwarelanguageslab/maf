@@ -6,6 +6,14 @@ import maf.core.Identifier
 import maf.language.scheme.SchemeExp
 import maf.core.Identity
 
+import maf.modular.scheme.modf.SchemeModFSemanticsM
+import maf.modular.scheme.modf.BigStepModFSemantics
+import maf.modular.scheme.modf.StandardSchemeModFComponents
+import maf.modular.scheme.modf.SchemeModFNoSensitivity
+import maf.modular.scheme.SchemeConstantPropagationDomain
+import maf.modular.worklist.FIFOWorklistAlgorithm
+import maf.language.symbolic.lattices.SymbolicSchemeConstantPropagationDomain
+
 case class DynamicNode(reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
                        exp: SchemeExp, // the expression that this node belongs to
                        descendants: Set[DynamicNode]) //descendants are the direct descendants of the node
@@ -17,7 +25,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
     // this predicate in the execution history thus far
     // TODO: should be kept in the EvalM monad
     var predNode: Map[Identity, DynamicNode] = Map.empty
-    var nodes: Set[DynamicNode]
+    var nodes: Set[DynamicNode] = Set.empty
 
     def findNode(node: DynamicNode): Option[DynamicNode] =
         nodes.find(n => n.exp == node.exp && n.descendants == node.descendants)
@@ -63,3 +71,20 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     updateDefnNode(node)
 
             super.eval(exp)
+
+object DynamicSlicer:
+    type Analysis = DynamicSlicer
+
+    def createAnalysis(program: SchemeExp): DynamicSlicer =
+        new ModAnalysis[SchemeExp](program)
+            with StandardSchemeModFComponents
+            with SchemeModFSemanticsM
+            with SchemeModFNoSensitivity
+            with BigStepModFSemantics
+            with SymbolicSchemeConstantPropagationDomain
+            with FIFOWorklistAlgorithm[SchemeExp]
+            with DynamicSlicer:
+
+            class AnalysisIntra(cmp: Component) extends IntraAnalysis(cmp) with DynamicSlicerIntra with BigStepModFIntra
+            override def intraAnalysis(cmp: Component): AnalysisIntra =
+                new AnalysisIntra(cmp)
