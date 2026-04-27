@@ -63,6 +63,7 @@ trait BigStepModFSemanticsT extends BaseSchemeModFSemantics:
                 case SchemeValue(value, _)              => evalLiteralValue(value, exp)
                 case lambda: SchemeLambdaExp            => evalClosure(lambda)
                 case SchemeVar(nam)                     => evalVariable(nam)
+                case SchemeVarLex(nam, _)               => evalVariable(nam)
                 case SchemeBegin(exps, _)               => evalSequence(exps)
                 case SchemeSet(id, vexp, _)             => evalSet(id, vexp)
                 case SchemeIf(prd, csq, alt, _)         => evalIf(prd, csq, alt)

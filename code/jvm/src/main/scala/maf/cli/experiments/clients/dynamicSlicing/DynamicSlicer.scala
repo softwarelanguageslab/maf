@@ -24,6 +24,8 @@ import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
 import maf.cli.experiments.clients.dynamicSlicing.TControlEvalM.ControlEvalM
 import maf.cli.experiments.clients.dynamicSlicing.TControlEvalM.MonadControlEvalM
+import maf.cli.experiments.clients.dynamicSlicing.DynamicNode
+import maf.language.scheme.LexicalRef
 
 case class DynamicNode(id: Int,
                        reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
@@ -90,10 +92,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
     // defnNode maps a variable name to the node in the graph that last assigned a value to that variable
     var defnNode: Map[Identifier, DynamicNode] = Map.empty
-    // predNode maps a control predicate statement to the node that corresponds to the last occurrence of
-    // this predicate in the execution history thus far
-    // TODO: should be kept in the EvalM monad
-    var predNode: Map[Identity, DynamicNode] = Map.empty
+    // var defnNode: Map[String, DynamicNode] = Map.empty
     var nodes: Set[DynamicNode] = Set.empty
 
     def findNode(node: DynamicNode): Option[DynamicNode] =
@@ -115,19 +114,19 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
             eval(fnBody).run(fnEnv, None).foreach(res => writeResult(res))
 
         override def eval(exp: SchemeExp): ControlEvalM[Value] = 
-            // D: the set of nodes that last assigned values to the variables used by the expression
-            val d: List[Option[DynamicNode]] = exp.usedSet().map(defnNode.get)
 
             def updateDefnNode(node: DynamicNode) = 
+                // TODO: defnNode should be the specific binding 
                 for(identifier <- exp.definedSet()) {
                     defnNode = defnNode + (identifier -> node)
+                    // defnNode = defnNode + (identifier.toString -> node)
                 }
 
             def addNode(node: DynamicNode) = 
                 findNode(node) match 
                 // if there already is a node for this expression with the same descendants, check the reachablestmts
                 case Some(n) =>
-                    if !(node.reachableStmts subsetOf n.reachableStmts) then 
+                    if !(n.reachableStmts subsetOf node.reachableStmts) then 
                         nodes = nodes + node
                         updateDefnNode(node)
                     else // otherwise, merge the old node with the new one
@@ -142,7 +141,13 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
             // C: the control predicate node of the statement
             getControlNode.flatMap(c => 
-                val descs = (c :: d).flatten.toSet 
+                println("exp: " + exp)
+                println("defnnode: " + defnNode.keySet)
+                // D: the set of nodes that last assigned values to the variables used by the expression
+                val d: List[Option[DynamicNode]] = exp.definedSet().map(defnNode.get)
+                // val d: List[Option[DynamicNode]] = exp.fv.map(defnNode.get).toList
+                println("d: " + d.map(_.map(_.id)))
+                val descs = (c :: d).flatten.toSet
                 val reachable = descs.flatMap(_.reachableStmts) ++ descs
                 lastId = lastId + 1
                 val node = DynamicNode(lastId, reachable, exp, descs)

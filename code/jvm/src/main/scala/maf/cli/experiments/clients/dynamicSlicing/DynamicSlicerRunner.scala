@@ -7,6 +7,7 @@ import scala.concurrent.duration.*
 import maf.util.MAFLogger
 import maf.util.{Reader, Writer}
 import maf.core._
+import maf.language.scheme.SchemeLexicalAddresser
 
 object DynamicSlicerMain: 
     val benchmarks: List[String] = 
@@ -29,19 +30,16 @@ object DynamicSlicerMain:
         n.descendants.map(node => print(node.id + ", "))
         println()
 
-    def printDefnNode(variable: Identifier, n: DynamicNode) = 
-        println("  " + variable + ": " + n.id)
-
-
 
     def run(mkAnalysis: SchemeExp => DynamicSlicer, program: String) = 
         val programText = Reader.loadFile(program)
         val exp = SchemeParser.parseProgram(programText)
-        val analysis = mkAnalysis(exp)
+        val lexicaladdressedExp = SchemeLexicalAddresser.translateProgram(List(exp)).head
+        val analysis = mkAnalysis(lexicaladdressedExp)
 
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
         println("defnNode:")
-        analysis.defnNode.map((k, v) => printDefnNode(k, v))
+        analysis.defnNode.map((k, v) => println("  " + k + ": " + v.id))
         println("------------------------------")
         println("nodes:")
         analysis.nodes.map(printDynamicNode)
