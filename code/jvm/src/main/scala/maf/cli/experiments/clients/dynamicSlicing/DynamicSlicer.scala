@@ -26,6 +26,7 @@ import maf.cli.experiments.clients.dynamicSlicing.TControlEvalM.ControlEvalM
 import maf.cli.experiments.clients.dynamicSlicing.TControlEvalM.MonadControlEvalM
 import maf.cli.experiments.clients.dynamicSlicing.DynamicNode
 import maf.language.scheme.LexicalRef
+import maf.modular.scheme.modflocal.SchemeSemantics
 
 case class DynamicNode(id: Int,
                        reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
@@ -34,15 +35,16 @@ case class DynamicNode(id: Int,
 
 // a version of EvalM that saves the last control node passed
 object TControlEvalM: 
-    case class ControlEvalM[+X](run: (Environment[Address], Option[DynamicNode]) => Option[X]):
-       def flatMap[Y](f: X => ControlEvalM[Y]): ControlEvalM[Y] = ControlEvalM((env, node) => run(env, node).flatMap(res => f(res).run(env, node)))
-       def map[Y](f: X => Y): ControlEvalM[Y] = ControlEvalM((env, node) => run(env, node).map(f)) 
+                                     // environment, control node, current node, map of addresses to the set of last definition sites
+    case class ControlEvalM[+X](run: (Environment[Address], Option[DynamicNode], Map[Address, Set[DynamicNode]]) => Option[(X, Map[Address, Set[DynamicNode]])]):
+       def flatMap[Y](f: X => ControlEvalM[Y]): ControlEvalM[Y] = ControlEvalM((env, node, defs) => run(env, node, defs).flatMap((res, newDefs) => f(res).run(env, node, newDefs)))
+       def map[Y](f: X => Y): ControlEvalM[Y] = ControlEvalM((env, node, defs) => run(env, node, defs).map((res, newDefs) => (f(res), newDefs))) 
 
     trait MonadControlEvalM extends TEvalM[ControlEvalM]:
         def map[X, Y](m: ControlEvalM[X])(f: X => Y): ControlEvalM[Y] = m.map(f)
         def flatMap[X, Y](m: ControlEvalM[X])(f: X => ControlEvalM[Y]): ControlEvalM[Y] = m.flatMap(f)
-        def unit[X](x: X): ControlEvalM[X] = ControlEvalM((_, _) => Some(x))
-        def mzero[X]: ControlEvalM[X] = ControlEvalM((_, _) => None)
+        def unit[X](x: X): ControlEvalM[X] = ControlEvalM((_, _, defs) => Some(x, defs))
+        def mzero[X]: ControlEvalM[X] = ControlEvalM((_, _, _) => None)
         implicit class MonadicOps[X](xs: Iterable[X]):
             def foldLeftM[Y](y: Y)(f: (Y, X) => ControlEvalM[Y]): ControlEvalM[Y] = xs match
                 case Nil     => unit(y)
@@ -57,25 +59,28 @@ object TControlEvalM:
             def mapM_(f: X => ControlEvalM[Unit]): ControlEvalM[Unit] = xs match
                 case Nil     => unit(())
                 case x :: xs => f(x).flatMap(_ => xs.mapM_(f))  
-        def getEnv: ControlEvalM[Environment[Address]] = ControlEvalM((env, _) => Some(env))
+        def getEnv: ControlEvalM[Environment[Address]] = ControlEvalM((env, _, defs) => Some(env, defs))
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => ControlEvalM[X]): ControlEvalM[X] = 
-            ControlEvalM((env, node) => ev.run(f(env), node))  
-        def merge[X: Lattice](x: ControlEvalM[X], y: ControlEvalM[X]): ControlEvalM[X] = ControlEvalM { (env, node) =>
-            (x.run(env, node), y.run(env, node)) match
+            ControlEvalM((env, node, defs) => ev.run(f(env), node, defs))  
+        def merge[X: Lattice](x: ControlEvalM[X], y: ControlEvalM[X]): ControlEvalM[X] = ControlEvalM { (env, node, defs) =>
+            (x.run(env, node, defs), y.run(env, node, defs)) match
                 case (None, yres)             => yres
                 case (xres, None)             => xres
-                case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
+                case (Some((res1, defs1)), Some((res2, defs2))) => Some((Lattice[X].join(res1, res2), defs1 ++ defs2))
         }
         def fail[X](err: Error): ControlEvalM[X] = mzero
-        // ADDED FOR THE DYNAMICNODE
-        def getControlNode: ControlEvalM[Option[DynamicNode]] = ControlEvalM((_, node) => Some(node))
+        // ADDED FOR THE CONTROLNODE
+        def getControlNode: ControlEvalM[Option[DynamicNode]] = ControlEvalM((_, node, defs) => Some(node, defs))
         def pushControlNode[X](node: DynamicNode)(ev: => ControlEvalM[X]): ControlEvalM[X] = 
-            ControlEvalM((env, _) => ev.run(env, Some(node))) 
+            ControlEvalM((env, _, defs) => ev.run(env, Some(node), defs)) 
         def pushControlNodeM[X](node: DynamicNode)(ev: ControlEvalM[X]): ControlEvalM[X] =
             given Monad[ControlEvalM] = this 
             for 
                 result <- pushControlNode(node) { ev } 
             yield result
+        // ADDED FOR DEFS
+        def addDef(address: Address, node: DynamicNode): ControlEvalM[Unit] = 
+            ControlEvalM((env, n, defs) => Some((), defs + (address -> Set(node)))) // todo: initial definition 
 
 
 trait DynamicSlicer extends BigStepModFSemanticsT:
@@ -111,7 +116,9 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv, None).foreach(res => writeResult(res))
+            eval(fnBody).run(fnEnv, None, Map.empty).foreach((res, defs) => 
+                println(defs)
+                writeResult(res))
 
         override def eval(exp: SchemeExp): ControlEvalM[Value] = 
 
@@ -141,12 +148,11 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
             // C: the control predicate node of the statement
             getControlNode.flatMap(c => 
-                println("exp: " + exp)
-                println("defnnode: " + defnNode.keySet)
+                // println("exp: " + exp)
+                // println("defnnode: " + defnNode.keySet)
                 // D: the set of nodes that last assigned values to the variables used by the expression
                 val d: List[Option[DynamicNode]] = exp.definedSet().map(defnNode.get)
-                // val d: List[Option[DynamicNode]] = exp.fv.map(defnNode.get).toList
-                println("d: " + d.map(_.map(_.id)))
+                // println("d: " + d.map(_.map(_.id)))
                 val descs = (c :: d).flatten.toSet
                 val reachable = descs.flatMap(_.reachableStmts) ++ descs
                 lastId = lastId + 1
@@ -156,6 +162,15 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 exp match
                     case SchemeIf(cond, cons, alt, _) => 
                         pushControlNodeM(node)(super.evalIf(cond, cons, alt))
+                    case SchemeLet(bindings, body, _) => 
+                        for
+                            bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
+                            addrs = bds.map{ case (id, vlu) => allocVar(id, component)} // IMPROVEMENT: only call allocVar 1x (now also done in bind) 
+                            _ <- addrs.mapM { a => addDef(a, node) }
+                            res <- withEnvM(env => bind(bds, env)) {
+                                evalSequence(body)
+                            }
+                        yield res
                     case _ => super.eval(exp)
                 
             )
