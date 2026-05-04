@@ -27,16 +27,18 @@ import maf.cli.experiments.clients.dynamicSlicing.TControlEvalM.MonadControlEval
 import maf.cli.experiments.clients.dynamicSlicing.DynamicNode
 import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
+import maf.language.symbolic.EmptyFormula.variables
 
 case class DynamicNode(id: Int,
+                       index: Option[Int], // the index of the binding in the corresponding let/function
                        reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
-                       exp: SchemeExp, // the expression that this node belongs to
+                       exp: Object, // the expression that this node belongs to
                        descendants: Set[DynamicNode]) //descendants are the direct descendants of the node
 
 // a version of EvalM that saves the last control node passed
 object TControlEvalM: 
                                      // environment, control node, current node, map of addresses to the set of last definition sites
-    case class ControlEvalM[+X](run: (Environment[Address], Option[DynamicNode], Option[DynamicNode], Map[Address, Set[DynamicNode]]) => Option[(X, Map[Address, Set[DynamicNode]])]):
+    case class ControlEvalM[+X](run: (Environment[Address], Option[DynamicNode], Option[DynamicNode], Map[Identifier, Set[DynamicNode]]) => Option[(X, Map[Identifier, Set[DynamicNode]])]):
        def flatMap[Y](f: X => ControlEvalM[Y]): ControlEvalM[Y] = ControlEvalM((env, ctrlNode, currNode, defs) => run(env, ctrlNode, currNode, defs).flatMap((res, newDefs) => f(res).run(env, ctrlNode, currNode, newDefs)))
        def map[Y](f: X => Y): ControlEvalM[Y] = ControlEvalM((env, ctrlNode, currNode, defs) => run(env, ctrlNode, currNode, defs).map((res, newDefs) => (f(res), newDefs))) 
 
@@ -80,7 +82,7 @@ object TControlEvalM:
                 result <- pushControlNode(node) { ev } 
             yield result
         // ADDED FOR CURRENTNODE
-        def getCurrentNode: ControlEvalM[Option[DynamicNode]] = ControlEvalM((_, ctrlNode, currNode, defs) => Some(currNode, defs))
+        def getCurrentNode: ControlEvalM[Option[DynamicNode]] = ControlEvalM((_, _, currNode, defs) => Some(currNode, defs))
         def pushCurrentNode[X](node: DynamicNode)(ev: => ControlEvalM[X]): ControlEvalM[X] = 
             ControlEvalM((env, ctrlNode, currNode, defs) => ev.run(env, ctrlNode, Some(node), defs)) 
         def pushCurrentNodeM[X](node: DynamicNode)(ev: ControlEvalM[X]): ControlEvalM[X] =
@@ -89,9 +91,12 @@ object TControlEvalM:
                 result <- pushCurrentNode(node) { ev } 
             yield result
         // ADDED FOR DEFS
-        def addDef(address: Address, node: Option[DynamicNode]): ControlEvalM[Unit] = 
-            ControlEvalM((env, ctrlNode, currNode, defs) => Some((), defs + (address -> Set(node.get)))) // todo: initial definition 
-
+        def addDef(address: Identifier, node: Option[DynamicNode]): ControlEvalM[Unit] = 
+            ControlEvalM((env, ctrlNode, currNode, defs) => 
+                // println("adding def: " + address + " " + node.get.id + " " + node.get.index)
+                val newDefs = defs + (address -> Set(node.get))
+                Some((), newDefs)) // todo: keep initial definition 
+        def getDefs: ControlEvalM[Map[Identifier, Set[DynamicNode]]] = ControlEvalM((_, _, _, defs) => Some(defs, defs))
 
 trait DynamicSlicer extends BigStepModFSemanticsT:
     import TControlEvalM.{*}
@@ -106,7 +111,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
 
     // defnNode maps a variable name to the node in the graph that last assigned a value to that variable
-    var defnNode: Map[Identifier, DynamicNode] = Map.empty
+    // var defnNode: Map[Identifier, DynamicNode] = Map.empty
     // var defnNode: Map[String, DynamicNode] = Map.empty
     var nodes: Set[DynamicNode] = Set.empty
 
@@ -114,82 +119,116 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         nodes.find(n => n.exp == node.exp && n.descendants == node.descendants)
 
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
-        lastId = lastId + 1
-        DynamicNode(lastId,
+        DynamicNode(oldNode.id,
+                    oldNode.index,
                     oldNode.reachableStmts ++ newNode.reachableStmts, 
                     oldNode.exp, 
                     oldNode.descendants ++ newNode.descendants)
         
-    override def intraAnalysis(cmp: Component): DynamicSlicerIntra 
-
-    trait DynamicSlicerIntra extends IntraAnalysis with BigStepModFIntraT: 
-        import controlEvalM._
-
-        def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv, None, None, Map.empty).foreach((res, defs) => 
-                println(defs)
-                writeResult(res))
-
-        override def eval(exp: SchemeExp): ControlEvalM[Value] = 
-
-            def updateDefnNode(node: DynamicNode) = 
-                // TODO: defnNode should be the specific binding 
-                for(identifier <- exp.definedSet()) {
-                    defnNode = defnNode + (identifier -> node)
-                    // defnNode = defnNode + (identifier.toString -> node)
-                }
-
-            def addNode(node: DynamicNode) = 
+    def addNode(exp: Object, descs: Set[DynamicNode], index: Option[Int]): DynamicNode =
+                lastId = lastId + 1 
+                val reachable = descs.flatMap(_.reachableStmts) ++ descs
+                val node = DynamicNode(lastId, index, reachable, exp, descs)
                 findNode(node) match 
                 // if there already is a node for this expression with the same descendants, check the reachablestmts
                 case Some(n) =>
                     if !(n.reachableStmts subsetOf node.reachableStmts) then 
                         nodes = nodes + node
-                        updateDefnNode(node)
+                        node
                     else // otherwise, merge the old node with the new one
                         nodes = nodes - n
                         val newNode = mergeNodes(n, node)
                         nodes = nodes + newNode
-                        updateDefnNode(newNode)
+                        newNode
                 // if there is no node yet, we make a new one
                 case None => 
                     nodes = nodes + node
-                    updateDefnNode(node)
+                    node
 
+
+    override def intraAnalysis(cmp: Component): DynamicSlicerIntra 
+
+    trait DynamicSlicerIntra extends IntraAnalysis with BigStepModFIntraT: 
+        import controlEvalM._
+
+        
+
+        def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
+            eval(fnBody).run(fnEnv, None, None, Map.empty).foreach((res, defs) => 
+                defs.map((adr, vals) => 
+                    print("    " + adr + " nodes: ")
+                    vals.map(v => print(v.id + " " + v.index +", "))
+                    println())
+                writeResult(res))
+
+        override def eval(exp: SchemeExp): ControlEvalM[Value] = 
             // C: the control predicate node of the statement
             getControlNode.flatMap(c => 
-                // println("exp: " + exp)
-                // println("defnnode: " + defnNode.keySet)
-                // D: the set of nodes that last assigned values to the variables used by the expression
-                val d: List[Option[DynamicNode]] = exp.definedSet().map(defnNode.get)
-                // println("d: " + d.map(_.map(_.id)))
-                val descs = (c :: d).flatten.toSet
-                val reachable = descs.flatMap(_.reachableStmts) ++ descs
-                lastId = lastId + 1
-                val node = DynamicNode(lastId, reachable, exp, descs)
-                addNode(node)
-                // push the node if this is a control node
-                exp match
-                    case SchemeIf(cond, cons, alt, _) => 
-                        pushControlNodeM(node)(super.evalIf(cond, cons, alt))
-                    case _ => pushCurrentNodeM(node)(super.eval(exp))
+                getDefs.flatMap{ defnNode =>
+                    // D: the set of nodes that last assigned values to the variables used by the expression
+                    val d: Set[DynamicNode] = exp.usedVariables().flatMap(id => defnNode.getOrElse(id, Set.empty))
+                    val descs = (d ++ c)
+                    val node = addNode(exp, descs, None)
+                    // push the node if this is a control node
+                    exp match
+                        case SchemeIf(cond, cons, alt, _) => 
+                            pushControlNodeM(node)(super.evalIf(cond, cons, alt))
+                        case _ => pushCurrentNodeM(node)(super.eval(exp))
                 
-            )
-        override protected def bind(
+            })
+        protected def bind(
             id: Identifier,
             env: Env,
-            vlu: Value
+            vlu: Value,
+            index: Int //the index of the binding so that we can make the correct node
           ): M[Env] =
             getCurrentNode.flatMap(node =>
+                // println("binding: " + id + " index: " + index)
                 val addr = allocVar(id, component)
                 val env2 = env.extend(id.name, addr)
+                val newExp = node.get.exp match
+                    case SchemeLet(bindings, _, _) => bindings(index)
+                    case SchemeLetStar(bindings, _, _) => bindings(index)
+                    case SchemeLetrec(bindings, _, _) => bindings(index)
+                    case _ => node.get.exp
+                val newNode = addNode(newExp, Set.empty, Some(index))
+                // TODO: have lhs expression in the descs
                 for 
-                    _ <- addDef(addr, node)
+                    _ <- addDef(id, Some(newNode))
                     _ <- write(addr, vlu)
                     env <- baseEvalM.unit(env2)
                 yield env
                 )
             
+        override protected def bind(bds: List[(Identifier, Value)], env: Env): M[Env] =
+            bds.zipWithIndex.foldLeftM(env)((env2, bnd) => 
+                println(bnd._2)
+                bind(bnd._1._1, env2, bnd._1._2, bnd._2))
+
+        override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            evalLetStarIndex(bindings, body, 0)
+        protected def evalLetStarIndex(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], index: Int): EvalM[Value] =
+            bindings match
+                case Nil => evalSequence(body)
+                case (id, exp) :: restBds =>
+                    eval(exp).flatMap { rhs =>
+                        withEnvM(env => bind(id, env, rhs, index)) {
+                            evalLetStarIndex(restBds, body, index + 1)
+                        }
+                    }
+
+        override protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            withEnvM(env => bindings.zipWithIndex.foldLeftM(env) { case (env2, ((id, _), index)) => 
+                bind(id, env2, lattice.bottom, index) }) {
+                for
+                    extEnv <- getEnv
+                    _ <- bindings.mapM_ { case (id, exp) =>
+                        eval(exp).flatMap(value => assign(id, extEnv, value))
+                    }
+                    res <- evalSequence(body)
+                yield res
+            }
+
 
         
 object DynamicSlicer:

@@ -1,3 +1,5 @@
 (define a 1)
 (define b 2)
-(+ a b)
+(define (f n)
+    n)
+(define x (f a))

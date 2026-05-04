@@ -16,7 +16,9 @@ object DynamicSlicerMain:
     def printDynamicNode(n: DynamicNode) = 
         println("  ---  ")
         print("  ")
-        print(n.id) 
+        print(n.id)
+        print(" ")
+        print(n.index) 
         println(":")
         println("    Expression: ")
         print("     ")
@@ -38,11 +40,13 @@ object DynamicSlicerMain:
         val analysis = mkAnalysis(lexicaladdressedExp)
 
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
-        println("defnNode:")
-        analysis.defnNode.map((k, v) => println("  " + k + ": " + v.id))
+        // println("defnNode:")
+        // analysis.defnNode.map((k, v) => println("  " + k + ": " + v.id + " " + v.index))
         println("------------------------------")
         println("nodes:")
-        analysis.nodes.map(printDynamicNode)
+
+        implicit val nodeOrdering: Ordering[DynamicNode] = Ordering.by(_.id)
+        analysis.nodes.toList.sorted.map(printDynamicNode)
 
 
     def main(args: Array[String]): Unit =

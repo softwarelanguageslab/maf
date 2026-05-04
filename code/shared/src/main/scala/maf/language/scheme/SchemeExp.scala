@@ -14,6 +14,21 @@ import maf.language.racket.{Modules, ProvideDirective, RequireDirective, Resolve
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
+    def usedVariables(): Set[Identifier] = 
+      var used: Set[Identifier] = Set.empty
+
+      this.allSubexpressions.map(e =>
+        e match
+          case SchemeVarLex(id, lexAddr) => 
+            lexAddr match
+              case LexicalRef.VarRef(originalId) =>
+                used = used + originalId   
+                e
+              case _ => e
+          case _ => e
+        )
+      used
+
     type T <: SchemeExp
     def levelNodes(level: Int): List[SchemeExp] =
       if level == 0 then
