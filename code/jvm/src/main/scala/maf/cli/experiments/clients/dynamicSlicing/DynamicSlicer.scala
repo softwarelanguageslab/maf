@@ -30,6 +30,7 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.language.symbolic.EmptyFormula.variables
 
 case class DynamicNode(id: Int,
+                       finished: Boolean,
                        reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
                        exp: Object, // the expression that this node belongs to
                        descendants: Set[DynamicNode]) //descendants are the direct descendants of the node
@@ -115,32 +116,34 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
     var nodes: Set[DynamicNode] = Set.empty
 
     def findNode(node: DynamicNode): Option[DynamicNode] =
-        nodes.find(n => n.exp == node.exp && n.descendants == node.descendants)
+
+        nodes.find(n => n.exp == node.exp && (n.descendants == node.descendants || !n.finished))
 
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
         DynamicNode(oldNode.id,
+                    true,
                     oldNode.reachableStmts ++ newNode.reachableStmts, 
                     oldNode.exp, 
                     oldNode.descendants ++ newNode.descendants)
 
-    def addNodeBinding(exp: (Identifier, SchemeExp), descs: Set[DynamicNode], index: Option[Int]) =
+    def addNodeBinding(exp: (Identifier, SchemeExp), descs: Set[DynamicNode], fnished: Boolean = true) =
         exp match
             case Tuple2(_, e) => 
                 if e.isPrimitive then 
                     None
                 else 
-                    addNodeObject(exp, descs, index)
+                    addNodeObject(exp, descs, finished)
 
-    def addNodeExp(exp: SchemeExp, descs: Set[DynamicNode], index: Option[Int]) = 
+    def addNodeExp(exp: SchemeExp, descs: Set[DynamicNode], finished: Boolean = true) = 
         if exp.isPrimitive then 
             None 
         else 
-            addNodeObject(exp, descs, index)
+            addNodeObject(exp, descs, finished)
         
-    def addNodeObject(exp: Object, descs: Set[DynamicNode], index: Option[Int]): Option[DynamicNode] =
+    def addNodeObject(exp: Object, descs: Set[DynamicNode], finished: Boolean = true): Option[DynamicNode] =
         lastId = lastId + 1 
         val reachable = descs.flatMap(_.reachableStmts) ++ descs
-        val node = DynamicNode(lastId,  reachable, exp, descs)
+        val node = DynamicNode(lastId, finished, reachable, exp, descs)
         findNode(node) match 
         // if there already is a node for this expression with the same descendants, check the reachablestmts
         case Some(n) =>
@@ -177,7 +180,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     // D: the set of nodes that last assigned values to the variables used by the expression
                     val d: Set[DynamicNode] = exp.usedVariables().flatMap(id => defnNode.getOrElse(id, Set.empty))
                     val descs = (d ++ c)
-                    val node = addNodeExp(exp, descs, None)
+                    val node = addNodeExp(exp, descs)
                     // push the node if this is a control node
                     exp match
                         case SchemeIf(cond, cons, alt, _) => 
@@ -196,7 +199,8 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
             id: Identifier,
             env: Env,
             vlu: Value,
-            index: Int //the index of the binding so that we can make the correct node
+            index: Int, //the index of the binding so that we can make the correct node
+            boundNode: DynamicNode // the (future) node of the rhs
           ): M[Env] =
             getCurrentNode.flatMap(node =>
                 // println("binding: " + id + " index: " + index)
@@ -207,11 +211,11 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     case SchemeLetStar(bindings, _, _) => bindings(index)
                     case SchemeLetrec(bindings, _, _) => bindings(index)
                     case _ => node.get.exp
-                val descs = Set(node.get) // TODO: have rhs expression in the descs
+                val descs = Set(node.get, boundNode)
                 val newNode = 
                     newExp match
-                        case e: (Identifier, SchemeExp) => addNodeBinding(e, descs, Some(index))
-                        case e: SchemeExp => addNodeExp(e, descs, Some(index))
+                        case e: (Identifier, SchemeExp) => addNodeBinding(e, descs)
+                        case e: SchemeExp => addNodeExp(e, descs)
                 for 
                     _ <- newNode match
                         case Some(n) => addDef(id, Some(n))
@@ -221,10 +225,9 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 yield env
                 )
             
-        override protected def bind(bds: List[(Identifier, Value)], env: Env): M[Env] =
+        protected def bind(bds: List[(Identifier, Value)], env: Env, boundNode: DynamicNode): M[Env] =
             bds.zipWithIndex.foldLeftM(env)((env2, bnd) => 
-                println(bnd._2)
-                bind(bnd._1._1, env2, bnd._1._2, bnd._2))
+                bind(bnd._1._1, env2, bnd._1._2, bnd._2, boundNode))
 
         override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             evalLetStarIndex(bindings, body, 0)
@@ -233,14 +236,16 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 case Nil => evalSequence(body)
                 case (id, exp) :: restBds =>
                     eval(exp).flatMap { rhs =>
-                        withEnvM(env => bind(id, env, rhs, index)) {
+                        val boundNode = addNodeExp(exp, Set.empty, false).get
+                        withEnvM(env => bind(id, env, rhs, index, boundNode)) {
                             evalLetStarIndex(restBds, body, index + 1)
                         }
                     }
 
         override protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
-            withEnvM(env => bindings.zipWithIndex.foldLeftM(env) { case (env2, ((id, _), index)) => 
-                bind(id, env2, lattice.bottom, index) }) {
+            withEnvM(env => bindings.zipWithIndex.foldLeftM(env) { case (env2, ((id, exp), index)) => 
+                val boundNode = addNodeExp(exp, Set.empty, false).get
+                bind(id, env2, lattice.bottom, index, boundNode) }) {
                 for
                     extEnv <- getEnv
                     _ <- bindings.mapM_ { case (id, exp) =>
