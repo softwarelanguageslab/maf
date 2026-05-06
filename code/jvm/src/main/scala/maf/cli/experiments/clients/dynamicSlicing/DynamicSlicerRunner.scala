@@ -11,27 +11,24 @@ import maf.language.scheme.SchemeLexicalAddresser
 
 object DynamicSlicerMain: 
     val benchmarks: List[String] = 
-        List("test/R5RS/various/slice.scm")
+        List("test/R5RS/various/slice2.scm")
 
     def printDynamicNode(n: DynamicNode) = 
         println("  ---  ")
         print("  ")
         print(n.id)
-        print(" ")
-        print(n.index) 
         println(":")
         println("    Expression: ")
         print("     ")
         println(n.exp) 
-        println("    Reachable statements: ")
-        print("     ")
-        n.reachableStmts.map(node => print(node.id + ", "))
-        println()
-        println("    Descendants: ")
+        println("    Direct dependencies: ")
         print("     ")
         n.descendants.map(node => print(node.id + ", "))
         println()
-
+        println("    Transitive dependencies: ")
+        print("     ")
+        n.reachableStmts.map(node => print(node.id + ", "))
+        println()
 
     def run(mkAnalysis: SchemeExp => DynamicSlicer, program: String) = 
         val programText = Reader.loadFile(program)
@@ -40,8 +37,6 @@ object DynamicSlicerMain:
         val analysis = mkAnalysis(lexicaladdressedExp)
 
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
-        // println("defnNode:")
-        // analysis.defnNode.map((k, v) => println("  " + k + ": " + v.id + " " + v.index))
         println("------------------------------")
         println("nodes:")
 

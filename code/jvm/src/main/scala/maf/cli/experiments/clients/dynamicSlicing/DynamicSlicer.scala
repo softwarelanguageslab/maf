@@ -30,7 +30,6 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.language.symbolic.EmptyFormula.variables
 
 case class DynamicNode(id: Int,
-                       index: Option[Int], // the index of the binding in the corresponding let/function
                        reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
                        exp: Object, // the expression that this node belongs to
                        descendants: Set[DynamicNode]) //descendants are the direct descendants of the node
@@ -120,44 +119,54 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
         DynamicNode(oldNode.id,
-                    oldNode.index,
                     oldNode.reachableStmts ++ newNode.reachableStmts, 
                     oldNode.exp, 
                     oldNode.descendants ++ newNode.descendants)
+
+    def addNodeBinding(exp: (Identifier, SchemeExp), descs: Set[DynamicNode], index: Option[Int]) =
+        exp match
+            case Tuple2(_, e) => 
+                if e.isPrimitive then 
+                    None
+                else 
+                    addNodeObject(exp, descs, index)
+
+    def addNodeExp(exp: SchemeExp, descs: Set[DynamicNode], index: Option[Int]) = 
+        if exp.isPrimitive then 
+            None 
+        else 
+            addNodeObject(exp, descs, index)
         
-    def addNode(exp: Object, descs: Set[DynamicNode], index: Option[Int]): DynamicNode =
-                lastId = lastId + 1 
-                val reachable = descs.flatMap(_.reachableStmts) ++ descs
-                val node = DynamicNode(lastId, index, reachable, exp, descs)
-                findNode(node) match 
-                // if there already is a node for this expression with the same descendants, check the reachablestmts
-                case Some(n) =>
-                    if !(n.reachableStmts subsetOf node.reachableStmts) then 
-                        nodes = nodes + node
-                        node
-                    else // otherwise, merge the old node with the new one
-                        nodes = nodes - n
-                        val newNode = mergeNodes(n, node)
-                        nodes = nodes + newNode
-                        newNode
-                // if there is no node yet, we make a new one
-                case None => 
-                    nodes = nodes + node
-                    node
+    def addNodeObject(exp: Object, descs: Set[DynamicNode], index: Option[Int]): Option[DynamicNode] =
+        lastId = lastId + 1 
+        val reachable = descs.flatMap(_.reachableStmts) ++ descs
+        val node = DynamicNode(lastId,  reachable, exp, descs)
+        findNode(node) match 
+        // if there already is a node for this expression with the same descendants, check the reachablestmts
+        case Some(n) =>
+            if !(n.reachableStmts subsetOf node.reachableStmts) then 
+                nodes = nodes + node
+                Some(node)
+            else // otherwise, merge the old node with the new one
+                nodes = nodes - n
+                val newNode = mergeNodes(n, node)
+                nodes = nodes + newNode
+                Some(newNode)
+        // if there is no node yet, we make a new one
+        case None => 
+            nodes = nodes + node
+            Some(node)
 
 
     override def intraAnalysis(cmp: Component): DynamicSlicerIntra 
-
     trait DynamicSlicerIntra extends IntraAnalysis with BigStepModFIntraT: 
         import controlEvalM._
-
-        
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
             eval(fnBody).run(fnEnv, None, None, Map.empty).foreach((res, defs) => 
                 defs.map((adr, vals) => 
                     print("    " + adr + " nodes: ")
-                    vals.map(v => print(v.id + " " + v.index +", "))
+                    vals.map(v => print(v.id + ", "))
                     println())
                 writeResult(res))
 
@@ -168,12 +177,19 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     // D: the set of nodes that last assigned values to the variables used by the expression
                     val d: Set[DynamicNode] = exp.usedVariables().flatMap(id => defnNode.getOrElse(id, Set.empty))
                     val descs = (d ++ c)
-                    val node = addNode(exp, descs, None)
+                    val node = addNodeExp(exp, descs, None)
                     // push the node if this is a control node
                     exp match
                         case SchemeIf(cond, cons, alt, _) => 
-                            pushControlNodeM(node)(super.evalIf(cond, cons, alt))
-                        case _ => pushCurrentNodeM(node)(super.eval(exp))
+                            node match
+                                case Some(n) => pushControlNodeM(n)(super.evalIf(cond, cons, alt))
+                                case None => super.evalIf(cond, cons, alt)
+                        case _ => 
+                            node match
+                                case Some(n) => pushCurrentNodeM(n)(super.eval(exp))
+                                case None => super.eval(exp)
+                            
+                            
                 
             })
         protected def bind(
@@ -191,10 +207,15 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     case SchemeLetStar(bindings, _, _) => bindings(index)
                     case SchemeLetrec(bindings, _, _) => bindings(index)
                     case _ => node.get.exp
-                val newNode = addNode(newExp, Set.empty, Some(index))
-                // TODO: have lhs expression in the descs
+                val descs = Set(node.get) // TODO: have rhs expression in the descs
+                val newNode = 
+                    newExp match
+                        case e: (Identifier, SchemeExp) => addNodeBinding(e, descs, Some(index))
+                        case e: SchemeExp => addNodeExp(e, descs, Some(index))
                 for 
-                    _ <- addDef(id, Some(newNode))
+                    _ <- newNode match
+                        case Some(n) => addDef(id, Some(n))
+                        case None => baseEvalM.unit(())
                     _ <- write(addr, vlu)
                     env <- baseEvalM.unit(env2)
                 yield env

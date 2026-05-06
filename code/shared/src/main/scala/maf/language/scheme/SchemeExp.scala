@@ -11,11 +11,22 @@ import maf.language.scheme
 import maf.language.scheme.primitives.SchemePrelude
 import maf.util.Show
 import maf.language.racket.{Modules, ProvideDirective, RequireDirective, ResolvedRequire, SelectedProvide}
+import maf.language.scheme.primitives.SchemePrimitives
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
     def usedVariables(): Set[Identifier] = 
       var used: Set[Identifier] = Set.empty
+
+      this match
+        case SchemeVarLex(id, lexAddr) => 
+            lexAddr match
+              case LexicalRef.VarRef(originalId) =>
+                used = used + originalId    
+              case _ => 
+        case SchemeVar(id) => 
+          used = used + id  
+        case _ => 
 
       this.allSubexpressions.map(e =>
         e match
@@ -23,11 +34,19 @@ sealed trait SchemeExp extends Expression:
             lexAddr match
               case LexicalRef.VarRef(originalId) =>
                 used = used + originalId   
-                e
-              case _ => e
-          case _ => e
+              case _ => 
+          case SchemeVar(id) => 
+            used = used + id 
+          case _ => 
         )
       used
+
+    def isPrimitive: Boolean = 
+      this match
+        case SchemeVarLex(id, lexAddr) => 
+          SchemePrelude.primNames contains id.name
+        case SchemeVar(id) => SchemePrelude.primNames contains id.name
+        case _ => false
 
     type T <: SchemeExp
     def levelNodes(level: Int): List[SchemeExp] =
