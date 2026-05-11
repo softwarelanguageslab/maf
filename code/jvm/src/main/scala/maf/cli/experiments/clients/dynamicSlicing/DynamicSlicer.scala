@@ -117,7 +117,8 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
     def findNode(node: DynamicNode): Option[DynamicNode] =
 
-        nodes.find(n => n.exp == node.exp && (n.descendants == node.descendants || !n.finished))
+        nodes.find(n => n.exp == node.exp)
+        // nodes.find(n => n.exp == node.exp && (n.descendants == node.descendants || !n.finished))
 
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
         DynamicNode(oldNode.id,
@@ -147,10 +148,10 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         findNode(node) match 
         // if there already is a node for this expression with the same descendants, check the reachablestmts
         case Some(n) =>
-            if !(n.reachableStmts subsetOf node.reachableStmts) then 
-                nodes = nodes + node
-                Some(node)
-            else // otherwise, merge the old node with the new one
+            // if !(n.reachableStmts subsetOf node.reachableStmts) then 
+            //     nodes = nodes + node
+            //     Some(node)
+            // else // otherwise, merge the old node with the new one
                 nodes = nodes - n
                 val newNode = mergeNodes(n, node)
                 nodes = nodes + newNode
@@ -167,6 +168,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
             eval(fnBody).run(fnEnv, None, None, Map.empty).foreach((res, defs) => 
+                println("defs:")
                 defs.map((adr, vals) => 
                     print("    " + adr + " nodes: ")
                     vals.map(v => print(v.id + ", "))
@@ -174,14 +176,8 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 writeResult(res))
 
         override def eval(exp: SchemeExp): ControlEvalM[Value] = 
-            // C: the control predicate node of the statement
             getControlNode.flatMap(c => 
                 getDefs.flatMap{ defnNode =>
-                    // D: the set of nodes that last assigned values to the variables used by the expression
-                    // val d: Set[DynamicNode] = exp.usedVariables().flatMap(id => defnNode.getOrElse(id, Set.empty))
-                    // val descs = (d ++ c)
-                    // val node = addNodeExp(exp, descs)
-                    // push the node if this is a control node
                     exp match
                         case SchemeVar(id) => 
                             for 
@@ -191,7 +187,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                                 node = addNodeExp(exp, descs)
                                 res <- pushCurrentNodeM(node)(super.eval(exp))
                             yield res
-                        case SchemeIf(cond, cons, alt, _) => 
+                        case SchemeIf(cond, cons, alt, _) => // this node is a control node
                             val node = addNodeExp(exp, c.toSet)
                             pushControlNodeM(node)(super.evalIf(cond, cons, alt))
                         case _ => 
