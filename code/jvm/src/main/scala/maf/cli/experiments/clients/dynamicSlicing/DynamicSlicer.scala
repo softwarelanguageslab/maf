@@ -110,7 +110,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
     var nodes: Set[DynamicNode] = Set.empty
 
     def findNode(node: DynamicNode): Option[DynamicNode] =
-        nodes.find(n => n.exp == node.exp)
+        nodes.find(n => n.exp.toString() == node.exp.toString())
         
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
         DynamicNode(oldNode.id, 
@@ -161,22 +161,33 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 writeResult(res))
 
         override def eval(exp: SchemeExp): ControlEvalM[Value] = 
+            val dependencies = exp.subexpressions.filter(e => e != exp).flatMap(subexp =>
+                addNodeObject(subexp, Set.empty))
+            println(exp)
+            print("made nodes for subexpressions: ")
+            dependencies.map(dep => print(dep.id + " "))
+            println()
+            println()
             getControlNode.flatMap(c => 
                 getDefs.flatMap{ defnNode =>
                     exp match
-                        case SchemeVar(id) => 
+                        case SchemeVarLex(id, _) => 
                             for 
                                 adr <- getEnv.flatMap(env => baseEvalM.unit(env.lookup(id.name)))
                                 d = defnNode.getOrElse(adr.get, Set.empty)
-                                deps = d ++ c 
+                                // _ = print("d: ")
+                                // _ = d.map(ds => print(ds.id + " "))
+                                // _ = println()
+                                deps = (d ++ c) ++ dependencies
                                 node = addNodeExp(exp, deps)
+                                // _ = println("^ node: " + node.get.id)
                                 res <- pushCurrentNodeM(node)(super.eval(exp))
                             yield res
                         case SchemeIf(cond, cons, alt, _) => // this node is a control node
-                            val node = addNodeExp(exp, c.toSet)
+                            val node = addNodeExp(exp, c.toSet ++ dependencies)
                             pushControlNodeM(node)(super.evalIf(cond, cons, alt))
                         case _ => 
-                            val node = addNodeExp(exp, c.toSet)
+                            val node = addNodeExp(exp, c.toSet ++ dependencies)
                             pushCurrentNodeM(node)(super.eval(exp))
                             
                             
