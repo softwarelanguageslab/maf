@@ -23,7 +23,7 @@ object DynamicSlicerMain:
         println(n.exp) 
         println("    Direct dependencies: ")
         print("     ")
-        n.dependencies.map(node => print(node.id + ", "))
+        n.dependencies.map(node => print(node + ", "))
         println()
 
     def run(mkAnalysis: SchemeExp => DynamicSlicer, program: String) = 
