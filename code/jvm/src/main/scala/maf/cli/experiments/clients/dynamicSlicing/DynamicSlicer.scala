@@ -225,9 +225,21 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 yield env
                 )
             
-        protected def bind(bds: List[(Identifier, Value)], env: Env, boundNode: DynamicNode): M[Env] =
+        protected def bind(bds: List[(Identifier, Value)], env: Env, boundNodes: List[DynamicNode]): M[Env] =
             bds.zipWithIndex.foldLeftM(env)((env2, bnd) => 
-                bind(bnd._1._1, env2, bnd._1._2, bnd._2, boundNode))
+                bind(bnd._1._1, env2, bnd._1._2, bnd._2, boundNodes(bnd._2)))
+
+        override protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            var boundNodes: List[DynamicNode] = List.empty
+            for
+                bds <- bindings.mapM { case (id, exp) => 
+                    val boundNode = addNodeExp(exp, Set.empty, false).get
+                    boundNodes = boundNode :: boundNodes
+                    eval(exp).map(vlu => (id, vlu)) }
+                res <- withEnvM(env => bind(bds, env, boundNodes)) {
+                    evalSequence(body)
+                }
+            yield res
 
         override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             evalLetStarIndex(bindings, body, 0)
