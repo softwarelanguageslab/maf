@@ -30,8 +30,8 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.language.symbolic.EmptyFormula.variables
 
 case class DynamicNode(id: Int,
-                       exp: Object, // the expression that this node belongs to
-                       descendants: Set[DynamicNode]) //descendants are the direct descendants of the node
+                       exp: Object,
+                       dependencies: Set[DynamicNode]) 
 
 // a version of EvalM that saves the last control node passed
 object TControlEvalM: 
@@ -107,50 +107,40 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
 
     var lastId = -1
 
-
-    // defnNode maps a variable name to the node in the graph that last assigned a value to that variable
-    // var defnNode: Map[Identifier, DynamicNode] = Map.empty
-    // var defnNode: Map[String, DynamicNode] = Map.empty
     var nodes: Set[DynamicNode] = Set.empty
 
     def findNode(node: DynamicNode): Option[DynamicNode] =
-
         nodes.find(n => n.exp == node.exp)
-        // nodes.find(n => n.exp == node.exp && (n.descendants == node.descendants || !n.finished))
-
+        
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
         DynamicNode(oldNode.id, 
                     oldNode.exp, 
-                    oldNode.descendants ++ newNode.descendants)
+                    oldNode.dependencies ++ newNode.dependencies)
 
-    def addNodeBinding(exp: (Identifier, SchemeExp), descs: Set[DynamicNode]) =
+    def addNodeBinding(exp: (Identifier, SchemeExp), deps: Set[DynamicNode]) =
         exp match
             case Tuple2(_, e) => 
                 if e.isPrimitive then 
                     None
                 else 
-                    addNodeObject(exp, descs)
+                    addNodeObject(exp, deps)
 
-    def addNodeExp(exp: SchemeExp, descs: Set[DynamicNode]) = 
+    def addNodeExp(exp: SchemeExp, deps: Set[DynamicNode]) = 
         if exp.isPrimitive then 
             None 
         else 
-            addNodeObject(exp, descs)
+            addNodeObject(exp, deps)
         
-    def addNodeObject(exp: Object, descs: Set[DynamicNode]): Option[DynamicNode] =
+    def addNodeObject(exp: Object, deps: Set[DynamicNode]): Option[DynamicNode] =
         lastId = lastId + 1 
-        val node = DynamicNode(lastId, exp, descs)
+        val node = DynamicNode(lastId, exp, deps)
         findNode(node) match 
-        // if there already is a node for this expression with the same descendants, check the reachablestmts
+        // if there already is a node, merge the old and the new
         case Some(n) =>
-            // if !(n.reachableStmts subsetOf node.reachableStmts) then 
-            //     nodes = nodes + node
-            //     Some(node)
-            // else // otherwise, merge the old node with the new one
-                nodes = nodes - n
-                val newNode = mergeNodes(n, node)
-                nodes = nodes + newNode
-                Some(newNode)
+            nodes = nodes - n
+            val newNode = mergeNodes(n, node)
+            nodes = nodes + newNode
+            Some(newNode)
         // if there is no node yet, we make a new one
         case None => 
             nodes = nodes + node
@@ -178,8 +168,8 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                             for 
                                 adr <- getEnv.flatMap(env => baseEvalM.unit(env.lookup(id.name)))
                                 d = defnNode.getOrElse(adr.get, Set.empty)
-                                descs = d ++ c 
-                                node = addNodeExp(exp, descs)
+                                deps = d ++ c 
+                                node = addNodeExp(exp, deps)
                                 res <- pushCurrentNodeM(node)(super.eval(exp))
                             yield res
                         case SchemeIf(cond, cons, alt, _) => // this node is a control node
@@ -208,11 +198,11 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     case SchemeLetStar(bindings, _, _) => bindings(index)
                     case SchemeLetrec(bindings, _, _) => bindings(index)
                     case _ => node.get.exp
-                val descs = Set(node.get, boundNode)
+                val deps = Set(node.get, boundNode)
                 val newNode = 
                     newExp match
-                        case e: (Identifier, SchemeExp) => addNodeBinding(e, descs)
-                        case e: SchemeExp => addNodeExp(e, descs)
+                        case e: (Identifier, SchemeExp) => addNodeBinding(e, deps)
+                        case e: SchemeExp => addNodeExp(e, deps)
                 for 
                     _ <- newNode match
                         case Some(n) => addDef(addr, Some(n))
