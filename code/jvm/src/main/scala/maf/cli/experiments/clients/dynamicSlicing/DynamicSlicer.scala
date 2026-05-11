@@ -38,7 +38,7 @@ case class DynamicNode(id: Int,
 // a version of EvalM that saves the last control node passed
 object TControlEvalM: 
                                      // environment, control node, current node, map of addresses to the set of last definition sites
-    case class ControlEvalM[+X](run: (Environment[Address], Option[DynamicNode], Option[DynamicNode], Map[Identifier, Set[DynamicNode]]) => Option[(X, Map[Identifier, Set[DynamicNode]])]):
+    case class ControlEvalM[+X](run: (Environment[Address], Option[DynamicNode], Option[DynamicNode], Map[Address, Set[DynamicNode]]) => Option[(X, Map[Address, Set[DynamicNode]])]):
        def flatMap[Y](f: X => ControlEvalM[Y]): ControlEvalM[Y] = ControlEvalM((env, ctrlNode, currNode, defs) => run(env, ctrlNode, currNode, defs).flatMap((res, newDefs) => f(res).run(env, ctrlNode, currNode, newDefs)))
        def map[Y](f: X => Y): ControlEvalM[Y] = ControlEvalM((env, ctrlNode, currNode, defs) => run(env, ctrlNode, currNode, defs).map((res, newDefs) => (f(res), newDefs))) 
 
@@ -73,30 +73,30 @@ object TControlEvalM:
         def fail[X](err: Error): ControlEvalM[X] = mzero
         // ADDED FOR CONTROLNODE
         def getControlNode: ControlEvalM[Option[DynamicNode]] = ControlEvalM((_, ctrlNode, currNode, defs) => Some(ctrlNode, defs))
-        def pushControlNode[X](node: DynamicNode)(ev: => ControlEvalM[X]): ControlEvalM[X] = 
+        def pushControlNode[X](node: Option[DynamicNode])(ev: => ControlEvalM[X]): ControlEvalM[X] = 
             // add it as the current control node but also as the current node
-            ControlEvalM((env, _, currNode, defs) => ev.run(env, Some(node), Some(node), defs)) 
-        def pushControlNodeM[X](node: DynamicNode)(ev: ControlEvalM[X]): ControlEvalM[X] =
+            ControlEvalM((env, _, currNode, defs) => ev.run(env, node, node, defs)) 
+        def pushControlNodeM[X](node: Option[DynamicNode])(ev: ControlEvalM[X]): ControlEvalM[X] =
             given Monad[ControlEvalM] = this 
             for 
                 result <- pushControlNode(node) { ev } 
             yield result
         // ADDED FOR CURRENTNODE
         def getCurrentNode: ControlEvalM[Option[DynamicNode]] = ControlEvalM((_, _, currNode, defs) => Some(currNode, defs))
-        def pushCurrentNode[X](node: DynamicNode)(ev: => ControlEvalM[X]): ControlEvalM[X] = 
-            ControlEvalM((env, ctrlNode, currNode, defs) => ev.run(env, ctrlNode, Some(node), defs)) 
-        def pushCurrentNodeM[X](node: DynamicNode)(ev: ControlEvalM[X]): ControlEvalM[X] =
+        def pushCurrentNode[X](node: Option[DynamicNode])(ev: => ControlEvalM[X]): ControlEvalM[X] = 
+            ControlEvalM((env, ctrlNode, currNode, defs) => ev.run(env, ctrlNode, node, defs)) 
+        def pushCurrentNodeM[X](node: Option[DynamicNode])(ev: ControlEvalM[X]): ControlEvalM[X] =
             given Monad[ControlEvalM] = this 
             for 
                 result <- pushCurrentNode(node) { ev } 
             yield result
         // ADDED FOR DEFS
-        def addDef(address: Identifier, node: Option[DynamicNode]): ControlEvalM[Unit] = 
+        def addDef(address: Address, node: Option[DynamicNode]): ControlEvalM[Unit] = 
             ControlEvalM((env, ctrlNode, currNode, defs) => 
                 // println("adding def: " + address + " " + node.get.id + " " + node.get.index)
                 val newDefs = defs + (address -> Set(node.get))
                 Some((), newDefs)) // todo: keep initial definition 
-        def getDefs: ControlEvalM[Map[Identifier, Set[DynamicNode]]] = ControlEvalM((_, _, _, defs) => Some(defs, defs))
+        def getDefs: ControlEvalM[Map[Address, Set[DynamicNode]]] = ControlEvalM((_, _, _, defs) => Some(defs, defs))
 
 trait DynamicSlicer extends BigStepModFSemanticsT:
     import TControlEvalM.{*}
@@ -178,19 +178,25 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
             getControlNode.flatMap(c => 
                 getDefs.flatMap{ defnNode =>
                     // D: the set of nodes that last assigned values to the variables used by the expression
-                    val d: Set[DynamicNode] = exp.usedVariables().flatMap(id => defnNode.getOrElse(id, Set.empty))
-                    val descs = (d ++ c)
-                    val node = addNodeExp(exp, descs)
+                    // val d: Set[DynamicNode] = exp.usedVariables().flatMap(id => defnNode.getOrElse(id, Set.empty))
+                    // val descs = (d ++ c)
+                    // val node = addNodeExp(exp, descs)
                     // push the node if this is a control node
                     exp match
+                        case SchemeVar(id) => 
+                            for 
+                                adr <- getEnv.flatMap(env => baseEvalM.unit(env.lookup(id.name)))
+                                d = defnNode.getOrElse(adr.get, Set.empty)
+                                descs = d ++ c 
+                                node = addNodeExp(exp, descs)
+                                res <- pushCurrentNodeM(node)(super.eval(exp))
+                            yield res
                         case SchemeIf(cond, cons, alt, _) => 
-                            node match
-                                case Some(n) => pushControlNodeM(n)(super.evalIf(cond, cons, alt))
-                                case None => super.evalIf(cond, cons, alt)
+                            val node = addNodeExp(exp, c.toSet)
+                            pushControlNodeM(node)(super.evalIf(cond, cons, alt))
                         case _ => 
-                            node match
-                                case Some(n) => pushCurrentNodeM(n)(super.eval(exp))
-                                case None => super.eval(exp)
+                            val node = addNodeExp(exp, c.toSet)
+                            pushCurrentNodeM(node)(super.eval(exp))
                             
                             
                 
@@ -218,7 +224,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                         case e: SchemeExp => addNodeExp(e, descs)
                 for 
                     _ <- newNode match
-                        case Some(n) => addDef(id, Some(n))
+                        case Some(n) => addDef(addr, Some(n))
                         case None => baseEvalM.unit(())
                     _ <- write(addr, vlu)
                     env <- baseEvalM.unit(env2)
