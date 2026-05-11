@@ -25,10 +25,6 @@ object DynamicSlicerMain:
         print("     ")
         n.descendants.map(node => print(node.id + ", "))
         println()
-        println("    Transitive dependencies: ")
-        print("     ")
-        n.reachableStmts.map(node => print(node.id + ", "))
-        println()
 
     def run(mkAnalysis: SchemeExp => DynamicSlicer, program: String) = 
         val programText = Reader.loadFile(program)

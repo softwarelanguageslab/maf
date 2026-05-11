@@ -30,7 +30,6 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 import maf.language.symbolic.EmptyFormula.variables
 
 case class DynamicNode(id: Int,
-                       reachableStmts: Set[DynamicNode], // reachableStmts maps a node to the set of all statements that can be reached from the given node
                        exp: Object, // the expression that this node belongs to
                        descendants: Set[DynamicNode]) //descendants are the direct descendants of the node
 
@@ -120,8 +119,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         // nodes.find(n => n.exp == node.exp && (n.descendants == node.descendants || !n.finished))
 
     def mergeNodes(oldNode: DynamicNode, newNode: DynamicNode): DynamicNode = 
-        DynamicNode(oldNode.id,
-                    oldNode.reachableStmts ++ newNode.reachableStmts, 
+        DynamicNode(oldNode.id, 
                     oldNode.exp, 
                     oldNode.descendants ++ newNode.descendants)
 
@@ -141,8 +139,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         
     def addNodeObject(exp: Object, descs: Set[DynamicNode]): Option[DynamicNode] =
         lastId = lastId + 1 
-        val reachable = descs.flatMap(_.reachableStmts) ++ descs
-        val node = DynamicNode(lastId, reachable, exp, descs)
+        val node = DynamicNode(lastId, exp, descs)
         findNode(node) match 
         // if there already is a node for this expression with the same descendants, check the reachablestmts
         case Some(n) =>
