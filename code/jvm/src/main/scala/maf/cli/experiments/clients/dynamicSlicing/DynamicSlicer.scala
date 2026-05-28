@@ -27,11 +27,10 @@ import maf.cli.experiments.clients.dynamicSlicing.TControlEvalM.MonadControlEval
 import maf.cli.experiments.clients.dynamicSlicing.DynamicNode
 import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
-import maf.language.symbolic.EmptyFormula.variables
 
 case class DynamicNode(id: Int,
                        exp: Object,
-                       dependencies: Set[Int]) 
+                       dependencies: Set[DynamicNode]) 
 
 // a version of EvalM that saves the last control node passed
 object TControlEvalM: 
@@ -117,7 +116,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     oldNode.exp, 
                     oldNode.dependencies ++ newNode.dependencies)
 
-    def addNodeBinding(exp: (Identifier, SchemeExp), deps: Set[Int]) =
+    def addNodeBinding(exp: (Identifier, SchemeExp), deps: Set[DynamicNode]) =
         exp match
             case Tuple2(_, e) => 
                 if e.isPrimitive then 
@@ -125,13 +124,13 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                 else 
                     addNodeObject(exp, deps)
 
-    def addNodeExp(exp: SchemeExp, deps: Set[Int]) = 
+    def addNodeExp(exp: SchemeExp, deps: Set[DynamicNode]) = 
         if exp.isPrimitive then 
             None 
         else 
             addNodeObject(exp, deps)
         
-    def addNodeObject(exp: Object, deps: Set[Int]): Option[DynamicNode] =
+    def addNodeObject(exp: Object, deps: Set[DynamicNode]): Option[DynamicNode] =
         lastId = lastId + 1 
         val node = DynamicNode(lastId, exp, deps)
         findNode(node) match 
@@ -144,8 +143,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         // if there is no node yet, we make a new one
         case None => 
             nodes = nodes + node
-            Some(node)
-
+            Some(node)   
 
     override def intraAnalysis(cmp: Component): DynamicSlicerIntra 
     trait DynamicSlicerIntra extends IntraAnalysis with BigStepModFIntraT: 
@@ -163,38 +161,29 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
         override def eval(exp: SchemeExp): ControlEvalM[Value] = 
             val dependencies = exp.subexpressions.filter(e => e != exp).flatMap(subexp =>
                 addNodeObject(subexp, Set.empty))
-            println(exp)
-            print("made nodes for subexpressions: ")
-            dependencies.map(dep => print(dep.id + " "))
-            println()
-            println()
             getControlNode.flatMap(c => 
-                getDefs.flatMap{ defnNode =>
+                getDefs.flatMap{defnNode =>
                     exp match
                         case SchemeVarLex(id, _) => 
                             for 
-                                adr <- getEnv.flatMap(env => baseEvalM.unit(env.lookup(id.name)))
+                                adr <- getEnv.map(env => env.lookup(id.name))
                                 d = defnNode.getOrElse(adr.get, Set.empty)
-                                // _ = print("d: ")
-                                // _ = d.map(ds => print(ds.id + " "))
-                                // _ = println()
                                 deps = (d ++ c) ++ dependencies
-                                node = addNodeExp(exp, deps.map(_.id))
-                                // _ = println("^ node: " + node.get.id)
+                                node = addNodeExp(exp, deps)
                                 res <- pushCurrentNodeM(node)(super.eval(exp))
                             yield res
-                        case SchemeIf(cond, cons, alt, _) => // this node is a control node
+                        case SchemeIf(cond, cons, alt, _) =>
                             val deps = c.toSet ++ dependencies
-                            val node = addNodeExp(exp, deps.map(_.id))
+                            val node = addNodeExp(exp, deps)
                             pushControlNodeM(node)(super.evalIf(cond, cons, alt))
                         case _ => 
                             val deps = c.toSet ++ dependencies
-                            val node = addNodeExp(exp, deps.map(_.id))
-                            pushCurrentNodeM(node)(super.eval(exp))
-                            
-                            
-                
+                            val node = addNodeExp(exp, deps)
+                            pushCurrentNodeM(node)(super.eval(exp))           
             })
+ 
+
+            
         protected def bind(
             id: Identifier,
             env: Env,
@@ -211,7 +200,7 @@ trait DynamicSlicer extends BigStepModFSemanticsT:
                     case SchemeLetStar(bindings, _, _) => bindings(index)
                     case SchemeLetrec(bindings, _, _) => bindings(index)
                     case _ => node.get.exp
-                val deps = Set(node.get, boundNode).map(_.id)
+                val deps = Set(node.get, boundNode)
                 val newNode = 
                     newExp match
                         case e: (Identifier, SchemeExp) => addNodeBinding(e, deps)
