@@ -130,14 +130,47 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         // LET EXPRESSIONS
         override protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
             for
-                bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
-                boundAddrs = bds.map((id, _) => allocVar(id, component))
-                (value, deps) <- withEnvM(env => bind(bds, env)) {
+                bds <- bindings.mapM { case (id, exp) => eval(exp).deps.map((vlu, deps) => ((id, vlu), deps)) }
+                boundAddrs = bds.map((bd, _) => allocVar(bd._1, component))
+                (value, deps) <- withEnvM(env => bind(bds.map(_._1), env)) {
                     evalSequence(body).deps
                 }
+                // only keep dependencies that are not defined by the let itself
                 filteredDeps = deps.filter(addr => !boundAddrs.contains(addr))
-                res <- unitWithDeps(value, filteredDeps)
+                // the final dependencies also includes the dependencies of the bindings
+                // TODO: dependencies only of relevant bindings
+                res <- unitWithDeps(value, filteredDeps ++ bds.map(_._2).fold(Set.empty)((x, y) => x ++ y))
             yield value
+        override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            bindings match
+                case Nil => evalSequence(body)
+                case (id, exp) :: restBds =>
+                    eval(exp).deps.flatMap { (rhs, currDeps) =>
+                        withEnvM(env => bind(id, env, rhs)) {
+                            for 
+                                (value, restDeps) <- evalLetStar(restBds, body).deps
+                                boundAddr = allocVar(id, component)
+                                restDepsFiltered = restDeps.filter(d => d != boundAddr)
+                                res <- unitWithDeps(value, currDeps ++ restDepsFiltered)
+                            yield res
+                        }
+                    }
+        override protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            withEnvM(env => bindings.foldLeftM(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
+                for
+                    extEnv <- getEnv
+                    bindingDeps <- bindings.mapM { case (id, exp) =>
+                        for 
+                            (bindingValue, bindingDep) <- eval(exp).deps
+                            _ <- assign(id, extEnv, bindingValue)
+                        yield bindingDep
+                    }
+                    (bodyRes, bodyDeps) <- evalSequence(body).deps 
+                    boundAddrs = bindings.map((id, _) => allocVar(id, component))
+                    filteredDeps = (bodyDeps ++ bindingDeps.flatten).filter(d => ! boundAddrs.contains(d))
+                    res <- unitWithDeps(bodyRes, filteredDeps)
+                yield res
+            }
 
         // FUNCTION CALLS
         override protected def evalCall(
