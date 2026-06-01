@@ -11,7 +11,7 @@ import maf.language.scheme.SchemeLexicalAddresser
 
 object DynamicSlicerMain: 
     val benchmarks: List[String] = 
-        List("test/R5RS/various/slice3.scm")
+        List("test/R5RS/various/slice.scm")
 
     def printDynamicNode(n: DynamicNode) = 
         println("  ---  ")

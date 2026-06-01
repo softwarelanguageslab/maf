@@ -1,5 +1,5 @@
-(begin
-    (define x 4)
-    (+ x 3)
-    (* x 2)
+(let ((x 4)
+      (y 3))
+    (+ 3 x)
+    (* x y)
     x)

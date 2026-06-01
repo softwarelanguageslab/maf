@@ -104,13 +104,14 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 _ = println()
             yield res
 
+
         // SEQUENCES
         override protected def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
             for 
                 evalled <- exps.mapM(exp => eval(exp).deps)
                 deps = evalled.map(_._2)
                 values = evalled.map(_._1) 
-                res <- unitWithDeps(values.last, deps.fold(Set.empty)((x, y) => x ++ y))
+                res <- unitWithDeps(values.last, deps.last)
             yield res
 
         // IF EXPRESSIONS
@@ -126,6 +127,18 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 res <- unitWithDeps(resVal, resDeps ++ prdDeps)
             yield res
 
+        // LET EXPRESSIONS
+        override protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+            for
+                bds <- bindings.mapM { case (id, exp) => eval(exp).map(vlu => (id, vlu)) }
+                boundAddrs = bds.map((id, _) => allocVar(id, component))
+                (value, deps) <- withEnvM(env => bind(bds, env)) {
+                    evalSequence(body).deps
+                }
+                filteredDeps = deps.filter(addr => !boundAddrs.contains(addr))
+                res <- unitWithDeps(value, filteredDeps)
+            yield value
+
         // FUNCTION CALLS
         override protected def evalCall(
             exp: SchemeFuncall,
@@ -139,7 +152,7 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 argDeps = argsEvalled.map(_._2)
                 returned <- applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
                 result <- inject(returned)
-                res <- SlicerEvalM.unitWithDeps(result, funDeps ++ argDeps.flatten)
+                res <- unitWithDeps(result, funDeps ++ argDeps.flatten)
             yield res
 
         // VARIABLES
@@ -147,7 +160,7 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             env.lookup(id.name) match
                 case None       => baseEvalM.fail(UndefinedVariableError(id))
                 case Some(addr) => 
-                    SlicerEvalM.unitWithDeps(readAddr(addr), Set(addr))
+                    unitWithDeps(readAddr(addr), Set(addr))
 
      
 object ConcreteSlicer:
