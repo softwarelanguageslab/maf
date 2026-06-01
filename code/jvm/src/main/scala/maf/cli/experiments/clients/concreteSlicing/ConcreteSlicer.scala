@@ -103,6 +103,21 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 _ = println("deps: " + deps)
             yield res
 
+        override protected def evalCall(
+            exp: SchemeFuncall,
+            fun: SchemeExp,
+            args: List[SchemeExp]
+          ): EvalM[Value] =
+            for
+                (funVal, funDeps) <- eval(fun).deps
+                argsEvalled <- args.mapM(arg => eval(arg).deps)
+                argVals = argsEvalled.map(_._1)
+                argDeps = argsEvalled.map(_._2)
+                returned <- applyFun(exp, funVal, args.zip(argVals), fun.idn.pos)
+                result <- inject(returned)
+                res <- SlicerEvalM.unitWithDeps(result, funDeps ++ argDeps.flatten)
+            yield res
+
         override protected def lookup(id: Identifier, env: Env): SlicerEvalM[Value] = 
             env.lookup(id.name) match
                 case None       => baseEvalM.fail(UndefinedVariableError(id))
