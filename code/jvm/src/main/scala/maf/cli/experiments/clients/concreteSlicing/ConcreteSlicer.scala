@@ -25,18 +25,17 @@ import maf.util.benchmarks.Timeout
 import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
 
-
-// a version of EvalM that saves the last control node passed
 object TSlicerEvalM: 
                                   
-    case class SlicerEvalM[+X](run: Environment[Address] => Option[X]):
-       def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM(env => run(env).flatMap(res => f(res).run(env)))
-       def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM(env => run(env).map(res => f(res))) 
+    case class SlicerEvalM[+X](run: Environment[Address] => (Option[(X, Set[Address])])):
+       def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM(env => run(env).flatMap((res, defs) => f(res).run(env)))
+       def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM(env => run(env).map((res, defs) => (f(res), defs)))
 
     trait MonadSlicerEvalM extends TEvalM[SlicerEvalM]:
         def map[X, Y](m: SlicerEvalM[X])(f: X => Y): SlicerEvalM[Y] = m.map(f)
         def flatMap[X, Y](m: SlicerEvalM[X])(f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = m.flatMap(f)
-        def unit[X](x: X): SlicerEvalM[X] = SlicerEvalM(_ => Some(x))
+        def unit[X](x: X): SlicerEvalM[X] = SlicerEvalM(_ => Some(x, Set.empty))
+        def unitWithDeps[X](x: X, deps: Set[Address]): SlicerEvalM[X] = SlicerEvalM(_ => Some(x, deps))
         def mzero[X]: SlicerEvalM[X] = SlicerEvalM((_) => None)
         implicit class MonadicOps[X](xs: Iterable[X]):
             def foldLeftM[Y](y: Y)(f: (Y, X) => SlicerEvalM[Y]): SlicerEvalM[Y] = xs match
@@ -52,14 +51,14 @@ object TSlicerEvalM:
             def mapM_(f: X => SlicerEvalM[Unit]): SlicerEvalM[Unit] = xs match
                 case Nil     => unit(())
                 case x :: xs => f(x).flatMap(_ => xs.mapM_(f))  
-        def getEnv: SlicerEvalM[Environment[Address]] = SlicerEvalM((env) => Some(env))
+        def getEnv: SlicerEvalM[Environment[Address]] = SlicerEvalM((env) => Some(env, Set.empty))
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
             SlicerEvalM(env => ev.run(f(env)))  
         def merge[X: Lattice](x: SlicerEvalM[X], y: SlicerEvalM[X]): SlicerEvalM[X] = SlicerEvalM { env =>
             (x.run(env), y.run(env)) match
                 case (None, yres)             => yres
                 case (xres, None)             => xres
-                case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
+                case (Some((res1, defs1)), Some((res2, defs2))) => Some((Lattice[X].join(res1, res2), defs1 ++ defs2))
         }
         def fail[X](err: Error): SlicerEvalM[X] = mzero
         
@@ -78,10 +77,22 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv).foreach((res) => writeResult(res))
+            eval(fnBody).run(fnEnv).foreach((res, defs) => writeResult(res))
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
-           super.eval(exp)
+            for 
+                res <- super.eval(exp)
+                _ = println("expression: " + exp) 
+                _ = println("deps: " + res)
+            yield res
+
+        override protected def lookup(id: Identifier, env: Env): SlicerEvalM[Value] = 
+            env.lookup(id.name) match
+                case None       => baseEvalM.fail(UndefinedVariableError(id))
+                case Some(addr) => 
+                    println("variable: " + id)
+                    println("deps: " + Set(addr))
+                    SlicerEvalM.unitWithDeps(readAddr(addr), Set(addr))
 
      
 object ConcreteSlicer:

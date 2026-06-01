@@ -21,7 +21,6 @@ object ConcreteSlicerMain:
 
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
 
-
     def main(args: Array[String]): Unit =
         MAFLogger.disable()
         benchmarks.map(run(ConcreteSlicer.createAnalysis, _))
