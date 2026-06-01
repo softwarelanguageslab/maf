@@ -30,6 +30,19 @@ object TSlicerEvalM:
     case class SlicerEvalM[+X](run: Environment[Address] => (Option[(X, Set[Address])])):
        def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM(env => run(env).flatMap((res, defs) => f(res).run(env)))
        def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM(env => run(env).map((res, defs) => (f(res), defs)))
+       def withFilter(p: X => Boolean): SlicerEvalM[X] = SlicerEvalM(env =>
+        run(env) match 
+            case None => None 
+            case Some((x, deps)) => 
+                if p(x) then Some((x, deps))
+                        else None
+        )
+        def deps: SlicerEvalM[(X, Set[Address])] = SlicerEvalM(env => 
+            run(env) match
+                case None => None 
+                case Some((x, deps)) => 
+                    Some(((x, deps), deps))
+            )
 
     trait MonadSlicerEvalM extends TEvalM[SlicerEvalM]:
         def map[X, Y](m: SlicerEvalM[X])(f: X => Y): SlicerEvalM[Y] = m.map(f)
@@ -77,21 +90,23 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv).foreach((res, defs) => writeResult(res))
+            eval(fnBody).run(fnEnv).foreach((res, deps) => 
+                println("final res: " + res)
+                println("final deps: " + deps)
+                // writeResult(res)
+                )
 
-        override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
+        override def eval(exp: SchemeExp): SlicerEvalM[(Value)] = 
             for 
-                res <- super.eval(exp)
-                _ = println("expression: " + exp) 
-                _ = println("deps: " + res)
+                (res, deps) <- super.eval(exp).deps
+                _ = println("expression: " + exp)
+                _ = println("deps: " + deps)
             yield res
 
         override protected def lookup(id: Identifier, env: Env): SlicerEvalM[Value] = 
             env.lookup(id.name) match
                 case None       => baseEvalM.fail(UndefinedVariableError(id))
                 case Some(addr) => 
-                    println("variable: " + id)
-                    println("deps: " + Set(addr))
                     SlicerEvalM.unitWithDeps(readAddr(addr), Set(addr))
 
      
