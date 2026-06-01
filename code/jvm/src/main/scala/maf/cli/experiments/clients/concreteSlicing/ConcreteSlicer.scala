@@ -91,8 +91,8 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
             eval(fnBody).run(fnEnv).foreach((res, deps) => 
-                println("final res: " + res)
-                println("final deps: " + deps)
+                // println("final res: " + res)
+                // println("final deps: " + deps)
                 // writeResult(res)
                 )
 
@@ -101,6 +101,16 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 (res, deps) <- super.eval(exp).deps
                 _ = println("expression: " + exp)
                 _ = println("deps: " + deps)
+                _ = println()
+            yield res
+
+        // SEQUENCES
+        override protected def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
+            for 
+                evalled <- exps.mapM(exp => eval(exp).deps)
+                deps = evalled.map(_._2)
+                values = evalled.map(_._1) 
+                res <- unitWithDeps(values.last, deps.fold(Set.empty)((x, y) => x ++ y))
             yield res
 
         // IF EXPRESSIONS
