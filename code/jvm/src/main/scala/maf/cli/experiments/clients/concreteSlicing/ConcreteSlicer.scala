@@ -103,6 +103,20 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 _ = println("deps: " + deps)
             yield res
 
+        // IF EXPRESSIONS
+        // todo: keep track of control node
+        override protected def evalIf(
+            prd: SchemeExp,
+            csq: SchemeExp,
+            alt: SchemeExp
+          ): EvalM[Value] =
+            for
+                (prdVal, prdDeps) <- eval(prd).deps
+                (resVal, resDeps) <- cond(prdVal, eval(csq), eval(alt)).deps
+                res <- unitWithDeps(resVal, resDeps ++ prdDeps)
+            yield res
+
+        // FUNCTION CALLS
         override protected def evalCall(
             exp: SchemeFuncall,
             fun: SchemeExp,
@@ -118,6 +132,7 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 res <- SlicerEvalM.unitWithDeps(result, funDeps ++ argDeps.flatten)
             yield res
 
+        // VARIABLES
         override protected def lookup(id: Identifier, env: Env): SlicerEvalM[Value] = 
             env.lookup(id.name) match
                 case None       => baseEvalM.fail(UndefinedVariableError(id))
