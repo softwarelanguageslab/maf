@@ -26,8 +26,6 @@ import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
 
 object TSlicerEvalM: 
-
-    case class DefLoc(loc: Identity, index: Option[Int])
                                   
     case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, Set[DefLoc]]) => (Option[(X, Set[Address])])):
        def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).flatMap((res, deps) => f(res).run(env, defs)))
@@ -82,6 +80,8 @@ object TSlicerEvalM:
         def withDefs[X](f: Map[Address, Set[DefLoc]] => Map[Address, Set[DefLoc]])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
             SlicerEvalM((env, defs) => ev.run(env, f(defs))) 
 
+case class DefLoc(loc: Identity, index: Option[Int])
+
 trait ConcreteSlicer extends BigStepModFSemanticsT:
     import TSlicerEvalM.{*}
 
@@ -98,15 +98,35 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
             eval(fnBody).run(fnEnv, Map.empty).foreach((res, deps) => writeResult(res))
  
+        def printResults(exp: SchemeExp, deps: Set[Address], defs: Map[Address, Set[DefLoc]]): Unit = 
+            val hrLen = (exp.toString.length + 12)
+            
+            println()
+            println()
+            println("+-+-+ " + exp + " +-+-+")
+            println("_" * hrLen)
+            println((" " * ((hrLen - 6)/2)) + "DEPS: ")
+            deps.map(adr => 
+                println(adr))
+
+            println()
+            println("_" * hrLen)   
+            print((" " * ((hrLen - 6)/2)) + "DEFS: ")
+            println()
+            defs.map((adr, locs) => 
+                print(adr.toString + " ->")
+                    locs.map(loc => 
+                        print("  ")
+                        print(loc.loc)
+                        loc.index.map(idx => print("-" + idx)))
+                    println())
+            println()
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
             for 
                 (res, deps) <- evalWithIdentity(exp).deps
-                _ = println("expression: " + exp)
-                _ = println("deps: " + deps.filter(_.printable))
                 defs <- getDefs
-                _ = println("defs: " + defs)
-                _ = println()
+                _ = printResults(exp, deps.filter(_.printable), defs)
                 result <- unitWithDeps(res, deps)
             yield result
 
@@ -114,7 +134,7 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             exp match
                 case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, idt)
                 case SchemeLet(bindings, body, idt)       => evalLet(bindings, body, idt)
-                case SchemeLetStar(bindings, body, idt)   => evalLetStar(bindings, body, idt)
+                case SchemeLetStar(bindings, body, idt)   => evalLetStar(bindings, body, idt, 0)
                 case SchemeLetrec(bindings, body, idt)    => evalLetRec(bindings, body, idt)
                 case call @ SchemeFuncall(fun, args, idt) => evalCall(call, fun, args, idt)
                 case _                                  => super.eval(exp)
@@ -156,8 +176,10 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             for
                 bds <- bindings.mapM { case (id, exp) => eval(exp).deps.map((vlu, deps) => ((id, vlu), deps)) }
                 boundAddrs = bds.map((bd, _) => allocVar(bd._1, component))
+                locs = for ((addr, idx) <- boundAddrs.zipWithIndex) yield (addr, Set(DefLoc(idt, Some(idx))))
                 (value, deps) <- withEnvM(env => bind(bds.map(_._1), env)) {
-                    withDefs(defs => defs) {
+                    // update the defs
+                    withDefs(defs => defs ++ locs.toMap) {
                         evalSequence(body).deps
                     }
                 }
@@ -167,35 +189,41 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 // TODO: dependencies only of relevant bindings
                 res <- unitWithDeps(value, filteredDeps ++ bds.map(_._2).fold(Set.empty)((x, y) => x ++ y))
             yield value
-        protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity): EvalM[Value] =
+        
+        protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity, idx: Int): EvalM[Value] =
             bindings match
                 case Nil => evalSequence(body)
                 case (id, exp) :: restBds =>
                     eval(exp).deps.flatMap { (rhs, currDeps) =>
                         withEnvM(env => bind(id, env, rhs)) {
-                            for 
-                                (value, restDeps) <- evalLetStar(restBds, body, idt).deps
-                                boundAddr = allocVar(id, component)
-                                restDepsFiltered = restDeps.filter(d => d != boundAddr)
-                                res <- unitWithDeps(value, currDeps ++ restDepsFiltered)
-                            yield res
+                            val boundAddr = allocVar(id, component)
+                            withDefs(defs => defs + (boundAddr -> Set(DefLoc(idt, Some(idx))))) {
+                                for 
+                                    (value, restDeps) <- evalLetStar(restBds, body, idt, idx + 1).deps
+                                    restDepsFiltered = restDeps.filter(d => d != boundAddr)
+                                    res <- unitWithDeps(value, currDeps ++ restDepsFiltered)
+                                yield res
+                            }
                         }
                     }
         protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity): EvalM[Value] =
             withEnvM(env => bindings.foldLeftM(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
-                for
-                    extEnv <- getEnv
-                    bindingDeps <- bindings.mapM { case (id, exp) =>
-                        for 
-                            (bindingValue, bindingDep) <- eval(exp).deps
-                            _ <- assign(id, extEnv, bindingValue)
-                        yield bindingDep
-                    }
-                    (bodyRes, bodyDeps) <- evalSequence(body).deps 
-                    boundAddrs = bindings.map((id, _) => allocVar(id, component))
-                    filteredDeps = (bodyDeps ++ bindingDeps.flatten).filter(d => ! boundAddrs.contains(d))
-                    res <- unitWithDeps(bodyRes, filteredDeps)
-                yield res
+                val boundAddrs = bindings.map((id, _) => allocVar(id, component))
+                val locs = for ((addr, idx) <- boundAddrs.zipWithIndex) yield (addr, Set(DefLoc(idt, Some(idx))))
+                withDefs(defs => defs ++ locs.toMap) {
+                    for
+                        extEnv <- getEnv
+                        bindingDeps <- bindings.mapM { case (id, exp) =>
+                            for 
+                                (bindingValue, bindingDep) <- eval(exp).deps
+                                _ <- assign(id, extEnv, bindingValue)
+                            yield bindingDep
+                        }
+                        (bodyRes, bodyDeps) <- evalSequence(body).deps 
+                        filteredDeps = (bodyDeps ++ bindingDeps.flatten).filter(d => ! boundAddrs.contains(d))
+                        res <- unitWithDeps(bodyRes, filteredDeps)
+                    yield res
+                }
             }
 
         // FUNCTION CALLS
