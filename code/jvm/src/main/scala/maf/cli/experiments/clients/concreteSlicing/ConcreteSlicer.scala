@@ -29,7 +29,7 @@ object TSlicerEvalM:
 
     case class DefLoc(loc: Identity, index: Option[Int])
                                   
-    case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, DefLoc]) => (Option[(X, Set[Address])])):
+    case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, Set[DefLoc]]) => (Option[(X, Set[Address])])):
        def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).flatMap((res, deps) => f(res).run(env, defs)))
        def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).map((res, deps) => (f(res), deps)))
        def withFilter(p: X => Boolean): SlicerEvalM[X] = SlicerEvalM((env, defs) =>
@@ -39,6 +39,7 @@ object TSlicerEvalM:
                 if p(x) then Some((x, deps))
                         else None
         )
+        // DEPENDENCIES
         def deps: SlicerEvalM[(X, Set[Address])] = SlicerEvalM((env, defs) => 
             run(env, defs) match
                 case None => None 
@@ -76,7 +77,10 @@ object TSlicerEvalM:
                 case (Some((res1, deps1)), Some((res2, deps2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2))
         }
         def fail[X](err: Error): SlicerEvalM[X] = mzero
-        
+        // DEFINITIONS
+        def getDefs: SlicerEvalM[Map[Address, Set[DefLoc]]] = SlicerEvalM((_, defs) => Some(defs, Set.empty))
+        def withDefs[X](f: Map[Address, Set[DefLoc]] => Map[Address, Set[DefLoc]])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
+            SlicerEvalM((env, defs) => ev.run(env, f(defs))) 
 
 trait ConcreteSlicer extends BigStepModFSemanticsT:
     import TSlicerEvalM.{*}
@@ -92,20 +96,29 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv, Map.empty).foreach((res, deps) => 
-                // println("final res: " + res)
-                // println("final deps: " + deps)
-                // writeResult(res)
-                )
+            eval(fnBody).run(fnEnv, Map.empty).foreach((res, deps) => writeResult(res))
+ 
 
-        override def eval(exp: SchemeExp): SlicerEvalM[(Value)] = 
+        override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
             for 
-                (res, deps) <- super.eval(exp).deps
+                (res, deps) <- evalWithIdentity(exp).deps
                 _ = println("expression: " + exp)
-                _ = println("deps: " + deps)
+                _ = println("deps: " + deps.filter(_.printable))
+                defs <- getDefs
+                _ = println("defs: " + defs)
                 _ = println()
-            yield res
+                result <- unitWithDeps(res, deps)
+            yield result
 
+        def evalWithIdentity(exp: SchemeExp): SlicerEvalM[Value] = 
+            exp match
+                case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, idt)
+                case SchemeLet(bindings, body, idt)       => evalLet(bindings, body, idt)
+                case SchemeLetStar(bindings, body, idt)   => evalLetStar(bindings, body, idt)
+                case SchemeLetrec(bindings, body, idt)    => evalLetRec(bindings, body, idt)
+                case call @ SchemeFuncall(fun, args, idt) => evalCall(call, fun, args, idt)
+                case _                                  => super.eval(exp)
+        
 
         // SEQUENCES
         override protected def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
@@ -115,6 +128,15 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 values = evalled.map(_._1) 
                 res <- unitWithDeps(values.last, deps.last)
             yield res
+
+        // ASSIGNMENTS (todo)
+        protected def evalSet(id: Identifier, exp: SchemeExp, idt: Identity): EvalM[Value] =
+            for
+                rhs <- eval(exp)
+                env <- getEnv
+                _ <- assign(id, env, rhs)
+            yield lattice.void
+                
 
         // IF EXPRESSIONS
         // todo: keep track of control node
@@ -130,12 +152,14 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             yield res
 
         // LET EXPRESSIONS
-        override protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+        protected def evalLet(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity): EvalM[Value] =
             for
                 bds <- bindings.mapM { case (id, exp) => eval(exp).deps.map((vlu, deps) => ((id, vlu), deps)) }
                 boundAddrs = bds.map((bd, _) => allocVar(bd._1, component))
                 (value, deps) <- withEnvM(env => bind(bds.map(_._1), env)) {
-                    evalSequence(body).deps
+                    withDefs(defs => defs) {
+                        evalSequence(body).deps
+                    }
                 }
                 // only keep dependencies that are not defined by the let itself
                 filteredDeps = deps.filter(addr => !boundAddrs.contains(addr))
@@ -143,21 +167,21 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 // TODO: dependencies only of relevant bindings
                 res <- unitWithDeps(value, filteredDeps ++ bds.map(_._2).fold(Set.empty)((x, y) => x ++ y))
             yield value
-        override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+        protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity): EvalM[Value] =
             bindings match
                 case Nil => evalSequence(body)
                 case (id, exp) :: restBds =>
                     eval(exp).deps.flatMap { (rhs, currDeps) =>
                         withEnvM(env => bind(id, env, rhs)) {
                             for 
-                                (value, restDeps) <- evalLetStar(restBds, body).deps
+                                (value, restDeps) <- evalLetStar(restBds, body, idt).deps
                                 boundAddr = allocVar(id, component)
                                 restDepsFiltered = restDeps.filter(d => d != boundAddr)
                                 res <- unitWithDeps(value, currDeps ++ restDepsFiltered)
                             yield res
                         }
                     }
-        override protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =
+        protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity): EvalM[Value] =
             withEnvM(env => bindings.foldLeftM(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
                 for
                     extEnv <- getEnv
@@ -175,10 +199,11 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             }
 
         // FUNCTION CALLS
-        override protected def evalCall(
+        protected def evalCall(
             exp: SchemeFuncall,
             fun: SchemeExp,
-            args: List[SchemeExp]
+            args: List[SchemeExp],
+            idt: Identity
           ): EvalM[Value] =
             for
                 (funVal, funDeps) <- eval(fun).deps
