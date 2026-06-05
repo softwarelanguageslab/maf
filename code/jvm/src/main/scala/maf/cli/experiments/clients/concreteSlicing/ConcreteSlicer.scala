@@ -26,30 +26,34 @@ import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
 
 object TSlicerEvalM: 
-                                  
-    case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, Set[DefLoc]]) => (Option[(X, Set[Address])])):
-       def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).flatMap((res, deps) => f(res).run(env, defs)))
-       def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).map((res, deps) => (f(res), deps)))
+                               //run: env, defs => value, deps, defs   
+    case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, Set[DefLoc]]) => (Option[(X, Set[Address], Map[Address, Set[DefLoc]])])):
+       def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).flatMap((res, deps, defs2) => f(res).run(env, defs2)))
+       def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM((env, defs) => run(env, defs).map((res, deps, defs2) => (f(res), deps, defs2)))
        def withFilter(p: X => Boolean): SlicerEvalM[X] = SlicerEvalM((env, defs) =>
         run(env, defs) match 
             case None => None 
-            case Some((x, deps)) => 
-                if p(x) then Some((x, deps))
+            case Some((x, deps, defs2)) => 
+                if p(x) then Some((x, deps, defs2))
                         else None
         )
         // DEPENDENCIES
         def deps: SlicerEvalM[(X, Set[Address])] = SlicerEvalM((env, defs) => 
             run(env, defs) match
                 case None => None 
-                case Some((x, deps)) => 
-                    Some(((x, deps), deps))
+                case Some((x, deps, defs2)) => 
+                    Some(((x, deps), deps, defs2))
             )
 
     trait MonadSlicerEvalM extends TEvalM[SlicerEvalM]:
         def map[X, Y](m: SlicerEvalM[X])(f: X => Y): SlicerEvalM[Y] = m.map(f)
         def flatMap[X, Y](m: SlicerEvalM[X])(f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = m.flatMap(f)
-        def unit[X](x: X): SlicerEvalM[X] = SlicerEvalM((_, _) => Some(x, Set.empty))
-        def unitWithDeps[X](x: X, deps: Set[Address]): SlicerEvalM[X] = SlicerEvalM((_, _) => Some(x, deps))
+        def unit[X](x: X): SlicerEvalM[X] = SlicerEvalM((_, defs) => Some(x, Set.empty, defs))
+        def unitWithDeps[X](x: X, deps: Set[Address]): SlicerEvalM[X] = SlicerEvalM((_, defs) => Some(x, deps, defs))
+        def unitWithDef[X](x: X, addr: Address, loc: DefLoc): SlicerEvalM[X] = unitWithDepsDef(x)(Set.empty)(addr, loc)
+        def unitWithDepsDef[X](x: X)(deps: Set[Address])(addr: Address, loc: DefLoc) = SlicerEvalM((_, defs) =>
+            val oldLocs = defs.getOrElse(addr, Set.empty)
+            Some(x, deps, defs + (addr -> (oldLocs + loc))))
         def mzero[X]: SlicerEvalM[X] = SlicerEvalM((_, _) => None)
         implicit class MonadicOps[X](xs: Iterable[X]):
             def foldLeftM[Y](y: Y)(f: (Y, X) => SlicerEvalM[Y]): SlicerEvalM[Y] = xs match
@@ -65,20 +69,20 @@ object TSlicerEvalM:
             def mapM_(f: X => SlicerEvalM[Unit]): SlicerEvalM[Unit] = xs match
                 case Nil     => unit(())
                 case x :: xs => f(x).flatMap(_ => xs.mapM_(f))  
-        def getEnv: SlicerEvalM[Environment[Address]] = SlicerEvalM((env, _) => Some(env, Set.empty))
+        def getEnv: SlicerEvalM[Environment[Address]] = SlicerEvalM((env, defs) => Some(env, Set.empty, defs))
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
             SlicerEvalM((env, defs) => ev.run(f(env), defs))  
         def merge[X: Lattice](x: SlicerEvalM[X], y: SlicerEvalM[X]): SlicerEvalM[X] = SlicerEvalM { (env, defs) =>
             (x.run(env, defs), y.run(env, defs)) match
                 case (None, yres)             => yres
                 case (xres, None)             => xres
-                case (Some((res1, deps1)), Some((res2, deps2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2))
+                case (Some((res1, deps1, defs1)), Some((res2, deps2, defs2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2, defs1 ++ defs2))
         }
         def fail[X](err: Error): SlicerEvalM[X] = mzero
         // DEFINITIONS
-        def getDefs: SlicerEvalM[Map[Address, Set[DefLoc]]] = SlicerEvalM((_, defs) => Some(defs, Set.empty))
+        def getDefs: SlicerEvalM[Map[Address, Set[DefLoc]]] = SlicerEvalM((_, defs) => Some(defs, Set.empty, defs))
         def withDefs[X](f: Map[Address, Set[DefLoc]] => Map[Address, Set[DefLoc]])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
-            SlicerEvalM((env, defs) => ev.run(env, f(defs))) 
+            SlicerEvalM((env, defs) => ev.run(env, f(defs)))  
 
 case class DefLoc(loc: Identity, index: Option[Int])
 
@@ -96,7 +100,9 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv, Map.empty).foreach((res, deps) => writeResult(res))
+            eval(fnBody).run(fnEnv, Map.empty).foreach((res, deps, defs) => 
+                //writeResult(res)
+                )
  
         def printResults(exp: SchemeExp, deps: Set[Address], defs: Map[Address, Set[DefLoc]]): Unit = 
             val hrLen = (exp.toString.length + 12)
@@ -106,8 +112,7 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             println("+-+-+ " + exp + " +-+-+")
             println("_" * hrLen)
             println((" " * ((hrLen - 6)/2)) + "DEPS: ")
-            deps.map(adr => 
-                println(adr))
+            deps.map(adr => println(adr))
 
             println()
             println("_" * hrLen)   
@@ -123,6 +128,7 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
             println()
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
+            println(exp)
             for 
                 (res, deps) <- evalWithIdentity(exp).deps
                 defs <- getDefs
@@ -133,12 +139,15 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
         def evalWithIdentity(exp: SchemeExp): SlicerEvalM[Value] = 
             exp match
                 case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, idt)
+                case SchemeSetLex(id, _, vexp, idt)       => evalSet(id, vexp, idt)
                 case SchemeLet(bindings, body, idt)       => evalLet(bindings, body, idt)
                 case SchemeLetStar(bindings, body, idt)   => evalLetStar(bindings, body, idt, 0)
                 case SchemeLetrec(bindings, body, idt)    => evalLetRec(bindings, body, idt)
                 case call @ SchemeFuncall(fun, args, idt) => evalCall(call, fun, args, idt)
-                case _                                  => super.eval(exp)
+                case _                                    => super.eval(exp)
         
+        // LAMBDAS
+        // todo: save the defs in the lambda environment (lexical scoping)
 
         // SEQUENCES
         override protected def evalSequence(exps: List[SchemeExp]): EvalM[Value] =
@@ -149,12 +158,14 @@ trait ConcreteSlicer extends BigStepModFSemanticsT:
                 res <- unitWithDeps(values.last, deps.last)
             yield res
 
-        // ASSIGNMENTS (todo)
+        // ASSIGNMENTS
         protected def evalSet(id: Identifier, exp: SchemeExp, idt: Identity): EvalM[Value] =
             for
-                rhs <- eval(exp)
+                (rhs, rhsDeps) <- eval(exp).deps
                 env <- getEnv
                 _ <- assign(id, env, rhs)
+                addr = env.lookup(id.name).get // get should not be a problem here because assign will throw an error if it was None
+                res <- unitWithDepsDef(lattice.void)(rhsDeps)(addr, DefLoc(idt, None))
             yield lattice.void
                 
 
