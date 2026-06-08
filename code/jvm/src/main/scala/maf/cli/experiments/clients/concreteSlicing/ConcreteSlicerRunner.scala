@@ -13,14 +13,12 @@ object ConcreteSlicerMain:
     val benchmarks: List[String] = 
         List("test/R5RS/various/slice-set.scm")
 
-    def run(mkAnalysis: SchemeExp => ConcreteSlicer, program: String) = 
+    def run(mkAnalysis: SchemeExp => ConcreteSlicerDependencies, program: String) = 
         val programText = Reader.loadFile(program)
         val exp = SchemeParser.parseProgram(programText)
         val lexicaladdressedExp = SchemeLexicalAddresser.translateProgram(List(exp)).head
-        val analysis = mkAnalysis(lexicaladdressedExp)
-
-        analysis.analyzeWithTimeout(Timeout.start(30.seconds))
+        ConcreteSlicer.runSlicer(lexicaladdressedExp)
 
     def main(args: Array[String]): Unit =
         MAFLogger.disable()
-        benchmarks.map(run(ConcreteSlicer.createAnalysis, _))
+        benchmarks.map(run(ConcreteSlicerDependencies.createAnalysis, _))
