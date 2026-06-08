@@ -95,46 +95,29 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
     implicit val evalM = SlicerEvalM
     val controlEvalM: MonadSlicerEvalM = SlicerEvalM 
 
+    var finalDefs: Map[Address, Set[DefLoc]] = Map.empty
+    var finalDeps: Map[SchemeExp, Set[Address]] = Map.empty
+
     override def intraAnalysis(cmp: Component): ConcreteSlicerDependenciesIntra 
     trait ConcreteSlicerDependenciesIntra extends IntraAnalysis with BigStepModFIntraT: 
         import controlEvalM._
 
+
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
             eval(fnBody).run(fnEnv, Map.empty).foreach((res, deps, defs) => 
                 //writeResult(res)
-                )
- 
-        def printResults(exp: SchemeExp, deps: Set[Address], defs: Map[Address, Set[DefLoc]]): Unit = 
-            val hrLen = (exp.toString.length + 12)
-            
-            println()
-            println()
-            println("+-+-+ " + exp + " +-+-+")
-            println("_" * hrLen)
-            println((" " * ((hrLen - 6)/2)) + "DEPS: ")
-            deps.map(adr => println(adr))
+                finalDefs = defs
+                )   
 
-            println()
-            println("_" * hrLen)   
-            print((" " * ((hrLen - 6)/2)) + "DEFS: ")
-            println()
-            defs.map((adr, locs) => 
-                print(adr.toString + " ->")
-                    locs.map(loc => 
-                        print("  ")
-                        print(loc.loc)
-                        loc.index.map(idx => print("-" + idx)))
-                    println())
-            println()
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
-            println(exp)
             for 
                 (res, deps) <- evalWithIdentity(exp).deps
                 defs <- getDefs
-                _ = printResults(exp, deps.filter(_.printable), defs)
                 result <- unitWithDeps(res, deps)
-            yield result
+            yield 
+                finalDeps = finalDeps + (exp -> deps)
+                result
 
         def evalWithIdentity(exp: SchemeExp): SlicerEvalM[Value] = 
             exp match

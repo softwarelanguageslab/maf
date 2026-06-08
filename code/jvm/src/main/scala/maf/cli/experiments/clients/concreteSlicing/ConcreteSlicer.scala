@@ -31,4 +31,35 @@ object ConcreteSlicer:
     def runSlicer(program: SchemeExp): Unit = 
         val analysis = ConcreteSlicerDependencies.createAnalysis(program)
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
+        val defs = analysis.finalDefs
+        val deps = analysis.finalDeps
+        printDefs(defs)
+        deps.map((exp, dep) => printDeps(exp, dep))
+
+    val hrLen = 20
+
+    def printDeps(exp: SchemeExp, deps: Set[Address]): Unit = 
+            println()
+            println()
+            println("+-+-+ " + exp + " +-+-+")
+            println("_" * hrLen)
+            println((" " * ((hrLen - 6)/2)) + "DEPS: ")
+            deps.filter(_.printable).map(adr => println(adr))
+            println()
+
+    def printDefs(defs: Map[Address, Set[DefLoc]]): Unit =    
+            print((" " * ((hrLen - 6)/2)) + "DEFS: ")
+            println()
+            defs.map((adr, locs) => 
+                print(adr.toString + " ->")
+                    locs.map(loc => 
+                        print("  ")
+                        print(loc.loc)
+                        loc.index.map(idx => print("-" + idx)))
+                    println())
+            println()
+            println("_" * hrLen)
+
+
+            
 
