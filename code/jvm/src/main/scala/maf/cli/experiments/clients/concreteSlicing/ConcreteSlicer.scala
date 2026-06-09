@@ -33,12 +33,14 @@ object ConcreteSlicer:
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
         val defs = analysis.finalDefs
         val deps = analysis.finalDeps
+        val ctrls = analysis.finalControlDeps
         printDefs(defs)
-        deps.map((exp, dep) => printDeps(exp, dep))
+        deps.map(printDepsPerExp)
+        println(ctrls)
 
     val hrLen = 20
 
-    def printDeps(exp: SchemeExp, deps: Set[Address]): Unit = 
+    def printDepsPerExp(exp: SchemeExp, deps: Set[Address]): Unit = 
             println()
             println()
             println("+-+-+ " + exp + " +-+-+")
