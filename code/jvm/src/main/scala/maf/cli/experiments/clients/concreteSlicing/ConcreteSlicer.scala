@@ -38,18 +38,20 @@ object ConcreteSlicer:
         printAss(ass)
         printDefs(defs)
         println()
-        deps.map(printDepsPerExp)
-        println(ctrls)
+        deps.map((e, d) => printDepsPerExp(e, d, ctrls.getOrElse(e, None)))
 
     val hrLen = 40
 
-    def printDepsPerExp(exp: SchemeExp, deps: Set[Address]): Unit = 
+    def printDepsPerExp(exp: SchemeExp, deps: Set[Address], ctrl: Option[DefLoc]): Unit = 
             println()
             println()
             println("+-+-+ " + exp + " +-+-+")
             println("_" * hrLen)
-            println("DEPENDENCIES: ")
+            println("DATA DEPENDENCIES: ")
             deps.filter(_.printable).map(adr => println(adr))
+            println()
+            println("CONTROL DEPENDENCIES: ")
+            println(ctrl)
             println()
 
     def printDefs(defs: Map[Address, DefLoc]): Unit = 
