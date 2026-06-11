@@ -26,35 +26,37 @@ import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
 
 object TSlicerEvalM: 
-                               //run: env, defs, controlLoc => value, deps, defs   
-    case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, Set[DefLoc]], Option[DefLoc]) => (Option[(X, Set[Address], Map[Address, Set[DefLoc]])])):
-       def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM((env, defs, ctrl) => run(env, defs, ctrl).flatMap((res, deps, defs2) => f(res).run(env, defs2, ctrl)))
-       def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM((env, defs, ctrl) => run(env, defs, ctrl).map((res, deps, defs2) => (f(res), deps, defs2)))
-       def withFilter(p: X => Boolean): SlicerEvalM[X] = SlicerEvalM((env, defs, ctrl) =>
-        run(env, defs, ctrl) match 
+                               //run: env, assignments, defs, controlLoc => value, deps, assignments, defs   
+    case class SlicerEvalM[+X](run: (Environment[Address], Map[Address, Set[DefLoc]], Map[Address, DefLoc], Option[DefLoc]) => (Option[(X, Set[Address], Map[Address, Set[DefLoc]], Map[Address, DefLoc])])):
+       def flatMap[Y](f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = SlicerEvalM((env, ass, defs, ctrl) => 
+        run(env, ass, defs, ctrl).flatMap((res, deps, ass2, defs2) => f(res).run(env, ass2, defs2, ctrl)))
+       def map[Y](f: X => Y): SlicerEvalM[Y] = SlicerEvalM((env, ass, defs, ctrl) => run(env, ass, defs, ctrl).map((res, deps, ass2, defs2) => (f(res), deps, ass2, defs2)))
+       def withFilter(p: X => Boolean): SlicerEvalM[X] = SlicerEvalM((env, ass, defs, ctrl) =>
+        run(env, ass, defs, ctrl) match 
             case None => None 
-            case Some((x, deps, defs2)) => 
-                if p(x) then Some((x, deps, defs2))
+            case Some((x, deps, ass2, defs2)) => 
+                if p(x) then Some((x, deps, ass2, defs2))
                         else None
         )
         // DEPENDENCIES
-        def deps: SlicerEvalM[(X, Set[Address])] = SlicerEvalM((env, defs, ctrl) => 
-            run(env, defs, ctrl) match
+        def deps: SlicerEvalM[(X, Set[Address])] = SlicerEvalM((env, ass, defs, ctrl) => 
+            run(env, ass, defs, ctrl) match
                 case None => None 
-                case Some((x, deps, defs2)) => 
-                    Some(((x, deps), deps, defs2))
+                case Some((x, deps, ass2, defs2)) => 
+                    Some(((x, deps), deps, ass2, defs2))
             )
 
     trait MonadSlicerEvalM extends TEvalM[SlicerEvalM]:
         def map[X, Y](m: SlicerEvalM[X])(f: X => Y): SlicerEvalM[Y] = m.map(f)
         def flatMap[X, Y](m: SlicerEvalM[X])(f: X => SlicerEvalM[Y]): SlicerEvalM[Y] = m.flatMap(f)
-        def unit[X](x: X): SlicerEvalM[X] = SlicerEvalM((_, defs, _) => Some(x, Set.empty, defs))
-        def unitWithDeps[X](x: X, deps: Set[Address]): SlicerEvalM[X] = SlicerEvalM((_, defs, _) => Some(x, deps, defs))
+        def unit[X](x: X): SlicerEvalM[X] = SlicerEvalM((_, ass, defs, _) => Some(x, Set.empty, ass, defs))
+        def unitWithDeps[X](x: X, deps: Set[Address]): SlicerEvalM[X] = SlicerEvalM((_, ass, defs, _) => Some(x, deps, ass, defs))
+        def addDep(dep: Address): SlicerEvalM[Unit] = SlicerEvalM((_, ass, defs, _) => Some((), Set(dep), ass, defs))
         def unitWithDef[X](x: X, addr: Address, loc: DefLoc): SlicerEvalM[X] = unitWithDepsDef(x)(Set.empty)(addr, loc)
-        def unitWithDepsDef[X](x: X)(deps: Set[Address])(addr: Address, loc: DefLoc) = SlicerEvalM((_, defs, _) =>
-            val oldLocs = defs.getOrElse(addr, Set.empty)
-            Some(x, deps, defs + (addr -> (oldLocs + loc))))
-        def mzero[X]: SlicerEvalM[X] = SlicerEvalM((_, _, _) => None)
+        def unitWithDepsDef[X](x: X)(deps: Set[Address])(addr: Address, loc: DefLoc) = SlicerEvalM((_, ass, defs, _) =>
+            val oldLocs = ass.getOrElse(addr, Set.empty)
+            Some(x, deps, ass + (addr -> (oldLocs + loc)), defs))
+        def mzero[X]: SlicerEvalM[X] = SlicerEvalM((_, _, _, _) => None)
         implicit class MonadicOps[X](xs: Iterable[X]):
             def foldLeftM[Y](y: Y)(f: (Y, X) => SlicerEvalM[Y]): SlicerEvalM[Y] = xs match
                 case Nil     => unit(y)
@@ -69,25 +71,30 @@ object TSlicerEvalM:
             def mapM_(f: X => SlicerEvalM[Unit]): SlicerEvalM[Unit] = xs match
                 case Nil     => unit(())
                 case x :: xs => f(x).flatMap(_ => xs.mapM_(f))  
-        def getEnv: SlicerEvalM[Environment[Address]] = SlicerEvalM((env, defs, _) => Some(env, Set.empty, defs))
+        def getEnv: SlicerEvalM[Environment[Address]] = SlicerEvalM((env, ass, defs, _) => Some(env, Set.empty, ass, defs))
         def withEnv[X](f: Environment[Address] => Environment[Address])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
-            SlicerEvalM((env, defs, ctrl) => ev.run(f(env), defs, ctrl))  
-        def merge[X: Lattice](x: SlicerEvalM[X], y: SlicerEvalM[X]): SlicerEvalM[X] = SlicerEvalM { (env, defs, ctrl) =>
-            (x.run(env, defs, ctrl), y.run(env, defs, ctrl)) match
+            SlicerEvalM((env, ass, defs, ctrl) => ev.run(f(env), ass, defs, ctrl))  
+        def merge[X: Lattice](x: SlicerEvalM[X], y: SlicerEvalM[X]): SlicerEvalM[X] = SlicerEvalM { (env, ass, defs, ctrl) =>
+            (x.run(env, ass, defs, ctrl), y.run(env, ass, defs, ctrl)) match
                 case (None, yres)             => yres
                 case (xres, None)             => xres
-                case (Some((res1, deps1, defs1)), Some((res2, deps2, defs2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2, defs1 ++ defs2))
+                case (Some((res1, deps1, ass1, defs1)), Some((res2, deps2, ass2, defs2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2, ass1 ++ ass2, defs1 ++ defs2))
         }
         def fail[X](err: Error): SlicerEvalM[X] = mzero
         // DEFINITIONS
-        def getDefs: SlicerEvalM[Map[Address, Set[DefLoc]]] = SlicerEvalM((_, defs, _) => Some(defs, Set.empty, defs))
-        def withDefs[X](f: Map[Address, Set[DefLoc]] => Map[Address, Set[DefLoc]])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
-            SlicerEvalM((env, defs, ctrl) => ev.run(env, f(defs), ctrl))  
+        def getAss: SlicerEvalM[Map[Address, Set[DefLoc]]] = SlicerEvalM((_, ass, defs, _) => Some(ass, Set.empty, ass, defs))
+        def withAss[X](f: Map[Address, Set[DefLoc]] => Map[Address, Set[DefLoc]])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
+            SlicerEvalM((env, ass, defs, ctrl) => ev.run(env, f(ass), defs, ctrl))  
+        def addDef[X](addr: Address, loc: DefLoc)(ev: => SlicerEvalM[X]): SlicerEvalM[X] =
+            SlicerEvalM((env, ass, defs, ctrl) => ev.run(env, ass, (defs + (addr -> loc)), ctrl))
+        def withDefs[X](f: Map[Address, DefLoc] => Map[Address, DefLoc])(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
+            SlicerEvalM((env, ass, defs, ctrl) => ev.run(env, ass, f(defs), ctrl))
         // CONTROL DEPS
-        def getCtrl: SlicerEvalM[Option[DefLoc]] = SlicerEvalM((_, defs, ctrl) => Some(ctrl, Set.empty, defs))
+        def getCtrl: SlicerEvalM[Option[DefLoc]] = SlicerEvalM((_, ass, defs, ctrl) => Some(ctrl, Set.empty, ass, defs))
         def withCtrl[X](ctrl: DefLoc)(ev: => SlicerEvalM[X]): SlicerEvalM[X] = 
-            SlicerEvalM((env, defs, _) => ev.run(env, defs, Some(ctrl))) 
+            SlicerEvalM((env, ass, defs, _) => ev.run(env, ass, defs, Some(ctrl))) 
 
+// aparte cases voor lets vs niet lets
 case class DefLoc(loc: Identity, index: Option[Int])
 
 trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
@@ -99,7 +106,8 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
     implicit val evalM = SlicerEvalM
     val controlEvalM: MonadSlicerEvalM = SlicerEvalM 
 
-    var finalDefs: Map[Address, Set[DefLoc]] = Map.empty
+    var finalAss: Map[Address, Set[DefLoc]] = Map.empty
+    var finalDefs: Map[Address, DefLoc] = Map.empty
     var finalDeps: Map[SchemeExp, Set[Address]] = Map.empty
     var finalControlDeps: Map[SchemeExp, Option[DefLoc]] = Map.empty
 
@@ -108,9 +116,10 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
-            eval(fnBody).run(fnEnv, Map.empty, None).foreach((res, deps, defs) => 
+            eval(fnBody).run(fnEnv, Map.empty, Map.empty, None).foreach((res, deps, ass, defs) => 
                 //writeResult(res)
                 finalDefs = defs
+                finalAss = ass
                 )   
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
@@ -176,7 +185,7 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
             for
                 bds <- bindings.mapM { case (id, exp) => eval(exp).deps.map((vlu, deps) => ((id, vlu), deps)) }
                 boundAddrs = bds.map((bd, _) => allocVar(bd._1, component))
-                locs = for ((addr, idx) <- boundAddrs.zipWithIndex) yield (addr, Set(DefLoc(idt, Some(idx))))
+                locs = for ((addr, idx) <- boundAddrs.zipWithIndex) yield (addr, DefLoc(idt, Some(idx)))
                 (value, deps) <- withEnvM(env => bind(bds.map(_._1), env)) {
                     // update the defs
                     withDefs(defs => defs ++ locs.toMap) {
@@ -197,7 +206,7 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
                     eval(exp).deps.flatMap { (rhs, currDeps) =>
                         withEnvM(env => bind(id, env, rhs)) {
                             val boundAddr = allocVar(id, component)
-                            withDefs(defs => defs + (boundAddr -> Set(DefLoc(idt, Some(idx))))) {
+                            addDef(boundAddr, DefLoc(idt, Some(idx))) {
                                 for 
                                     (value, restDeps) <- evalLetStar(restBds, body, idt, idx + 1).deps
                                     restDepsFiltered = restDeps.filter(d => d != boundAddr)
@@ -209,7 +218,7 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
         protected def evalLetRec(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp], idt: Identity): EvalM[Value] =
             withEnvM(env => bindings.foldLeftM(env) { case (env2, (id, _)) => bind(id, env2, lattice.bottom) }) {
                 val boundAddrs = bindings.map((id, _) => allocVar(id, component))
-                val locs = for ((addr, idx) <- boundAddrs.zipWithIndex) yield (addr, Set(DefLoc(idt, Some(idx))))
+                val locs = for ((addr, idx) <- boundAddrs.zipWithIndex) yield (addr, DefLoc(idt, Some(idx)))
                 withDefs(defs => defs ++ locs.toMap) {
                     for
                         extEnv <- getEnv

@@ -31,35 +31,51 @@ object ConcreteSlicer:
     def runSlicer(program: SchemeExp): Unit = 
         val analysis = ConcreteSlicerDependencies.createAnalysis(program)
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
+        val ass = analysis.finalAss
         val defs = analysis.finalDefs
         val deps = analysis.finalDeps
         val ctrls = analysis.finalControlDeps
+        printAss(ass)
         printDefs(defs)
+        println()
         deps.map(printDepsPerExp)
         println(ctrls)
 
-    val hrLen = 20
+    val hrLen = 40
 
     def printDepsPerExp(exp: SchemeExp, deps: Set[Address]): Unit = 
             println()
             println()
             println("+-+-+ " + exp + " +-+-+")
             println("_" * hrLen)
-            println((" " * ((hrLen - 6)/2)) + "DEPS: ")
+            println("DEPENDENCIES: ")
             deps.filter(_.printable).map(adr => println(adr))
             println()
 
-    def printDefs(defs: Map[Address, Set[DefLoc]]): Unit =    
-            print((" " * ((hrLen - 6)/2)) + "DEFS: ")
+    def printDefs(defs: Map[Address, DefLoc]): Unit = 
+        println()
+        print("DEFINITIONS: ")
+        println()
+        defs.map((adr, loc) =>
+            print(adr.toString + " -> ")
+            print("  ")
+            print(loc.loc)
+            loc.index.map(idx => print("-" + idx))
+            println())
+        println()
+        println("_" * hrLen)
+
+    def printAss(ass: Map[Address, Set[DefLoc]]): Unit =   
+            println() 
+            print("ASSIGNMENTS: ")
             println()
-            defs.map((adr, locs) => 
+            ass.map((adr, locs) => 
                 print(adr.toString + " ->")
                     locs.map(loc => 
                         print("  ")
                         print(loc.loc)
                         loc.index.map(idx => print("-" + idx)))
                     println())
-            println()
             println("_" * hrLen)
 
 
