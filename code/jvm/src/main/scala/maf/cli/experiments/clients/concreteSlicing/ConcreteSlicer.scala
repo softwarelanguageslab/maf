@@ -28,17 +28,49 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 
      
 object ConcreteSlicer:
+    // markExps returns a set of all exps that should be in the slice
+    def markExps(criterion: SchemeExp,
+                 ctrlDeps: Map[SchemeExp, Option[DefLoc]], 
+                 dataDeps: Map[SchemeExp, Set[Address]], 
+                 assignments: Map[Address, Set[DefLoc]],
+                 definitions: Map[Address, DefLoc]): Set[DefLoc] =
+        def markExpsHelper(worklist: Set[SchemeExp], // the exps to do
+                           finished: Set[SchemeExp], // the exps that have been done
+                           marks: Set[DefLoc] // the marked locations
+                           ): Set[DefLoc] = 
+            if (worklist.isEmpty) then 
+                marks 
+            else if (finished.contains(worklist.head)) then
+                markExpsHelper(worklist.tail, finished, marks)
+            else
+                val depAddrs = dataDeps.getOrElse(worklist.head, Set.empty)
+                Set.empty
+
+        markExpsHelper(Set(criterion), Set.empty, Set.empty)
+
+
+    // constructSlice takes the marked expressions and returns the sliced program 
+    // (preserving the structure of the original program)
+    def constructSlice(marks: Set[DefLoc], originalProgram: SchemeExp): SchemeExp = ???
+
     def runSlicer(program: SchemeExp): Unit = 
         val analysis = ConcreteSlicerDependencies.createAnalysis(program)
+        println(program)
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
         val ass = analysis.finalAss
         val defs = analysis.finalDefs
         val deps = analysis.finalDeps
         val ctrls = analysis.finalControlDeps
+
+        // print results of the analysis
         printAss(ass)
         printDefs(defs)
         println()
         deps.map((e, d) => printDepsPerExp(e, d, ctrls.getOrElse(e, None)))
+
+        // create the slice
+        val criterion = ???
+        val marks = markExps(criterion, ctrls, deps, ass, defs)
 
     val hrLen = 40
 
