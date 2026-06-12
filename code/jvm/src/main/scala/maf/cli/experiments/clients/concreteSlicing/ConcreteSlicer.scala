@@ -28,30 +28,37 @@ import maf.modular.scheme.modflocal.SchemeSemantics
 
      
 object ConcreteSlicer:
-    // markExps returns a set of all exps that should be in the slice
+
+    // markExps returns a set of all expressions that impacted the slicing criterion
     def markExps(criterion: SchemeExp,
-                 ctrlDeps: Map[SchemeExp, Option[DefLoc]], 
+                 program: SchemeExp,
+                 ctrlDeps: Map[SchemeExp, Option[SchemeExp]], 
                  dataDeps: Map[SchemeExp, Set[Address]], 
-                 assignments: Map[Address, Set[DefLoc]],
-                 definitions: Map[Address, DefLoc]): Set[DefLoc] =
+                 assignments: Map[Address, Set[SchemeExp]],
+                 definitions: Map[Address, SchemeExp]): Set[SchemeExp] =
         def markExpsHelper(worklist: Set[SchemeExp], // the exps to do
                            finished: Set[SchemeExp], // the exps that have been done
-                           marks: Set[DefLoc] // the marked locations
-                           ): Set[DefLoc] = 
-            if (worklist.isEmpty) then 
+                           marks: Set[SchemeExp] // the marked locations
+                           ): Set[SchemeExp] = 
+            if (worklist.isEmpty) then // nothing left to mark
                 marks 
-            else if (finished.contains(worklist.head)) then
+            else if (finished.contains(worklist.head)) then // this has been marked already
                 markExpsHelper(worklist.tail, finished, marks)
-            else
+            else // new exp to mark
+                // include the control dependency if present
+                var depExps = ctrlDeps.getOrElse(worklist.head, None).toSet
+                // gather data dependencies
                 val depAddrs = dataDeps.getOrElse(worklist.head, Set.empty)
-                Set.empty
+                // get the locations of the definitions and assignments of the data dependencies
+                val defs = depAddrs.flatMap(addr => definitions.get(addr))
+                val ass = depAddrs.flatMap(addr => assignments.getOrElse(addr, Set.empty))
+                depExps = depExps ++ defs ++ ass
+                // add these new locs to the worklist
+                val newWorklist = worklist.tail ++ depExps
+                // continue iterating
+                markExpsHelper(newWorklist, finished + worklist.head, marks ++ depExps)
 
         markExpsHelper(Set(criterion), Set.empty, Set.empty)
-
-
-    // constructSlice takes the marked expressions and returns the sliced program 
-    // (preserving the structure of the original program)
-    def constructSlice(marks: Set[DefLoc], originalProgram: SchemeExp): SchemeExp = ???
 
     def runSlicer(program: SchemeExp): Unit = 
         val analysis = ConcreteSlicerDependencies.createAnalysis(program)
@@ -68,13 +75,19 @@ object ConcreteSlicer:
         println()
         deps.map((e, d) => printDepsPerExp(e, d, ctrls.getOrElse(e, None)))
 
-        // create the slice
-        val criterion = ???
-        val marks = markExps(criterion, ctrls, deps, ass, defs)
+        // mark the expressions that influence the slicing criterion
+        // TODO: dynamically pick the criterion
+        val criterion: SchemeExp = program.allSubexpressions.last.asInstanceOf[SchemeExp]
+        val marks = markExps(criterion, program, ctrls, deps, ass, defs)
+        println()
+        println("CRITERION: " + criterion)
+        println("MARKS: ")
+        println(marks)
+
 
     val hrLen = 40
 
-    def printDepsPerExp(exp: SchemeExp, deps: Set[Address], ctrl: Option[DefLoc]): Unit = 
+    def printDepsPerExp(exp: SchemeExp, deps: Set[Address], ctrl: Option[SchemeExp]): Unit = 
             println()
             println()
             println("+-+-+ " + exp + " +-+-+")
@@ -86,20 +99,19 @@ object ConcreteSlicer:
             println(ctrl)
             println()
 
-    def printDefs(defs: Map[Address, DefLoc]): Unit = 
+    def printDefs(defs: Map[Address, SchemeExp]): Unit = 
         println()
         print("DEFINITIONS: ")
         println()
         defs.map((adr, loc) =>
             print(adr.toString + " -> ")
             print("  ")
-            print(loc.loc)
-            loc.index.map(idx => print("-" + idx))
+            print(loc)
             println())
         println()
         println("_" * hrLen)
 
-    def printAss(ass: Map[Address, Set[DefLoc]]): Unit =   
+    def printAss(ass: Map[Address, Set[SchemeExp]]): Unit =   
             println() 
             print("ASSIGNMENTS: ")
             println()
@@ -107,8 +119,8 @@ object ConcreteSlicer:
                 print(adr.toString + " ->")
                     locs.map(loc => 
                         print("  ")
-                        print(loc.loc)
-                        loc.index.map(idx => print("-" + idx)))
+                        print(loc))
+                        // loc.index.map(idx => print("-" + idx)))
                     println())
             println("_" * hrLen)
 
