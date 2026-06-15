@@ -122,8 +122,8 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
             for 
                 (res, deps) <- evalWithIdentity(exp).deps
-                result <- unitWithDeps(res, deps)
                 ctrlDep <- getCtrl
+                result <- unitWithDeps(res, deps)
             yield 
                 finalDeps = finalDeps + (exp -> deps)
                 finalControlDeps = finalControlDeps + (exp -> ctrlDep)
@@ -155,7 +155,7 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
                 _ <- assign(id, env, rhs)
                 addr = env.lookup(id.name).get // get should not be a problem here because assign will throw an error if it was None
                 res <- unitWithDepsDef(lattice.void)(rhsDeps)(addr, setExp)
-            yield lattice.void
+            yield res
                 
 
         // IF EXPRESSIONS
