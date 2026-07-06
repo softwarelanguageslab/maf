@@ -244,7 +244,8 @@ trait BaseSchemeModFSemanticsM
                                 result = call(targetCmp)
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield updatedResult
-                        else baseEvalM.fail(ArityError(cll, prs.length, arity))
+                        else 
+                            baseEvalM.fail(ArityError(cll, prs.length, arity))
                     case (SchemeVarArgLambda(_, prs, vararg, _, _, _), _) =>
                         if prs.length <= arity then
                             val (fixedArgs, varArgs) = args.splitAt(prs.length)
@@ -262,7 +263,8 @@ trait BaseSchemeModFSemanticsM
                                 updatedResult <- afterCall(result, targetCmp, cll)
                             yield updatedResult
                         else baseEvalM.fail(VarArityError(cll, prs.length, arity))
-                    case _ => Monad[M].unit(lattice.bottom)
+                    case _ => 
+                        Monad[M].unit(lattice.bottom)
                 })
             )
         protected def allocateList(elms: List[(SchemeExp, Value)]): M[Value] = elms match

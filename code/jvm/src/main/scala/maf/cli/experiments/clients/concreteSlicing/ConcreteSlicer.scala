@@ -31,20 +31,19 @@ object ConcreteSlicer:
 
     // markExps returns a set of all expressions that impacted the slicing criterion
     def markExps(criterion: SchemeExp,
-                 program: SchemeExp,
                  ctrlDeps: Map[SchemeExp, Option[SchemeExp]], 
                  dataDeps: Map[SchemeExp, Set[Address]], 
                  assignments: Map[Address, Set[SchemeExp]],
                  definitions: Map[Address, SchemeExp]): Set[SchemeExp] =
         def markExpsHelper(worklist: Set[SchemeExp], // the exps to do
                            finished: Set[SchemeExp], // the exps that have been done
-                           marks: Set[SchemeExp] // the marked locations
+                           marks: Set[SchemeExp] // the marked expressions
                            ): Set[SchemeExp] = 
             if (worklist.isEmpty) then // nothing left to mark
                 marks 
             else if (finished.contains(worklist.head)) then // this has been marked already
                 markExpsHelper(worklist.tail, finished, marks)
-            else // new exp to mark
+            else // new exp to mark                
                 // include the control dependency if present
                 var depExps = ctrlDeps.getOrElse(worklist.head, None).toSet
                 // gather data dependencies
@@ -68,7 +67,7 @@ object ConcreteSlicer:
         val defs = analysis.finalDefs
         val deps = analysis.finalDeps
         val ctrls = analysis.finalControlDeps
-
+ 
         // print results of the analysis
         printAss(ass)
         printDefs(defs)
@@ -78,12 +77,13 @@ object ConcreteSlicer:
         // mark the expressions that influence the slicing criterion
         // TODO: dynamically pick the criterion
         val criterion: SchemeExp = program.allSubexpressions.last.asInstanceOf[SchemeExp]
-        val marks = markExps(criterion, program, ctrls, deps, ass, defs)
+        var marks = markExps(criterion, ctrls, deps, ass, defs)
+        println("_" * hrLen)
         println()
+        println("program: " + program)
         println("CRITERION: " + criterion)
         println("MARKS: ")
         println(marks)
-
 
     val hrLen = 40
 

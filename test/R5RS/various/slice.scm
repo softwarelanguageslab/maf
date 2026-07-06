@@ -1,8 +1,8 @@
 (define a 1)
 (define b 2)
-(define (f n)
-    (+ n b))
-(define x (f a))
+(define c (+ b 1))
+(define d 3)
+(define x (cons a b))
 x
 
 

@@ -11,7 +11,7 @@ import maf.language.scheme.SchemeLexicalAddresser
 
 object ConcreteSlicerMain: 
     val benchmarks: List[String] = 
-        List("test/R5RS/various/slice-set.scm")
+        List("test/R5RS/various/slice-app.scm")
 
     def run(mkAnalysis: SchemeExp => ConcreteSlicerDependencies, program: String) = 
         val programText = Reader.loadFile(program)

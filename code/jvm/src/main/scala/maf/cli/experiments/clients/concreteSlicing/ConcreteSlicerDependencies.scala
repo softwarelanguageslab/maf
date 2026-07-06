@@ -109,15 +109,21 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
     var finalControlDeps: Map[SchemeExp, Option[SchemeExp]] = Map.empty
 
     override def intraAnalysis(cmp: Component): ConcreteSlicerDependenciesIntra 
+    
+    var i = 0
     trait ConcreteSlicerDependenciesIntra extends IntraAnalysis with BigStepModFIntraT: 
         import controlEvalM._
 
         def analyzeWithTimeout(timeout: Timeout.T): Unit = // Timeout is just ignored here.
+            i = i + 1
+            println("==============")
+            println(s"[$i] ANALYSING $component")
+            println("==============")
             eval(fnBody).run(fnEnv, Map.empty, Map.empty, None).foreach((res, deps, ass, defs) => 
-                //writeResult(res)
+                writeResult(res)
                 finalDefs = defs
                 finalAss = ass
-                )   
+            )   
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
             for 
@@ -131,8 +137,8 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
 
         def evalWithIdentity(exp: SchemeExp): SlicerEvalM[Value] = 
             exp match
-                case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, exp)
-                case SchemeSetLex(id, _, vexp, idt)       => evalSet(id, vexp, exp)
+                //case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, exp)
+                //case SchemeSetLex(id, _, vexp, idt)       => evalSet(id, vexp, exp)
                 case _                                    => super.eval(exp)
         
         // LAMBDAS
@@ -199,7 +205,8 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
                                 for 
                                     (value, restDeps) <- evalLetStar(restBds, body).deps
                                     restDepsFiltered = restDeps.filter(d => d != boundAddr)
-                                    res <- unitWithDeps(value, currDeps ++ restDepsFiltered)
+                                    currDepsFiltered = currDeps.filter(d => d!= boundAddr)
+                                    res <- unitWithDeps(value, currDepsFiltered ++ restDepsFiltered)
                                 yield res
                             }
                         }
@@ -217,18 +224,17 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
                             yield bindingDep
                         }
                         (bodyRes, bodyDeps) <- evalSequence(body).deps 
-                        filteredDeps = (bodyDeps ++ bindingDeps.flatten).filter(d => ! boundAddrs.contains(d))
+                        filteredDeps = (bodyDeps ++ bindingDeps.flatten).filter(d => !boundAddrs.map(_._1).contains(d))
                         res <- unitWithDeps(bodyRes, filteredDeps)
                     yield res
                 }
             }
 
         // FUNCTION CALLS
-        protected def evalCall(
+        override protected def evalCall(
             exp: SchemeFuncall,
             fun: SchemeExp,
-            args: List[SchemeExp],
-            idt: Identity
+            args: List[SchemeExp]
           ): EvalM[Value] =
             for
                 (funVal, funDeps) <- eval(fun).deps
