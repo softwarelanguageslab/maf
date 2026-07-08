@@ -137,8 +137,8 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
 
         def evalWithIdentity(exp: SchemeExp): SlicerEvalM[Value] = 
             exp match
-                //case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, exp)
-                //case SchemeSetLex(id, _, vexp, idt)       => evalSet(id, vexp, exp)
+                case SchemeSet(id, vexp, idt)             => evalSet(id, vexp, exp)
+                case SchemeSetLex(id, _, vexp, idt)       => evalSet(id, vexp, exp)
                 case _                                    => super.eval(exp)
         
         // LAMBDAS

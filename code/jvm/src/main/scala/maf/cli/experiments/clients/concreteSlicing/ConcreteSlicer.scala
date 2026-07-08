@@ -18,7 +18,6 @@ import maf.modular.scheme.modf.TEvalM
 
 import maf.core._
 import maf.core.Monad.MonadSyntaxOps
-import maf.core.Position._
 import maf.language.scheme._
 import maf.modular.scheme.modf.SchemeModFComponent._
 import maf.util.benchmarks.Timeout
@@ -45,21 +44,33 @@ object ConcreteSlicer:
                 markExpsHelper(worklist.tail, finished, marks)
             else // new exp to mark                
                 // include the control dependency if present
-                var depExps = ctrlDeps.getOrElse(worklist.head, None).toSet
+                var depExps = marks ++ ctrlDeps.getOrElse(worklist.head, None).toSet
                 // gather data dependencies
                 val depAddrs = dataDeps.getOrElse(worklist.head, Set.empty)
                 // get the locations of the definitions and assignments of the data dependencies
                 val defs = depAddrs.flatMap(addr => definitions.get(addr))
                 val ass = depAddrs.flatMap(addr => assignments.getOrElse(addr, Set.empty))
                 depExps = depExps ++ defs ++ ass
+
+                // if we are keeping a lambda, slice the lambda itself
+                worklist.head match 
+                    case l:SchemeLambdaExp => 
+                        val funcCriterion = l.body.last.asInstanceOf[SchemeExp]
+                        println("slicing function with criterion: " + funcCriterion)
+                        val funMarks = markExps(funcCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        println("funMarks: " + funMarks)
+                        depExps = (depExps - worklist.head) ++ funMarks + funcCriterion
+                    case 
+                    case _ => depExps = depExps
+
                 // add these new locs to the worklist
                 val newWorklist = worklist.tail ++ depExps
                 // continue iterating
-                markExpsHelper(newWorklist, finished + worklist.head, marks ++ depExps)
+                markExpsHelper(newWorklist, finished + worklist.head, depExps)
 
         markExpsHelper(Set(criterion), Set.empty, Set.empty)
 
-    def runSlicer(program: SchemeExp): Unit = 
+    def runSlicer(program: SchemeExp) = 
         val analysis = ConcreteSlicerDependencies.createAnalysis(program)
         println(program)
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
@@ -84,6 +95,13 @@ object ConcreteSlicer:
         println("CRITERION: " + criterion)
         println("MARKS: ")
         println(marks)
+
+        marks.map(m => 
+            var startCol = m.idn.pos.col
+            if (m.toString.head.equals('(') && m.toString.length > 2) then {
+                startCol = m.idn.pos.col - 1
+            }
+            (Position(m.idn.pos.line, startCol), Position(m.idn.pos.line, startCol + m.toString.length)))
 
     val hrLen = 40
 

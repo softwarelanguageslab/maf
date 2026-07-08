@@ -17,8 +17,12 @@ object ConcreteSlicerMain:
         val programText = Reader.loadFile(program)
         val exp = SchemeParser.parseProgram(programText)
         val lexicaladdressedExp = SchemeLexicalAddresser.translateProgram(List(exp)).head
-        ConcreteSlicer.runSlicer(lexicaladdressedExp)
+        val res = ConcreteSlicer.runSlicer(lexicaladdressedExp)
+        println()
+        res.map(r => print(r.toString + ";"))
+        println()
 
     def main(args: Array[String]): Unit =
         MAFLogger.disable()
-        benchmarks.map(run(ConcreteSlicerDependencies.createAnalysis, _))
+        val prog = args(0)
+        run(ConcreteSlicerDependencies.createAnalysis, prog)

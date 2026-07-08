@@ -1,4 +1,4 @@
-(define a 1)
+(define a ())
 (define b 2)
 (define c (+ b 1))
 (define d 3)
@@ -6,4 +6,3 @@
 x
 
 
-    
