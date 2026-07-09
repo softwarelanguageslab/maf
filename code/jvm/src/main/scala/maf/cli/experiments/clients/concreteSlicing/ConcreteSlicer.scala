@@ -52,15 +52,45 @@ object ConcreteSlicer:
                 val ass = depAddrs.flatMap(addr => assignments.getOrElse(addr, Set.empty))
                 depExps = depExps ++ defs ++ ass
 
-                // if we are keeping a lambda, slice the lambda itself
                 worklist.head match 
                     case l:SchemeLambdaExp => 
+                        // if we are keeping a lambda, slice the lambda itself
                         val funcCriterion = l.body.last.asInstanceOf[SchemeExp]
-                        println("slicing function with criterion: " + funcCriterion)
                         val funMarks = markExps(funcCriterion, ctrlDeps, dataDeps, assignments, definitions)
-                        println("funMarks: " + funMarks)
                         depExps = (depExps - worklist.head) ++ funMarks + funcCriterion
-                    case 
+                    case SchemeIf(prd, csq, alt, _) =>
+                        // if we are keeping an if, keep the condition and the relevant branches
+                        var ifMarks: Set[SchemeExp] = Set.empty
+                        if(ctrlDeps.contains(csq)) then {
+                            val csqCriterion = csq//csq.allSubexpressions.last.asInstanceOf[SchemeExp]
+                            ifMarks = ifMarks ++ markExps(csqCriterion, ctrlDeps, dataDeps, assignments, definitions) + csqCriterion
+                        }
+                        if(ctrlDeps.contains(alt)) then {
+                            val altCriterion = alt//alt.allSubexpressions.last.asInstanceOf[SchemeExp]
+                            ifMarks = ifMarks ++ markExps(altCriterion, ctrlDeps, dataDeps, assignments, definitions) + altCriterion
+                        }
+                        depExps = (depExps - worklist.head) ++ (ifMarks + prd)
+                    case SchemeBegin(exps, _) =>
+                        // for a begin, keep only the last expression
+                        // if assignments are in the begin, this is kept because of assignments and definitions
+                        val beginCriterion = exps.last
+                        val lastMarks = markExps(beginCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        depExps = (depExps - worklist.head) ++ lastMarks + beginCriterion
+                    case SchemeSetLex(id, _, vexp, _) => 
+                        val setMarks = markExps(vexp, ctrlDeps, dataDeps, assignments, definitions)
+                        depExps = (depExps - worklist.head) ++ setMarks + vexp
+                    case SchemeLet(_, body, _) => 
+                        val letCriterion = body.last
+                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
+                    case SchemeLetStar(_, body, _) => 
+                        val letCriterion = body.last
+                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
+                    case SchemeLetrec(_, body, _) => 
+                        val letCriterion = body.last
+                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
                     case _ => depExps = depExps
 
                 // add these new locs to the worklist
