@@ -55,6 +55,7 @@ object TSlicerEvalM:
         def unitWithDef[X](x: X, addr: Address, loc: SchemeExp): SlicerEvalM[X] = unitWithDepsDef(x)(Set.empty)(addr, loc)
         def unitWithDepsDef[X](x: X)(deps: Set[Address])(addr: Address, loc: SchemeExp) = SlicerEvalM((_, ass, defs, _) =>
             val oldLocs = ass.getOrElse(addr, Set.empty)
+            println("adding assignment: " + addr + "->" + loc)
             Some(x, deps, ass + (addr -> (oldLocs + loc)), defs))
         def mzero[X]: SlicerEvalM[X] = SlicerEvalM((_, _, _, _) => None)
         implicit class MonadicOps[X](xs: Iterable[X]):
@@ -121,9 +122,10 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
             println("==============")
             eval(fnBody).run(fnEnv, Map.empty, Map.empty, None).foreach((res, deps, ass, defs) => 
                 writeResult(res)
-                finalDefs = defs
-                finalAss = ass
+                finalDefs = finalDefs ++ defs
+                finalAss = finalAss ++ ass
             )   
+            println("assignments: " + finalAss)
 
         override def eval(exp: SchemeExp): SlicerEvalM[Value] = 
             for 
@@ -190,8 +192,9 @@ trait ConcreteSlicerDependencies extends BigStepModFSemanticsT:
                 // only keep dependencies that are not defined by the let itself
                 filteredDeps = deps.filter(addr => !boundAddrs.map(_._1).contains(addr))
                 // the final dependencies also includes the dependencies of the bindings
+                filteredBdsDeps = bds.map(_._2).fold(Set.empty)((x, y) => x ++ y).filter(d => filteredDeps.contains(d))
                 // TODO: dependencies only of relevant bindings
-                res <- unitWithDeps(value, filteredDeps ++ bds.map(_._2).fold(Set.empty)((x, y) => x ++ y))
+                res <- unitWithDeps(value, filteredDeps ++ filteredBdsDeps)
             yield value
         
         override protected def evalLetStar(bindings: List[(Identifier, SchemeExp)], body: List[SchemeExp]): EvalM[Value] =

@@ -3,4 +3,5 @@
     (+ 1 2)
     n)
 (define a (f x))
-a
+(define b (f (begin x (+ 1 2))))
+b

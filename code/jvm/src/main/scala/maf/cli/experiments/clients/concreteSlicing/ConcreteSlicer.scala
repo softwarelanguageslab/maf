@@ -36,22 +36,24 @@ object ConcreteSlicer:
                  definitions: Map[Address, SchemeExp]): Set[SchemeExp] =
         def markExpsHelper(worklist: Set[SchemeExp], // the exps to do
                            finished: Set[SchemeExp], // the exps that have been done
+                           addrs: Set[Address], // the addresses that are already kept
                            marks: Set[SchemeExp] // the marked expressions
                            ): Set[SchemeExp] = 
             if (worklist.isEmpty) then // nothing left to mark
                 marks 
             else if (finished.contains(worklist.head)) then // this has been marked already
-                markExpsHelper(worklist.tail, finished, marks)
+                markExpsHelper(worklist.tail, finished, addrs, marks)
             else // new exp to mark                
                 // include the control dependency if present
-                var depExps = marks ++ ctrlDeps.getOrElse(worklist.head, None).toSet
+                var depExps = ctrlDeps.getOrElse(worklist.head, None).toSet
                 // gather data dependencies
                 val depAddrs = dataDeps.getOrElse(worklist.head, Set.empty)
-                // get the locations of the definitions and assignments of the data dependencies
+                // get the locations of the definitions and assignments of the data dependencies (if not already done)
                 val defs = depAddrs.flatMap(addr => definitions.get(addr))
                 val ass = depAddrs.flatMap(addr => assignments.getOrElse(addr, Set.empty))
                 depExps = depExps ++ defs ++ ass
 
+                // recursively slicing the subexpressions
                 worklist.head match 
                     case l:SchemeLambdaExp => 
                         // if we are keeping a lambda, slice the lambda itself
@@ -59,7 +61,7 @@ object ConcreteSlicer:
                         val funMarks = markExps(funcCriterion, ctrlDeps, dataDeps, assignments, definitions)
                         depExps = (depExps - worklist.head) ++ funMarks + funcCriterion
                     case SchemeIf(prd, csq, alt, _) =>
-                        // if we are keeping an if, keep the condition and the relevant branches
+                        // if we are keeping an if, keep the condition and slice the relevant branches
                         var ifMarks: Set[SchemeExp] = Set.empty
                         if(ctrlDeps.contains(csq)) then {
                             val csqCriterion = csq//csq.allSubexpressions.last.asInstanceOf[SchemeExp]
@@ -76,10 +78,16 @@ object ConcreteSlicer:
                         val beginCriterion = exps.last
                         val lastMarks = markExps(beginCriterion, ctrlDeps, dataDeps, assignments, definitions)
                         depExps = (depExps - worklist.head) ++ lastMarks + beginCriterion
-                    case SchemeSetLex(id, _, vexp, _) => 
-                        val setMarks = markExps(vexp, ctrlDeps, dataDeps, assignments, definitions)
-                        depExps = (depExps - worklist.head) ++ setMarks + vexp
+                    // case SchemeSetLex(id, _, vexp, _) => 
+                        // todo: do we really need this? 
+                        // commented out because it creates an infinite loop
+                    //     // the right hand side of a set! expressions should be sliced recursively
+                    //     // (because assignments/definitions saves the entire set! expression)
+                    //     val setMarks = markExps(vexp, ctrlDeps, dataDeps, assignments, definitions)
+                    //     depExps = (depExps - worklist.head) ++ setMarks + vexp
                     case SchemeLet(_, body, _) => 
+                        // for lets, the body should be sliced recursively
+                        // the bindings are already sliced recursively because they are saved in the assignments/definitions
                         val letCriterion = body.last
                         val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
                         depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
@@ -96,9 +104,9 @@ object ConcreteSlicer:
                 // add these new locs to the worklist
                 val newWorklist = worklist.tail ++ depExps
                 // continue iterating
-                markExpsHelper(newWorklist, finished + worklist.head, depExps)
+                markExpsHelper(newWorklist, finished + worklist.head, addrs ++ depAddrs, marks ++ depExps)
 
-        markExpsHelper(Set(criterion), Set.empty, Set.empty)
+        markExpsHelper(Set(criterion), Set.empty, Set.empty, Set.empty)
 
     def runSlicer(program: SchemeExp) = 
         val analysis = ConcreteSlicerDependencies.createAnalysis(program)
