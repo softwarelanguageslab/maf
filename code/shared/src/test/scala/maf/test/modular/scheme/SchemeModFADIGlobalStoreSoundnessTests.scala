@@ -8,21 +8,21 @@ import maf.modular.worklist._
 import maf.language.scheme.primitives.SchemePrelude
 import maf.core.Position
 
-trait SchemeModFADIGlobalStoreSoundnessTests extends SchemeSoundnessTests:
+trait SchemeModFConcreteDepsSoundnessTests extends SchemeSoundnessTests:
     override def parseProgram(txt: String, benchmark: String): SchemeExp =
         val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-class SchemeModFADIGlobalStoreSoundnessTestsInsensitive extends SchemeModFADIGlobalStoreSoundnessTests with VariousSequentialBenchmarks:
-    def name = "ADI (context-insensitive)"
+class SchemeModFConcreteDepsSoundnessTestsInsensitive extends SchemeModFConcreteDepsSoundnessTests with VariousSequentialBenchmarks:
+    def name = "Concrete Dependency Analysis (context-insensitive)"
     def analysis(prg: SchemeExp) =
-        new SchemeModFADIGlobalStore(prg)
+        new SchemeModFConcreteDeps(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
             with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFADIGlobalStoreAnalysisResults {
+            with SchemeModFConcreteDepsAnalysisResults {
         override def run(t: maf.util.benchmarks.Timeout.T) = 
            super.run(t)
            println(ctrlDeps) }
@@ -34,13 +34,13 @@ class SchemeModFADIGlobalStoreSoundnessTestsInsensitive extends SchemeModFADIGlo
           "test/R5RS/various/infinite-3.scm",
         ).contains(b)
 
-class SchemeModFLocalADIGlobalStoreSoundnessTestsInsensitive extends SchemeModFADIGlobalStoreSoundnessTests with VariousSequentialBenchmarks:
-    def name = "ADI (context-insensitive)"
+class SchemeModFConcreteDepsSoundnessTestsSensitive extends SchemeModFConcreteDepsSoundnessTests with VariousSequentialBenchmarks:
+    def name = "Concrete Dependency Analysis (context-sensitive)"
     def analysis(prg: SchemeExp) =
-        new SchemeModFADIGlobalStore(prg)
+        new SchemeModFConcreteDeps(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(2) //2-CFA
             with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFADIGlobalStoreAnalysisResults
+            with SchemeModFConcreteDepsAnalysisResults
     override def isSlow(b: Benchmark): Boolean = 
         true

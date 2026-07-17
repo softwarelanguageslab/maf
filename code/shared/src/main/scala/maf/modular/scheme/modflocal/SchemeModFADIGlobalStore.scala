@@ -17,7 +17,7 @@ import maf.util.Wrapper
 import maf.util.Wrapper.*
 import maf.core.Store.{CountingStore, given}
 
-abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
+abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -256,7 +256,7 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
 // track results (for precision measurements, soundness tests, ...)
 //
 
-trait SchemeModFADIGlobalStoreAnalysisResults extends SchemeModFADIGlobalStore with AnalysisResults[SchemeExp]:
+trait SchemeModFConcreteDepsAnalysisResults extends SchemeModFConcreteDeps with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
     var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
@@ -273,8 +273,8 @@ trait SchemeModFADIGlobalStoreAnalysisResults extends SchemeModFADIGlobalStore w
 // a standard instance
 //
 
-class SchemeModFADIGlobalStoreAnalysis(prg: SchemeExp, k: Int)
-    extends SchemeModFADIGlobalStore(prg)
+class SchemeModFConcreteDepsAnalysis(prg: SchemeExp, k: Int)
+    extends SchemeModFConcreteDeps(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
     with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp] {
