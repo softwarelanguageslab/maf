@@ -22,7 +22,10 @@ class SchemeModFADIGlobalStoreSoundnessTestsInsensitive extends SchemeModFADIGlo
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
             with FIFOWorklistAlgorithm[SchemeExp]
-            with SchemeModFADIGlobalStoreAnalysisResults
+            with SchemeModFADIGlobalStoreAnalysisResults {
+        override def run(t: maf.util.benchmarks.Timeout.T) = 
+           super.run(t)
+           println(ctrlDeps) }
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these work fine in the analysis, but time out in the concrete interpreter for obvious reasons
@@ -32,7 +35,7 @@ class SchemeModFADIGlobalStoreSoundnessTestsInsensitive extends SchemeModFADIGlo
         ).contains(b)
 
 class SchemeModFLocalADIGlobalStoreSoundnessTestsInsensitive extends SchemeModFADIGlobalStoreSoundnessTests with VariousSequentialBenchmarks:
-    def name = "ADI (context-sensitive)"
+    def name = "ADI (context-insensitive)"
     def analysis(prg: SchemeExp) =
         new SchemeModFADIGlobalStore(prg)
             with SchemeConstantPropagationDomain

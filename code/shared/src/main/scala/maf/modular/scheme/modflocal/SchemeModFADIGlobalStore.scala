@@ -48,6 +48,8 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
         super.init()
         globalStore = initialSto
 
+        ctrlDeps = initialCtrlDeps
+
     //
     // COMPONENTS
     //
@@ -56,17 +58,31 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
         val exp: Exp
         val env: Env
         val ctx: Ctx
+        val ctrl: Ctrl
     case object MainComponent extends Component:
         val exp = initialExp
         val env = initialEnv
         val ctx = initialCtx
+        val ctrl = initialCtrl
         override def toString = "main"
-    case class CallComponent(lam: Lam, env: Env, ctx: Ctx) extends Component:
+    case class CallComponent(lam: Lam, env: Env, ctx: Ctx, ctrl: Ctrl) extends Component:
         val exp = SchemeBody(lam.body)
         override def toString = s"${lam.lambdaName}@${lam.idn} [$ctx]"
 
     def initialComponent: Cmp = MainComponent
     def expr(cmp: Cmp): Exp = cmp.exp
+   
+    //
+    // SLICING DEPENDENCIES
+    //
+
+    type Ctrl = Option[SchemeExp]
+    type CtrlDeps = Map[SchemeExp, Ctrl] // the slicing control dependency
+    case class CtrlDependency(exp: SchemeExp) extends Dependency // for the MAF dependency tracking
+    
+    lazy val initialCtrlDeps: CtrlDeps = Map.empty
+    lazy val initialCtrl: Ctrl = None
+    var ctrlDeps: CtrlDeps = _ 
 
     //
     // RESULTS
@@ -89,30 +105,54 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
 
     import analysisM_._
 
+    override def eval(exp: Exp): A[Val] = 
+        for 
+            ctrl <- getCtrl
+            _ <- addCtrlDep(exp, ctrl)       
+            res <- super.eval(exp)
+        yield res
+
+    override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): A[Val] = 
+        for
+            cnd <- nontailKeepEnv { eval(prd) }
+            res <- withCtrl(_ => Some(prd)){ cond(cnd, eval(csq), eval(alt)) }
+        yield res
+ 
     //
     // ANALYSISM MONAD
     //
 
-    type A[X] = (anl: Anl, env: Env, ctx: Ctx) => Option[X]
+    type A[X] = (anl: Anl, env: Env, ctx: Ctx, ctrl: Ctrl) => Option[X]
+
+    // CONTROL DEPENDENCY STUFF
+    private def getCtrl: A[Ctrl]= 
+            (_, _, _, ctrl) => Some(ctrl) 
+
+    private def withCtrl[X](f: Ctrl => Ctrl)(blk: A[X]): A[X] = 
+        (anl, env, ctx, ctrl) => blk(anl, env, ctx, f(ctrl))
+
+    private def addCtrlDep(exp: SchemeExp, ctrl: Ctrl): A[Unit] =
+            (anl, env, ctx, ctrl) => anl.addCtrlDep(exp, ctrl)
+
 
     protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
-            (_, _, _) => Some(x)
+            (_, _, _, _) => Some(x)
         def map[X, Y](m: A[X])(f: X => Y) =
-            (anl, env, ctx) => m(anl, env, ctx).map(f)
+            (anl, env, ctx, ctrl) => m(anl, env, ctx, ctrl).map(f)
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-            (anl, env, ctx) =>
+            (anl, env, ctx, ctrl) =>
                 for
-                    x0 <- m(anl, env, ctx)
-                    x1 <- f(x0)(anl, env, ctx)
+                    x0 <- m(anl, env, ctx, ctrl)
+                    x1 <- f(x0)(anl, env, ctx, ctrl)
                 yield x1
         // MONADJOIN
         def mbottom[X] =
-            (_, _, _) => None
+            (_, _, _, _) => None
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
-            (anl, env, ctx) => 
-                (x(anl, env, ctx), y(anl, env, ctx)) match
+            (anl, env, ctx, ctrl) => 
+                (x(anl, env, ctx, ctrl), y(anl, env, ctx, ctrl)) match
                     case (res1, None) => res1
                     case (None, res2) => res2
                     case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
@@ -121,26 +161,26 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def extendSto(adr: Adr, vlu: Val) = 
-            (anl, _, _) => anl.writeAddr(adr, vlu) 
+            (anl, _, _, _) => anl.writeAddr(adr, vlu) 
         def updateSto(adr: Adr, vlu: Val) = 
-            (anl, _, _) => anl.writeAddr(adr, vlu)
+            (anl, _, _, _) => anl.writeAddr(adr, vlu)
         def lookupSto(adr: Adr) =
-            (anl, _, _) => anl.lookupAddr(adr)
+            (anl, _, _, _) => anl.lookupAddr(adr)
         def addrEq: A[MaybeEq[Adr]] = // NOTE: I don't think addrEq is actually used?
-            (anl, _, _) => Some(anl.globalStore.addrEq)
+            (anl, _, _, _) => Some(anl.globalStore.addrEq)
         // CTX STUFF
         def getCtx =
-            (_, _, ctx) => Some(ctx)
+            (_, _, ctx, _) => Some(ctx)
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-            (anl, env, ctx) => blk(anl, env, f(ctx))
+            (anl, env, ctx, ctrl) => blk(anl, env, f(ctx), ctrl)
         // ENV STUFF
         def getEnv =
-            (_, env, _) => Some(env)
+            (_, env, _, _) => Some(env)
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-            (anl, env, ctx) => blk(anl, f(env), ctx)
+            (anl, env, ctx, ctrl) => blk(anl, f(env), ctx, ctrl)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, ctx) => anl.call(lam, env, ctx)
+            (anl, env, ctx, ctrl) => anl.call(lam, env, ctx, ctrl)
 
     //
     // THE INTRA-ANALYSIS
@@ -153,12 +193,19 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
         // local state
         var results = inter.results
         var globalStore = inter.globalStore
+        var ctrlDeps = inter.ctrlDeps
 
-        def call(lam: Lam, env: Env, ctx: Ctx): Option[Val] =
-            val cmp = CallComponent(lam, env, ctx)
+
+        def call(lam: Lam, env: Env, ctx: Ctx, ctrl: Ctrl): Option[Val] =
+            val cmp = CallComponent(lam, env, ctx, ctrl)
             spawn(cmp)
             register(ResultDependency(cmp))
             results.get(cmp)
+
+        def addCtrlDep(exp: SchemeExp, ctrl: Ctrl): Option[Unit] =
+            ctrlDeps += exp -> ctrl 
+            trigger(CtrlDependency(exp))
+            Some(())
 
         def writeAddr(adr: Adr, vlu: Val): Option[Unit] =
             globalStore.extendOption(adr, vlu) match
@@ -174,7 +221,7 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
             globalStore.get(adr)
             
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val rgc = eval(cmp.exp)(this, cmp.env, cmp.ctx)
+            val rgc = eval(cmp.exp)(this, cmp.env, cmp.ctx, cmp.ctrl)
             val old = results.get(cmp)
             if rgc != old then
                 intra.results += cmp -> rgc.get
@@ -193,6 +240,13 @@ abstract class SchemeModFADIGlobalStore(prg: SchemeExp) extends ModAnalysis[Sche
                 val cur = intra.globalStore(adr)
                 if old != cur then
                     inter.writeAddr(adr, cur)
+                    true
+                else false 
+            case CtrlDependency(exp) =>
+                val old = inter.ctrlDeps.getOrElse(exp, None)
+                val cur = intra.ctrlDeps(exp)
+                if old != cur then
+                    inter.ctrlDeps += exp -> cur
                     true
                 else false 
             case _ => super.doWrite(dep)
@@ -223,7 +277,7 @@ class SchemeModFADIGlobalStoreAnalysis(prg: SchemeExp, k: Int)
     extends SchemeModFADIGlobalStore(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp]
-        //override def run(t: maf.util.benchmarks.Timeout.T) = 
-        //    super.run(t)
-        //    println(results(MainComponent))
+    with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp] {
+        override def run(t: maf.util.benchmarks.Timeout.T) = 
+           super.run(t)
+           println(ctrlDeps) }
