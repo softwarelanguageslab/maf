@@ -13,14 +13,14 @@ trait AAMAnalysisResults extends AAMScheme with AnalysisResults[SchemeExp]:
 
     sealed trait InstrumentedStore[S] extends Store[S]
     given instrumented[S](using base: Store[S]): InstrumentedStore[S] with
-        export base.{extend => _, update => _, _}
+        export base.{extendOption => _, update => _, _}
         extension (s: S)
-            def extend(adr: Adr, vlu: Val) = 
+            def extendOption(adr: Adr, vlu: Val) = 
                 adr match
                     case _: VAdr | _: PAdr =>
                         resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
                     case _ => ()
-                base.extend(s)(adr, vlu)
+                base.extendOption(s)(adr, vlu)
             override def update(adr: Adr, vlu: Val) =
                 adr match
                     case _: VAdr | _: PAdr=>

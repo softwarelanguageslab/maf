@@ -14,15 +14,17 @@ implicit class MapOps[K, V](m: Map[K, V]):
 // Store interface
 //
 
-trait Store[S, A, V]:
+trait Store[S, A, V: Lattice]:
     def empty: S
     def from(b: Iterable[(A,V)]): S = empty.extend(b)
     extension (s: S)
-        def lookup(a: A): V
+        def get(a: A): Option[V]
+        def lookup(a: A): V = get(a).getOrElse(Lattice[V].bottom)
         final def apply(a: A): V = lookup(a)    // for convenience
-        def extend(a: A, v: V): S
+        def extend(a: A, v: V): S = extendOption(a, v).getOrElse(s)
         def extend(b: Iterable[(A, V)]): S =    // for convenience
             b.foldLeft(s) { case (acc, (a, v)) => acc.extend(a, v) }
+        def extendOption(adr: A, vlu: V): Option[S]
         // by default, update is the same as extend
         def update(a: A, v: V): S = extend(a, v)
         // by default, address comparison isn't that precise in the abstract ...
@@ -41,11 +43,15 @@ object Store:
     given simpleInstance[A, V: Lattice]: Store[SimpleStore[A, V], A, V] with
         def empty = Map.empty
         extension (m: SimpleStore[A, V])
-            def lookup(a: A) = m.getOrElse(a, Lattice[V].bottom)
-            def extend(a: A, v: V) = m.adjustAt(a) {
-                case None       => v
-                case Some(oldV) => Lattice[V].join(oldV, v)
-            }
+            def get(a: A) = m.get(a)
+            def extendOption(adr: A, vlu: V) =
+                m.get(adr) match
+                    case None => Some(m + (adr -> vlu))
+                    case Some(oldV) =>
+                        val updV = Lattice[V].join(oldV, vlu)
+                        if updV == oldV 
+                        then None 
+                        else Some(m + (adr -> updV))
             def copyTo(a: A, t: SimpleStore[A, V]) = m.get(a) match
                 case None       => t
                 case Some(v)    => t + (a -> v)
@@ -59,11 +65,15 @@ object Store:
             private def getValue(a: A) = s.get(a).map(_._1)
             private def getCount(a: A) = s.get(a).map(_._2)
             private def freshCount(a: A) = if shouldCount(a) then CountOne else CountInf 
-            def lookup(a: A) = getValue(a).getOrElse(Lattice[V].bottom)
-            def extend(a: A, v: V) = s.adjustAt(a) {
-                case None               => (v, freshCount(a))
-                case Some((oldV, oldC)) => (Lattice[V].join(oldV, v), oldC.inc)
-            }
+            def get(a: A) = getValue(a)
+            def extendOption(a: A, v: V) =
+                s.get(a) match
+                    case None => Some(s + (a -> (v, freshCount(a))))
+                    case Some(old @ (oldV, oldC)) =>
+                        val upd = (Lattice[V].join(oldV, v), oldC + CountOne)
+                        if upd == old 
+                        then None 
+                        else Some(s + (a -> upd))
             // update is now more precise due to possible strong updates
             override def update(a: A, v: V): CountingStore[A, V] = s.adjustAt(a) {
                 case Some((_, CountOne))    => (v, CountOne)                        // strong update
