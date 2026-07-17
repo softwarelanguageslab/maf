@@ -25,6 +25,8 @@ import scala.concurrent.duration.*
 import maf.language.scheme.LexicalRef
 import maf.modular.scheme.modflocal.SchemeSemantics
 
+import maf.modular.scheme.modflocal._
+
      
 object ConcreteSlicer:
 
@@ -109,13 +111,23 @@ object ConcreteSlicer:
         markExpsHelper(Set(criterion), Set.empty, Set.empty, Set.empty)
 
     def runSlicer(program: SchemeExp) = 
-        val analysis = ConcreteSlicerDependencies.createAnalysis(program)
-        println(program)
+        //val analysis = ConcreteSlicerDependencies.createAnalysis(program)
+        // println(program)
+        // analysis.analyzeWithTimeout(Timeout.start(30.seconds))
+        // val ass = analysis.finalAss
+        // val defs = analysis.finalDefs
+        // val deps = analysis.finalDeps
+        // val ctrls = analysis.finalControlDeps
+
+        def analysis = new SchemeModFConcreteDeps(program)
+            with SchemeConstantPropagationDomain
+            with SchemeModFLocalNoSensitivity
+            with FIFOWorklistAlgorithm[SchemeExp]
         analysis.analyzeWithTimeout(Timeout.start(30.seconds))
-        val ass = analysis.finalAss
-        val defs = analysis.finalDefs
-        val deps = analysis.finalDeps
-        val ctrls = analysis.finalControlDeps
+        val ctrls = analysis.ctrlDeps 
+        val ass: Map[Address, Set[SchemeExp]] = Map.empty
+        val defs: Map[Address, SchemeExp] = Map.empty
+        val deps: Map[SchemeExp, Set[Address]] = Map.empty
  
         // print results of the analysis
         printAss(ass)
@@ -125,21 +137,21 @@ object ConcreteSlicer:
 
         // mark the expressions that influence the slicing criterion
         // TODO: dynamically pick the criterion
-        val criterion: SchemeExp = program.allSubexpressions.last.asInstanceOf[SchemeExp]
-        var marks = markExps(criterion, ctrls, deps, ass, defs)
-        println("_" * hrLen)
-        println()
-        println("program: " + program)
-        println("CRITERION: " + criterion)
-        println("MARKS: ")
-        println(marks)
+        // val criterion: SchemeExp = program.allSubexpressions.last.asInstanceOf[SchemeExp]
+        // var marks = markExps(criterion, ctrls, deps, ass, defs)
+        // println("_" * hrLen)
+        // println()
+        // println("program: " + program)
+        // println("CRITERION: " + criterion)
+        // println("MARKS: ")
+        // println(marks)
 
-        marks.map(m => 
-            var startCol = m.idn.pos.col
-            if (m.toString.head.equals('(') && m.toString.length > 2) then {
-                startCol = m.idn.pos.col - 1
-            }
-            (Position(m.idn.pos.line, startCol), Position(m.idn.pos.line, startCol + m.toString.length)))
+        // marks.map(m => 
+        //     var startCol = m.idn.pos.col
+        //     if (m.toString.head.equals('(') && m.toString.length > 2) then {
+        //         startCol = m.idn.pos.col - 1
+        //     }
+        //     (Position(m.idn.pos.line, startCol), Position(m.idn.pos.line, startCol + m.toString.length)))
 
     val hrLen = 40
 
@@ -179,7 +191,6 @@ object ConcreteSlicer:
                         // loc.index.map(idx => print("-" + idx)))
                     println())
             println("_" * hrLen)
-
 
             
 
