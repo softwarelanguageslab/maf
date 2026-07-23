@@ -50,6 +50,8 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
 
         ctrlDeps = initialCtrlDeps
         dataDeps = initialDataDeps
+        ass = initialAss
+        defs = initialDefs
 
     //
     // COMPONENTS
@@ -91,6 +93,18 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
 
     lazy val initialDataDeps: DataDeps = Map.empty 
     var dataDeps: DataDeps = _ 
+
+    // SLICING DEFINITIONS AND ASSIGNMENTS
+    type Ass = Map[Address, Set[SchemeExp]] 
+    case class AssDependency(adr: Address) extends Dependency 
+    lazy val initialAss: Ass = Map.empty 
+    var ass: Ass = _
+
+    type Defs = Map[Address, SchemeExp] 
+    case class DefsDependency(adr: Address) extends Dependency 
+    lazy val initialDefs: Defs = Map.empty 
+    var defs: Defs = _
+
 
     //
     // RESULTS
@@ -246,6 +260,8 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
         var globalStore = inter.globalStore
         var ctrlDeps = inter.ctrlDeps
         var dataDeps = inter.dataDeps
+        var ass = inter.ass 
+        var defs = inter.defs
 
 
         def call(lam: Lam, env: Env, ctx: Ctx, ctrl: Ctrl): Option[(Val, Set[DataDep])] =
@@ -266,6 +282,16 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
             dataDeps += (exp -> (dataDeps.getOrElse(exp, Set.empty) ++ deps))
             // println("added deps: " + exp + " -> " + deps)
             trigger(DataDependency(exp))
+            Some((), Set.empty)
+
+        def addAss(adr: Address, exp: SchemeExp): Option[(Unit, Set[DataDep])] = 
+            ass += adr -> (ass.getOrElse(adr, Set.empty) + exp) 
+            trigger(AssDependency(adr))
+            Some((), Set.empty)
+
+        def addDef(adr: Address, exp: SchemeExp): Option[(Unit, Set[DataDep])] = 
+            defs += adr -> exp
+            trigger(DefsDependency(adr))
             Some((), Set.empty)
 
         def writeAddr(adr: Adr, vlu: Val): Option[(Unit, Set[DataDep])] =
@@ -320,6 +346,20 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
                     inter.dataDeps += exp -> cur
                     true
                 else false 
+            case AssDependency(adr) => 
+                val old = inter.ass.getOrElse(adr, None)
+                val cur = intra.ass(adr) 
+                if old != cur then 
+                    inter.ass += adr -> cur
+                    true 
+                else false
+            case DefsDependency(adr) => 
+                val old = inter.defs.getOrElse(adr, None)
+                val cur = intra.defs(adr) 
+                if old != cur then 
+                    inter.defs += adr -> cur
+                    true 
+                else false
             case _ => super.doWrite(dep)
 
 
