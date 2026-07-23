@@ -119,20 +119,18 @@ object ConcreteSlicer:
         // val deps = analysis.finalDeps
         // val ctrls = analysis.finalControlDeps
 
-        def analysis = new SchemeModFConcreteDeps(program)
-            with SchemeConstantPropagationDomain
-            with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp]
-        analysis.analyzeWithTimeout(Timeout.start(30.seconds))
+        val analysis = new SchemeModFConcreteDepsAnalysis(program, 0)
+        analysis.analyze()
+
         val ctrls = analysis.ctrlDeps 
         val ass: Map[Address, Set[SchemeExp]] = Map.empty
         val defs: Map[Address, SchemeExp] = Map.empty
-        val deps: Map[SchemeExp, Set[Address]] = Map.empty
+        val deps = analysis.dataDeps
  
-        // print results of the analysis
-        printAss(ass)
-        printDefs(defs)
-        println()
+        // // print results of the analysis
+        // printAss(ass)
+        // printDefs(defs)
+        // println()
         deps.map((e, d) => printDepsPerExp(e, d, ctrls.getOrElse(e, None)))
 
         // mark the expressions that influence the slicing criterion

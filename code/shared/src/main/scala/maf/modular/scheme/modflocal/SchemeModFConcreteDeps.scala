@@ -49,6 +49,7 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
         globalStore = initialSto
 
         ctrlDeps = initialCtrlDeps
+        dataDeps = initialDataDeps
 
     //
     // COMPONENTS
@@ -84,6 +85,13 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
     lazy val initialCtrl: Ctrl = None
     var ctrlDeps: CtrlDeps = _ 
 
+    type DataDep = Address
+    type DataDeps = Map[SchemeExp, Set[DataDep]]
+    case class DataDependency(exp: SchemeExp) extends Dependency 
+
+    lazy val initialDataDeps: DataDeps = Map.empty 
+    var dataDeps: DataDeps = _ 
+
     //
     // RESULTS
     //
@@ -109,24 +117,56 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
         for 
             ctrl <- getCtrl
             _ <- addCtrlDep(exp, ctrl)       
-            res <- super.eval(exp)
+            (resVal, deps) <- deps(super.eval(exp)) 
+            _ <- saveDeps(exp, deps)
+            res <- unitWithDeps(deps)(resVal)
         yield res
+
+    override def evalAll(lst: List[SchemeExp]): A[List[Val]] = 
+        lst match
+            case Nil         => unit(Nil)
+            case exp :: Nil  => eval(exp).map(_ :: Nil)
+            case exp :: exps =>
+                for
+                    (v, vDeps)  <- nontailKeepEnv    { deps(eval(exp)) }
+                    (vs, vsDeps) <- nontailKeepVal(v) { deps(evalAll(exps)) }
+                    res <- unitWithDeps(vDeps ++ vsDeps)(v::vs)
+                yield res
 
     override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): A[Val] = 
         for
-            cnd <- nontailKeepEnv { eval(prd) }
-            res <- withCtrl(_ => Some(prd)){ cond(cnd, eval(csq), eval(alt)) }
+            (cnd, cndDeps) <- nontailKeepEnv { deps(eval(prd)) }
+            (resVal, resDeps) <- deps(withCtrl(_ => Some(prd)){ cond(cnd, eval(csq), eval(alt)) })
+            res <- unitWithDeps(cndDeps ++ resDeps)(resVal)
         yield res
+
+    override protected def evalCall(app: App): A[Val] =
+        for
+            (fun, funDeps) <- nontailKeepEnv { deps(eval(app.f)) }
+            (ags, agsDeps) <- nontailKeepVal(fun) { deps(evalAll(app.args)) }
+            (resVal, resDeps) <- deps(applyFun(app, fun, ags))
+            res <- unitWithDeps(funDeps ++ agsDeps ++ resDeps)(resVal)
+        yield res
+
  
     //
     // ANALYSISM MONAD
     //
 
-    type A[X] = (anl: Anl, env: Env, ctx: Ctx, ctrl: Ctrl) => Option[X]
+    type A[X] = (anl: Anl, env: Env, ctx: Ctx, ctrl: Ctrl) => Option[(X, Set[DataDep])]
+
+    extension [X](m: A[X])
+        def withFilter(p: X => Boolean): A[X] = 
+            (anl, env, ctx, ctrl) => 
+                m(anl, env, ctx, ctrl) match
+                    case None => None 
+                    case Some(res, deps) => 
+                        if p(res) then Some(res, deps)
+                        else None
 
     // CONTROL DEPENDENCY STUFF
-    private def getCtrl: A[Ctrl]= 
-            (_, _, _, ctrl) => Some(ctrl) 
+    private def getCtrl: A[Ctrl] = 
+            (_, _, _, ctrl) => Some((ctrl, Set.empty)) 
 
     private def withCtrl[X](f: Ctrl => Ctrl)(blk: A[X]): A[X] = 
         (anl, env, ctx, ctrl) => blk(anl, env, ctx, f(ctrl))
@@ -134,19 +174,30 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
     private def addCtrlDep(exp: SchemeExp, ctrl: Ctrl): A[Unit] =
             (anl, env, ctx, ctrl) => anl.addCtrlDep(exp, ctrl)
 
+    // DATA DEPENDENCY STUFF
+    private def deps[X](blk: A[X]): A[(X, Set[DataDep])] = 
+        (anl, env, ctx, ctrl) => blk(anl, env, ctx, ctrl).map((x, deps) => ((x, deps), deps))
+
+    private def saveDeps[X](exp: SchemeExp, deps: Set[DataDep]): A[Unit] = 
+        (anl, env, ctx, ctrl) => anl.addDataDeps(exp, deps)
+
+    private def unitWithDeps[X](deps: Set[DataDep])(x: X): A[X] =  
+        (_, _, _, _) => Some((x, deps))
+
 
     protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
-            (_, _, _, _) => Some(x)
+            (_, _, _, _) => Some((x, Set.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
-            (anl, env, ctx, ctrl) => m(anl, env, ctx, ctrl).map(f)
+            (anl, env, ctx, ctrl) => m(anl, env, ctx, ctrl).map((res, deps) => (f(res), deps))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
             (anl, env, ctx, ctrl) =>
                 for
-                    x0 <- m(anl, env, ctx, ctrl)
-                    x1 <- f(x0)(anl, env, ctx, ctrl)
-                yield x1
+                    (x0, deps0) <- m(anl, env, ctx, ctrl)
+                    (x1, deps1) <- f(x0)(anl, env, ctx, ctrl)
+                yield (x1, deps1)
+                
         // MONADJOIN
         def mbottom[X] =
             (_, _, _, _) => None
@@ -155,7 +206,7 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
                 (x(anl, env, ctx, ctrl), y(anl, env, ctx, ctrl)) match
                     case (res1, None) => res1
                     case (None, res2) => res2
-                    case (Some(res1), Some(res2)) => Some(Lattice[X].join(res1, res2))
+                    case (Some((res1, deps1)), Some((res2, deps2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2))
         // MONADERROR
         def fail[X](err: Error) =
             mbottom // we are not interested in errors here (at least, not yet ...)
@@ -167,15 +218,15 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
         def lookupSto(adr: Adr) =
             (anl, _, _, _) => anl.lookupAddr(adr)
         def addrEq: A[MaybeEq[Adr]] = // NOTE: I don't think addrEq is actually used?
-            (anl, _, _, _) => Some(anl.globalStore.addrEq)
+            (anl, _, _, _) => Some((anl.globalStore.addrEq, Set.empty))
         // CTX STUFF
         def getCtx =
-            (_, _, ctx, _) => Some(ctx)
+            (_, _, ctx, _) => Some((ctx, Set.empty))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
             (anl, env, ctx, ctrl) => blk(anl, env, f(ctx), ctrl)
         // ENV STUFF
         def getEnv =
-            (_, env, _, _) => Some(env)
+            (_, env, _, _) => Some((env, Set.empty))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             (anl, env, ctx, ctrl) => blk(anl, f(env), ctx, ctrl)
         // CALL STUFF
@@ -194,34 +245,47 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
         var results = inter.results
         var globalStore = inter.globalStore
         var ctrlDeps = inter.ctrlDeps
+        var dataDeps = inter.dataDeps
 
 
-        def call(lam: Lam, env: Env, ctx: Ctx, ctrl: Ctrl): Option[Val] =
+        def call(lam: Lam, env: Env, ctx: Ctx, ctrl: Ctrl): Option[(Val, Set[DataDep])] =
             val cmp = CallComponent(lam, env, ctx, ctrl)
             spawn(cmp)
             register(ResultDependency(cmp))
-            results.get(cmp)
+            for
+                res <- results.get(cmp)
+                deps = dataDeps(lam)
+            yield (res, deps)
 
-        def addCtrlDep(exp: SchemeExp, ctrl: Ctrl): Option[Unit] =
+        def addCtrlDep(exp: SchemeExp, ctrl: Ctrl): Option[(Unit, Set[DataDep])] =
             ctrlDeps += exp -> ctrl 
             trigger(CtrlDependency(exp))
-            Some(())
+            Some((), Set.empty)
 
-        def writeAddr(adr: Adr, vlu: Val): Option[Unit] =
+        def addDataDeps(exp: SchemeExp, deps: Set[DataDep]): Option[(Unit, Set[DataDep])] =
+            dataDeps += (exp -> (dataDeps.getOrElse(exp, Set.empty) ++ deps))
+            // println("added deps: " + exp + " -> " + deps)
+            trigger(DataDependency(exp))
+            Some((), Set.empty)
+
+        def writeAddr(adr: Adr, vlu: Val): Option[(Unit, Set[DataDep])] =
             globalStore.extendOption(adr, vlu) match
                 case None => 
-                    Some(()) // nothing to do ...
+                    Some((), Set.empty) // nothing to do ...
                 case Some(upd) =>
                     globalStore = upd 
                     trigger(AddrDependency(adr))
-                    Some(())
+                    Some((), Set.empty)
 
-        def lookupAddr(adr: Adr): Option[Val] =
+        def lookupAddr(adr: Adr): Option[(Val, Set[DataDep])] =
             register(AddrDependency(adr))
-            globalStore.get(adr)
+            for
+                v <- globalStore.get(adr)
+                deps = Set(adr)
+            yield (v, deps)
             
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val rgc = eval(cmp.exp)(this, cmp.env, cmp.ctx, cmp.ctrl)
+            val rgc = eval(cmp.exp)(this, cmp.env, cmp.ctx, cmp.ctrl).map(_._1)
             val old = results.get(cmp)
             if rgc != old then
                 intra.results += cmp -> rgc.get
@@ -247,6 +311,13 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
                 val cur = intra.ctrlDeps(exp)
                 if old != cur then
                     inter.ctrlDeps += exp -> cur
+                    true
+                else false 
+            case DataDependency(exp) =>
+                val old = inter.dataDeps.getOrElse(exp, None)
+                val cur = intra.dataDeps(exp)
+                if old != cur then
+                    inter.dataDeps += exp -> cur
                     true
                 else false 
             case _ => super.doWrite(dep)
@@ -277,7 +348,7 @@ class SchemeModFConcreteDepsAnalysis(prg: SchemeExp, k: Int)
     extends SchemeModFConcreteDeps(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.modular.worklist.FIFOWorklistAlgorithm[SchemeExp] {
-        override def run(t: maf.util.benchmarks.Timeout.T) = 
-           super.run(t)
-           println(ctrlDeps) }
+    with maf.modular.worklist.RandomWorklistAlgorithm[SchemeExp]:
+        // override def run(t: maf.util.benchmarks.Timeout.T) = 
+            //println(ctrlDeps)
+            //println("data: " + dataDeps)
