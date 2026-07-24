@@ -35,7 +35,8 @@ object ConcreteSlicer:
                  ctrlDeps: Map[SchemeExp, Option[SchemeExp]], 
                  dataDeps: Map[SchemeExp, Set[Address]], 
                  assignments: Map[Address, Set[SchemeExp]],
-                 definitions: Map[Address, SchemeExp]): Set[SchemeExp] =
+                 definitions: Map[Address, SchemeExp],
+                 fin: Set[SchemeExp]): Set[SchemeExp] =
         def markExpsHelper(worklist: Set[SchemeExp], // the exps to do
                            finished: Set[SchemeExp], // the exps that have been done
                            addrs: Set[Address], // the addresses that are already kept
@@ -60,25 +61,25 @@ object ConcreteSlicer:
                     case l:SchemeLambdaExp => 
                         // if we are keeping a lambda, slice the lambda itself
                         val funcCriterion = l.body.last.asInstanceOf[SchemeExp]
-                        val funMarks = markExps(funcCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        val funMarks = markExps(funcCriterion, ctrlDeps, dataDeps, assignments, definitions, finished)
                         depExps = (depExps - worklist.head) ++ funMarks + funcCriterion
                     case SchemeIf(prd, csq, alt, _) =>
                         // if we are keeping an if, keep the condition and slice the relevant branches
                         var ifMarks: Set[SchemeExp] = Set.empty
                         if(ctrlDeps.contains(csq)) then {
                             val csqCriterion = csq//csq.allSubexpressions.last.asInstanceOf[SchemeExp]
-                            ifMarks = ifMarks ++ markExps(csqCriterion, ctrlDeps, dataDeps, assignments, definitions) + csqCriterion
+                            ifMarks = ifMarks ++ markExps(csqCriterion, ctrlDeps, dataDeps, assignments, definitions, finished) + csqCriterion
                         }
                         if(ctrlDeps.contains(alt)) then {
                             val altCriterion = alt//alt.allSubexpressions.last.asInstanceOf[SchemeExp]
-                            ifMarks = ifMarks ++ markExps(altCriterion, ctrlDeps, dataDeps, assignments, definitions) + altCriterion
+                            ifMarks = ifMarks ++ markExps(altCriterion, ctrlDeps, dataDeps, assignments, definitions, finished) + altCriterion
                         }
                         depExps = (depExps - worklist.head) ++ (ifMarks + prd)
                     case SchemeBegin(exps, _) =>
                         // for a begin, keep only the last expression
                         // if assignments are in the begin, this is kept because of assignments and definitions
                         val beginCriterion = exps.last
-                        val lastMarks = markExps(beginCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        val lastMarks = markExps(beginCriterion, ctrlDeps, dataDeps, assignments, definitions, finished)
                         depExps = (depExps - worklist.head) ++ lastMarks + beginCriterion
                     // case SchemeSetLex(id, _, vexp, _) => 
                         // todo: do we really need this? 
@@ -91,15 +92,15 @@ object ConcreteSlicer:
                         // for lets, the body should be sliced recursively
                         // the bindings are already sliced recursively because they are saved in the assignments/definitions
                         val letCriterion = body.last
-                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions, finished)
                         depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
                     case SchemeLetStar(_, body, _) => 
                         val letCriterion = body.last
-                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions, finished)
                         depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
                     case SchemeLetrec(_, body, _) => 
                         val letCriterion = body.last
-                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions)
+                        val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions, finished)
                         depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
                     case _ => depExps = depExps
 
@@ -108,7 +109,7 @@ object ConcreteSlicer:
                 // continue iterating
                 markExpsHelper(newWorklist, finished + worklist.head, addrs ++ depAddrs, marks ++ depExps)
 
-        markExpsHelper(Set(criterion), Set.empty, Set.empty, Set.empty)
+        markExpsHelper(Set(criterion), fin, Set.empty, Set.empty)
 
     def runSlicer(program: SchemeExp) = 
         //val analysis = ConcreteSlicerDependencies.createAnalysis(program)
@@ -123,33 +124,34 @@ object ConcreteSlicer:
         analysis.analyze()
 
         val ctrls = analysis.ctrlDeps 
-        val ass: Map[Address, Set[SchemeExp]] = Map.empty
-        val defs: Map[Address, SchemeExp] = Map.empty
+        val ass = analysis.ass
+        val defs = analysis.defs
         val deps = analysis.dataDeps
  
         // // print results of the analysis
-        // printAss(ass)
-        // printDefs(defs)
+        printAss(ass)
+        printDefs(defs)
         // println()
         deps.map((e, d) => printDepsPerExp(e, d, ctrls.getOrElse(e, None)))
 
         // mark the expressions that influence the slicing criterion
         // TODO: dynamically pick the criterion
-        // val criterion: SchemeExp = program.allSubexpressions.last.asInstanceOf[SchemeExp]
-        // var marks = markExps(criterion, ctrls, deps, ass, defs)
-        // println("_" * hrLen)
-        // println()
-        // println("program: " + program)
-        // println("CRITERION: " + criterion)
-        // println("MARKS: ")
-        // println(marks)
+        val criterion: SchemeExp = program.allSubexpressions.last.asInstanceOf[SchemeExp]
+        var marks = markExps(criterion, ctrls, deps, ass, defs, Set.empty)
+        println("_" * hrLen)
+        println()
+        println("program: " + program)
+        println("CRITERION: " + criterion)
+        println("MARKS: ")
+        println(marks)
 
-        // marks.map(m => 
-        //     var startCol = m.idn.pos.col
-        //     if (m.toString.head.equals('(') && m.toString.length > 2) then {
-        //         startCol = m.idn.pos.col - 1
-        //     }
-        //     (Position(m.idn.pos.line, startCol), Position(m.idn.pos.line, startCol + m.toString.length)))
+        marks.map(m => 
+            var startCol = m.idn.pos.col
+            if (m.toString.head.equals('(') && m.toString.length > 2) then {
+                startCol = m.idn.pos.col - 1
+            }
+            (Position(m.idn.pos.line, startCol), Position(m.idn.pos.line, startCol + m.toString.length)))
+        
 
     val hrLen = 40
 

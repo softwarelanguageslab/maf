@@ -2,5 +2,4 @@
 (define b 3)
 (define c 4)
 (set-car! a b)
-(set! a b)
 a

@@ -35,6 +35,8 @@ object ConcreteSlicerMain:
         val programText = Reader.loadFile(program)
         val programExp = parseProgram(programText, program)
         val res = ConcreteSlicer.runSlicer(programExp)
+        res.map(r => print(r.toString + ";"))
+        println()
 
     def main(args: Array[String]): Unit =
         MAFLogger.disable()

@@ -5,7 +5,7 @@
             (+ x 3)))
 (define c 5)
 (let ((q (- c 2)))
-    (set! a 3) ; overapproximation in the slice
+    (set! a 3) 
     b)
 
         

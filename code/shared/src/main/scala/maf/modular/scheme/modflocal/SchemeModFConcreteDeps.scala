@@ -16,6 +16,8 @@ import maf.core.Monad.MonadSyntaxOps
 import maf.util.Wrapper
 import maf.util.Wrapper.*
 import maf.core.Store.{CountingStore, given}
+import maf.core.Monad.MonadIterableOps
+
 
 abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
@@ -131,7 +133,7 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
         for 
             ctrl <- getCtrl
             _ <- addCtrlDep(exp, ctrl)       
-            (resVal, deps) <- deps(super.eval(exp)) 
+            (resVal, deps) <- deps(withCurr(exp){ super.eval(exp) }) 
             _ <- saveDeps(exp, deps)
             res <- unitWithDeps(deps)(resVal)
         yield res
@@ -162,17 +164,57 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
             res <- unitWithDeps(funDeps ++ agsDeps ++ resDeps)(resVal)
         yield res
 
+    override protected def evalLet(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] =
+        val (vrs, rhs) = bds.unzip
+        for
+            vls <- { nontailKeepEnv { evalAll(rhs) } } : A[List[Val]]
+            ads <- { vrs.mapM(allocVar) } : A[List[Adr]]
+            res <-  withExtendedEnv(vrs.map(_.name).zip(ads)) {
+                for 
+                    _ <- { ads.zip(vls).zip(rhs).mapM_ { 
+                        case ((adr, vlu), exp) => withCurr(exp) { extendSto(adr, vlu) }
+                    } } : A[Unit]
+                    res <- evalSequence(bdy) 
+                yield res
+            }
+        yield res
+
+    override protected def evalLetStar(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] = bds match
+        case Nil => evalSequence(bdy)
+        case (vrb, rhs) :: rst =>
+            for
+                vlu <- nontailKeepEnv { eval(rhs) }
+                adr <- allocVar(vrb)
+                res <- withExtendedEnv(vrb.name, adr) {
+                    withCurr(rhs) { extendSto(adr, vlu) } >>> evalLetStar(rst, bdy)
+                }
+            yield res
+
+    override protected def evalLetrec(bds: List[(Var, Exp)], bdy: List[Exp]): A[Val] =
+        val (vrs, rhs) = bds.unzip
+        for
+            ads <- { vrs.mapM(allocVar) : A[List[Adr]] }
+            res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
+                for
+                    _ <- (ads.zip(rhs).mapM_ { case (adr, exp) => 
+                        withCurr(exp){ nontailKeepEnv(eval(exp)).flatMap(extendSto(adr, _)) } : A[Unit]
+                    } : A[Unit])
+                    vlu <- evalSequence(bdy)
+                yield vlu
+            }
+        yield res
+
  
     //
     // ANALYSISM MONAD
     //
 
-    type A[X] = (anl: Anl, env: Env, ctx: Ctx, ctrl: Ctrl) => Option[(X, Set[DataDep])]
+    type A[X] = (anl: Anl, env: Env, ctx: Ctx, ctrl: Ctrl, curr: SchemeExp) => Option[(X, Set[DataDep])]
 
     extension [X](m: A[X])
         def withFilter(p: X => Boolean): A[X] = 
-            (anl, env, ctx, ctrl) => 
-                m(anl, env, ctx, ctrl) match
+            (anl, env, ctx, ctrl, curr) => 
+                m(anl, env, ctx, ctrl, curr) match
                     case None => None 
                     case Some(res, deps) => 
                         if p(res) then Some(res, deps)
@@ -180,44 +222,52 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
 
     // CONTROL DEPENDENCY STUFF
     private def getCtrl: A[Ctrl] = 
-            (_, _, _, ctrl) => Some((ctrl, Set.empty)) 
+            (_, _, _, ctrl, _) => Some((ctrl, Set.empty)) 
 
     private def withCtrl[X](f: Ctrl => Ctrl)(blk: A[X]): A[X] = 
-        (anl, env, ctx, ctrl) => blk(anl, env, ctx, f(ctrl))
+        (anl, env, ctx, ctrl, curr) => blk(anl, env, ctx, f(ctrl), curr)
 
     private def addCtrlDep(exp: SchemeExp, ctrl: Ctrl): A[Unit] =
-            (anl, env, ctx, ctrl) => anl.addCtrlDep(exp, ctrl)
+            (anl, env, ctx, ctrl, _) => anl.addCtrlDep(exp, ctrl)
 
     // DATA DEPENDENCY STUFF
     private def deps[X](blk: A[X]): A[(X, Set[DataDep])] = 
-        (anl, env, ctx, ctrl) => blk(anl, env, ctx, ctrl).map((x, deps) => ((x, deps), deps))
+        (anl, env, ctx, ctrl, curr) => blk(anl, env, ctx, ctrl, curr).map((x, deps) => ((x, deps), deps))
 
     private def saveDeps[X](exp: SchemeExp, deps: Set[DataDep]): A[Unit] = 
-        (anl, env, ctx, ctrl) => anl.addDataDeps(exp, deps)
+        (anl, env, ctx, ctrl, _) => anl.addDataDeps(exp, deps)
 
     private def unitWithDeps[X](deps: Set[DataDep])(x: X): A[X] =  
-        (_, _, _, _) => Some((x, deps))
+        (_, _, _, _, _) => Some((x, deps))
+
+    // CURRENT EXPRESSION
+    private def getCurr: A[SchemeExp] = 
+            (_, _, _, _, curr) => Some((curr, Set.empty)) 
+
+    private def withCurr[X](exp: SchemeExp)(blk: A[X]): A[X] = 
+        (anl, env, ctx, ctrl, _) => blk(anl, env, ctx, ctrl, exp)
+
 
 
     protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
-            (_, _, _, _) => Some((x, Set.empty))
+            (_, _, _, _, _) => Some((x, Set.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
-            (anl, env, ctx, ctrl) => m(anl, env, ctx, ctrl).map((res, deps) => (f(res), deps))
+            (anl, env, ctx, ctrl, curr) => m(anl, env, ctx, ctrl, curr).map((res, deps) => (f(res), deps))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
-            (anl, env, ctx, ctrl) =>
+            (anl, env, ctx, ctrl, curr) =>
                 for
-                    (x0, deps0) <- m(anl, env, ctx, ctrl)
-                    (x1, deps1) <- f(x0)(anl, env, ctx, ctrl)
+                    (x0, deps0) <- m(anl, env, ctx, ctrl, curr)
+                    (x1, deps1) <- f(x0)(anl, env, ctx, ctrl, curr)
                 yield (x1, deps1)
                 
         // MONADJOIN
         def mbottom[X] =
-            (_, _, _, _) => None
+            (_, _, _, _, _) => None
         def mjoin[X: Lattice](x: A[X], y: A[X]) =
-            (anl, env, ctx, ctrl) => 
-                (x(anl, env, ctx, ctrl), y(anl, env, ctx, ctrl)) match
+            (anl, env, ctx, ctrl, curr) => 
+                (x(anl, env, ctx, ctrl, curr), y(anl, env, ctx, ctrl, curr)) match
                     case (res1, None) => res1
                     case (None, res2) => res2
                     case (Some((res1, deps1)), Some((res2, deps2))) => Some((Lattice[X].join(res1, res2), deps1 ++ deps2))
@@ -226,26 +276,30 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def extendSto(adr: Adr, vlu: Val) = 
-            (anl, _, _, _) => anl.writeAddr(adr, vlu) 
+            (anl, _, _, _, curr) => 
+                anl.addDef(adr, curr)
+                anl.writeAddr(adr, vlu) 
         def updateSto(adr: Adr, vlu: Val) = 
-            (anl, _, _, _) => anl.writeAddr(adr, vlu)
+            (anl, _, _, _, curr) => 
+                anl.addAss(adr, curr)
+                anl.writeAddr(adr, vlu)
         def lookupSto(adr: Adr) =
-            (anl, _, _, _) => anl.lookupAddr(adr)
+            (anl, _, _, _, _) => anl.lookupAddr(adr)
         def addrEq: A[MaybeEq[Adr]] = // NOTE: I don't think addrEq is actually used?
-            (anl, _, _, _) => Some((anl.globalStore.addrEq, Set.empty))
+            (anl, _, _, _, _) => Some((anl.globalStore.addrEq, Set.empty))
         // CTX STUFF
         def getCtx =
-            (_, _, ctx, _) => Some((ctx, Set.empty))
+            (_, _, ctx, _, _) => Some((ctx, Set.empty))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
-            (anl, env, ctx, ctrl) => blk(anl, env, f(ctx), ctrl)
+            (anl, env, ctx, ctrl, curr) => blk(anl, env, f(ctx), ctrl, curr)
         // ENV STUFF
         def getEnv =
-            (_, env, _, _) => Some((env, Set.empty))
+            (_, env, _, _, _) => Some((env, Set.empty))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
-            (anl, env, ctx, ctrl) => blk(anl, f(env), ctx, ctrl)
+            (anl, env, ctx, ctrl, curr) => blk(anl, f(env), ctx, ctrl, curr)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, ctx, ctrl) => anl.call(lam, env, ctx, ctrl)
+            (anl, env, ctx, ctrl, _) => anl.call(lam, env, ctx, ctrl)
 
     //
     // THE INTRA-ANALYSIS
@@ -311,7 +365,7 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
             yield (v, deps)
             
         def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val rgc = eval(cmp.exp)(this, cmp.env, cmp.ctx, cmp.ctrl).map(_._1)
+            val rgc = eval(cmp.exp)(this, cmp.env, cmp.ctx, cmp.ctrl, cmp.exp).map(_._1)
             val old = results.get(cmp)
             if rgc != old then
                 intra.results += cmp -> rgc.get
