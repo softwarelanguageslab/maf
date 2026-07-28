@@ -67,14 +67,18 @@ object ConcreteSlicer:
                         // if we are keeping an if, keep the condition and slice the relevant branches
                         var ifMarks: Set[SchemeExp] = Set.empty
                         if(ctrlDeps.contains(csq)) then {
-                            val csqCriterion = csq//csq.allSubexpressions.last.asInstanceOf[SchemeExp]
-                            ifMarks = ifMarks ++ markExps(csqCriterion, ctrlDeps, dataDeps, assignments, definitions, finished) + csqCriterion
+                            var csqCriterion = csq 
+                            if(!csq.allSubexpressions.isEmpty) then
+                                csqCriterion = csq.allSubexpressions.last.asInstanceOf[SchemeExp]
+                            ifMarks = ifMarks ++ markExps(csqCriterion, ctrlDeps, dataDeps, assignments, definitions, (finished + worklist.head)) + csqCriterion
                         }
                         if(ctrlDeps.contains(alt)) then {
-                            val altCriterion = alt//alt.allSubexpressions.last.asInstanceOf[SchemeExp]
-                            ifMarks = ifMarks ++ markExps(altCriterion, ctrlDeps, dataDeps, assignments, definitions, finished) + altCriterion
+                            var altCriterion = alt
+                            if(!alt.allSubexpressions.isEmpty) then
+                                altCriterion = alt.allSubexpressions.last.asInstanceOf[SchemeExp]
+                            ifMarks = ifMarks ++ markExps(altCriterion, ctrlDeps, dataDeps, assignments, definitions, (finished + worklist.head)) + altCriterion
                         }
-                        depExps = (depExps - worklist.head) ++ (ifMarks + prd)
+                        depExps = (depExps ++ (ifMarks + prd)) - worklist.head
                     case SchemeBegin(exps, _) =>
                         // for a begin, keep only the last expression
                         // if assignments are in the begin, this is kept because of assignments and definitions
@@ -103,17 +107,25 @@ object ConcreteSlicer:
                         val bodyMarks = markExps(letCriterion, ctrlDeps, dataDeps, assignments, definitions, finished)
                         depExps = (depExps - worklist.head) ++ bodyMarks + letCriterion
                     case _ => depExps = depExps
-
                 // add these new locs to the worklist
                 val newWorklist = worklist.tail ++ depExps
+                // filter the dependencies so that larger expressions are not deps but only their subexps
+                depExps = depExps.filter(exp => exp match
+                    case SchemeIf(_, _, _, _) => false 
+                    case SchemeLet(bindings, body, idn) => false 
+                    case SchemeLetStar(bindings, body, idn) => false 
+                    case SchemeLetrec(bindings, body, idn) => false 
+                    case SchemeBegin(exps, idn) => false
+                    case _ => true
+                )
                 // continue iterating
                 markExpsHelper(newWorklist, finished + worklist.head, addrs ++ depAddrs, marks ++ depExps)
 
         markExpsHelper(Set(criterion), fin, Set.empty, Set.empty)
 
     def runSlicer(program: SchemeExp) = 
-        //val analysis = ConcreteSlicerDependencies.createAnalysis(program)
-        // println(program)
+        // val analysis = ConcreteSlicerDependencies.createAnalysis(program)
+        // // println(program)
         // analysis.analyzeWithTimeout(Timeout.start(30.seconds))
         // val ass = analysis.finalAss
         // val defs = analysis.finalDefs

@@ -152,7 +152,7 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
     override protected def evalIf(prd: SchemeExp, csq: SchemeExp, alt: SchemeExp): A[Val] = 
         for
             (cnd, cndDeps) <- nontailKeepEnv { deps(eval(prd)) }
-            (resVal, resDeps) <- deps(withCtrl(_ => Some(prd)){ cond(cnd, eval(csq), eval(alt)) })
+            (resVal, resDeps) <- withCtrl(_ => Some(prd)){ deps(cond(cnd, eval(csq), eval(alt))) }
             res <- unitWithDeps(cndDeps ++ resDeps)(resVal)
         yield res
 
@@ -281,6 +281,7 @@ abstract class SchemeModFConcreteDeps(prg: SchemeExp) extends ModAnalysis[Scheme
                 anl.writeAddr(adr, vlu) 
         def updateSto(adr: Adr, vlu: Val) = 
             (anl, _, _, _, curr) => 
+                println("assignment on: " + adr + " in: " + curr)
                 anl.addAss(adr, curr)
                 anl.writeAddr(adr, vlu)
         def lookupSto(adr: Adr) =
