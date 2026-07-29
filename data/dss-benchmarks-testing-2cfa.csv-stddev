@@ -1,0 +1,12 @@
+,DSS-FS (k=2),DSS-FS (k=2)_iterations
+test/R5RS/gambit/browse.scm,0,0
+test/R5RS/gambit/matrix.scm,0,0
+test/R5RS/gambit/nboyer.scm,0,0
+test/R5RS/gambit/peval.scm,TIMEOUT,_
+test/R5RS/gambit/sboyer.scm,0,0
+test/R5RS/gambit/scheme.scm,TIMEOUT,_
+test/R5RS/icp/icp_1c_multiple-dwelling.scm,TIMEOUT,_
+test/R5RS/icp/icp_1c_ontleed.scm,TIMEOUT,_
+test/R5RS/icp/icp_1c_prime-sum-pair.scm,TIMEOUT,_
+test/R5RS/icp/icp_3_leval.scm,0,0
+test/R5RS/icp/icp_8_compiler.scm,0,0

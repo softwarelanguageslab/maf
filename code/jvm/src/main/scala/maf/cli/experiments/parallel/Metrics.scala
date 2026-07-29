@@ -198,7 +198,3 @@ trait ParallelMetrics extends Metrics:
 object ParallelMetrics0CFA extends ParallelMetrics:
     def k = 0
     def benchmarks = ParallelBenchmarks.all
-
-object ParallelMetrics2CFA extends ParallelMetrics:
-    def k = 2
-    def benchmarks = ParallelBenchmarks.for2CFA

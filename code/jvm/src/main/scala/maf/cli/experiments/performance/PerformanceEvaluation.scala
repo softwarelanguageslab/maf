@@ -73,21 +73,22 @@ trait PerformanceEvaluation:
             print(s"* RUNS ($analysisRuns) - ")
             var times: List[Double] = List()
             var metrics: Map[String, List[Double]] = Map()
-
+            val totalTimeout = analysisTime
             for i <- 1 to analysisRuns do
                 print(s"$i ")
                 val a = analysis(program)
                 System.gc()
-                val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
+                val t = Timer.timeOnly(a.analyzeWithTimeout(totalTimeout))
                 if a.finished then
                     val analysisMetrics = a.metrics
                     metrics = analysisMetrics.foldLeft(metrics)((metrics, metric) =>
                         metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
                     )
                     times = (t.toDouble / 1000000) :: times
-                else return (TimedOut, List()) // immediately return
             print("\n")
             // Compute, print and return the results
+            if times.isEmpty then // if nothing was computed, return immediately
+                return (TimedOut, List())
             val result = Statistics.all(times)
             println(times.mkString("[", ",", "]"))
             println(result)

@@ -20,11 +20,13 @@ import maf.modular.worklist.MostVisitedFirstWorklistAlgorithm
 import maf.modular.worklist.RandomWorklistAlgorithm
 import maf.modular.worklist.MostVisitedFirstWorklistAlgorithm
 import maf.modular.worklist.CallDepthFirstWorklistAlgorithm
+import maf.modular.worklist.RandomWorklistAlgorithm
 import maf.modular.worklist.CallDepthFirstWorklistAlgorithm
+import maf.cli.experiments.parallel.DSSFSBenchmarks
 
 object ParallelDSSAnalyses:
 
-    abstract class ParallelDSSAnalysis(prg: SchemeExp, n: Int, kcfa: Int) 
+    class ParallelDSSAnalysis(prg: SchemeExp, n: Int, kcfa: Int) 
         extends SchemeModFLocal(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(kcfa)
@@ -40,8 +42,8 @@ object ParallelDSSAnalyses:
             }
     }
 
-    abstract class ParallelDSSFSAnalysis(prg: SchemeExp, n: Int, kcfa: Int) 
-        extends SchemeModFLocalFS(prg)
+    class ParallelDSSFSAnalysis(prg: SchemeExp, n: Int, kcfa: Int) 
+        extends SchemeModFLocalFS(prg, gc=true)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(kcfa)
             with ParallelWorklistAlgorithm[SchemeExp] {
@@ -57,18 +59,19 @@ object ParallelDSSAnalyses:
     }
 
     def parallelDSS(prg: SchemeExp, n: Int, kcfa: Int) = 
-        new ParallelDSSAnalysis(prg, n, kcfa) with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        new ParallelDSSAnalysis(prg, n, kcfa)// with CallDepthFirstWorklistAlgorithm[SchemeExp]
 
     def parallelDSSFS(prg: SchemeExp, n: Int, kcfa: Int) = 
-        new ParallelDSSFSAnalysis(prg, n, kcfa) with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        new ParallelDSSFSAnalysis(prg, n, kcfa)// with CallDepthFirstWorklistAlgorithm[SchemeExp]
 
 object ParallelModFAnalyses:
 
-    abstract class ParallelModFAnalysis(prg: SchemeExp, n: Int, kcfa: Int)
+    class ParallelModFAnalysis(prg: SchemeExp, n: Int, kcfa: Int)
         extends ModAnalysis(prg) with SchemeModFSemanticsM
                                  with StandardSchemeModFComponents
                                  with BigStepModFSemantics
                                  with ParallelWorklistAlgorithm[SchemeExp]
+                                 //with CallDepthFirstWorklistAlgorithm[SchemeExp]
                                  with SchemeModFKCallSiteSensitivity
                                  with SchemeConstantPropagationDomain:
 
@@ -136,47 +139,25 @@ object ParallelBenchmarks:
 //    "test/R5RS/icp/icp_3_leval.scm",
 //    "test/R5RS/icp/icp_2_aeval.scm",
     )
-    val excludedFor2CFA: Set[String] = Set(
-      "test/R5RS/WeiChenRompf2019/earley.sch", // Times out with n = 1, 60min timeout
-      "test/R5RS/WeiChenRompf2019/meta-circ.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm", // Takes 23min with n = 1
-      "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/gambit/peval.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/gambit/scheme.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/icp/icp_1c_ambeval.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/icp/icp_1c_multiple-dwelling.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/icp/icp_1c_ontleed.scm", // Times out with n = 1, 60min timeout
-      "test/R5RS/icp/icp_1c_prime-sum-pair.scm" // Times out with n = 1, 60min timeout
-    )
 
-    def for2CFA = all.filter(b => !(excludedFor2CFA.contains(b)))
-
-    def forDSS = List(
-        "boyer",
-        "browse",
-        "cpstak",
-        "dderiv",
-        "deriv",
-        "destruc",
-        "diviter",
-        "divrec",
-        "takl",
-        //"triangl" <- times out in concrete interpreter
-      ).map(name => s"test/R5RS/gabriel/$name.scm")
-
-    def forDSSFS(k: Int) = 
+    def SCAMbenchmarks = 
         List(
-            //"test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-            //"test/R5RS/icp/icp_1c_ontleed.scm",
-            //"test/R5RS/icp/icp_1c_prime-sum-pair.scm"
-           //"test/R5RS/icp/icp_7_eceval.scm",
-           //"test/R5RS/gambit/peval.scm",
-            //"test/R5RS/gambit/scheme.scm",
-           //"test/R5RS/gambit/sboyer.scm"    
-           "test/R5RS/icp/icp_3_leval.scm"       
+            "test/R5RS/icp/icp_1c_multiple-dwelling.scm",        //~18min.
+            "test/R5RS/icp/icp_1c_ontleed.scm",
+            "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+            "test/R5RS/icp/icp_7_eceval.scm",
+            "test/R5RS/gambit/peval.scm",
+            "test/R5RS/gambit/scheme.scm",
+            "test/R5RS/gambit/sboyer.scm",
+            "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
+            "test/R5RS/gambit/matrix.scm",
+            "test/R5RS/gambit/nboyer.scm",
+            "test/R5RS/gambit/browse.scm",
+            "test/R5RS/icp/icp_8_compiler.scm",
+            "test/R5RS/icp/icp_3_leval.scm"
         )
 
-    def forDSS(k: Int) = 
+    def DSSbenchmarks = 
         List( 
            "test/R5RS/gabriel/boyer.scm",
            "test/R5RS/gabriel/browse.scm",
@@ -193,7 +174,8 @@ object ParallelBenchmarks:
            "test/R5RS/various/mceval.scm",
            "test/R5RS/various/regex.scm",
            "test/R5RS/various/rsa.scm",
-           "test/R5RS/gambit/tak.scm"
+           "test/R5RS/gambit/tak.scm",
+           "test/R5RS/various/grid.scm"
         )
 
 //
@@ -202,8 +184,8 @@ object ParallelBenchmarks:
 
 trait BaseResultsModFSetup extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
-    override def analysisRuns = 10 // reduced for getting results faster
-    override def analysisTime = Timeout.start(Duration(10, MINUTES))
+    override def analysisRuns = 5 // reduced for getting results faster
+    override def analysisTime = Timeout.start(Duration(20, MINUTES))
     def k: Int
     def analyses: List[(SchemeExp => Analysis, String)] = List(
       (SchemeAnalyses.kCFAAnalysis(_, k), s"base ModF ($k-CFA)")
@@ -213,60 +195,21 @@ object BaseResultsModF0CFA extends BaseResultsModFSetup:
     def k = 0
     def benchmarks = ParallelBenchmarks.all
 
-object BaseResultsModF2CFA extends BaseResultsModFSetup:
-    def k = 2
-    def benchmarks = ParallelBenchmarks.for2CFA
-
-object BaseResultsModF:
-    def loccount(file: String): Int =
-        import scala.io.Source
-        Source.fromFile(file).getLines().length
-    def formatInMinuteSeconds(ms: Double): String =
-        val seconds = (ms / 1000).round.toInt
-        val minutes = seconds / 60
-        val remainingSeconds = seconds - (minutes * 60)
-        if minutes > 0 then s"${minutes}m${remainingSeconds}s"
-        else s"${seconds}s"
-    def formatResult(result: PerformanceResult) = result match
-        case Completed(res) => s"${formatInMinuteSeconds(res.mean)} \\pm ${formatInMinuteSeconds(res.stddev)}"
-        case TimedOut       => "\\infty"
-        case NoData         => "\\infty"
-    def main(args: Array[String]): Unit =
-        BaseResultsModF0CFA.run()
-        BaseResultsModF0CFA.exportCSV("data/modf-base-context-insensitive.csv", BaseResultsModF0CFA.format _, timestamped = false)
-        BaseResultsModF0CFA.exportCSV("data/modf-base-context-insensitive.csv-stddev", BaseResultsModF0CFA.formatStddev _, timestamped = false)
-        BaseResultsModF2CFA.run()
-        BaseResultsModF2CFA.exportCSV("data/modf-base-context-sensitive.csv", BaseResultsModF2CFA.format _, timestamped = false)
-        BaseResultsModF2CFA.exportCSV("data/modf-base-context-sensitive.csv-stddev", BaseResultsModF2CFA.formatStddev _, timestamped = false)
-        ParallelBenchmarks.all.foreach { (benchmark: String) =>
-            val shortName = ParallelBenchmarks.paperName(benchmark)
-            val loc = loccount(benchmark)
-            val zeroCFA = BaseResultsModF0CFA.results.get(benchmark, "base ModF (0-CFA)").get
-            val twoCFA = BaseResultsModF2CFA.results.get(benchmark, "base ModF (2-CFA)").get
-            println(s"\\prog{$shortName} & $loc & ${formatResult(zeroCFA)} & ${formatResult(twoCFA)} \\\\ \\hline")
-        }
-
 //
 // DSS EVALUATION
 //
 
 trait ParallelDSSPerformance extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]
-    override def analysisRuns = 10 // reduced for getting results faster
-    override def analysisTime = Timeout.start(Duration(30, MINUTES))
-    def k: Int
+    override def analysisRuns = 30 // reduced for getting results faster
+    override def analysisTime = Timeout.start(Duration(120, MINUTES))
     def outputFile: String
-    def cores = List(1, 2, 4, 8)
     def benchmarks: Iterable[Benchmark]
     override def parseProgram(txt: String): SchemeExp =
         val parsed = SchemeParser.parse(txt)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
-    def analyses: List[(SchemeExp => Analysis, String)] =
-        //cores.map(n => (ParallelDSSAnalyses.parallelDSSFS(_, n, k), s"parallel DSS-FS (n = $n, $k-CFA)"))
-        List((prg => SchemeAnalyses.modflocalFSAnalysis(prg, 0), "DSS-FS"),
-             (prg => SchemeAnalyses.modflocalFSAnalysisNaive(prg, 0), "DSS-FS-NAIVE"))
     def main(args: Array[String]) =
         benchmarks.foreach { file => Reader.loadFile(file) } // sanity check to see if all files exist
         MAFLogger.disable()
@@ -274,16 +217,37 @@ trait ParallelDSSPerformance extends PerformanceEvaluation:
         exportCSV(outputFile, format _, timestamped = false)
         exportCSV(outputFile + "-stddev", formatStddev _, timestamped = false)
 
-object ParallelDSSPerformance0CFA extends ParallelDSSPerformance:
-    def k = 0
-    def outputFile = "data/dss-fs-iterations.csv"
-    def benchmarks = ParallelBenchmarks.forDSS(k)
+trait DSSFSBenchmarks(k: Int) extends ParallelDSSPerformance:
+    def outputFile = s"data/dss-benchmarks-testing-dssfs-k=$k.csv"
+    override def analysisTime = Timeout.start(Duration(60, MINUTES))
+    def benchmarks = ParallelBenchmarks.SCAMbenchmarks
+    def cores = List(1,2,4,8,16,32,64)
+    def analyses =
+        (SchemeAnalyses.modflocalFSAnalysis(_, k, true), s"DSS-FS (k=$k)")
+        ::
+        cores.map { n => 
+            (ParallelDSSAnalyses.parallelDSSFS(_, n, k), s"PDSS-FS (n=$n/k=$k)")
+        }
 
-object ParallelModFPerformance2CFA extends ParallelDSSPerformance:
-    def k = 2
-    def outputFile = "data/modf-context-sensitive.csv"
-    def benchmarks = ParallelBenchmarks.for2CFA
+object ContextInsensitiveDSSFSAnalyses extends DSSFSBenchmarks(0):
+    override def benchmarks = 
+        super.benchmarks.filterNot(Set(
+            "test/R5RS/icp/icp_7_eceval.scm",
+            "test/R5RS/gambit/scheme.scm"
+        ))
 
+object ContextSensitiveDSSFSAnalyses extends DSSFSBenchmarks(2):
+    override def benchmarks = List("test/R5RS/gambit/matrix.scm")
+       /*
+        super.benchmarks.filterNot(Set(
+            "test/R5RS/icp/icp_7_eceval.scm",
+            "test/R5RS/gambit/scheme.scm",
+            "test/R5RS/gambit/peval.scm",
+            "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
+            "test/R5RS/icp/icp_1c_ontleed.scm",
+            "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
+        ))
+        */
 
 //
 // MODCONC EVALUATION

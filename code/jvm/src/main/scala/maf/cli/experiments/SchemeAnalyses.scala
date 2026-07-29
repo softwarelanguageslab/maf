@@ -99,7 +99,7 @@ object SchemeAnalyses:
         with SchemeModFSemanticsM
         with StandardSchemeModFComponents
         with BigStepModFSemantics
-        with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        //with CallDepthFirstWorklistAlgorithm[SchemeExp]
         with ParallelWorklistAlgorithm[SchemeExp]
         with SchemeModFKCallSiteSensitivity
         with SchemeConstantPropagationDomain {
@@ -134,7 +134,7 @@ object SchemeAnalyses:
       ) = new SimpleSchemeModConcAnalysis(prg)
         with SchemeModConcStandardSensitivity
         with SchemeConstantPropagationDomain
-        with CallDepthFirstWorklistAlgorithm[SchemeExp]
+        //with CallDepthFirstWorklistAlgorithm[SchemeExp]
         with ParallelWorklistAlgorithm[SchemeExp] {
 
         type AnalysisState = Map[Addr, Value]
@@ -149,7 +149,7 @@ object SchemeAnalyses:
             intra: SchemeModConcIntra
           ) = new InnerModFAnalysis(intra)
             with SchemeModFKCallSiteSensitivity
-            with CallDepthFirstWorklistAlgorithm[SchemeExp]
+            //with CallDepthFirstWorklistAlgorithm[SchemeExp]
             with ParallelWorklistAlgorithm[SchemeExp] {
             type AnalysisState = Map[Addr, Value]
             def analysisState = store   

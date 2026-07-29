@@ -1,0 +1,18 @@
+,DSS (k=0),DSS (k=0)_iterations,DSS (k=2),DSS (k=2)_iterations,parallel DSS (k=0, n=1),parallel DSS (k=0, n=1)_iterations,parallel DSS (k=0, n=2),parallel DSS (k=0, n=2)_iterations,parallel DSS (k=0, n=4),parallel DSS (k=0, n=4)_iterations,parallel DSS (k=0, n=8),parallel DSS (k=0, n=8)_iterations,parallel DSS (k=2, n=1),parallel DSS (k=2, n=1)_iterations,parallel DSS (k=2, n=2),parallel DSS (k=2, n=2)_iterations,parallel DSS (k=2, n=4),parallel DSS (k=2, n=4)_iterations,parallel DSS (k=2, n=8),parallel DSS (k=2, n=8)_iterations,parallel DSS-FS (k=0, n=1),parallel DSS-FS (k=0, n=1)_iterations,parallel DSS-FS (k=0, n=2),parallel DSS-FS (k=0, n=2)_iterations,parallel DSS-FS (k=0, n=4),parallel DSS-FS (k=0, n=4)_iterations,parallel DSS-FS (k=0, n=8),parallel DSS-FS (k=0, n=8)_iterations,parallel DSS-FS (k=2, n=1),parallel DSS-FS (k=2, n=1)_iterations,parallel DSS-FS (k=2, n=2),parallel DSS-FS (k=2, n=2)_iterations,parallel DSS-FS (k=2, n=4),parallel DSS-FS (k=2, n=4)_iterations,parallel DSS-FS (k=2, n=8),parallel DSS-FS (k=2, n=8)_iterations
+test/R5RS/gabriel/boyer.scm,TIMEOUT,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+test/R5RS/gabriel/browse.scm,TIMEOUT,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+test/R5RS/gabriel/cpstak.scm,0,0,TIMEOUT,_,6,1,1,0,0,1,0,1,_,_,_,_,_,_,_,_,0,0,0,2,0,2,0,1,_,_,_,_,_,_,_,_
+test/R5RS/gabriel/dderiv.scm,10,0,1,0,184,4,40,8,97,13,127,55,1,0,2,0,5,1,1,1,1,1,3,12,2,13,1,12,65,55,78,128,101,178,49,113
+test/R5RS/gabriel/deriv.scm,0,0,1,0,1,0,7,0,1,0,2,1,1,0,2,0,2,1,0,0,1,3,2,4,0,3,1,2,1,2,4,9,1,7,3,12
+test/R5RS/gabriel/destruc.scm,TIMEOUT,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+test/R5RS/gabriel/diviter.scm,1,0,4,0,7,0,5,1,3,2,1,2,11,2,10,2,5,1,6,1,1,0,0,0,0,1,1,0,1,0,1,3,2,3,2,4
+test/R5RS/gabriel/divrec.scm,2,0,3,0,2,0,2,0,1,2,2,2,3,1,3,2,1,2,7,2,1,0,1,0,2,0,8,0,4,1,2,2,3,2,2,2
+test/R5RS/gabriel/puzzle.scm,2036,0,TIMEOUT,_,327,310,208,463,273,617,185,1217,_,_,_,_,_,_,_,_,0,0,1,4,0,2,1,4,_,_,_,_,_,_,_,_
+test/R5RS/gabriel/takl.scm,0,0,62,0,0,0,2,1,0,1,0,1,3833,555,2809,640,2212,740,4409,3241,0,0,0,1,0,1,0,0,81,139,36,96,7,30,4,25
+test/R5RS/gabriel/triangl.scm,5,0,8,0,120,314,101,403,20,121,165,935,95,249,119,437,53,264,187,976,3,0,0,1,0,1,0,0,1,0,1,4,1,3,0,5
+test/R5RS/gambit/matrix.scm,TIMEOUT,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+test/R5RS/gambit/tak.scm,0,0,1,0,1,0,1,0,1,0,0,0,1,0,1,1,2,0,2,0,0,0,0,0,0,0,0,0,1,4,2,14,1,7,1,10
+test/R5RS/various/grid.scm,0,0,1,0,1,0,1,0,1,0,0,0,1,0,1,2,2,2,1,2,0,1,0,4,0,1,0,3,1,0,1,7,1,5,2,13
+test/R5RS/various/mceval.scm,TIMEOUT,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_
+test/R5RS/various/regex.scm,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,18,9,43,5,44,2,23,348,527,190,674,62,202,57,279
+test/R5RS/various/rsa.scm,0,0,0,0,0,0,2,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,0,1,0,0,0,5,0,4,1,6

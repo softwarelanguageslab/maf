@@ -5,8 +5,9 @@ import maf.modular.{Dependency, GlobalStore, ModAnalysis}
 import maf.util.benchmarks.Timeout
 
 import scala.collection.mutable.PriorityQueue
+import scala.collection.mutable.Queue
 
-trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] with PriorityQueueWorklistAlgorithm[Expr]:
+trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr]:
     inter =>
 
     // PARAMETERIZED BY SOME ANALYSIS STATE
@@ -23,7 +24,7 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
     // WORKERS
 
     object WorkListMonitor
-    // val worklist: PriorityQueue[Component] = PriorityQueue.empty
+    val worklist: Queue[Component] = Queue.empty
     def popWorklist(): Component = WorkListMonitor.synchronized {
         while worklist.isEmpty do WorkListMonitor.wait()
         worklist.dequeue()
@@ -51,14 +52,14 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
 
     // RESULTS
 
-    implicit val ordResult: Ordering[Result] = Ordering.by(_.cmp)
+    //implicit val ordResult: Ordering[Result] = Ordering.by(_.cmp)
 
     sealed trait Result { def cmp: Component }
     case class Completed(intra: ParallelIntra) extends Result { def cmp = intra.component }
     case class TimedOut(cmp: Component) extends Result
 
     object ResultsMonitor
-    private val results: PriorityQueue[Result] = PriorityQueue.empty
+    private val results: Queue[Result] = Queue.empty
 
     def popResult(): Result = ResultsMonitor.synchronized {
         while results.isEmpty do ResultsMonitor.wait()
@@ -136,8 +137,8 @@ trait ParallelWorklistAlgorithm[Expr <: Expression] extends ModAnalysis[Expr] wi
 
         def setLocalState(st: AnalysisState): Unit = ()
 
-        val (latestState, depVersion, deps, visited) = latest
-        setLocalState(latestState)
+        val (_, depVersion, deps, visited) = latest
+        //setLocalState(latestState)
         var toCheck = Set[Dependency]()
 
         override def doWrite(dep: Dependency): Boolean =

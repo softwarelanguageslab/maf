@@ -1,0 +1,12 @@
+,DSS-FS2,DSS-FS2-NAIVE,DSS-FS2-NAIVE_iterations,DSS-FS2_iterations
+test/R5RS/gabriel/cpstak.scm,3,8,4,4
+test/R5RS/gabriel/dderiv.scm,33,9,0,0
+test/R5RS/gabriel/deriv.scm,1,1,0,0
+test/R5RS/gabriel/diviter.scm,1,1,0,0
+test/R5RS/gabriel/divrec.scm,16,2,0,0
+test/R5RS/gabriel/puzzle.scm,2,4,0,0
+test/R5RS/gabriel/takl.scm,1,1,0,0
+test/R5RS/gabriel/triangl.scm,4,0,0,0
+test/R5RS/gambit/tak.scm,1,1,0,0
+test/R5RS/various/regex.scm,58,17,0,0
+test/R5RS/various/rsa.scm,1,9,0,0
