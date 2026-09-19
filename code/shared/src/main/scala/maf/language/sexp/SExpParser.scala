@@ -85,7 +85,24 @@ class SExpLexer extends Lexical with SExpTokens:
     def eol: Parser[Any] = acceptIf(n => n == '\n')(n => "")
     def notEol: Parser[Char] = acceptIf(n => n != '\n')(n => "")
     def comment: Parser[String] = ';' ~> rep(notEol) ^^ (_.mkString)
-    def nonRelevant: Parser[Unit] = rep(comment | whitespaceChar | eol) ^^ (_ => ())
+
+    def multiLineComment: Parser[String] =
+        ('#' ~ '|' ~> rep(multiLineComment | not('|' ~ '#') ~> any) <~ '|' <~ '#') ^^ (_.mkString)
+
+    def datumSkipper: Parser[Unit] = (
+        (boolean | number | character | string | dot) ^^ (_ => ())
+        | leftParen ~> rep(datumSkipperWrapper) <~ rightParen ^^ (_ => ())
+        | leftBracket ~> rep(datumSkipperWrapper) <~ rightBracket ^^ (_ => ())
+        | hashParen ~> rep(datumSkipperWrapper) <~ rightParen ^^ (_ => ())
+        | quotes ~> datumSkipperWrapper ^^ (_ => ())
+        | identifier ^^ (_ => ())
+    )
+    def datumSkipperWrapper: Parser[Unit] = nonRelevant ~> datumSkipper <~ nonRelevant
+    def datumComment: Parser[Unit] = '#' ~ ';' ~> datumSkipperWrapper
+
+    def hashBangComment: Parser[String] = '#' ~ '!' ~> rep(notEol) ^^ (_.mkString)
+
+    def nonRelevant: Parser[Unit] = rep(comment | multiLineComment | datumComment | hashBangComment | whitespaceChar | eol) ^^ (_ => ())
 
     def any: Parser[Char] = chrExcept()
     def chr(c: Char): Parser[Char] = elem(s"character $c", _ == c)
