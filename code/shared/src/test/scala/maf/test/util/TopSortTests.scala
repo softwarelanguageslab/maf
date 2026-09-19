@@ -27,7 +27,7 @@ class TopSortTests extends AnyPropSpec:
                   "6" -> Set("3")
                 )
     ) {
-        List("5", "0", "6", "1", "2", "3", "4"),
+        List("5", "0", "6", "1", "2", "3", "4")
     }
 
     testTopSort(2,
