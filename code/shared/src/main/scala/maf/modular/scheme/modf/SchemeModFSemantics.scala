@@ -101,6 +101,8 @@ trait BaseSchemeModFSemanticsM
     type AllocationContext
     def allocVar(id: Identifier, cmp: Component): VarAddr[AllocationContext]
     def allocPtr(exp: SchemeExp, cmp: Component): PtrAddr[AllocationContext]
+    def allocVarArgPtr(exp: SchemeExp, cmp: Component): VarArgPtrAddr[AllocationContext]
+
 
     /* convience accessors for argument values */
     def argValues(cmp: Component): Map[String, Value] = view(cmp) match
@@ -251,7 +253,7 @@ trait BaseSchemeModFSemanticsM
                             val fixedArgVals = fixedArgs.map(_._2)
 
                             for
-                                varArgVal <- allocateList(varArgs)
+                                varArgVal <- allocateList(varArgs, isVarArg = true)
                                 context <- ctx.allocM(clo, fixedArgVals :+ varArgVal, cll, component)
                                 targetCall = Call(clo, context)
                                 targetCmp <- newComponentM(targetCall)
@@ -265,13 +267,15 @@ trait BaseSchemeModFSemanticsM
                     case _ => Monad[M].unit(lattice.bottom)
                 })
             )
-        protected def allocateList(elms: List[(SchemeExp, Value)]): M[Value] = elms match
+        protected def allocateList(elms: List[(SchemeExp, Value)], isVarArg: Boolean = false): M[Value] = elms match
             case Nil => baseEvalM.unit(lattice.nil)
             case (exp, vlu) :: rest =>
-                allocateList(rest).flatMap(v => allocateCons(exp)(vlu, v))
+                allocateList(rest, isVarArg).flatMap(v => allocateCons(exp)(vlu, v, isVarArg))
 
-        protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): M[Value] =
-            allocateVal(pairExp)(lattice.cons(car, cdr))
+        protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value, isVarArg: Boolean = false): M[Value] =
+            val addr = if isVarArg then allocVarArgPtr(pairExp, component) else allocPtr(pairExp, component)
+            write(addr, lattice.cons(car, cdr)) >>> baseEvalM.unit(lattice.pointer(addr))
+
         protected def allocateString(stringExp: SchemeExp)(str: String): M[Value] =
             allocateVal(stringExp)(lattice.string(str))
         protected def allocateVal(exp: SchemeExp)(v: Value): M[Value] =

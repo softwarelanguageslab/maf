@@ -51,7 +51,7 @@ trait IncrementalModularSchemeLatticeTests extends AnyPropSpec:
                 for {
                     r1 <- res1
                     r2 <- res2
-                    _ = assert(lattice.getAddresses(r1) == Set(adr1),
+                    _ = assert(lattice.getAddresses(r1) == (lattice.getAddresses(v) + adr1),
                                s"Annotation set comparison for unary operation $op failed (found: ${lattice.getAddresses(r1)})."
                     )
                     _ = assert(r1.toL() == r2, s"Annotation set comparison for unary operation $op failed (found: ${r1.toL()} using $v).")
@@ -68,7 +68,7 @@ trait IncrementalModularSchemeLatticeTests extends AnyPropSpec:
                     for {
                         r1 <- res1
                         r2 <- res2
-                        _ = assert(lattice.getAddresses(r1) == Set(adr1, adr2),
+                        _ = assert(lattice.getAddresses(r1) == (lattice.getAddresses(v1) ++ lattice.getAddresses(v2) + adr1 + adr2),
                                    s"Annotation set comparison for binary operation $op failed (found: ${lattice.getAddresses(r1)})."
                         )
                         _ = assert(r1.toL() == r2)

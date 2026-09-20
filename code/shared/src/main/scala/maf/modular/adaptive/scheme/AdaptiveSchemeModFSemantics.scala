@@ -25,6 +25,7 @@ trait AdaptiveSchemeModFSemantics
     def adaptAllocCtx(ctx: AllocationContext): AllocationContext
     def adaptAddr(addr: Addr): Addr = addr match
         case ptr: PtrAddr[AllocationContext] @unchecked => PtrAddr(ptr.exp, adaptAllocCtx(ptr.ctx))
+        case ptr: VarArgPtrAddr[AllocationContext] @unchecked => VarArgPtrAddr(ptr.exp, adaptAllocCtx(ptr.ctx))
         case vad: VarAddr[AllocationContext] @unchecked => VarAddr(vad.id, adaptAllocCtx(vad.ctx))
         case ret: ReturnAddr[Component] @unchecked      => ReturnAddr(adaptComponent(ret.cmp), ret.idn)
         case pad: PrmAddr                               => pad

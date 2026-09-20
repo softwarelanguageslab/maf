@@ -65,6 +65,11 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
         modFCmp: SchemeModFComponent,
         cmp: Component
       ): PtrAddr[AllocationContext]
+    def allocVarArgPtr(
+        exp: SchemeExp,
+        modFCmp: SchemeModFComponent,
+        cmp: Component
+      ): VarArgPtrAddr[AllocationContext]
 
     //
     // MODCONC INTRA-ANALYSIS
@@ -97,6 +102,9 @@ trait SchemeModConcSemantics extends ModAnalysis[SchemeExp] with ContextSensitiv
         type AllocationContext = inter.AllocationContext
         def allocVar(id: Identifier, cmp: SchemeModFComponent) = inter.allocVar(id, cmp, intra.component)
         def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = inter.allocPtr(exp, cmp, intra.component)
+        def allocVarArgPtr(exp: SchemeExp, cmp: SchemeModFComponent) = inter.allocVarArgPtr(exp, cmp, intra.component)
+
+
         // GLOBAL STORE SETUP
         override def store = intra.store
         override def store_=(s: Map[Addr, Value]) = intra.store = s

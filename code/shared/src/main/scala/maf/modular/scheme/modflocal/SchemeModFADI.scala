@@ -31,7 +31,7 @@ abstract class SchemeModFADI(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
     given GC[Sto, Adr] = GC.storeStopAndCopyGC
     given store: Store[Sto, Adr, Val] = Store.countingInstance
     given shouldCount: (Adr => Boolean) =
-        case _: PtrAddr[_] => true
+        case _: PtrAddr[_] | _: VarArgPtrAddr[_] => true
         case _             => false
 
     //
@@ -210,14 +210,14 @@ trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[Sc
 
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
+            case _: VarAddr[_] | _: PtrAddr[_] | _: VarArgPtrAddr[_] =>
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.extendV(sto, adr, vlu)
 
     override def updateV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
+            case _: VarAddr[_] | _: PtrAddr[_] | _: VarArgPtrAddr[_] =>
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)

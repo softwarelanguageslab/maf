@@ -17,4 +17,9 @@ trait StandardSchemeModConcAllocator extends SchemeModConcSemantics:
         modfCmp: SchemeModFComponent,
         cmp: Component
       ) = PtrAddr(exp, modfCmp)
+    def allocVarArgPtr(
+        exp: SchemeExp,
+        modfCmp: SchemeModFComponent,
+        cmp: Component
+      ) = VarArgPtrAddr[AllocationContext](exp, modfCmp)
     override def configString(): String = super.configString() + "\n  allocating addresses using the ModF component as context"

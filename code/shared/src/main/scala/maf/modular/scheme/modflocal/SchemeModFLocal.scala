@@ -35,7 +35,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
     lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
 
     given shouldCount: (Adr => Boolean) =
-        case _: PtrAddr[_] => true
+        case _: PtrAddr[_] | _: VarArgPtrAddr[_] => true
         case _             => false
 
     private lazy val initialBds: Iterable[(String, Adr, Val)] =
@@ -214,14 +214,14 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
+            case _: VarAddr[_] | _: PtrAddr[_] | _: VarArgPtrAddr[_] =>
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.extendV(sto, adr, vlu)
 
     override def updateV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
+            case _: VarAddr[_] | _: PtrAddr[_] | _: VarArgPtrAddr[_] =>
                 resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)
