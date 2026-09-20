@@ -37,6 +37,8 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
     // all allocations are context-insensitive
     def allocVar(id: Identifier, cmp: Component) = VarAddr(id, ())
     def allocPtr(ptr: SchemeExp, cmp: Component) = PtrAddr(ptr, ())
+    def allocVarArgPtr(ptr: SchemeExp, cmp: Component) = VarArgPtrAddr[Unit](ptr, ())
+
 
     //XXXXXXXXX//
     // PROGRAM //
@@ -455,7 +457,7 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
                         case (SchemeVarArgLambda(_, prs, vararg, body, _, _), env) if prs.length <= args.length =>
                             val (fixedArgs, varArgs) = args.splitAt(prs.length)
                             val fixedArgVals = fixedArgs.map(_._2)
-                            val varArgVal = allocateList(varArgs)
+                            val varArgVal = allocateList(varArgs, isVarArg = true)
                             val env2 = define(vararg, varArgVal, prs.zip(fixedArgVals).foldLeft(env)({ case (env, (f, a)) => define(f, a, env) }))
                             evalSequence(body, env2, stack)
                         case _ => Set()
@@ -469,20 +471,20 @@ trait SmallStepModConcSemantics extends SchemeSetup with ContextSensitiveCompone
         // ALLOCATION HELPERS //
         //--------------------//
 
-        protected def allocateVal(exp: SchemeExp)(value: Value): Value =
-            val addr = allocPtr(exp, component)
-            writeAddr(addr, value)
+        protected def allocateVal(exp: SchemeExp, isVarArg: Boolean = false)(v: Value): Value =
+            val addr = if isVarArg then allocVarArgPtr(exp, component) else allocPtr(exp, component)
+            writeAddr(addr, v)
             lattice.pointer(addr)
 
-        protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value): Value =
-            allocateVal(pairExp)(lattice.cons(car, cdr))
+        protected def allocateCons(pairExp: SchemeExp)(car: Value, cdr: Value, isVarArg: Boolean = false): Value =
+            allocateVal(pairExp, isVarArg)(lattice.cons(car, cdr))
 
         protected def allocateStr(strExp: SchemeExp)(str: String): Value =
             allocateVal(strExp)(lattice.string(str))
 
-        protected def allocateList(elms: List[(SchemeExp, Value)]): Value = elms match
+        protected def allocateList(elms: List[(SchemeExp, Value)], isVarArg: Boolean = false): Value = elms match
             case Nil                => lattice.nil
-            case (exp, vlu) :: rest => allocateCons(exp)(vlu, allocateList(rest))
+            case (exp, vlu) :: rest => allocateCons(exp)(vlu, allocateList(rest, isVarArg), isVarArg)
 
         given SchemeInterpreterBridge[Value, Addr] with
             def pointer(exp: SchemeExp): Addr = allocPtr(exp, component)

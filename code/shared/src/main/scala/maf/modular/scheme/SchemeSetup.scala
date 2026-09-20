@@ -24,7 +24,7 @@ trait SchemeSetup
     def resultsPerIdn: Map[Identity, Set[Value]] =
         store
             .filter(_._1 match {
-                case _: VarAddr[_] | _: PtrAddr[_] => true
+                case _: VarAddr[_] | _: PtrAddr[_] | _: VarArgPtrAddr[_] => true
                 case _: ExceptionAddr[_]           => true
                 case _                             => false
             })

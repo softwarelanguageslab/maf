@@ -56,6 +56,8 @@ trait AdaptiveContextSensitivity extends AdaptiveSchemeModFSemantics:
         case Main                                             => None
         case Call((lam, _), ctx: ComponentContext @unchecked) => Some((ctx, LambdaModule(lam)))
     def allocPtr(exp: SchemeExp, cmp: SchemeModFComponent) = PtrAddr(exp, addrContext(cmp))
+    def allocVarArgPtr(exp: SchemeExp, cmp: SchemeModFComponent) = VarArgPtrAddr[AllocationContext](exp, addrContext(cmp))
+
     def allocVar(idf: Identifier, cmp: SchemeModFComponent) = VarAddr(idf, addrContext(cmp))
 
     // during the analysis, keep track of
