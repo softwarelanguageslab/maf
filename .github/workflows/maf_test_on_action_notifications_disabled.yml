@@ -28,7 +28,7 @@ jobs:
         run: sbt compile
       # Perform the actual tests.
       - name: Run the tests
-        run: sbt "maf/testOnly -- -l IncrementalTest -l SlowTest"
+        run: sbt "maf/testOnly -- -l SlowTest"
         env: 
           LOG_ENV: ci
           LOG_LOCATION: log-${{ github.sha }}

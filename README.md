@@ -2,66 +2,66 @@ Modular Analysis Framework (MAF): A Framework for Modular Analysis of Dynamic La
 
 # Goal
 
-The goal of this artefact is to experiment with abstract machines and language semantics. 
-Currently, the artefact's implementation is focused towards experiments with modular analyses. 
-These are build according to the ModX technique.
-A comparison on how our ModF analysis compares to a well-known AAM-style analysis is described [here](docs/AAM.md).
+The goal of this artefact is to experiment with abstract machines and language semantics.
+Currently, the artefact's implementation is focused towards experiments with modular analyses of (R5RS) Scheme programs.
+All analyses live in the package [`maf.modular.scheme.modflocal`](code/src/main/scala/maf/modular/scheme/modflocal):
 
-Additionally, semantics for R5RS Scheme are present. 
+* `SchemeModFLocal` (standard instance: `SchemeDSSAnalysis`): every component carries its own (garbage-collected) local store, and the result of a call is a store delta;
+* `SchemeModFLocalFS`: a variant in which the store of a component is joined over all of its calls (garbage collection can be disabled using the `gc` flag);
+* `SchemeModFADI` (standard instance: `SchemeModFADIAnalysis`): a variant that threads a counting store through the analysis.
+
+They share their semantics (`SchemeSemantics`), context-sensitivity policies (`SchemeModFLocalSensitivity`: context-insensitive or k-CFA call-site sensitive) and allocators (`CustomAllocator`).
+
+Additionally, semantics for R5RS Scheme are present, including a concrete interpreter that is used as an oracle for the soundness tests.
 Note that the semantics of our implementation may deviate from the R5RS specification at certain points; these have been described [here](docs/INCOMPATIBILITIES.md).
-
-For more information on the incremental analyses that are currently developed using MAF,
-see [here](code/shared/src/main/scala/maf/modular/incremental/incrementalAnalysis.md).
 
 # Usage
 
-The MAF framework can be used in several ways.
+## Analysing a program
 
-## Using the JavaScript visual front-end
+To run a modular analysis, you compose an analysis with an abstract domain, a context-sensitivity policy and a worklist algorithm.
 
-The framework includes a JavaScript front-end that can be used to visualise a modular analysis in the browser. Before
-the visualisation can be run, you have to ensure the code is compiled, by executing the commands `fastOptJS` (
-or `fullOptJS`) in your sbt repl.
-
-The MAF framework currently provides a standard visualisation for modular analyses, as well as specific visualisations
-that correspond to several different flavours of the analysis (e.g., adaptive or incremental analyses.)
-
-To run the standard visualisation, open the file `standard.html` in the `web` folder with your browser. The
-visualisation provides information with regard to the work list (coloured in light blue) and currently analysed
-component (coloured in dark blue). Stepping through the visualisation can be done using the space bar. The other
-visualisations are also accessible via the `web` folder.
-
-## Analysing a program using command line
-
-The MAF framework is built in a modular style. To run a modular analysis, you need to compose the implementation of a
-specific machine and an abstract domain.
-
-To analyze a specific program, an instance of the ModF analysis class must be created. The constructor of this class
-takes a parsed version of the program to be analysed, which can be obtained as follows:
+The analyses do not support `set!` directly, so a program first needs to be parsed, extended with the required prelude definitions, rewritten to use explicit boxes for mutable variables, and undefined:
 ```scala
-val text = io.Reader.loadFile(path-to-file)
-val prog = language.scheme.Schemeparser.parse(text)
+val text = maf.util.Reader.loadFile(path-to-file)
+val parsed = SchemeParser.parse(text)
+val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+val transf = SchemeMutableVarBoxer.transform(prelud)
+val prog = SchemeParser.undefine(transf)
 ```
-Additional preprocessing steps are performed by the modular analysis itself and hence must not be performed manually.
 
-Now, the ModF instance can be created. For example, to analyze `prog` using a big-step ModF analysis
-with full argument sensitivity and a type domain:
+Then, for instance, to analyse `prog` using a 1-CFA analysis with a constant-propagation domain:
 ```scala
-val analysis = new ModAnalysis(prog) with BigStepSemantics
-                                     with StandardSchemeModFSemantics
-                                     with FullArgumentSensitivity
-                                     with TypePropagationDomain
+val analysis = new SchemeModFLocal(prog)
+                 with SchemeConstantPropagationDomain
+                 with SchemeModFLocalCallSiteSensitivity(1)
+                 with FIFOWorklistAlgorithm[SchemeExp]
 analysis.analyze()
 ```
-Method `analyze` computes the full (and sound) analysis result for the program that `ModAnalysis` is constructed with. 
+Method `analyze` computes the full (and sound) analysis result for the program that the analysis is constructed with.
 This method does not return the analysis results directly.
-Rather, after calling `analyze`, the computed analysis results (e.g., the final store and dependencies) can be accessed through the properties of the `analysis` object (e.g., through `analysis.store` and `analysis.deps`).
+Rather, after calling `analyze`, the computed analysis results can be accessed through the properties of the `analysis` object (e.g., `analysis.results(analysis.MainComponent)`).
+Mixing in `SchemeModFLocalAnalysisResults` (resp. `SchemeModFLocalFSAnalysisResults` and `SchemeModFADIAnalysisResults`) additionally collects the values per program location in `resultsPerIdn`.
 
 Alternatively, one can use the `analyzeWithTimeout(<timeout>)` method to run the analysis with a given timeout. This timeout is obtained from a Java Duration
 (using `Timeout.start(<duration>)`). 
 The method returns when either the analysis has terminated or when the timeout has been reached (approximately, meaning in practice it may run a bit longer than the specified timeout). 
 Extra care should be taken when using this method, as the (partial) analysis results are not guaranteed to be sound when the timeout is triggered. 
 Therefore, when using this method, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
+
+Some ready-to-run examples can be found in the package `maf.cli.runnables`, e.g.:
+```sbtshell
+maf/runMain maf.cli.runnables.AnalyzeProgram
+```
+
+## Running the experiments
+
+The precision and performance experiments are found in the package `maf.cli.experiments`.
+For example, the following command compares the precision of the different analyses on the SAS benchmarks, writing the results as CSV files to the folder `benchOutput/precision`:
+```sbtshell
+maf/runMain maf.cli.experiments.precision.AllSASBenchmarks benchOutput/precision
+```
+The scripts in the folder `benchOutput` can be used to plot the results.
 
 # Running the test suite
 This repository is monitored by a CI-system. Upon every push and pull request to this repository, the test suite is run on a specific subset of benchmark programs (MAF tests on action). 
@@ -71,8 +71,6 @@ Current status:
 <!-- https://github.com/badges/shields -->
 ![Latest build](https://github.com/softwarelanguageslab/maf/workflows/MAF%20tests%20on%20action/badge.svg)
 ![Nightly tests](https://github.com/softwarelanguageslab/maf/workflows/Daily%20MAF%20tests/badge.svg)
-[![Daily Incremental MAF tests](https://github.com/softwarelanguageslab/maf/actions/workflows/dailyTestsIncremental.yml/badge.svg)](https://github.com/softwarelanguageslab/maf/actions/workflows/dailyTestsIncremental.yml)
-[![Incremental MAF tests on action](https://github.com/softwarelanguageslab/maf/actions/workflows/testsOnActionIncremental.yml/badge.svg)](https://github.com/softwarelanguageslab/maf/actions/workflows/testsOnActionIncremental.yml)
 
 The full test suite of MAF can easily be run manually using sbt:
 ```sbtshell
@@ -80,9 +78,8 @@ maf/test
 ```
 
 To allow specific tests to be run, tags have been added to the test suite. 
- * Following tags can be used to select the component of the framework that should (not) be tested: `ParserTest`, `LatticeTest`, `PrimitiveTest` and `SoundnessTest`.
+ * Following tags can be used to select the component of the framework that should (not) be tested: `ParserTest`, `LatticeTest`, `PrimitiveTest`, `InterpreterTest` and `SoundnessTest`.
  * Following tags can be used to select which benchmark programs (not) to run: `SlowTest`.
- * Following tags can be used to test utility components of the framework: `UtilTest`.
 
 The `SlowTest` tag currently is only used for some of the soundness tests. When these tests are disabled, only a part of the available benchmark programs
 will be used.
@@ -109,7 +106,7 @@ The MAF framework is presented in the following publication:
   2020. [pdf](http://soft.vub.ac.be/Publications/2020/vub-tr-soft-20-13.pdf). _See release: `SCAM 2020`_
  
 MAF is a complete rework of the [Scala-AM framework](https://github.com/acieroid/scala-am), which was not focused on
-modular static analysis but was primarily used to experiment with AAM-style analyses. An [AAM implementation](docs/AAM.md) (inspired by Scala-AM) is provided in MAF for benchmarks comparisons. Scala-AM is described in the
+modular static analysis but was primarily used to experiment with AAM-style analyses. Scala-AM is described in the
 following publications:
 
 * _Scala-AM: A Modular Static Analysis Framework_. SCAM
