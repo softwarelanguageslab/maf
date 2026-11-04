@@ -2,6 +2,7 @@ package maf.syntax.scheme
 
 import maf.syntax.*
 import maf.util.*
+import maf.util.IdentityMonad.given
 
 /**
  * Remove defines from a Scheme expression, replacing them by let bindings. For example: (define foo 1) (define (f x) x) (f foo) Will be converted to:

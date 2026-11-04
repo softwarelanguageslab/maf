@@ -1,4 +1,4 @@
-package maf.util.datastructures
+package maf.util
 
 case class SmartMap[K, +V](content: Map[K, V], hc: Long) extends Iterable[(K, V)]:
     override def hashCode: Int = hc.toInt

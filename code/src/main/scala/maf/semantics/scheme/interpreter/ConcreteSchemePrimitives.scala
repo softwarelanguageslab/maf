@@ -1,10 +1,11 @@
 package maf.semantics.scheme.interpreter
 
 import maf.domain.*
+import maf.domain.lattice.MathOps
 import maf.syntax.*
 import maf.syntax.Position.Position
 import maf.syntax.scheme.*
-import maf.util.{MathOps, NumOps}
+import maf.util.NumOps
 
 trait ConcreteSchemePrimitives:
     this: BaseSchemeInterpreter[_] =>
@@ -279,7 +280,7 @@ trait ConcreteSchemePrimitives:
 
             def call(args: List[Value], position: Position): Value = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil if y != 0 =>
-                    Value.Integer(maf.util.MathOps.modulo(x, y))
+                    Value.Integer(MathOps.modulo(x, y))
                 case _ :: _ :: Nil => signalException(s"$name ($position): illegal computation: modulo zero")
                 case _             => signalException(s"$name ($position): invalid arguments $args")
 
@@ -359,7 +360,7 @@ trait ConcreteSchemePrimitives:
         object Round extends SingleArgumentPrim("round"):
             def fun =
                 case x: Value.Integer => x
-                case Value.Real(x)    => Value.Real(maf.util.MathOps.round(x))
+                case Value.Real(x)    => Value.Real(MathOps.round(x))
 
         object Evenp extends SingleArgumentPrim("even?"):
             def fun =

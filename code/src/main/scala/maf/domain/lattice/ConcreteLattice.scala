@@ -2,9 +2,10 @@ package maf.domain.lattice
 
 import maf.domain.*
 import maf.util.*
-import maf.util.datastructures.SmartUnion._
+import maf.util.SmartUnion._
 
 import NumOps._
+import SchemeShow._
 
 class ConcreteLattice:
 
@@ -262,7 +263,7 @@ class ConcreteLattice:
                 c1.foldMap(char1 => c2.foldMap(char2 => BoolLattice[B2].inject(char1.toUpper < char2.toUpper)))
             }
         }
-        implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")(Show.symShow) with SymbolLattice[Sym] {
+        implicit val symConcrete: SymbolLattice[Sym] = new BaseInstance[String]("Sym")(SchemeShow.symShow) with SymbolLattice[Sym] {
             def level(s: Sym): Int = ???
             def inject(x: String): Sym = makeValues(Set(x))
             def toString[S2: StringLattice](s: Sym): S2 = s.foldMap(s => StringLattice[S2].inject(s))

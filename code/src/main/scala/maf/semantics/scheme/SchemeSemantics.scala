@@ -1,6 +1,7 @@
 package maf.semantics.scheme
 
 import maf.domain.*
+import maf.domain.lattice.*
 import maf.domain.scheme.*
 import maf.syntax.*
 import maf.syntax.Position._
@@ -103,7 +104,7 @@ trait SchemeSemantics:
     protected def evalSequence(eps: Iterable[Exp]): A[Val] = eps match
         case Nil          => unit(lattice.void)
         case last :: Nil  => eval(last)
-        case next :: rest => nontailKeepEnv { eval(next) } >>> evalSequence(rest)
+        case next :: rest => nontailKeepEnv { eval(next) } >> evalSequence(rest)
 
     protected def evalIf(prd: Exp, csq: Exp, alt: Exp): A[Val] =
         for
@@ -117,7 +118,7 @@ trait SchemeSemantics:
             vls <- nontailKeepEnv { evalAll(rhs) }
             ads <- vrs.mapM(allocVar)
             res <- withExtendedEnv(vrs.map(_.name).zip(ads)) {
-                extendSto(ads.zip(vls)) >>> evalSequence(bdy)
+                extendSto(ads.zip(vls)) >> evalSequence(bdy)
             }
         yield res
 
@@ -128,7 +129,7 @@ trait SchemeSemantics:
                 vlu <- nontailKeepEnv { eval(rhs) }
                 adr <- allocVar(vrb)
                 res <- withExtendedEnv(vrb.name, adr) {
-                    extendSto(adr, vlu) >>> evalLetStar(rst, bdy)
+                    extendSto(adr, vlu) >> evalLetStar(rst, bdy)
                 }
             yield res
 
@@ -188,7 +189,7 @@ trait SchemeSemantics:
                 val envBds = bds.map((nam, adr, _) => (nam, adr))
                 val stoBds = bds.map((_, adr, vlu) => (adr, vlu))
                 withEnv(_ => Environment(envBds)) {
-                    extendSto(stoBds) >>> call(lam)
+                    extendSto(stoBds) >> call(lam)
                 }
             }
             

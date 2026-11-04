@@ -1,4 +1,4 @@
-package maf.util.datastructures
+package maf.util
 
 /**
  * When using `s1 ++ s2` with the default Scala Set implementation, it can be significantly more efficient to use `s2 ++ s1` if s1 is smaller than s2

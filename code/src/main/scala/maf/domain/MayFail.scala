@@ -1,5 +1,7 @@
 package maf.domain
 
+import maf.util.Monoid
+
 sealed trait MayFail[A, E] extends Serializable:
     def addError(err: E): MayFail[A, E] = addErrors(Set(err))
     def addErrors(errs: Set[E]): MayFail[A, E] = this match
@@ -55,6 +57,20 @@ case class MayFailError[A, E](errs: Set[E]) extends MayFail[A, E]
 case class MayFailBoth[A, E](a: A, errs: Set[E]) extends MayFail[A, E]
 
 object MayFail:
+    /** Combines the values using the given monoid, and accumulates the errors. */
+    given monoid[A, E](using monoid: Monoid[A]): Monoid[MayFail[A, E]] with
+        def append(x: MayFail[A, E], y: => MayFail[A, E]): MayFail[A, E] = (x, y) match
+            case (MayFailSuccess(x), MayFailSuccess(y))       => MayFailSuccess(monoid.append(x, y))
+            case (MayFailSuccess(x), MayFailError(errs))      => MayFailBoth(x, errs)
+            case (MayFailSuccess(x), MayFailBoth(y, errs))    => MayFailBoth(monoid.append(x, y), errs)
+            case (MayFailError(errs), MayFailSuccess(x))      => MayFailBoth(x, errs)
+            case (MayFailError(errs1), MayFailError(errs2))   => MayFailError(errs1 ++ errs2)
+            case (MayFailError(errs1), MayFailBoth(x, errs2)) => MayFailBoth(x, errs1 ++ errs2)
+            case (MayFailBoth(x, errs), MayFailSuccess(y))    => MayFailBoth(monoid.append(x, y), errs)
+            case (MayFailBoth(x, errs1), MayFailError(errs2)) => MayFailBoth(x, errs1 ++ errs2)
+            case (MayFailBoth(x, errs1), MayFailBoth(y, errs2)) =>
+                MayFailBoth(monoid.append(x, y), errs1 ++ errs2)
+        def zero: MayFail[A, E] = MayFailSuccess(monoid.zero)
     def failure[A, E](err: E): MayFail[A, E] = MayFailError(Set(err))
     def success[A, E](a: A): MayFail[A, E] = MayFailSuccess(a)
     def fromOption[A, E](opt: Option[A])(alt: => E): MayFail[A, E] = opt match

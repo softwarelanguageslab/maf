@@ -1,7 +1,7 @@
 package maf.domain.lattice
 
 import maf.domain.*
-import maf.util.Show
+import maf.util.{Monoid, Show}
 
 /** Error raised when trying to construct the top element of a lattice which doesn't have one */
 object LatticeTopUndefined extends MAFException
@@ -75,6 +75,11 @@ object Lattice:
         def subsumes(x: Unit, y: => Unit): Boolean = true
         def eql[B: BoolLattice](x: Unit, y: Unit): B = BoolLattice[B].inject(true)
         def level(v: Unit): Int = 1
+
+    /** Monoid with join as append and bottom as zero. */
+    implicit def latticeMonoid[L: Lattice]: Monoid[L] = new Monoid[L]:
+        def append(x: L, y: => L): L = Lattice[L].join(x, y)
+        def zero: L = Lattice[L].bottom
 
     def foldMapL[X, L: Lattice](xs: Iterable[X], f: X => L): L =
         if xs.isEmpty then Lattice[L].bottom

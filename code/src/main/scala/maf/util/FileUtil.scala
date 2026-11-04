@@ -2,7 +2,6 @@ package maf.util
 
 import java.io.*
 
-
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
 

@@ -2,9 +2,10 @@ package maf.domain.scheme
 
 import maf.domain.*
 import maf.domain.lattice.*
+import maf.domain.lattice.Lattice.latticeMonoid
 import maf.util.*
 import maf.util.MonoidImplicits.*
-import maf.util.datastructures.SmartUnion._
+import maf.util.SmartUnion._
 
 /**
  * Defines a Scheme lattice based on other lattices. Example usage: val address = NameAddress val lattice = new ModularSchemeLattice[SchemeExp,
@@ -22,7 +23,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     type P = SchemePrimitive[L, A]
 
-    implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X], Error]] = MonoidImplicits.mayFail[Set[X]](MonoidImplicits.setMonoid[X])
+    implicit def mfAddrMonoid[X]: Monoid[MayFail[Set[X], Error]] = MayFail.monoid[Set[X], Error](using MonoidImplicits.setMonoid[X])
 
     object StrT extends AbstractWrapType[S, Str]:
         type Inject = String
@@ -755,7 +756,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             Lattice[L].join(x, y)
         def zero: L = Lattice[L].bottom
     }
-    implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MonoidInstances.mayFail[L]
+    implicit val lMFMonoid: Monoid[MayFail[L, Error]] = MayFail.monoid[L, Error]
 
     // TODO: field SchemeLattice only exists for backwards compatibility reasons, but for the sake of simplification should also be removed, and the methods be included within the class itself
     val schemeLattice: SchemeLattice[L, A] = new SchemeLattice[L, A] { lat =>

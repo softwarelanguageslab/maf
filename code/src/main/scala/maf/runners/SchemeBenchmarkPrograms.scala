@@ -2,7 +2,7 @@ package maf.runners
 
 import java.io.File
 
-import maf.util.datastructures.SmartUnion
+import maf.util.SmartUnion
 
 // null values are used here due to Java interop
 import scala.language.unsafeNulls

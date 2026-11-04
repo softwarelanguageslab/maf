@@ -1,4 +1,4 @@
-package maf.runners
+package maf.util
 
 object Table:
 

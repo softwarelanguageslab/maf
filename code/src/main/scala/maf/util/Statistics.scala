@@ -1,6 +1,4 @@
-package maf.runners.performance
-
-import maf.runners.*
+package maf.util
 
 // Helpers to compute statistics over sets of data
 object Statistics:

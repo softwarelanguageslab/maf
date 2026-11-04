@@ -4,6 +4,7 @@ import maf.domain.*
 import maf.util.*
 
 import NumOps._
+import SchemeShow._
 
 object ConstantPropagation:
 
@@ -358,7 +359,7 @@ object ConstantPropagation:
                 case _ => BoolLattice[B2].top
         }
 
-        implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol")(Show.symShow) with SymbolLattice[Sym] {
+        implicit val symCP: SymbolLattice[Sym] = new BaseInstance[String]("Symbol")(SchemeShow.symShow) with SymbolLattice[Sym] {
             def inject(x: String) = Constant(x)
             def toString[S2: StringLattice](s: Sym): S2 = s match
                 case Top         => StringLattice[S2].top

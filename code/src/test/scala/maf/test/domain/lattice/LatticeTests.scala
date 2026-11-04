@@ -7,7 +7,6 @@ import org.scalatestplus.scalacheck.Checkers
 
 import maf.domain.lattice.*
 import maf.test.LatticeTest
-import maf.util.*
 
 /** TODO[medium] tests for scheme lattice */
 

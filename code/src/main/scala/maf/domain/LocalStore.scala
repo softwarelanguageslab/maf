@@ -1,7 +1,7 @@
 package maf.domain
 
 import maf.domain.lattice.LatticeWithAddrs
-import maf.util.datastructures.SmartMap
+import maf.util.SmartMap
 
 import scala.annotation.tailrec
 

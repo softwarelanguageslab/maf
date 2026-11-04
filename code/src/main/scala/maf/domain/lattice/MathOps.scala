@@ -1,4 +1,4 @@
-package maf.util
+package maf.domain.lattice
 
 import scala.util.Random
 
