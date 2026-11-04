@@ -67,7 +67,7 @@ jobs:
         with:
           java-version: openjdk@1.15
       - name: Run lattice tests
-        run: sbt "maf/testOnly maf.test.language.scheme.*SchemeLatticeTests"
+        run: sbt "maf/testOnly maf.test.domain.scheme.*SchemeLatticeTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -94,7 +94,7 @@ jobs:
         with:
           java-version: openjdk@1.15
       - name: Run R5RS tests
-        run: sbt "maf/testOnly maf.test.language.scheme.*R5RSCorrectnessTests"
+        run: sbt "maf/testOnly *R5RSCorrectnessTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -120,7 +120,7 @@ jobs:
         with:
           java-version: openjdk@1.15
       - name: Run parser tests
-        run: sbt "maf/testOnly maf.test.language.scheme.SchemeParserTests"
+        run: sbt "maf/testOnly maf.test.syntax.scheme.SchemeParserTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -146,7 +146,7 @@ jobs:
         with:
           java-version: openjdk@1.15
       - name: Run interpreter tests
-        run: sbt "maf/testOnly maf.test.language.scheme.InterpreterTests"
+        run: sbt "maf/testOnly maf.test.semantics.scheme.InterpreterTests"
       # If failed, update the Slack notification.
       - name: Notify slack fail
         if: failure() || cancelled()
@@ -177,7 +177,7 @@ jobs:
         with:
           java-version: openjdk@1.15
       - name: Run soundness tests
-        run: sbt "maf/testOnly maf.test.modular.scheme.${{ matrix.test_class }}"
+        run: sbt "maf/testOnly maf.test.analysis.scheme.${{ matrix.test_class }}"
         env: 
           LOG_ENV: ci
           LOG_LOCATION: log-${{ github.sha }}

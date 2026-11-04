@@ -1,4 +1,5 @@
 package maf.util
+
 import io.AnsiColor.*
 
 /**

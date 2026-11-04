@@ -1,6 +1,6 @@
 package maf.test
 
-import maf.bench.scheme.SchemeBenchmarkPrograms
+import maf.runners.SchemeBenchmarkPrograms
 import maf.util.datastructures.SmartUnion
 
 trait VariousSequentialBenchmarks extends SchemeBenchmarkTests:

@@ -1,6 +1,5 @@
 package maf.util
 
-import maf.core.{IdentityMonad, Monad}
 import scala.annotation.tailrec
 
 class TrampolineT[M[_], T]

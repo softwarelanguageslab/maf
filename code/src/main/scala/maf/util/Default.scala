@@ -1,6 +1,6 @@
 package maf.util
 
-import maf.core.*
+import maf.domain.lattice.*
 
 trait Default[A]:
     def default: A

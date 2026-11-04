@@ -22,7 +22,7 @@ lazy val maf = project
     libraryDependencies += "org.scalatestplus" %% "scalacheck-1-15" % "3.2.9.0" % "test",
     libraryDependencies += "com.vladsch.flexmark" % "flexmark-all" % "0.62.2" % Test,
     /** General */
-    Compile / mainClass := Some("maf.cli.Main"),
+    Compile / mainClass := Some("maf.runners.Main"),
     run / fork := false,
     /** Imported options from https://tpolecat.github.io/2017/04/25/scalac-flags.html */
     scalacOptions ++= Seq(

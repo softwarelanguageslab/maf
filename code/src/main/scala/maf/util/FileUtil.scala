@@ -1,8 +1,7 @@
 package maf.util
 
 import java.io.*
-import maf.util.Writer.Writer
-import maf.util.benchmarks.Clock
+
 
 // null values are used here due to Java interop
 import scala.language.unsafeNulls

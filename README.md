@@ -4,16 +4,32 @@ Modular Analysis Framework (MAF): A Framework for Modular Analysis of Dynamic La
 
 The goal of this artefact is to experiment with abstract machines and language semantics.
 Currently, the artefact's implementation is focused towards experiments with modular analyses of (R5RS) Scheme programs.
-All analyses live in the package [`maf.modular.scheme.modflocal`](code/src/main/scala/maf/modular/scheme/modflocal):
+All analyses live in the package [`maf.analysis.scheme`](code/src/main/scala/maf/analysis/scheme):
 
 * `SchemeModFLocal` (standard instance: `SchemeDSSAnalysis`): every component carries its own (garbage-collected) local store, and the result of a call is a store delta;
 * `SchemeModFLocalFS`: a variant in which the store of a component is joined over all of its calls (garbage collection can be disabled using the `gc` flag);
 * `SchemeModFADI` (standard instance: `SchemeModFADIAnalysis`): a variant that threads a counting store through the analysis.
 
-They share their semantics (`SchemeSemantics`), context-sensitivity policies (`SchemeModFLocalSensitivity`: context-insensitive or k-CFA call-site sensitive) and allocators (`CustomAllocator`).
+They share their semantics (`SchemeSemantics`), context-sensitivity policies (`SchemeModFLocalSensitivity`: context-insensitive or k-CFA call-site sensitive) and allocators (`CustomAllocator`), which can be found in the package [`maf.semantics.scheme`](code/src/main/scala/maf/semantics/scheme).
 
 Additionally, semantics for R5RS Scheme are present, including a concrete interpreter that is used as an oracle for the soundness tests.
 Note that the semantics of our implementation may deviate from the R5RS specification at certain points; these have been described [here](docs/INCOMPATIBILITIES.md).
+
+## Code organisation
+
+The source code (in [`code/src/main/scala/maf`](code/src/main/scala/maf)) is organised in the following packages:
+
+| Package | Contents |
+|---|---|
+| `maf.util` | Generic utilities, such as monads, monoids, timeouts and file I/O. |
+| `maf.syntax` | Expressions, identities and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser, compiler, prelude and source-to-source transformations (undefiner, mutable variable boxer, ...). |
+| `maf.domain` | Semantic domains: addresses, environments, stores, errors and abstract domains. `lattice` contains the lattice interfaces and their implementations (concrete, constant propagation, type, bounded); `scheme` contains the Scheme lattice, abstract domains, addresses and primitives. |
+| `maf.semantics` | `scheme` contains the (monadic) abstract semantics of Scheme with its context-sensitivity policies and allocators; `scheme.interpreter` contains the concrete Scheme interpreters. |
+| `maf.fixpoint` | The generic modular fixpoint machinery: `ModAnalysis`, work lists and worklist algorithms. |
+| `maf.analysis` | The analysis results interface. `scheme` contains the analyses (`SchemeModFLocal`, `SchemeModFLocalFS` and `SchemeModFADI`). |
+| `maf.runners` | Ready-to-run programs and the catalogue of benchmark programs. `precision` and `performance` contain the experiments. |
+
+The test suite (in [`code/src/test/scala/maf/test`](code/src/test/scala/maf/test)) follows the same structure.
 
 # Usage
 
@@ -49,17 +65,17 @@ The method returns when either the analysis has terminated or when the timeout h
 Extra care should be taken when using this method, as the (partial) analysis results are not guaranteed to be sound when the timeout is triggered. 
 Therefore, when using this method, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
 
-Some ready-to-run examples can be found in the package `maf.cli.runnables`, e.g.:
+Some ready-to-run examples can be found in the package `maf.runners`, e.g.:
 ```sbtshell
-maf/runMain maf.cli.runnables.AnalyzeProgram
+maf/runMain maf.runners.AnalyzeProgram
 ```
 
 ## Running the experiments
 
-The precision and performance experiments are found in the package `maf.cli.experiments`.
+The precision and performance experiments are found in the packages `maf.runners.precision` and `maf.runners.performance`.
 For example, the following command compares the precision of the different analyses on the SAS benchmarks, writing the results as CSV files to the folder `benchOutput/precision`:
 ```sbtshell
-maf/runMain maf.cli.experiments.precision.AllSASBenchmarks benchOutput/precision
+maf/runMain maf.runners.precision.AllSASBenchmarks benchOutput/precision
 ```
 The scripts in the folder `benchOutput` can be used to plot the results.
 

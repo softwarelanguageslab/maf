@@ -1,6 +1,7 @@
 package maf.util
 
-import maf.core._
+import maf.domain.*
+import maf.domain.lattice.*
 
 trait Monoid[M] extends Serializable:
     def append(x: M, y: => M): M
