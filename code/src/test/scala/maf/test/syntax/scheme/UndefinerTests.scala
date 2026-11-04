@@ -60,7 +60,7 @@ class UndefinerTests extends AnyPropSpec:
         property(name) {
             val parsedOriginal = SchemeParser.parse(original.stripMargin)
             val parsedTranslated = SchemeParser.parse(translated.stripMargin).head
-            val undefinedOriginal = SchemeBegin(SchemeMonadicUndefiner.undefineExps(parsedOriginal, false), Identity.none)
+            val undefinedOriginal = SchemeBegin(SchemeUndefiner.undefineExps(parsedOriginal, false), Identity.none)
             assert(comparePrograms(parsedTranslated, undefinedOriginal))
         }
 

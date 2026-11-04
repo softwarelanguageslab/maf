@@ -66,15 +66,6 @@ object Monad:
         def flattenM: M[Set[X]] =
             xs.foldSequence(Set())((all, rest) => Monad[M].unit(all ++ rest))
 
-    def sequence[M[_]: Monad, X](ms: List[M[X]]): M[List[X]] =
-        ms match
-            case m :: rest =>
-                for
-                    v <- m
-                    vs <- sequence(rest)
-                yield v :: vs
-            case Nil => Monad[M].unit(List())
-
     // Compatibility layer to support Tailcall using our monad operations
     given tailcallMonad: Monad[TailRec] with
         private type M[X] = TailRec[X]
