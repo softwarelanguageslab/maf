@@ -11,7 +11,6 @@ case class ValueNotApplicable[V](value: V, idn: Identity) extends Error
 //case class NotSupported(message: String)                                  extends Error
 case class OperatorNotApplicable[V](operator: String, arguments: List[V]) extends Error
 case class TypeError[V](message: String, on: V) extends Error
-case class InvalidRelease[V](message: String, on: V) extends Error
 case class UndefinedVariableError(id: Identifier) extends Error:
     override def toString: String = s"$id:${id.idn.pos}"
 case class UninitialisedVariableError(id: Identifier) extends Error

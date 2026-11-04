@@ -111,24 +111,3 @@ trait BaseSchemeMutableVarBoxer:
         bdy.map(rewrite(_, mut, rew))
 
 object SchemeMutableVarBoxer extends BaseSchemeMutableVarBoxer
-
-//
-// Extra utility to extract all top-level vars of a program
-// (these can sometimes be treated differently in the analysis)
-//
-
-object SchemeTopLevelVars:
-    def collect(exp: SchemeExp): Set[Identifier] = exp match
-        case _: SchemeValue | _: SchemeVar | _: SchemeLambda | _: SchemeVarArgLambda => Set.empty
-        case SchemeSet(_, vexp, _)                                                   => collect(vexp)
-        case SchemeDefineVariable(_, vexp, _)                                        => collect(vexp)
-        case SchemeBegin(eps, _)                                                     => collect(eps)
-        case SchemeIf(prd, csq, alt, _)                                              => collect(prd) ++ collect(csq) ++ collect(alt)
-        case SchemeFuncall(fun, ags, _)                                              => collect(fun) ++ collect(ags)
-        case SchemeAssert(cnd, _)                                                    => collect(cnd)
-        case let: SchemeLettishExp =>
-            val (ids, eps) = let.bindings.unzip
-            ids.toSet ++ collect(eps) ++ collect(let.body)
-        case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
-    def collect(eps: List[SchemeExp]): Set[Identifier] =
-        eps.foldLeft(Set.empty)((acc, exp) => acc ++ collect(exp))

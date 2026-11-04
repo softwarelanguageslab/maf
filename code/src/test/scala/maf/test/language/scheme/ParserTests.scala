@@ -27,7 +27,7 @@ trait SchemeParserTestsSpec extends SchemeBenchmarkTests:
             assert(reparsed.flatMap(_.subexpressions).forall(e => e.idn.pos.tag.contains("MAF") || e.idn == NoCodeIdentity && e.idn.pos.tag.isEmpty))
         }
 
-class SchemeParserTests extends SchemeParserTestsSpec with AllBenchmarks
+class SchemeParserTests extends SchemeParserTestsSpec with AllSequentialBenchmarks
 
 class AnnotationTests extends AnyFlatSpec:
     "Annotated lambdas" should "have their annotation accessible" in {

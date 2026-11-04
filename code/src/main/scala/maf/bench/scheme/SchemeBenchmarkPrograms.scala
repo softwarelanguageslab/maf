@@ -4,8 +4,6 @@ import java.io.File
 
 import maf.util.datastructures.SmartUnion
 
-import scala.util.Random
-
 // null values are used here due to Java interop
 import scala.language.unsafeNulls
 
@@ -16,23 +14,10 @@ object SchemeBenchmarkPrograms:
         if lst == null then Array()
         else lst
 
-    // Just include an entire folder of programs, except some that are explicitly specified. The directory name should not end with a "/".
-    def fromFolderR(directory: String)(exclude: String*): Set[String] =
-        def recur(dir: File): Array[File] =
-            val here = files(dir)
-            val (dr, noDr) = here.partition(_.isDirectory)
-            noDr ++ dr.flatMap(recur)
-        val root = new File(directory)
-        val base = root.getAbsolutePath.nn.length - directory.length
-        recur(root).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude.map(file => s"$directory/$file")
-
     def fromFolder(directory: String)(exclude: String*): Set[String] =
         val root = new File(directory)
         val base = root.getAbsolutePath.nn.length - directory.length
         files(root).filter(!_.isDirectory).map(_.getAbsolutePath.nn.substring(base).nn).toSet -- exclude.map(file => s"$directory/$file")
-
-    // Only include certain listed programs.
-    def toFolder(directory: String)(include: String*): Set[String] = include.map(file => s"$directory/$file").toSet
 
     // SEQUENTIAL ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -58,8 +43,6 @@ object SchemeBenchmarkPrograms:
     lazy val scp1: Set[String] = fromFolder("test/R5RS/scp1")(
       "circus.scm" // Vararg append not supported by concrete interpreter.
     )
-    lazy val scp1_compressed: Set[String] = fromFolder("test/R5RS/scp1-compressed")()
-    lazy val scp1_singleFile: Set[String] = Set("test/R5RS/scp1-compressed/all.scm")
     lazy val sigscheme: Set[String] = fromFolder("test/R5RS/sigscheme")()
     lazy val theLittleSchemer: Set[String] = fromFolder("test/R5RS/WeiChenRompf2019/the-little-schemer")(
       "ch4.scm", // No main code (only definitions).
@@ -92,56 +75,6 @@ object SchemeBenchmarkPrograms:
       "Streams.scm", // Uses define-macro.
       "callcc.scm" // call/cc not yet support in concrete interpreter
     )
-    lazy val certainVarious: Set[String] = fromFolder("test/R5RS/various")(
-      ".DS_Store",
-      "pico.scm", // Used def-macro, no main body + need to incorporate pico.ini file.
-      "quasiquoting.scm", // Uses unquote-splicing.
-      "Streams.scm", // Uses define-macro.
-      "callcc.scm", // call/cc not yet support in concrete interpreter
-      "blur.scm",
-      "eta.scm",
-      "SICP-compiler.scm",
-      "kcfa2.scm",
-      "sym.scm",
-      "widen.scm",
-      "mj09.scm"
-    )
     lazy val WeiChenRompf2019: Set[String] = SmartUnion.sunionList(List(theLittleSchemer, toplas98, WCR2019))
     lazy val sequentialBenchmarks: Set[String] =
         SmartUnion.sunionList(List(ad, gabriel, gambit, icp1, rosetta, scp1, sigscheme, WeiChenRompf2019, various))
-
-    def selectRandomSeq(n: Int): Set[String] = Random.shuffle(sequentialBenchmarks).take(n)
-
-    // Publications ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    lazy val jss2021: Set[String] =
-        Set(
-          "test/R5RS/WeiChenRompf2019/meta-circ.scm",
-          "test/R5RS/WeiChenRompf2019/earley.sch",
-          "test/R5RS/WeiChenRompf2019/toplas98/graphs.scm",
-          "test/R5RS/WeiChenRompf2019/toplas98/dynamic.scm",
-          "test/R5RS/WeiChenRompf2019/toplas98/nbody-processed.scm",
-          "test/R5RS/WeiChenRompf2019/toplas98/boyer.scm",
-          "test/R5RS/gambit/peval.scm",
-          "test/R5RS/gambit/scheme.scm",
-          "test/R5RS/gambit/sboyer.scm",
-          "test/R5RS/gambit/nboyer.scm",
-          "test/R5RS/gambit/matrix.scm",
-          "test/R5RS/gambit/browse.scm",
-          "test/R5RS/scp1-compressed/all.scm",
-          "test/R5RS/ad/all.scm",
-          "test/R5RS/various/SICP-compiler.scm",
-          "test/R5RS/icp/icp_1c_ambeval.scm",
-          "test/R5RS/icp/icp_1c_multiple-dwelling.scm",
-          "test/R5RS/icp/icp_1c_ontleed.scm",
-          "test/R5RS/icp/icp_1c_prime-sum-pair.scm",
-          "test/R5RS/icp/icp_7_eceval.scm",
-          "test/R5RS/icp/icp_8_compiler.scm",
-          "test/R5RS/icp/icp_5_regsim.scm",
-          "test/R5RS/icp/icp_3_leval.scm",
-          "test/R5RS/icp/icp_2_aeval.scm",
-        )
-
-    // ALL ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    lazy val allBenchmarks: Set[String] = sequentialBenchmarks

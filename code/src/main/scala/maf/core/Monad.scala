@@ -1,10 +1,7 @@
 package maf.core
 
 import maf.core.IdentityMonad.Id
-import maf.util.LogOps
-import maf.util.Logger
 import maf.util.Show
-import maf.core.monad.MonadLift
 import scala.util.control.TailCalls
 import scala.util.control.TailCalls.TailRec
 
@@ -30,11 +27,6 @@ object Monad:
     extension [M[_]: Monad, X, Y, Z](v: (M[X], M[Y]))
         def mapN(f: (X, Y) => Z): M[Z] =
             v._1.flatMap(x => v._2.flatMap(y => Monad[M].unit(f(x, y))))
-
-    // Utility function for logging in monadic contexts
-    def trace[M[_], X: Show](tag: String)(x: X)(using Monad[M])(using logger: Logger.Logger): M[X] =
-        LogOps.log(s"$tag ${Show[X].show(x)}")
-        Monad[M].unit(x)
 
     // Kleisli Arrow Composition
     extension [M[_]: Monad, X, Y](start: X => M[Y])
@@ -189,37 +181,10 @@ trait StateOps[S, M[_]] extends Monad[M]:
 class MonadStateT[S, M[_]: Monad, A](val run: S => M[(A, S)]):
     def runValue(init: S) = Monad[M].map(run(init))(_._1)
 
-object MonadOptionT:
-
-    import maf.core.Monad.MonadSyntaxOps
-    case class OptionT[M[_], T](inner: M[Option[T]])
-    def lift[M[_]: Monad, T](m: M[T]): OptionT[M, T] =
-        OptionT(m.map(Some(_)))
-
-    given optionInstance[M[_]: Monad]: Monad[[T] =>> OptionT[M, T]] with
-        private type OM[T] = OptionT[M, T]
-        def unit[X](x: X): OM[X] =
-            OptionT(Monad[M].unit(Some(x)))
-        def flatMap[X, Y](m: OM[X])(f: X => OM[Y]): OM[Y] =
-            OptionT(
-              m.inner.flatMap(vlu =>
-                  vlu match
-                      case Some(vlu) =>
-                          f(vlu).inner
-                      case None => Monad[M].unit(None)
-              )
-            )
-        def map[X, Y](m: OM[X])(f: X => Y): OM[Y] =
-            flatMap(m)(f andThen unit)
-
 object MonadStateT:
     import maf.core.Monad.MonadSyntaxOps
     def apply[S, M[_]: Monad, A](run: S => M[(A, S)]): MonadStateT[S, M, A] =
         new MonadStateT(run)
-
-    given monadLift[S]: MonadLift[[M[_], A] =>> MonadStateT[S, M, A]] with
-        def lift[M[_]: Monad, A](m: M[A]): MonadStateT[S, M, A] =
-            MonadStateT((s) => Monad[M].map(m)(v => (v, s)))
 
     given stateInstance[S, M[_]: Monad]: StateOps[S, [A] =>> MonadStateT[S, M, A]] with
         private type SM[A] = MonadStateT[S, M, A]
@@ -258,34 +223,6 @@ object MonadStateT:
             val innerRes = Monad[M].map(res) { case (v, snew) => v }
             Monad[M].map(res) { case (v, snew) => (innerRes, snew) }
         })
-
-///
-/// SetMonad
-///
-
-/** This simply provides a functional interface for the existing Scala Set monad */
-object SetMonad:
-    implicit def iterableMonadInstance: Monad[[A] =>> Set[A]] = new Monad:
-        type M[A] = Set[A]
-        def unit[X](x: X): M[X] = Set(x)
-        def map[X, Y](m: M[X])(f: X => Y): M[Y] =
-            m.map(f)
-        def flatMap[X, Y](m: M[X])(f: X => M[Y]): M[Y] =
-            m.flatMap(f)
-
-    def fail[A]: Set[A] = Set()
-
-///
-/// Option Monad
-///
-
-object OptionMonad:
-    given Monad[Option] = new Monad:
-        def unit[X](x: X): Option[X] = Some(x)
-        def map[X, Y](m: Option[X])(f: X => Y): Option[Y] =
-            m.map(f)
-        def flatMap[X, Y](m: Option[X])(f: X => Option[Y]): Option[Y] =
-            m.flatMap(f)
 
 ///
 /// Identity Monad
