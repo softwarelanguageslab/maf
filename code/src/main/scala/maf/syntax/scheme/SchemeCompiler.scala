@@ -367,7 +367,7 @@ trait BaseSchemeCompiler:
                     cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
                 yield SchemePair(SchemePair(value(id), SchemePair(uqExp, value(nil), pair.pos), carp.pos), cdrExp, pos)
         // throw compiler exceptions on illegal patterns
-        case SExpPair(SExpId(Identifier(id, _)), _, _) if Set("quasiquote,unquote,unquote-splicing").contains(id) =>
+        case SExpPair(SExpId(Identifier("quasiquote" | "unquote" | "unquote-splicing", _)), _, _) =>
             throw new SchemeCompilerException(s"Illegal pattern in quasiquote: $sexp", sexp.pos)
         // other s-expressions are expanded as expected
         case sexpId: SExpId     => done(value(sexpId))

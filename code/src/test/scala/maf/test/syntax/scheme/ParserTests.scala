@@ -35,3 +35,21 @@ class AnnotationTests extends AnyFlatSpec:
         assert(parsed.isInstanceOf[SchemeLambda])
         assert(parsed.asInstanceOf[SchemeLambda].annotation == Some(("@annot", "test")))
     }
+
+class QuasiquoteTests extends AnyFlatSpec:
+    def parse(program: String): List[SchemeExp] = SchemeParser.parse(program, Source.Text)
+
+    "Quasiquoted templates" should "allow unquotes and splices of list elements, and unquoted tails" in {
+        assert(parse("`(1 ,x ,@xs . ,y)").nonEmpty)
+        assert(parse("`(1 `(2 ,(3 ,x)))").nonEmpty)
+    }
+
+    they should "reject a splice that is not a list element" in {
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("`(1 . ,@xs)"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("`,@xs"))
+    }
+
+    they should "reject unquotes with other than one argument" in {
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("`(1 (unquote x y))"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("`(1 (unquote))"))
+    }
