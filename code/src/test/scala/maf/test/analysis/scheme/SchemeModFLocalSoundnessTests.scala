@@ -7,6 +7,7 @@ import maf.runners.*
 import maf.semantics.scheme.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 import maf.test.*
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:

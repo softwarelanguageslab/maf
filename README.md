@@ -22,7 +22,7 @@ The source code (in [`code/src/main/scala/maf`](code/src/main/scala/maf)) is org
 | Package | Contents |
 |---|---|
 | `maf.util` | Generic utilities, such as monads, monoids, timeouts and file I/O. |
-| `maf.syntax` | Expressions, identities and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser, compiler, prelude and source-to-source transformations (undefiner, mutable variable boxer, ...). |
+| `maf.syntax` | Expressions (program points with a unique label) and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser, compiler and prelude, and `scheme.transformations` the source-to-source transformations (undefiner, mutable variable boxer, lexical addresser and renamer). |
 | `maf.domain` | Semantic domains: addresses, environments, stores, errors and abstract domains. `lattice` contains the lattice interfaces and their implementations (concrete, constant propagation, type, bounded); `scheme` contains the Scheme lattice, abstract domains, addresses and primitives. |
 | `maf.semantics` | `scheme` contains the (monadic) abstract semantics of Scheme with its context-sensitivity policies and allocators; `scheme.interpreter` contains the concrete Scheme interpreters. |
 | `maf.fixpoint` | The generic modular fixpoint machinery: `ModAnalysis`, work lists and worklist algorithms. |

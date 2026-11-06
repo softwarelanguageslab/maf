@@ -1,7 +1,8 @@
-package maf.test.syntax.scheme
+package maf.test.syntax.scheme.transformations
 
 import maf.syntax.Source
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.SchemeUndefiner
 
 import org.scalatest.propspec.AnyPropSpec
 

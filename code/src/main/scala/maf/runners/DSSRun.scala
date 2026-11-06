@@ -5,6 +5,7 @@ import maf.domain.*
 import maf.domain.lattice.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 
 object DSSRun:
 

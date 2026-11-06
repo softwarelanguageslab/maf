@@ -1,11 +1,7 @@
-package maf.syntax.scheme
+package maf.syntax.scheme.transformations
 
 import maf.syntax.Identifier
-
-/** Lexical references can either be: */
-enum LexicalRef:
-    case PrmRef(nam: String)
-    case VarRef(id: Identifier)
+import maf.syntax.scheme.*
 
 trait BaseSchemeLexicalAddresser:
 

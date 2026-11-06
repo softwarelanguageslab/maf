@@ -470,6 +470,11 @@ case class SchemeVar(id: Identifier) extends SchemeVarExp:
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
     override def toString: String = id.name
 
+/** What a variable refers to, as resolved by the lexical addresser: a primitive (global) name, or the identifier that binds the variable */
+enum LexicalRef:
+    case PrmRef(nam: String)
+    case VarRef(id: Identifier)
+
 object SchemePair:
     def apply(car: SchemeExp, cdr: SchemeExp, pos: Option[Position]): SchemeExp =
         SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", pos)), List(car, cdr), pos)

@@ -5,6 +5,7 @@ import maf.domain.lattice.*
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 import maf.util.*
 
 import scala.concurrent.duration._

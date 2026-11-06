@@ -1,6 +1,7 @@
 package maf.syntax.scheme
 
 import maf.syntax.Source
+import maf.syntax.scheme.transformations.{SchemeRenamer, SchemeUndefiner}
 import maf.syntax.sexp.*
 import maf.util.Reader
 

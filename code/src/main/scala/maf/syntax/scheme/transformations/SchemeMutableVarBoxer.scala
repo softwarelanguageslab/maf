@@ -1,6 +1,7 @@
-package maf.syntax.scheme
+package maf.syntax.scheme.transformations
 
 import maf.syntax.*
+import maf.syntax.scheme.*
 
 // replaces all mutable Scheme variables with immutable variables that use explicitly mutable reference values
 // e.g., a program such as

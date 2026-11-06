@@ -1,6 +1,7 @@
-package maf.syntax.scheme
+package maf.syntax.scheme.transformations
 
 import maf.syntax.Identifier
+import maf.syntax.scheme.*
 
 /**
  * Object that provides a method to rename variables in a Scheme program in order to have only unique names. For example, (let ((x 1)) (let ((x 2))

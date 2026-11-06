@@ -3,6 +3,7 @@ package maf.semantics.scheme.interpreter
 import maf.domain.*
 import maf.syntax.*
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.SchemeUndefiner
 import maf.util.*
 
 import scala.concurrent.duration.{Duration, SECONDS}

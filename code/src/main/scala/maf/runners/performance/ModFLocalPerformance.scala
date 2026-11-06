@@ -3,7 +3,8 @@ package maf.runners.performance
 import maf.fixpoint.AnalysisEntry
 import maf.runners.SchemeAnalyses
 import maf.syntax.Source
-import maf.syntax.scheme.{SchemeExp, SchemeMutableVarBoxer, SchemeParser, SchemePrelude}
+import maf.syntax.scheme.{SchemeExp, SchemeParser, SchemePrelude}
+import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 
 object ModFLocalPerformance extends PerformanceEvaluation:
     type Analysis = AnalysisEntry[SchemeExp]

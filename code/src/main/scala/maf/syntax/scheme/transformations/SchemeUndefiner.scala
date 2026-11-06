@@ -1,6 +1,7 @@
-package maf.syntax.scheme
+package maf.syntax.scheme.transformations
 
 import maf.syntax.*
+import maf.syntax.scheme.*
 
 import scala.collection.mutable
 
