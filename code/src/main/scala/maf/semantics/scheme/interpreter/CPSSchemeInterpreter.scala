@@ -9,7 +9,7 @@ import maf.util.Timeout
 import scala.concurrent.TimeoutException
 
 class CPSSchemeInterpreter(
-    cb: (Identity, Value) => Unit = (_, _) => (), // TODO: incorporate
+    cb: (Option[Position], Value) => Unit = (_, _) => (), // TODO: incorporate
     val io: IO = new EmptyIO(),
     val stack: Boolean = false)
     extends BaseSchemeInterpreter[Value]
@@ -113,7 +113,7 @@ class CPSSchemeInterpreter(
         case SchemeBegin(Nil, _)                           => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
         case SchemeBegin(first :: Nil, _)                  => Step(first, env, cc)
         case SchemeBegin(first :: rest, _)                 => Step(first, env, BegC(rest, env, cc))
-        case SchemeDefineVariable(_, _, idn)               => signalException(UndefinedExpressionExpected(idn))
+        case SchemeDefineVariable(_, _, pos)               => signalException(UndefinedExpressionExpected(pos))
         case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
         case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))
         case lambda: SchemeLambdaExp                       => Kont(Value.Clo(lambda, env), cc)
@@ -150,14 +150,14 @@ class CPSSchemeInterpreter(
         case FunC(args, env, call, cc)                       => continueArgs(v, args, env, call, cc)
         case IffC(_, alt, env, cc) if v == Value.Bool(false) => Step(alt, env, cc)
         case IffC(cons, _, env, cc)                          => Step(cons, env, cc)
-        case LetC(Nil, env, bvals, let, cc) => Step(SchemeBegin(let.body, let.idn), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
+        case LetC(Nil, env, bvals, let, cc) => Step(SchemeBegin(let.body, let.pos), extendEnv(let.bindings.map(_._1), (v :: bvals).reverse, env), cc)
         case LetC((_, e) :: rest, env, bvals, let, cc) => Step(e, env, LetC(rest, env, v :: bvals, let, cc))
         case LtrC(i1, bnd, env, let, cc) =>
             extendStore(env(i1.name), v) // Overwrite the previous binding.
             bnd match
-                case Nil             => Step(SchemeBegin(let.body, let.idn), env, cc)
+                case Nil             => Step(SchemeBegin(let.body, let.pos), env, cc)
                 case (i2, e) :: rest => Step(e, env, LtrC(i2, rest, env, let, cc))
-        case LtsC(i, Nil, env, let, cc)              => Step(SchemeBegin(let.body, let.idn), extendEnv(env, (i, v)), cc)
+        case LtsC(i, Nil, env, let, cc)              => Step(SchemeBegin(let.body, let.pos), extendEnv(env, (i, v)), cc)
         case LtsC(i1, (i2, e) :: rest, env, let, cc) => val extEnv = extendEnv(env, (i1, v)); Step(e, extEnv, LtsC(i2, rest, extEnv, let, cc))
         case PaiC(car, e, cc)                        => Kont(allocateCons(e, car, v), cc)
         case RetC(addr, cc)                          => extendStore(addr, v); Kont(v, cc)
@@ -173,18 +173,18 @@ class CPSSchemeInterpreter(
       ): State =
         // First, check the arity.
         f match
-            case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _, idn), _) =>
+            case Value.Clo(lambda @ SchemeLambda(_, argNames, _, _, pos), _) =>
                 if args.length != argNames.length then
                     signalException(
-                      ArityError(idn.pos, argNames.length, args.length)
+                      ArityError(pos, argNames.length, args.length)
                     )
-            case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _, idn), _) =>
+            case Value.Clo(lambda @ SchemeVarArgLambda(_, argNames, _, _, _, pos), _) =>
                 if args.length < argNames.length then
                     signalException(
-                      VarArityError(idn.pos, argNames.length, args.length)
+                      VarArityError(pos, argNames.length, args.length)
                     )
             case Value.Primitive(_) => // Arity is checked upon primitive call.
-            case v                  => signalException(ValueNotApplicable(v, call.idn))
+            case v                  => signalException(ValueNotApplicable(v, call.pos))
         // If the arity is ok, evaluate the arguments.
         args match
             case Nil           => continueBody(f, Nil, call, cc)
@@ -224,7 +224,7 @@ class CPSSchemeInterpreter(
         case _                                         => false
 
     override def extendStore(a: Addr, v: Value): Unit =
-        if checkAddr(a) && checkValue(v) then cb(a._2.idn, v)
+        if checkAddr(a) && checkValue(v) then cb(a._2.pos, v)
         super.extendStore(a, v)
 
     def extendEnv(env: Env, idv: (Identifier, Value)): Env =

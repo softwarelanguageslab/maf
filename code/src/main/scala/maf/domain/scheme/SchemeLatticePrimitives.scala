@@ -475,7 +475,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                 getClosures(x).foldMapM { clo =>
                     for
                         _ <- PrimM[M].guard(clo._1.check(1))
-                        res <- PrimM[M].callcc(clo, fpos.idn.pos)
+                        res <- PrimM[M].callcc(clo, fpos.pos)
                     yield res
                 }
 

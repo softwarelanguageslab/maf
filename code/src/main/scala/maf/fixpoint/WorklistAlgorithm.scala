@@ -110,16 +110,16 @@ trait MostVisitedFirstWorklistAlgorithm[Expr <: Expression] extends LeastVisited
     override lazy val ordering: Ordering[Component] = Ordering.by(count)
 
 trait DeepExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends PriorityQueueWorklistAlgorithm[Expr]:
-    def computeDepths(exp: Expression, depths: Map[Identity, Int] = Map.empty): Map[Identity, Int] =
+    def computeDepths(exp: Expression, depths: Map[Option[Position], Int] = Map.empty): Map[Option[Position], Int] =
         exp.subexpressions
-            .foldLeft(Map.empty[Identity, Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
-            .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.idn -> 0)
-    val depths: Map[Identity, Int] = computeDepths(program)
+            .foldLeft(Map.empty[Option[Position], Int].withDefaultValue(0))((depths, exp) => computeDepths(exp, depths))
+            .map({ case (k, v) => (k, v + 1) }) ++ depths + (exp.pos -> 0)
+    val depths: Map[Option[Position], Int] = computeDepths(program)
     var cmps: Map[Component, Int] = Map.empty.withDefaultValue(0)
     lazy val ordering: Ordering[Component] = Ordering.by(cmps)
     override def pop(): Component =
         val cmp = super.pop()
-        cmps += cmp -> depths(expr(cmp).idn)
+        cmps += cmp -> depths(expr(cmp).pos)
         cmp
 
 trait ShallowExpressionsFirstWorklistAlgorithm[Expr <: Expression] extends DeepExpressionsFirstWorklistAlgorithm[Expr]:

@@ -27,7 +27,7 @@ object Value:
  * in the input file, and as tagging information for the abstract machine.
  */
 sealed trait SExp extends Expression:
-    val idn: Identity
+    val pos: Option[Position]
     def fv: Set[String] = Set()
 
 /**
@@ -38,7 +38,7 @@ sealed trait SExp extends Expression:
 case class SExpPair(
     car: SExp,
     cdr: SExp,
-    idn: Identity)
+    pos: Option[Position])
     extends SExp:
     override def toString: String =
         val content = toStringRest
@@ -50,59 +50,66 @@ case class SExpPair(
                 s"$car $rest"
             case SExpValue(Value.Nil, _) => s"$car"
             case _                       => s"$car . $cdr"
-    val label: Label = Label.PAI
     def subexpressions: List[Expression] = List(car, cdr)
 
 case class SExpVector(
     elements: List[SExp],
-    idn: Identity)
+    pos: Option[Position])
     extends SExp:
 
     override def toString: String = s"#(${elements.map(_.toString).mkString(" ")})"
-    val label: Label = Label.VEC
     def subexpressions: List[Expression] = elements
 
 object SExpList:
 
-    /** Alternative constructor to automatically construct a bunch of pair from a list of expressions */
-    def apply(content: List[SExp], end: SExp): SExp = fromList(content, end)
-    def apply(content: List[SExp], idn: Identity): SExp =
-        fromList(content, SExpValue(Value.Nil, idn))
+    /** Constructs the pairs of a proper list with the given elements, where the entire list has position `pos` */
+    def apply(content: List[SExp], pos: Option[Position]): SExp =
+        // the empty list at the end spans from the last element up to the end of the list (i.e., its closing parenthesis)
+        apply(content, SExpValue(Value.Nil, content.lastOption.fold(pos)(after(_, pos))), pos)
 
-    def fromList(content: List[SExp], end: SExp): SExp = content match
+    /**
+     * Constructs the pairs of a list with the given elements that ends in `end` (e.g., a dotted list), where the entire list has position `pos`. The
+     * pair of each element spans from that element up to the end of the list.
+     */
+    def apply(content: List[SExp], end: SExp, pos: Option[Position]): SExp = content match
         case Nil          => end
-        case head :: tail => SExpPair(head, SExpList(tail, end), head.idn)
+        case head :: tail => SExpPair(head, SExpList(tail, end, tail.headOption.fold(pos)(from(_, pos))), pos)
+
+    /** The part of `pos` that starts where `e` starts */
+    private def from(e: SExp, pos: Option[Position]): Option[Position] =
+        for p <- pos; s <- e.pos yield p.copy(line = s.line, col = s.col)
+
+    /** The part of `pos` that starts where `e` ends */
+    private def after(e: SExp, pos: Option[Position]): Option[Position] =
+        for p <- pos; s <- e.pos yield p.copy(line = s.endLine, col = s.endCol)
 
 /** An identifier, such as foo, bar, etc. */
 case class SExpId(id: Identifier) extends SExp:
-    val idn: Identity = id.idn
+    val pos: Option[Position] = id.pos
     override def toString: String = id.toString
-    val label: Label = Label.SYM
     def subexpressions: List[Expression] = List(id)
 
 /** A literal value, such as 1, "foo", 'foo, etc. */
-case class SExpValue(value: Value, idn: Identity) extends SExp:
+case class SExpValue(value: Value, pos: Option[Position]) extends SExp:
     override def toString: String = value.toString
-    val label: Label = Label.VAL
     def subexpressions: List[Expression] = List()
-    override lazy val hash: Int = (label, value).hashCode()
 
 /** A quoted element, such as 'foo, '(foo (bar)), etc. */
 object SExpQuoted:
-    def apply(content: SExp, idn: Identity): SExp =
-        SExpList(List(SExpId(Identifier("quote", idn)), content), idn)
+    def apply(content: SExp, quotePos: Option[Position], pos: Option[Position]): SExp =
+        SExpList(List(SExpId(Identifier("quote", quotePos)), content), pos)
 
 /** A quasiquoted element, such as `foo */
 object SExpQuasiquoted:
-    def apply(content: SExp, idn: Identity): SExp =
-        SExpList(List(SExpId(Identifier("quasiquote", idn)), content), idn)
+    def apply(content: SExp, quotePos: Option[Position], pos: Option[Position]): SExp =
+        SExpList(List(SExpId(Identifier("quasiquote", quotePos)), content), pos)
 
 /** An unquoted element, such as ,foo */
 object SExpUnquoted:
-    def apply(content: SExp, idn: Identity): SExp =
-        SExpList(List(SExpId(Identifier("unquote", idn)), content), idn)
+    def apply(content: SExp, quotePos: Option[Position], pos: Option[Position]): SExp =
+        SExpList(List(SExpId(Identifier("unquote", quotePos)), content), pos)
 
 /** A unquoted-splicing element, such as ,@foo */
 object SExpUnquotedSplicing:
-    def apply(content: SExp, idn: Identity): SExp =
-        SExpList(List(SExpId(Identifier("unquote-splicing", idn)), content), idn)
+    def apply(content: SExp, quotePos: Option[Position], pos: Option[Position]): SExp =
+        SExpList(List(SExpId(Identifier("unquote-splicing", quotePos)), content), pos)

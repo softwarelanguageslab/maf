@@ -340,7 +340,7 @@ class BaseSchemePrelude:
     )
 
     def parseDef(dff: String, nam: String): List[SchemeExp] =
-        SchemeParser.parse(dff, Position.newTag(nam))
+        SchemeParser.parse(dff, Source.Prelude(nam))
 
     lazy val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
         val exp = SchemeBody(parseDef(str, nam))

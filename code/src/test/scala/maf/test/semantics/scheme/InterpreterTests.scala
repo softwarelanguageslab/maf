@@ -3,7 +3,7 @@ package maf.test.semantics.scheme
 import maf.runners.SchemeBenchmarkPrograms
 import maf.semantics.scheme.interpreter.*
 import maf.semantics.scheme.interpreter.ConcreteValues.Addr
-import maf.syntax.Identity
+import maf.syntax.{Position, Source}
 import maf.syntax.scheme.*
 import maf.test.{InterpreterTest, SlowTest}
 import maf.util.{Reader, Timeout}
@@ -18,8 +18,8 @@ class InterpreterTests() extends AnyPropSpec:
       "test/R5RS/various/my-test.scm" // Result depends on random numbers.
     )
 
-    val interpreter = new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new EmptyIO())
-    val CPSinterpreter = new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io = new EmptyIO())
+    val interpreter = new SchemeInterpreter((_: Option[Position], _: ConcreteValues.Value) => (), io = new EmptyIO())
+    val CPSinterpreter = new CPSSchemeInterpreter((_: Option[Position], _: ConcreteValues.Value) => (), io = new EmptyIO())
 
     /** Comparison of values that can also handle pointers. */
     def compareValues(
@@ -57,7 +57,7 @@ class InterpreterTests() extends AnyPropSpec:
         case _ => Some(v1 == v2)
 
     def onBenchmark(benchmark: String): Unit =
-        val program: SchemeExp = SchemeParser.parseProgram(Reader.loadFile(benchmark))
+        val program: SchemeExp = SchemeParser.parseProgram(Reader.loadFile(benchmark), Source.File(benchmark))
         property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
             try
                 // TODO (maybe): run in parallel?

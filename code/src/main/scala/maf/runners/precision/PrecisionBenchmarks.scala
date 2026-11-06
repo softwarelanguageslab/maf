@@ -86,8 +86,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case v => throw new Exception(s"Unsupported value for concrete conversion: $v")
 
     // compares the results of concrete and/or abstract interpreters using a `ResultMap`
-    // a ResultMap which is a mapping from identities to a (context-insensitve) value
-    type ResultMap = Map[Identity, BaseValue]
+    // a ResultMap which is a mapping from positions to a (context-insensitve) value
+    type ResultMap = Map[Option[Position], BaseValue]
 
     // running an analysis results in either
     // - succesful termination (meaning the ResultMap `res` is sound)
@@ -111,9 +111,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   - the set of program locations where abstract values are less precise in r2
      *   - the set of program locations where abstract values are not comparable between r1 and r2
      */
-    protected def compare(b1: ResultMap, b2: ResultMap): (Set[Identity], Set[Identity], Set[Identity], Set[Identity]) =
+    protected def compare(b1: ResultMap, b2: ResultMap): (Set[Option[Position]], Set[Option[Position]], Set[Option[Position]], Set[Option[Position]]) =
         val allKeys = b1.keySet ++ b2.keySet
-        allKeys.foldLeft((Set.empty[Identity], Set.empty[Identity], Set.empty[Identity], Set.empty[Identity])) { (acc, pos) =>
+        allKeys.foldLeft((Set.empty[Option[Position]], Set.empty[Option[Position]], Set.empty[Option[Position]], Set.empty[Option[Position]])) { (acc, pos) =>
             val value1 = b1.getOrElse(pos, baseLattice.bottom)
             val value2 = b2.getOrElse(pos, baseLattice.bottom)
             if value1 == value2 then (acc._1 + pos, acc._2, acc._3, acc._4)
@@ -136,12 +136,12 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @return
      *   the set of addresses that have been refined in b2 w.r.t. b1
      */
-    protected def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Identity] =
-        def errorMessage(pos: Identity): String =
+    protected def compareOrdered(r1: ResultMap, r2: ResultMap, check: Boolean = true): Set[Option[Position]] =
+        def errorMessage(pos: Option[Position]): String =
             val value1 = r1.getOrElse(pos, baseLattice.bottom)
             val value2 = r2.getOrElse(pos, baseLattice.bottom)
             s"""
-              | At addr $pos: value v2 of r2 is not subsumed by value v1 of r1.
+              | At addr ${pos.show}: value v2 of r2 is not subsumed by value v1 of r1.
               | where v1 = $value1
               |       v2 = $value2 
             """.stripMargin
@@ -159,7 +159,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   a ResultMap containing the context-insensitive results for that analysis
      */
     protected def extract(analysis: Analysis): ResultMap =
-        analysis.resultsPerIdn.view
+        analysis.resultsPerPos.view
             .mapValues(vs => analysis.lattice.join(vs))
             .mapValues(convertValue(analysis))
             .toMap
@@ -214,7 +214,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @param io
      *   a mock FileIO class that is used when the concrete interpreter requires some input
      */
-    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
+    def createInterpreter(addResult: (Option[Position], ConcreteValues.Value) => Unit, io: IO = new EmptyIO()): SchemeInterpreter =
         new SchemeInterpreter(addResult, io)
 
     /**
@@ -225,7 +225,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @param addResult
      *   a callback function that can register values in the result map
      */
-    def handleInterpreterError(addResult: (Identity, ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
+    def handleInterpreterError(addResult: (Option[Position], ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
 
     /**
      * Run the concrete interpreter on a given program
@@ -250,9 +250,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         times: Int = 1
       ): Option[ResultMap] =
         print(s"Running concrete interpreter on $path ($times times)")
-        var idnResults: ResultMap = Map.empty.withDefaultValue(baseLattice.bottom)
-        def addResult(idn: Identity, vlu: ConcreteValues.Value) =
-            idnResults += idn -> (baseLattice.join(idnResults(idn), convertConcreteValue(vlu)))
+        var posResults: ResultMap = Map.empty.withDefaultValue(baseLattice.bottom)
+        def addResult(pos: Option[Position], vlu: ConcreteValues.Value) =
+            posResults += pos -> (baseLattice.join(posResults(pos), convertConcreteValue(vlu)))
         try
             for _ <- 1 to times do
                 print(".")
@@ -260,7 +260,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
                 try interpreter.run(program, timeout)
                 catch handleInterpreterError(addResult)
             println()
-            Some(idnResults)
+            Some(posResults)
         catch
             case e: Exception =>
                 println(s"Concrete interpreter failed with $e")
@@ -279,7 +279,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      */
     protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit
 
-    protected def parseProgram(txt: String): SchemeExp = SchemeParser.parseProgram(txt)
+    protected def parseProgram(txt: String, source: Source): SchemeExp = SchemeParser.parseProgram(txt, source)
 
     /**
      * Run a benchmark
@@ -288,5 +288,5 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      */
     def runBenchmark(benchmark: Benchmark) =
         val txt = Reader.loadFile(benchmark)
-        val prg = parseProgram(txt)
+        val prg = parseProgram(txt, Source.File(benchmark))
         forBenchmark(benchmark, prg)

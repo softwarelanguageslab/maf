@@ -4,6 +4,7 @@ import maf.analysis.scheme.*
 import maf.domain.scheme.*
 import maf.fixpoint.FIFOWorklistAlgorithm
 import maf.semantics.scheme.*
+import maf.syntax.Source
 import maf.syntax.scheme.*
 import maf.test.SchemeR5RSTests
 import maf.util.Timeout
@@ -18,7 +19,7 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
     def analysis(prg: SchemeExp): Analysis
 
     def parseProgram(txt: String): SchemeExp =
-        val parsed = SchemeParser.parse(txt)
+        val parsed = SchemeParser.parse(txt, Source.Text)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)

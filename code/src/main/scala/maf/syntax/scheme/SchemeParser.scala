@@ -1,7 +1,8 @@
 package maf.syntax.scheme
 
-import maf.syntax.Position._
+import maf.syntax.Source
 import maf.syntax.sexp.*
+import maf.util.Reader
 
 object SchemeParser:
 
@@ -14,11 +15,11 @@ object SchemeParser:
     /** Replace defines in a program (a list of expressions) by a big letrec as a single expression */
     def undefine(exps: List[SchemeExp]): SchemeExp = SchemeUndefiner.undefine(exps)
 
-    /** Parse a string representing a Scheme program */
-    def parse(s: String, tag: PTag = noTag): List[SchemeExp] = SExpParser.parse(s, tag).map(compile)
+    /** Parse a string representing a Scheme program, which originates from the given source */
+    def parse(s: String, source: Source): List[SchemeExp] = SExpParser.parse(s, source).map(compile)
 
-    /** Parses a program without running "undefine" afterwards */
-    def parseProgramText(prg: String, tag: PTag = noTag): List[SchemeExp] = SchemePrelude.addPrelude(parse(prg, tag))
+    /** Parse the Scheme program in the given file */
+    def parseFile(path: String): List[SchemeExp] = parse(Reader.loadFile(path), Source.File(path))
 
     /** Parse a program (including adding a prelude and undefining it) */
-    def parseProgram(prg: String, tag: PTag = noTag): SchemeExp = undefine(SchemePrelude.addPrelude(parse(prg, tag)))
+    def parseProgram(prg: String, source: Source): SchemeExp = undefine(SchemePrelude.addPrelude(parse(prg, source)))

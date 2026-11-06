@@ -39,8 +39,7 @@ To run a modular analysis, you compose an analysis with an abstract domain, a co
 
 The analyses do not support `set!` directly, so a program first needs to be parsed, extended with the required prelude definitions, rewritten to use explicit boxes for mutable variables, and undefined:
 ```scala
-val text = maf.util.Reader.loadFile(path-to-file)
-val parsed = SchemeParser.parse(text)
+val parsed = SchemeParser.parseFile(path-to-file)
 val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
 val transf = SchemeMutableVarBoxer.transform(prelud)
 val prog = SchemeParser.undefine(transf)

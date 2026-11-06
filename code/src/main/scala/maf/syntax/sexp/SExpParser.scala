@@ -1,7 +1,7 @@
 package maf.syntax.sexp
 
 import maf.syntax.*
-import maf.syntax.Position._
+import maf.syntax.Position
 import maf.util.*
 
 /**
@@ -74,7 +74,6 @@ trait SExpTokens extends Tokens:
         def chars = "."
 
 class SExpLexer extends Lexical with SExpTokens:
-    def whitespace: Parser[String] = rep(whitespaceChar) ^^ (_.mkString)
     def eoi: Parser[Any] = new Parser[Any] {
         def apply(in: Input) =
             if in.atEnd then new Success("EOI", in)
@@ -83,7 +82,8 @@ class SExpLexer extends Lexical with SExpTokens:
     def eol: Parser[Any] = acceptIf(n => n == '\n')(n => "")
     def notEol: Parser[Char] = acceptIf(n => n != '\n')(n => "")
     def comment: Parser[String] = ';' ~> rep(notEol) ^^ (_.mkString)
-    def nonRelevant: Parser[Unit] = rep(comment | whitespaceChar | eol) ^^ (_ => ())
+    // whitespace and comments between tokens (skipped by the scanner, so that a token ends at its last character)
+    def whitespace: Parser[Any] = rep(comment | whitespaceChar | eol)
 
     def any: Parser[Char] = chrExcept()
     def chr(c: Char): Parser[Char] = elem(s"character $c", _ == c)
@@ -167,12 +167,12 @@ class SExpLexer extends Lexical with SExpTokens:
         }
     def number: Parser[SExpToken] = real | integer
     def token: Parser[SExpToken] =
-        nonRelevant ~> positioned({
+        positioned({
             boolean | number |
                 character | string |
                 leftParen | leftBracket | rightParen | rightBracket |
                 hashParen | quote | backquote | unquoteSplicing | unquote | dot | identifier
-        }) <~ nonRelevant
+        })
 
 object SExpParser extends TokenParsers:
     type Tokens = SExpTokens
@@ -196,15 +196,19 @@ object SExpParser extends TokenParsers:
     }
     def nil: Parser[Value] = ((leftParen ~ rightParen) | (leftBracket ~ rightBracket)) ^^^ Value.Nil
 
-    def value(tag: PTag): Parser[SExp] = Parser { in =>
+    /** The position of an element parsed from input `in`, with `rest` the remaining input: from its first token up to the end of its last token */
+    private def position(source: Source, in: Input, rest: Input): Option[Position] =
+        Some(Position(source, in.pos, OffsetPosition(rest.source, rest.offset)))
+
+    def value(source: Source): Parser[SExp] = Parser { in =>
         (bool | real | integer | character | string | nil)(in) match
-            case Success(t, in1) => Success(SExpValue(t, Identity(in.pos, tag)), in1)
+            case Success(t, in1) => Success(SExpValue(t, position(source, in, in1)), in1)
             case ns: NoSuccess   => ns
     }
 
-    def identifier(tag: PTag): Parser[SExp] = Parser { in =>
+    def identifier(source: Source): Parser[SExp] = Parser { in =>
         elem("identifier", _.isInstanceOf[TIdentifier])(in) match
-            case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, Identity(in.pos, tag))), in1)
+            case Success(TIdentifier(s), in1) => Success(SExpId(Identifier(s, position(source, in, in1))), in1)
             case Success(v, in1)              => Failure(s"Expected identifier, got $v", in1)
             case ns: NoSuccess                => ns
     }
@@ -220,50 +224,54 @@ object SExpParser extends TokenParsers:
     def unquoteSplicing = elem("unquote-splicing", _.isInstanceOf[TUnquoteSplicing])
     def hashParen = elem("hash paren", _.isInstanceOf[THashParen])
 
-    def parenList(tag: PTag): Parser[SExp] = Parser { in =>
-        (leftParen ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightParen)(in) match
+    def parenList(source: Source): Parser[SExp] = Parser { in =>
+        (leftParen ~> rep1(exp(source)) ~ opt(dot ~> exp(source)) <~ rightParen)(in) match
             case Success(es ~ None, in1) =>
-                Success(SExpList(es, Identity(in.pos, tag)), in1)
+                Success(SExpList(es, position(source, in, in1)), in1)
             case Success(es ~ Some(tail), in1) =>
-                Success(SExpList(es, tail), in1)
+                Success(SExpList(es, tail, position(source, in, in1)), in1)
             case ns: NoSuccess => ns
     }
 
-    def bracketList(tag: PTag): Parser[SExp] = Parser { in =>
-        (leftBracket ~> rep1(exp(tag)) ~ opt(dot ~> exp(tag)) <~ rightBracket)(in) match
+    def bracketList(source: Source): Parser[SExp] = Parser { in =>
+        (leftBracket ~> rep1(exp(source)) ~ opt(dot ~> exp(source)) <~ rightBracket)(in) match
             case Success(es ~ None, in1) =>
-                Success(SExpList(es, Identity(in.pos, tag)), in1)
+                Success(SExpList(es, position(source, in, in1)), in1)
             case Success(es ~ Some(tail), in1) =>
-                Success(SExpList(es, tail), in1)
+                Success(SExpList(es, tail, position(source, in, in1)), in1)
             case ns: NoSuccess => ns
     }
 
-    def list(tag: PTag): Parser[SExp] = parenList(tag) | bracketList(tag)
+    def list(source: Source): Parser[SExp] = parenList(source) | bracketList(source)
 
     /** Parses a vector literal e.g., #(1 2 3) */
-    def vector(tag: PTag): Parser[SExp] = Parser { in =>
-        (hashParen ~> rep1(exp(tag)) <~ rightParen)(in) match
+    def vector(source: Source): Parser[SExp] = Parser { in =>
+        (hashParen ~> rep1(exp(source)) <~ rightParen)(in) match
             case Success(es, in1) =>
-                Success(SExpVector(es, Identity(in.pos, tag)), in1)
+                Success(SExpVector(es, position(source, in, in1)), in1)
             case ns: NoSuccess => ns
     }
 
-    def withQuote(tag: PTag)(p: Parser[_], make: (SExp, Identity) => SExp) = Parser { in =>
-        (p ~> exp(tag))(in) match
-            case Success(e, in1) => Success(make(e, Identity(in.pos, tag)), in1)
-            case ns: NoSuccess   => ns
+    /** Parses a quote token `p` followed by an expression, and builds the quoted form from the expression, the position of `p` and the entire position */
+    def withQuote(source: Source)(p: Parser[_], make: (SExp, Option[Position], Option[Position]) => SExp) = Parser { in =>
+        p(in) match
+            case Success(_, afterQuote) =>
+                exp(source)(afterQuote) match
+                    case Success(e, in1) => Success(make(e, position(source, in, afterQuote), position(source, in, in1)), in1)
+                    case ns: NoSuccess   => ns
+            case ns: NoSuccess => ns
     }
 
-    def quoted(tag: PTag): Parser[SExp] = withQuote(tag)(quote, SExpQuoted(_, _))
-    def quasiquoted(tag: PTag): Parser[SExp] = withQuote(tag)(quasiquote, SExpQuasiquoted(_, _))
-    def unquoted(tag: PTag): Parser[SExp] = withQuote(tag)(unquote, SExpUnquoted(_, _))
-    def unquotedSplicing(tag: PTag): Parser[SExp] = withQuote(tag)(unquoteSplicing, SExpUnquotedSplicing(_, _))
+    def quoted(source: Source): Parser[SExp] = withQuote(source)(quote, SExpQuoted(_, _, _))
+    def quasiquoted(source: Source): Parser[SExp] = withQuote(source)(quasiquote, SExpQuasiquoted(_, _, _))
+    def unquoted(source: Source): Parser[SExp] = withQuote(source)(unquote, SExpUnquoted(_, _, _))
+    def unquotedSplicing(source: Source): Parser[SExp] = withQuote(source)(unquoteSplicing, SExpUnquotedSplicing(_, _, _))
 
-    def exp(tag: PTag): Parser[SExp] =
-        value(tag) | identifier(tag) | list(tag) | quoted(tag) | quasiquoted(tag) | unquoted(tag) | unquotedSplicing(tag) | vector(tag)
-    def expList(tag: PTag): Parser[List[SExp]] = rep1(exp(tag))
+    def exp(source: Source): Parser[SExp] =
+        value(source) | identifier(source) | list(source) | quoted(source) | quasiquoted(source) | unquoted(source) | unquotedSplicing(source) | vector(source)
+    def expList(source: Source): Parser[List[SExp]] = rep1(exp(source))
 
-    def parse(s: String, tag: PTag = noTag): List[SExp] = expList(tag)(new Scanner(s)) match
+    def parse(s: String, source: Source): List[SExp] = expList(source)(new Scanner(s)) match
         case Success(res, next) if next.atEnd =>
             res
         case Success(res, next) =>
@@ -282,6 +290,10 @@ object SExpParser extends TokenParsers:
      * - doesn't require having reached the end of the reader after parsing
      * - can use any reader as input (instead of reading a full string from the beginning)
      */
-    def parseIn(s: Reader[Char], tag: PTag = noTag): (SExp, Int) = exp(tag)(new Scanner(s)) match
-        case Success(res, next) => (res, next.offset)
+    def parseIn(s: Reader[Char], source: Source): (SExp, Int) = exp(source)(new Scanner(s)) match
+        case Success(res, next) =>
+            // continue after the whitespace and comments that follow the expression
+            lexical.whitespace(new CharSequenceReader(next.source, next.offset)) match
+                case lexical.Success(_, rest) => (res, rest.offset)
+                case _                        => (res, next.offset)
         case failure: NoSuccess => throw new Exception(s"cannot parse expression: $failure")

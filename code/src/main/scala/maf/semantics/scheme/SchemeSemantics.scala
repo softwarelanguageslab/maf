@@ -23,8 +23,6 @@ trait SchemeSemantics:
     type App = SchemeFuncall
     type Env = Environment[Adr]
     type Clo = (Lam, Env)
-    type Idn = Identity
-    type Pos = Position
 
     trait AnalysisM[M[_]] extends SchemePrimM[M, Adr, Val]:
         def getEnv: M[Env]
@@ -36,15 +34,15 @@ trait SchemeSemantics:
                 res <- withEnv(_ => newEnv) { blk }
             yield res
         def lookupEnv(id: Identifier): M[Adr] =
-            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable ${id.name}@${id.idn} in $env"))
+            for env <- getEnv yield env.lookup(id.name).getOrElse(throw new Exception(s"undefined variable ${id.name}@${id.pos.show} in $env"))
         def withExtendedEnv[X](nam: String, adr: Adr)(blk: M[X]): M[X] =
             withEnv(_.extend(nam, adr))(blk)
         def withExtendedEnv[X](bds: Iterable[(String, Adr)])(blk: M[X]): M[X] =
             withEnv(_.extend(bds))(blk)
         def getCtx: M[Ctx]
         def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
-        def allocVar(idn: Identifier): M[Adr] =
-            for ctx <- getCtx yield VarAddr(idn, ctx)
+        def allocVar(pos: Identifier): M[Adr] =
+            for ctx <- getCtx yield VarAddr(pos, ctx)
         def allocPtr(exp: SchemeExp): M[Adr] =
             for ctx <- getCtx yield PtrAddr(exp, ctx)
         def call(lam: Lam): M[Val]

@@ -55,8 +55,8 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
         val sto = initialSto
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, sto: Sto, ctx: Ctx) extends Component:
-        val exp = SchemeBody(lam.body)
-        override def toString = s"${lam.lambdaName}@${lam.idn} [$ctx] [${sto.content.hc}]"
+        val exp = lam.bodyExp
+        override def toString = s"${lam.lambdaName}@${lam.pos.show} [$ctx] [${sto.content.hc}]"
 
     def initialComponent: Cmp = MainComponent
     def expr(cmp: Cmp): Exp = cmp.exp
@@ -206,19 +206,19 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
-    var resultsPerIdn = Map.empty.withDefaultValue(Set.empty)
+    var resultsPerPos = Map.empty.withDefaultValue(Set.empty)
 
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                resultsPerPos += adr.pos -> (resultsPerPos(adr.pos) + vlu)
             case _ => ()
         super.extendV(sto, adr, vlu)
 
     override def updateV(sto: Sto, adr: Adr, vlu: Val) =
         adr match
             case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerIdn += adr.idn -> (resultsPerIdn(adr.idn) + vlu)
+                resultsPerPos += adr.pos -> (resultsPerPos(adr.pos) + vlu)
             case _ => ()
         super.updateV(sto, adr, vlu)
 

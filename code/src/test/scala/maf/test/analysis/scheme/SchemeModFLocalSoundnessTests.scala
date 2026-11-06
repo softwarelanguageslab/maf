@@ -5,13 +5,13 @@ import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.runners.*
 import maf.semantics.scheme.*
-import maf.syntax.Position
+import maf.syntax.Source
 import maf.syntax.scheme.*
 import maf.test.*
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
     override def parseProgram(txt: String, benchmark: String): SchemeExp =
-        val parsed = SchemeParser.parse(txt, Position.withSourcePath(benchmark))
+        val parsed = SchemeParser.parse(txt, Source.File(benchmark))
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)

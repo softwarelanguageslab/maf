@@ -55,7 +55,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     // for the purposes of generating arbitrary Scheme values, we can just represent addresses with integers
     case class SimpleAddr(addr: Int) extends Address:
         def printable = true
-        def idn = Identity.none
+        def pos = None
     // we'll use the "real" primitives
     def primitives = new SchemeLatticePrimitives[modularLattice.L, SimpleAddr]
     // the modular lattice that is used
@@ -115,7 +115,7 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
         val anyAddr: Gen[SimpleAddr] = Gen.choose(0, 100).map(SimpleAddr(_)) // addresses are faked in 100 different variations
         val anyClosure: Gen[valLat.Closure] = for
             nm1 <- Gen.choose(0, 100) // lambdas are faked in 100 different variations
-            lam = SchemeLambda(None, List(), List(SchemeValue(Value.Integer(nm1), Identity.none)), None, Identity.none)
+            lam = SchemeLambda(None, List(), List(SchemeValue(Value.Integer(nm1), None)), None, None)
             nm2 <- Gen.choose(0, 100) // environments are faked in 100 different variations
         yield ((lam, emptyEnv))
         // a generator for each type of value

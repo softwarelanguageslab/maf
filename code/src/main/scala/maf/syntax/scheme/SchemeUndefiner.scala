@@ -13,7 +13,7 @@ trait UndefinerTester:
         def ||(other: => Result): Result = this match
             case NoError(_)      => other
             case Error(_)        => this
-            case ErrorNoIdentity => this
+            case ErrorNoPosition => this
 
         /** Same as <code>||</code> but chains the return value of the previous one */
         def ||>(other: Boolean => Result): Result = this match
@@ -26,14 +26,14 @@ trait UndefinerTester:
 
         def show: String = this match
             case NoError(_)      => "<no-error>"
-            case Error(idn)      => s"<error at $idn>"
-            case ErrorNoIdentity => s"<error>"
+            case Error(pos)      => s"<error at ${pos.show}>"
+            case ErrorNoPosition => s"<error>"
 
     protected case class NoError(allowed: Boolean) extends Result
-    protected case class Error(location: Identity) extends Result
-    protected case object ErrorNoIdentity extends Result
+    protected case class Error(location: Option[Position]) extends Result
+    protected case object ErrorNoPosition extends Result
 
-    implicit def toResult(b: Boolean)(using allowed: Boolean): Result = if b then ErrorNoIdentity else NoError(allowed)
+    implicit def toResult(b: Boolean)(using allowed: Boolean): Result = if b then ErrorNoPosition else NoError(allowed)
 
     /**
      * Checks whether the given Scheme program contains a define in the wrong contexT.
@@ -61,8 +61,8 @@ trait UndefinerTester:
     private def checkSequence(s: List[SchemeExp])(allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
-            case (SchemeDefineVariable(name, value, idn)) :: rest =>
-                if allowed then check(value, false) || checkSequence(rest)(true) else Error(idn)
+            case (SchemeDefineVariable(name, value, pos)) :: rest =>
+                if allowed then check(value, false) || checkSequence(rest)(true) else Error(pos)
             case (e @ SchemeBegin(_, _)) :: rest =>
                 check(e, allowed) ||> checkSequence(rest)
             case (vrr: SchemeVarExp) :: rest if isAnnotation(vrr) =>
@@ -79,42 +79,42 @@ trait UndefinerTester:
     protected def check(s: SchemeExp, allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
-            case SchemeLambda(name, args, body, ann, idn) =>
+            case SchemeLambda(name, args, body, ann, pos) =>
                 checkSequence(body)(true)
 
-            case SchemeVarArgLambda(name, args, vararg, body, ann, idn) =>
+            case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
                 checkSequence(body)(true)
 
-            case SchemeFuncall(f, args, idn) =>
+            case SchemeFuncall(f, args, pos) =>
                 check(f, false)
 
-            case SchemeIf(cond, cons, alt, idn) =>
+            case SchemeIf(cond, cons, alt, pos) =>
                 check(cond, false) || check(cons, false) || check(alt, false)
 
-            case SchemeLet(bindings, body, idn) =>
+            case SchemeLet(bindings, body, pos) =>
                 bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
 
-            case SchemeLetStar(bindings, body, idn) =>
+            case SchemeLetStar(bindings, body, pos) =>
                 bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
 
-            case SchemeLetrec(bindings, body, idn) =>
+            case SchemeLetrec(bindings, body, pos) =>
                 bindings.map(_._2).foldLeft[Result](false)(_ || check(_, false)) || checkSequence(body)(true)
 
-            case SchemeSet(variable, value, idn) =>
+            case SchemeSet(variable, value, pos) =>
                 check(value, false)
 
-            case SchemeSetLex(variable, lexAddr, value, idn) =>
+            case SchemeSetLex(variable, lexAddr, value, pos) =>
                 check(value, false)
 
-            case SchemeBegin(exps, idn) =>
+            case SchemeBegin(exps, pos) =>
                 checkSequence(exps)(allowed)
 
-            case SchemeDefineVariable(name, value, idn) =>
-                if allowed then check(value, false) else Error(idn)
+            case SchemeDefineVariable(name, value, pos) =>
+                if allowed then check(value, false) else Error(pos)
 
             case SchemeVar(id)            => false
             case SchemeVarLex(id, lexAdr) => false
-            case SchemeValue(value, idn)  => false
+            case SchemeValue(value, pos)  => false
             case SchemeAssert(exp, _) =>
                 check(exp, false)
 end UndefinerTester
@@ -145,8 +145,8 @@ object SchemeUndefiner extends UndefinerTester:
     private class Undefiner:
         private var counter = 0
 
-        private def fresh(idn: Identity): Identifier =
-            val id = Identifier(s"_$counter", idn)
+        private def fresh(pos: Option[Position]): Identifier =
+            val id = Identifier(s"_$counter", pos)
             counter += 1
             id
 
@@ -169,28 +169,28 @@ object SchemeUndefiner extends UndefinerTester:
         private def undefine(exp: SchemeExp, bds: Bindings, topLevel: Boolean): List[SchemeExp] =
             def emit(e: SchemeExp): List[SchemeExp] =
                 if topLevel then
-                    bds += (fresh(e.idn) -> e)
+                    bds += (fresh(e.pos) -> e)
                     Nil
                 else List(e)
             def single(e: SchemeExp): SchemeExp = undefineSingle(e, bds)
             def bindings(bnd: List[(Identifier, SchemeExp)]) = bnd.map((id, e) => (id, single(e)))
             def body(bdy: List[SchemeExp]) = undefineBody(bdy, false)
             exp match
-                case SchemeLambda(name, args, bdy, ann, idn)               => emit(SchemeLambda(name, args, body(bdy), ann, idn))
-                case SchemeVarArgLambda(name, args, vararg, bdy, ann, idn) => emit(SchemeVarArgLambda(name, args, vararg, body(bdy), ann, idn))
-                case SchemeIf(cnd, csq, alt, idn)                          => emit(SchemeIf(single(cnd), single(csq), single(alt), idn))
-                case SchemeFuncall(fun, args, idn)                         => emit(SchemeFuncall(single(fun), args.map(single), idn))
-                case SchemeLet(bnd, bdy, idn)                              => emit(SchemeLet(bindings(bnd), body(bdy), idn))
-                case SchemeLetStar(bnd, bdy, idn)                          => emit(SchemeLetStar(bindings(bnd), body(bdy), idn))
-                case SchemeLetrec(bnd, bdy, idn)                           => emit(SchemeLetrec(bindings(bnd), body(bdy), idn))
-                case SchemeSet(variable, value, idn)                       => emit(SchemeSet(variable, single(value), idn))
-                case SchemeSetLex(variable, lexAddr, value, idn)           => emit(SchemeSetLex(variable, lexAddr, single(value), idn))
-                case SchemeAssert(cnd, idn)                                => emit(SchemeAssert(single(cnd), idn))
+                case SchemeLambda(name, args, bdy, ann, pos)               => emit(SchemeLambda(name, args, body(bdy), ann, pos))
+                case SchemeVarArgLambda(name, args, vararg, bdy, ann, pos) => emit(SchemeVarArgLambda(name, args, vararg, body(bdy), ann, pos))
+                case SchemeIf(cnd, csq, alt, pos)                          => emit(SchemeIf(single(cnd), single(csq), single(alt), pos))
+                case SchemeFuncall(fun, args, pos)                         => emit(SchemeFuncall(single(fun), args.map(single), pos))
+                case SchemeLet(bnd, bdy, pos)                              => emit(SchemeLet(bindings(bnd), body(bdy), pos))
+                case SchemeLetStar(bnd, bdy, pos)                          => emit(SchemeLetStar(bindings(bnd), body(bdy), pos))
+                case SchemeLetrec(bnd, bdy, pos)                           => emit(SchemeLetrec(bindings(bnd), body(bdy), pos))
+                case SchemeSet(variable, value, pos)                       => emit(SchemeSet(variable, single(value), pos))
+                case SchemeSetLex(variable, lexAddr, value, pos)           => emit(SchemeSetLex(variable, lexAddr, single(value), pos))
+                case SchemeAssert(cnd, pos)                                => emit(SchemeAssert(single(cnd), pos))
                 case _: SchemeVar | _: SchemeVarLex | _: SchemeValue       => emit(exp)
                 // begins do not introduce an additional scope
-                case SchemeBegin(exps, idn) =>
+                case SchemeBegin(exps, pos) =>
                     val undefined = exps.flatMap(undefine(_, bds, topLevel))
-                    if undefined.isEmpty then Nil else emit(SchemeBegin(undefined, idn))
+                    if undefined.isEmpty then Nil else emit(SchemeBegin(undefined, pos))
                 case SchemeDefineVariable(name, value, _) =>
                     bds += (name -> single(value))
                     Nil
@@ -201,5 +201,5 @@ object SchemeUndefiner extends UndefinerTester:
             // This can be cleaner, but this avoids creating a top-level letrec when the entire expression is just a let. (todo: also on other levels and when no let is needed)
             bindings.last._2 match
                 case lettishExp: SchemeLettishExp if bindings.size == 1 => List(lettishExp)
-                case _ => List(SchemeLetrec(bindings, List(SchemeVar(bindings.last._1)), Identity.none))
-        else List(SchemeLetrec(bindings, body, Identity.none))
+                case _ => List(SchemeLetrec(bindings, List(SchemeVar(bindings.last._1)), None))
+        else List(SchemeLetrec(bindings, body, None))

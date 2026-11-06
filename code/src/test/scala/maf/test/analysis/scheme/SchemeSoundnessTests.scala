@@ -43,7 +43,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
      * @return
      *   a concrete SchemeInterpreter
      */
-    def createInterpreter(addResult: (Identity, ConcreteValues.Value) => Unit, io: IO = new EmptyIO(), benchmark: String): SchemeInterpreter =
+    def createInterpreter(addResult: (Option[Position], ConcreteValues.Value) => Unit, io: IO = new EmptyIO(), benchmark: String): SchemeInterpreter =
         new SchemeInterpreter(addResult, io)
 
     /**
@@ -54,7 +54,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
      * @param addResult
      *   a callback function that can register values in the result map
      */
-    def handleInterpreterError(addResult: (Identity, ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
+    def handleInterpreterError(addResult: (Option[Position], ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
 
     // the actual testing code
     protected def runInterpreter(
@@ -63,12 +63,12 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         t: Timeout.T
       ): Value =
         i.run(p, t)
-    protected def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Identity, Set[Value]] =
-        var idnResults = Map[Identity, Set[Value]]().withDefaultValue(Set())
+    protected def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Option[Position], Set[Value]] =
+        var posResults = Map[Option[Position], Set[Value]]().withDefaultValue(Set())
         val timeout = concreteTimeout(benchmark)
         val times = concreteRuns(benchmark)
         try
-            val addResult: (Identity, ConcreteValues.Value) => Unit = (i, v) => idnResults += (i -> (idnResults(i) + v))
+            val addResult: (Option[Position], ConcreteValues.Value) => Unit = (i, v) => posResults += (i -> (posResults(i) + v))
             for _ <- 1 to times do
                 val interpreter = createInterpreter(addResult, io = new FileIO(Map("input.txt" -> "foo\nbar\nbaz", "output.txt" -> "")), benchmark)
                 try
@@ -83,7 +83,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             case e: VirtualMachineError =>
                 System.gc()
                 alert(s"Concrete evaluation of $benchmark failed with $e")
-        idnResults
+        posResults
     protected def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
         try
             // analyze the program using the analysis under test
@@ -103,7 +103,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         v match
             case Value.Undefined(_)  => true
             case Value.Void          => lat.subsumes(abs, lat.void)
-            case Value.Clo(lam, _)   => lat.getClosures(abs).exists(_._1.idn == lam.idn)
+            case Value.Clo(lam, _)   => lat.getClosures(abs).exists(_._1.pos == lam.pos)
             case Value.Primitive(p)  => lat.getPrimitives(abs).exists(_ == p)
             case Value.Str(s)        => lat.subsumes(abs, lat.string(s))
             case Value.Symbol(s)     => lat.subsumes(abs, lat.symbol(s))
@@ -112,7 +112,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             case Value.Bool(b)       => lat.subsumes(abs, lat.bool(b))
             case Value.Character(c)  => lat.subsumes(abs, lat.char(c))
             case Value.Nil           => lat.subsumes(abs, lat.nil)
-            case Value.Pointer(a)    => lat.getPointerAddresses(abs).exists(_.idn == a._2.idn)
+            case Value.Pointer(a)    => lat.getPointerAddresses(abs).exists(_.pos == a._2.pos)
             case Value.InputPort(h)  => lat.subsumes(abs, lat.op(SchemeOp.MakeInputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
             case Value.OutputPort(h) => lat.subsumes(abs, lat.op(SchemeOp.MakeOutputPort)(List(lat.string(h.abstractName))).getOrElse(lat.bottom))
             case Value.EOF           => lat.subsumes(abs, lat.charTop)
@@ -131,19 +131,19 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
 
     protected def compareResults(
         analysis: Analysis,
-        concreteResults: Map[Identity, Set[Value]],
+        concreteResults: Map[Option[Position], Set[Value]],
         message: String = ""
       ): Unit =
-        val analysisResults = analysis.resultsPerIdn
-        concreteResults.foreach { case (idn, concreteValues) =>
-            val abstractValues = analysisResults.getOrElse(idn, Set.empty)
+        val analysisResults = analysis.resultsPerPos
+        concreteResults.foreach { case (pos, concreteValues) =>
+            val abstractValues = analysisResults.getOrElse(pos, Set.empty)
             concreteValues.foreach { concreteValue =>
                 if !abstractValues.exists(checkSubsumption(analysis)(concreteValue, _)) then
                     println(concreteValues)
                     println(abstractValues)
                     val failureMsg =
                         s"""
-            | Result at $idn is unsound:
+            | Result at ${pos.show} is unsound:
             | - concrete value: $concreteValue
             | - abstract values: ${analysis.lattice.join(abstractValues)}
             """.stripMargin
@@ -160,7 +160,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         else Seq(SoundnessTest)
 
     def parseProgram(txt: String, benchmark: String): SchemeExp =
-        SchemeParser.parseProgram(txt, Position.withSourcePath(benchmark))
+        SchemeParser.parseProgram(txt, Source.File(benchmark))
 
     def onBenchmark(benchmark: Benchmark): Unit =
         property(s"Analysis of $benchmark using $name is sound.", testTags(benchmark): _*) {

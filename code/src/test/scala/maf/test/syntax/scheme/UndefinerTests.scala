@@ -1,21 +1,21 @@
 package maf.test.syntax.scheme
 
-import maf.syntax.Identity
+import maf.syntax.Source
 import maf.syntax.scheme.*
 
 import org.scalatest.propspec.AnyPropSpec
 
 class UndefinerTests extends AnyPropSpec:
-    // Compares the given programs based on their structure, but ignores idenities
+    // Compares the given programs based on their structure, but ignores positions
     def comparePrograms(program1: SchemeExp, program2: SchemeExp): Boolean =
         (program1, program2) match
             case (SchemeLambda(name, args, body, ann, _), SchemeLambda(name1, args1, body1, ann1, _))
                 if name == name1 && args.zip(args1).forall { case (a, b) => a.name == b.name } && ann == ann1 =>
-                body.zip(body1).forall { case (a, b) => a == b } // TODO: args also have an identity that should be ignored
+                body.zip(body1).forall { case (a, b) => comparePrograms(a, b) }
 
             case (SchemeVarArgLambda(name, args, vararg, body, ann, _), SchemeVarArgLambda(name1, args1, vararg1, body1, ann1, _))
-                if name == name1 && args.zip(args1).forall { case (a, b) => a.name == b.name } && ann == ann1 && vararg == vararg1 =>
-                body.zip(body1).forall { case (a, b) => a == b }
+                if name == name1 && args.zip(args1).forall { case (a, b) => a.name == b.name } && ann == ann1 && vararg.name == vararg1.name =>
+                body.zip(body1).forall { case (a, b) => comparePrograms(a, b) }
 
             case (SchemeFuncall(f, args, _), SchemeFuncall(f1, args1, _)) =>
                 comparePrograms(f, f1) && args.zip(args1).forall { case (a, b) => comparePrograms(a, b) }
@@ -52,15 +52,15 @@ class UndefinerTests extends AnyPropSpec:
 
             case (SchemeVar(id), SchemeVar(id2))             => id.name == id2.name
             case (SchemeVarLex(id, _), SchemeVarLex(id2, _)) => id.name == id2.name
-            case (SchemeValue(value, _), SchemeValue(value1, idn)) =>
+            case (SchemeValue(value, _), SchemeValue(value1, pos)) =>
                 value == value1
-            case (e1, e2) => e1.isomorphic(e2) // throw new Exception(s"comparison between $e1 and $e2 is not supported")
+            case _ => false
 
     def test(name: String, original: String, translated: String): Unit =
         property(name) {
-            val parsedOriginal = SchemeParser.parse(original.stripMargin)
-            val parsedTranslated = SchemeParser.parse(translated.stripMargin).head
-            val undefinedOriginal = SchemeBegin(SchemeUndefiner.undefineExps(parsedOriginal, false), Identity.none)
+            val parsedOriginal = SchemeParser.parse(original.stripMargin, Source.Text)
+            val parsedTranslated = SchemeParser.parse(translated.stripMargin, Source.Text).head
+            val undefinedOriginal = SchemeBegin(SchemeUndefiner.undefineExps(parsedOriginal, false), None)
             assert(comparePrograms(parsedTranslated, undefinedOriginal))
         }
 

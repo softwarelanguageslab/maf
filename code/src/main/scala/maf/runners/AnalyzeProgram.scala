@@ -5,7 +5,7 @@ import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.scheme.*
-import maf.util.{Reader, Timeout, Timer}
+import maf.util.{Timeout, Timer}
 
 object AnalyzeProgram extends App:
 
@@ -13,16 +13,15 @@ object AnalyzeProgram extends App:
         case Terminated(iterationCount: Int, time: Long)
         case TimedOut
 
-    def parse(text: String): SchemeExp =
-        val parsed = SchemeParser.parse(text)
+    def parse(file: String): SchemeExp =
+        val parsed = SchemeParser.parseFile(file)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
     // timeout can be set e.g., using Timeout.start(Duration(1, MINUTES))
     def analyze(file: String, timeout: Timeout.T = Timeout.none): AnalysisResult =
-        val text = Reader.loadFile(file)
-        val prog = parse(text)
+        val prog = parse(file)
         val analysis =
             new SchemeModFLocalFS(prog)
                 with SchemeModFLocalNoSensitivity

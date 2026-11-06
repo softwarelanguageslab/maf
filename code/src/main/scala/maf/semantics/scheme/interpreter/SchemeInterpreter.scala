@@ -16,7 +16,7 @@ case class UnexpectedValueTypeException[V](v: V) extends Exception(s"The interpr
  * Scheme language analyzed by MAF.
  */
 class SchemeInterpreter(
-    cb: (Identity, ConcreteValues.Value) => Unit = (_, _) => (),
+    cb: (Option[Position], ConcreteValues.Value) => Unit = (_, _) => (),
     val io: IO = new EmptyIO())
     extends BaseSchemeInterpreter[TailRec[ConcreteValues.Value]]
     with ConcreteSchemePrimitives:
@@ -35,7 +35,7 @@ class SchemeInterpreter(
 
     // Access to cb should be synchronized on 'Callback'.
     object Callback:
-        def call(i: Identity, v: Value): Unit =
+        def call(i: Option[Position], v: Value): Unit =
             synchronized {
                 cb(i, v)
             }
@@ -57,7 +57,7 @@ class SchemeInterpreter(
     def evalLet(
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
-        pos: Identity,
+        pos: Option[Position],
         envExt: Env,
         env: Env,
         timeout: Timeout.T
@@ -75,7 +75,7 @@ class SchemeInterpreter(
     def evalLetStar(
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
-        pos: Identity,
+        pos: Option[Position],
         envExt: Env,
         env: Env,
         timeout: Timeout.T
@@ -93,7 +93,7 @@ class SchemeInterpreter(
     def evalLetrec(
         bindings: List[(Identifier, SchemeExp)],
         body: List[SchemeExp],
-        pos: Identity,
+        pos: Option[Position],
         envExt: Env,
         env: Env,
         timeout: Timeout.T
@@ -110,7 +110,7 @@ class SchemeInterpreter(
     //determines whether a given value should be checked or not
     private def checkValue(v: Value): Boolean = v match
         case Value.Undefined(_) =>
-            //println(s"Undefined behavior arising from identity $idn seen at ${e.idn.pos}")
+            //println(s"Undefined behavior arising from ${pos.show} seen at ${e.pos.show}")
             false
         case _ =>
             true
@@ -120,7 +120,7 @@ class SchemeInterpreter(
         case _                                         => false
 
     override def extendStore(a: Addr, v: Value): Unit =
-        if checkAddr(a) && checkValue(v) then Callback.call(a._2.idn, v)
+        if checkAddr(a) && checkValue(v) then Callback.call(a._2.pos, v)
         super.extendStore(a, v)
 
     def evalArgs(
@@ -145,7 +145,7 @@ class SchemeInterpreter(
         call: SchemeFuncall,
         argsv: List[Value],
         args: List[SchemeExp],
-        idn: Identity,
+        pos: Option[Position],
         timeout: Timeout.T
       ): TailRec[Value] =
         f match
@@ -153,7 +153,7 @@ class SchemeInterpreter(
             case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
                 if argsNames.length != argsv.length then
                     signalException(
-                      ArityError(pos2.pos, argsNames.length, argsv.length, call.idn)
+                      ArityError(pos2, argsNames.length, argsv.length, call.pos)
                     )
                 for
                     _ <- done(())
@@ -170,7 +170,7 @@ class SchemeInterpreter(
                 val arity = argsNames.length
                 if argsv.length < arity then
                     signalException(
-                      VarArityError(pos2.pos, argsNames.length, args.length)
+                      VarArityError(pos2, argsNames.length, args.length)
                     )
                 for
                     _ <- done(())
@@ -187,7 +187,7 @@ class SchemeInterpreter(
 
             case Value.Primitive(p) => tailcall(done(Primitives.allPrimitives(p).call(call, args.zip(argsv))))
             case v =>
-                signalException(ValueNotApplicable(v, idn))
+                signalException(ValueNotApplicable(v, pos))
 
     private var evalSteps: Long = 0
     def getEvalSteps(): Long = evalSteps
@@ -212,7 +212,7 @@ class SchemeInterpreter(
         if timeout.reached then throw new TimeoutException()
         e match
             case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))
-            case call @ SchemeFuncall(f, args, idn) =>
+            case call @ SchemeFuncall(f, args, pos) =>
                 for
                     fv <- tailcall(eval(f, env, timeout))
                     res <- fv match
@@ -220,7 +220,7 @@ class SchemeInterpreter(
                             if argsNames.length != args.length then
 
                                 signalException(
-                                  ArityError(pos2.pos, argsNames.length, args.length)
+                                  ArityError(pos2, argsNames.length, args.length)
                                 )
                             for
                                 argsv <- evalArgs(args, env, timeout)
@@ -235,7 +235,7 @@ class SchemeInterpreter(
                             val arity = argsNames.length
                             if args.length < arity then
                                 signalException(
-                                  VarArityError(pos2.pos, argsNames.length, args.length)
+                                  VarArityError(pos2, argsNames.length, args.length)
                                 )
                             for
                                 argsv <- evalArgs(args, env, timeout)
@@ -253,7 +253,7 @@ class SchemeInterpreter(
                             for argsv <- tailcall(evalArgs(args, env, timeout))
                             yield Primitives.allPrimitives(p).call(call, args.zip(argsv))
                         case v =>
-                            signalException(ValueNotApplicable(v, idn))
+                            signalException(ValueNotApplicable(v, pos))
                 yield res
             case SchemeIf(cond, cons, alt, _) =>
                 for
@@ -309,8 +309,7 @@ object SchemeInterpreter:
 
     def main(args: Array[String]): Unit =
         if args.length == 1 then
-            val text = Reader.loadFile(args(0))
-            val pgm = SchemeUndefiner.undefine(SchemePrelude.addPrelude(SchemeParser.parse(text)))
+            val pgm = SchemeUndefiner.undefine(SchemePrelude.addPrelude(SchemeParser.parseFile(args(0))))
             val interpreter = new SchemeInterpreter((id, v) => ())
             val res = interpreter.run(pgm, Timeout.start(timeout))
             println(s"Result: $res")

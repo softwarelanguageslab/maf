@@ -1,5 +1,6 @@
 package maf.semantics.scheme.interpreter
 
+import maf.syntax.Source
 import maf.syntax.sexp.{SExp, SExpParser}
 
 import scala.util.parsing.input.CharSequenceReader
@@ -102,7 +103,10 @@ class FileIO(val files: Map[String, String]) extends IO:
         if pos >= str.size then None
         else
             val reader = new CharSequenceReader(str, pos)
-            val (sexp, offset) = SExpParser.parseIn(reader)
+            val source = hdl match
+                case h: Handle.FileHandle => Source.File(h.filename)
+                case _                    => Source.Text
+            val (sexp, offset) = SExpParser.parseIn(reader, source)
             positions += hdl -> offset
             Some(sexp)
     }

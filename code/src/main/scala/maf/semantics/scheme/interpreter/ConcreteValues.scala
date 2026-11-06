@@ -1,15 +1,14 @@
 package maf.semantics.scheme.interpreter
 
-import maf.syntax.Position.Position
 import maf.syntax.scheme.*
-import maf.syntax.{Identifier, Identity}
+import maf.syntax.{Identifier, Position}
 
 object ConcreteValues:
 
     trait Value
 
     sealed trait AddrInfo:
-        def idn: Identity
+        def pos: Option[Position]
 
     trait Prim:
         val name: String
@@ -17,9 +16,9 @@ object ConcreteValues:
         def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value
 
     trait SimplePrim extends Prim:
-        def call(args: List[Value], position: Position): Value
+        def call(args: List[Value], position: Option[Position]): Value
 
-        def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = call(args.map(_._2), fexp.idn.pos)
+        def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = call(args.map(_._2), fexp.pos)
 
     type Addr = (Int, AddrInfo)
     type Env = Map[String, Addr]
@@ -27,18 +26,18 @@ object ConcreteValues:
 
     object AddrInfo:
         case class VarAddr(vrb: Identifier) extends AddrInfo:
-            def idn = vrb.idn
+            def pos = vrb.pos
         case class PrmAddr(nam: String) extends AddrInfo:
-            def idn = Identity.none
+            def pos = None
         case class PtrAddr(exp: SchemeExp) extends AddrInfo:
-            def idn = exp.idn
+            def pos = exp.pos
         case class PtrIgnoreAddr(exp: SchemeExp) extends AddrInfo:
-            def idn = exp.idn
+            def pos = exp.pos
 
     object Value:
 
         /* arises from undefined behavior */
-        case class Undefined(idn: Identity) extends Value:
+        case class Undefined(pos: Option[Position]) extends Value:
             override def toString: String = "#<undef>"
 
         case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value:

@@ -3,7 +3,6 @@ package maf.domain.scheme
 import maf.domain.*
 import maf.domain.lattice.*
 import maf.syntax.*
-import maf.syntax.Position._
 import maf.syntax.scheme.*
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
@@ -21,7 +20,7 @@ trait StoreM[M[_], A <: Address, V] extends Monad[M]:
     implicit final private val self: StoreM[M, A, V] = this
 
 trait SchemeAllocM[M[_], A] extends Monad[M]:
-    def allocVar(idn: Identifier): M[A]
+    def allocVar(pos: Identifier): M[A]
     def allocPtr(exp: SchemeExp): M[A]
 
 trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with MonadError[M, Error] with SchemeAllocM[M, A] with StoreM[M, A, V]:
@@ -38,7 +37,7 @@ trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with
     //def lookupSto(a: A): M[V] = // stop when the lookup of the store is bottom
     //    flatMap(lookupSto(a))(inject)
     // exotic -- not so important if not implemented yet
-    def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Position): M[V] = throw new Exception("Not supported")
+    def callcc(clo: (SchemeLambdaExp, Environment[A]), pos: Option[Position]): M[V] = throw new Exception("Not supported")
 
 trait SchemePrimitive[V: Lattice, A <: Address] extends Serializable:
     // Every primitive in Scheme has a unique name

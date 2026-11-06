@@ -18,7 +18,7 @@ trait SchemeR5RSInterpreterTests extends SchemeR5RSTests:
     lazy val lattice = SchemeConstantPropagationDomain.modularLattice.schemeLattice
 
     def testExpr(program: String, answer: Any): Unit =
-        val text = SchemeParser.parseProgram(program)
+        val text = SchemeParser.parseProgram(program, Source.Text)
         val l = lattice
 
         import l.Injector._
@@ -39,7 +39,7 @@ trait SchemeR5RSInterpreterTests extends SchemeR5RSTests:
         )
 
 class SchemeInterpreterR5RSCorrectnessTests extends SchemeR5RSInterpreterTests:
-    def interpreter(io: IO) = new SchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io)
+    def interpreter(io: IO) = new SchemeInterpreter((_: Option[Position], _: ConcreteValues.Value) => (), io)
 
 class SchemeCPSInterpreterR5RSCorrectnessTests extends SchemeR5RSInterpreterTests:
-    def interpreter(io: IO) = new CPSSchemeInterpreter((_: Identity, _: ConcreteValues.Value) => (), io)
+    def interpreter(io: IO) = new CPSSchemeInterpreter((_: Option[Position], _: ConcreteValues.Value) => (), io)

@@ -1,6 +1,7 @@
 package maf.runners
 
 import maf.semantics.scheme.interpreter.*
+import maf.syntax.Source
 import maf.syntax.scheme.SchemeParser
 import maf.util.ColouredFormatting.markOK
 import maf.util.{Reader, Timeout}
@@ -19,7 +20,7 @@ object InterpretProgram:
         val interpreter = new SchemeInterpreter((_, _) => ())
         try
             val res = interpreter.run(
-              SchemeParser.parseProgram(text),
+              SchemeParser.parseProgram(text, Source.File(file)),
               Timeout.start(Duration(timeout, MINUTES))
             )
             println(res)

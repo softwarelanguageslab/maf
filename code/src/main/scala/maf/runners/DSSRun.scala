@@ -3,8 +3,8 @@ package maf.runners
 import maf.analysis.scheme.*
 import maf.domain.*
 import maf.domain.lattice.*
+import maf.syntax.Source
 import maf.syntax.scheme.*
-import maf.util.Reader
 
 object DSSRun:
 
@@ -48,10 +48,11 @@ object DSSRun:
         """.stripMargin
     )
 
-    lazy val grid = parse(Reader.loadFile("test/R5RS/various/grid.scm"))
+    lazy val grid = prepare(SchemeParser.parseFile("test/R5RS/various/grid.scm"))
 
-    def parse(txt: String): SchemeExp =
-        val parsed = SchemeParser.parse(txt)
+    def parse(txt: String): SchemeExp = prepare(SchemeParser.parse(txt, Source.Text))
+
+    def prepare(parsed: List[SchemeExp]): SchemeExp =
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)

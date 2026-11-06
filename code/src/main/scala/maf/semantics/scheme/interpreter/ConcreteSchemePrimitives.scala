@@ -3,7 +3,7 @@ package maf.semantics.scheme.interpreter
 import maf.domain.*
 import maf.domain.lattice.MathOps
 import maf.syntax.*
-import maf.syntax.Position.Position
+import maf.syntax.Position
 import maf.syntax.scheme.*
 import maf.util.NumOps
 
@@ -199,8 +199,8 @@ trait ConcreteSchemePrimitives:
                 case (_, x) :: Nil =>
                     val f = fun(fexp)
                     if f.isDefinedAt(x) then f(x)
-                    else signalException(StringError(s"$name (${fexp.idn.pos}): invalid argument type $x"))
-                case _ => signalException(StringError(s"$name ($fexp.idn.pos): invalid arguments $args"))
+                    else signalException(StringError(s"$name (${fexp.pos.show}): invalid argument type $x"))
+                case _ => signalException(StringError(s"$name (${fexp.pos.show}): invalid arguments $args"))
 
         abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name):
             def fun: PartialFunction[Value, Value]
@@ -214,30 +214,30 @@ trait ConcreteSchemePrimitives:
             val name = "+"
             val default: Value = Value.Integer(0)
 
-            def call(args: List[Value], position: Position): Value = args.foldLeft(default)({
+            def call(args: List[Value], position: Option[Position]): Value = args.foldLeft(default)({
                 case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 + n2)
                 case (Value.Integer(n1), Value.Real(n2))    => Value.Real(n1 + n2)
                 case (Value.Real(n1), Value.Integer(n2))    => Value.Real(n1 + n2)
                 case (Value.Real(n1), Value.Real(n2))       => Value.Real(n1 + n2)
-                case (x, y)                                 => signalException(StringError(s"+ ($position): invalid argument types ($x and $y)"))
+                case (x, y)                                 => signalException(StringError(s"+ (${position.show}): invalid argument types ($x and $y)"))
             })
 
         object Times extends SimplePrim:
             val name = "*"
             val default: Value = Value.Integer(1)
 
-            def call(args: List[Value], position: Position): Value = args.foldLeft(default)({
+            def call(args: List[Value], position: Option[Position]): Value = args.foldLeft(default)({
                 case (Value.Integer(n1), Value.Integer(n2)) => Value.Integer(n1 * n2)
                 case (Value.Integer(n1), Value.Real(n2))    => Value.Real(n1 * n2)
                 case (Value.Real(n1), Value.Integer(n2))    => Value.Real(n1 * n2)
                 case (Value.Real(n1), Value.Real(n2))       => Value.Real(n1 * n2)
-                case (x, y)                                 => signalException(StringError(s"* ($position): invalid argument types ($x and $y)"))
+                case (x, y)                                 => signalException(StringError(s"* (${position.show}): invalid argument types ($x and $y)"))
             })
 
         object Minus extends SimplePrim:
             val name = "-"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil                     => signalException(StringError("-: wrong number of arguments"))
                 case Value.Integer(x) :: Nil => Value.Integer(-x)
                 case Value.Real(x) :: Nil    => Value.Real(-x)
@@ -251,12 +251,12 @@ trait ConcreteSchemePrimitives:
                         case Value.Integer(y) => Value.Real(x - y)
                         case Value.Real(y)    => Value.Real(x - y)
                         case v                => throw new UnexpectedValueTypeException[Value](v)
-                case _ => signalException(StringError(s"- ($position): invalid arguments $args"))
+                case _ => signalException(StringError(s"- (${position.show}): invalid arguments $args"))
 
         object Div extends SimplePrim:
             val name = "/"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil                                            => signalException(StringError("/: wrong number of arguments"))
                 case Value.Integer(i) :: Nil if i.equals(BigInt(1)) => Value.Integer(BigInt(1))
                 case Value.Integer(x) :: Nil                        => Value.Real(1.0 / x)
@@ -273,16 +273,16 @@ trait ConcreteSchemePrimitives:
                         case Value.Integer(y) => Value.Real(x / y)
                         case Value.Real(y)    => Value.Real(x / y)
                         case v                => throw new UnexpectedValueTypeException[Value](v)
-                case _ => signalException(s"/ ($position): invalid arguments $args")
+                case _ => signalException(s"/ (${position.show}): invalid arguments $args")
 
         object Modulo extends SimplePrim:
             val name = "modulo"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil if y != 0 =>
                     Value.Integer(MathOps.modulo(x, y))
-                case _ :: _ :: Nil => signalException(s"$name ($position): illegal computation: modulo zero")
-                case _             => signalException(s"$name ($position): invalid arguments $args")
+                case _ :: _ :: Nil => signalException(s"$name (${position.show}): illegal computation: modulo zero")
+                case _             => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object Abs extends SingleArgumentPrim("abs"):
             def fun =
@@ -322,7 +322,7 @@ trait ConcreteSchemePrimitives:
             val name = "expt"
 
             // TODO: expt should also preserve exactness if possible
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil =>
                     Value.Integer(scala.math.pow(x.toDouble, y.toDouble).toInt)
                 case Value.Integer(x) :: Value.Real(y) :: Nil =>
@@ -331,7 +331,7 @@ trait ConcreteSchemePrimitives:
                     Value.Real(scala.math.pow(x, y.toDouble))
                 case Value.Real(x) :: Value.Real(y) :: Nil =>
                     Value.Real(scala.math.pow(x, y))
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object Ceiling extends SingleArgumentPrim("ceiling"):
             def fun =
@@ -346,16 +346,16 @@ trait ConcreteSchemePrimitives:
         object Quotient extends SimplePrim:
             val name = "quotient"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x / y)
-                case _                                           => signalException(s"$name ($position): invalid arguments $args")
+                case _                                           => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object Remainder extends SimplePrim:
             val name = "remainder"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(x % y)
-                case _                                           => signalException(s"$name ($position): invalid arguments $args")
+                case _                                           => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object Round extends SingleArgumentPrim("round"):
             def fun =
@@ -434,13 +434,13 @@ trait ConcreteSchemePrimitives:
                       rest
                     )
 
-            def call(args: List[Value], position: Position): Value = args match
-                case Nil => signalException(s"max ($position): wrong number of arguments")
+            def call(args: List[Value], position: Option[Position]): Value = args match
+                case Nil => signalException(s"max (${position.show}): wrong number of arguments")
                 case Value.Integer(first) :: rest =>
                     max(Value.Integer(first), rest)
                 case Value.Real(first) :: rest =>
                     max(Value.Real(first), rest)
-                case _ => signalException(s"max ($position): invalid arguments $args")
+                case _ => signalException(s"max (${position.show}): invalid arguments $args")
 
         object Min extends SimplePrim:
             val name = "min"
@@ -489,13 +489,13 @@ trait ConcreteSchemePrimitives:
                       rest
                     )
 
-            def call(args: List[Value], position: Position): Value = args match
-                case Nil => signalException(s"min ($position): wrong number of arguments")
+            def call(args: List[Value], position: Option[Position]): Value = args match
+                case Nil => signalException(s"min (${position.show}): wrong number of arguments")
                 case Value.Integer(first) :: rest =>
                     min(Value.Integer(first), rest)
                 case Value.Real(first) :: rest =>
                     min(Value.Real(first), rest)
-                case _ => signalException(s"min ($position): invalid arguments $args")
+                case _ => signalException(s"min (${position.show}): invalid arguments $args")
 
         object Gcd extends SimplePrim:
             val name = "gcd"
@@ -503,49 +503,49 @@ trait ConcreteSchemePrimitives:
             def gcd(a: BigInt, b: BigInt): BigInt = if b == 0 then a
             else gcd(b, a % b)
 
-            def call(args: List[Value], position: Position): Value.Integer = args match
+            def call(args: List[Value], position: Option[Position]): Value.Integer = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Integer(gcd(x, y))
-                case _                                           => signalException(s"gcd ($position): invalid arguments $args")
+                case _                                           => signalException(s"gcd (${position.show}): invalid arguments $args")
 
         object LessThan extends SimplePrim:
             val name = "<"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x < y)
                 case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x < y)
                 case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x < y)
                 case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x < y)
-                case _                                           => signalException(s"< ($position): invalid arguments $args")
+                case _                                           => signalException(s"< (${position.show}): invalid arguments $args")
 
         object LessOrEqual extends SimplePrim:
             val name = "<="
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x <= y)
                 case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x <= y)
                 case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x <= y)
                 case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x <= y)
-                case _                                           => signalException(s"<= ($position): invalid arguments $args")
+                case _                                           => signalException(s"<= (${position.show}): invalid arguments $args")
 
         object GreaterThan extends SimplePrim:
             val name = ">"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x > y)
                 case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x > y)
                 case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x > y)
                 case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x > y)
-                case _                                           => signalException(s"$name ($position): invalid arguments $args")
+                case _                                           => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object GreaterOrEqual extends SimplePrim:
             val name = ">="
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Value.Integer(x) :: Value.Integer(y) :: Nil => Value.Bool(x >= y)
                 case Value.Integer(x) :: Value.Real(y) :: Nil    => Value.Bool(x >= y)
                 case Value.Real(x) :: Value.Integer(y) :: Nil    => Value.Bool(x >= y)
                 case Value.Real(x) :: Value.Real(y) :: Nil       => Value.Bool(x >= y)
-                case _                                           => signalException(s"$name ($position): invalid arguments $args")
+                case _                                           => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object NumEq extends SimplePrim:
             val name = "="
@@ -568,11 +568,11 @@ trait ConcreteSchemePrimitives:
                 case (_: Value.Real) :: _                   => Value.Bool(false)
                 case _                                      => signalException(s"=: invalid type of arguments $l")
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Nil                      => Value.Bool(true)
                 case Value.Integer(x) :: rest => numEqInt(x, rest)
                 case Value.Real(x) :: rest    => numEqReal(x, rest)
-                case _                        => signalException(s"$name ($position): invalid type of arguments $args")
+                case _                        => signalException(s"$name (${position.show}): invalid type of arguments $args")
 
         //////////////
         // Booleans //
@@ -664,38 +664,38 @@ trait ConcreteSchemePrimitives:
         object `close-input-port` extends SingleArgumentPrim("close-input-port"):
             def fun = { case Value.InputPort(handle) =>
                 io.close(handle)
-                Value.Undefined(Identity.none)
+                Value.Undefined(None)
             }
 
         object `close-output-port` extends SingleArgumentPrim("close-output-port"):
             def fun = { case Value.OutputPort(handle) =>
                 io.close(handle)
-                Value.Undefined(Identity.none)
+                Value.Undefined(None)
             }
 
         object `current-input-port` extends SimplePrim:
             val name = "current-input-port"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil => Value.InputPort(io.console)
-                case _   => signalException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+                case _   => signalException(s"$name (${position.show}): wrong number of arguments, 0 expected, got ${args.length}")
 
         object `current-output-port` extends SimplePrim:
             val name = "current-output-port"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil => Value.OutputPort(io.console)
-                case _   => signalException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+                case _   => signalException(s"$name (${position.show}): wrong number of arguments, 0 expected, got ${args.length}")
 
         class DisplayLike(val name: String) extends SimplePrim:
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case v :: Nil =>
                     io.writeString(v.toString, io.console)
-                    Value.Undefined(Identity.none)
+                    Value.Undefined(None)
                 case v :: Value.OutputPort(port) :: Nil =>
                     io.writeString(v.toString, port)
-                    Value.Undefined(Identity.none)
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                    Value.Undefined(None)
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object `display` extends DisplayLike("display")
 
@@ -704,48 +704,48 @@ trait ConcreteSchemePrimitives:
         object `write-char` extends SimplePrim:
             val name = "write-char"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Value.Character(c) :: Nil =>
                     io.writeChar(c, io.console)
-                    Value.Undefined(Identity.none)
+                    Value.Undefined(None)
                 case Value.Character(c) :: Value.OutputPort(port) :: Nil =>
                     io.writeChar(c, port)
-                    Value.Undefined(Identity.none)
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                    Value.Undefined(None)
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object `newline` extends SimplePrim:
             val name = "newline"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil =>
                     io.writeString("\n", io.console);
-                    Value.Undefined(Identity.none)
+                    Value.Undefined(None)
                 case Value.OutputPort(port) :: Nil =>
                     io.writeString("\n", port)
-                    Value.Undefined(Identity.none)
-                case _ => signalException(s"$name ($position): wrong number of arguments, 0 expected, got ${args.length}")
+                    Value.Undefined(None)
+                case _ => signalException(s"$name (${position.show}): wrong number of arguments, 0 expected, got ${args.length}")
 
         object `number?` extends SimplePrim:
             val name = "number?"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case (Value.Integer(_) | Value.Real(_)) :: Nil => Value.Bool(true)
                 case _ :: Nil                                  => Value.Bool(false)
-                case _ => signalException(s"$name ($position) wrong number of arguments, 1 expected, got ${args.length}")
+                case _ => signalException(s"$name (${position.show}) wrong number of arguments, 1 expected, got ${args.length}")
 
         object `bool-top` extends SimplePrim:
             val name = "bool-top"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil => if scala.util.Random.nextInt(2) != 0 then Value.Bool(true) else Value.Bool(false)
-                case _   => signalException(s"$name ($position) wrong number of arguments, 0 expected, got ${args.length}")
+                case _   => signalException(s"$name (${position.show}) wrong number of arguments, 0 expected, got ${args.length}")
 
         object `any?` extends SimplePrim:
             val name = "any?"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case value :: Nil => Value.Bool(true)
-                case _            => signalException(s"$name ($position) wrong number of arguments, 1 expected, got ${args.length}")
+                case _            => signalException(s"$name (${position.show}) wrong number of arguments, 1 expected, got ${args.length}")
 
         object `read` extends Prim:
             val name = "read"
@@ -755,32 +755,32 @@ trait ConcreteSchemePrimitives:
                     io.read(io.console).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
                 case (_, Value.InputPort(port)) :: Nil =>
                     io.read(port).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
-                case _ => signalException(s"$name (${fexp.idn.pos}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+                case _ => signalException(s"$name (${fexp.pos.show}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
 
         object `read-char` extends SimplePrim:
             val name = "read-char"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil =>
                     io.readChar(io.console)
                 case Value.InputPort(port) :: Nil =>
                     io.readChar(port)
-                case _ => signalException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+                case _ => signalException(s"$name (${position.show}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
 
         object `peek-char` extends SimplePrim:
             val name = "peek-char"
 
-            def call(args: List[Value], position: Position) = args match
+            def call(args: List[Value], position: Option[Position]) = args match
                 case Nil =>
                     io.peekChar(io.console)
                 case Value.InputPort(port) :: Nil =>
                     io.peekChar(port)
-                case _ => signalException(s"$name ($position): wrong number of arguments, 0 or 1 expected, got ${args.length}")
+                case _ => signalException(s"$name (${position.show}): wrong number of arguments, 0 or 1 expected, got ${args.length}")
 
         object Error extends SimplePrim:
             val name = "error"
 
-            def call(args: List[Value], position: Position) = signalException(s"user-raised error ($position): $args")
+            def call(args: List[Value], position: Option[Position]) = signalException(s"user-raised error (${position.show}): $args")
 
         /////////////////
         // Type checks //
@@ -866,7 +866,7 @@ trait ConcreteSchemePrimitives:
                           case (_, Value.Pointer(x)) =>
                               val str = getString(x)
                               s"$acc$str"
-                          case _ => signalException(s"$name (${fexp.idn.pos}): invalid argument $v")
+                          case _ => signalException(s"$name (${fexp.pos.show}): invalid argument $v")
                       }
                   )
                 )
@@ -877,7 +877,7 @@ trait ConcreteSchemePrimitives:
             def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
                 case (_, Value.Integer(length)) :: Nil                            => allocateStr(fexp, "\u0000" * bigIntToInt(length))
                 case (_, Value.Integer(length)) :: (_, Value.Character(c)) :: Nil => allocateStr(fexp, c.toString * bigIntToInt(length))
-                case _ => signalException(s"$name (${fexp.idn.pos}): invalid arguments $args")
+                case _ => signalException(s"$name (${fexp.pos.show}): invalid arguments $args")
 
         object StringLength extends SingleArgumentPrim("string-length"):
             def fun = { case Value.Pointer(addr) =>
@@ -888,35 +888,35 @@ trait ConcreteSchemePrimitives:
         object StringRef extends SimplePrim:
             val name = "string-ref"
 
-            def call(args: List[Value], position: Position): Value.Character = args match
+            def call(args: List[Value], position: Option[Position]): Value.Character = args match
                 case Value.Pointer(addr) :: Value.Integer(n) :: Nil =>
                     val str = getString(addr)
                     if 0 <= n && n < str.size then Value.Character(str(bigIntToInt(n)))
-                    else signalException(s"$name ($position): index out of range")
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                    else signalException(s"$name (${position.show}): index out of range")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object StringSet extends SimplePrim:
             val name = "string-set!"
 
-            def call(args: List[Value], position: Position): Value.Undefined = args match
+            def call(args: List[Value], position: Option[Position]): Value.Undefined = args match
                 case Value.Pointer(addr) :: Value.Integer(idx) :: Value.Character(chr) :: Nil =>
                     val str = getString(addr)
                     if 0 <= idx && idx < str.size then
                         val updatedStr = str.updated(idx.toInt, chr)
                         extendStore(addr, Value.Str(updatedStr))
-                        Value.Undefined(Identity.none)
-                    else signalException(s"$name ($position): index out of range")
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                        Value.Undefined(None)
+                    else signalException(s"$name (${position.show}): index out of range")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object StringLt extends SimplePrim:
             val name = "string<?"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Pointer(a1) :: Value.Pointer(a2) :: Nil =>
                     val str1 = getString(a1)
                     val str2 = getString(a2)
                     Value.Bool(str1 < str2)
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object StringToNumber extends SingleArgumentPrim("string->number"):
             def fun = { case Value.Pointer(addr) =>
@@ -932,8 +932,8 @@ trait ConcreteSchemePrimitives:
                 case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
                     val str = getString(a)
                     if 0 <= from && to <= str.size then allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)).nn)
-                    else signalException(s"$name (${fexp.idn.pos}): indices $from and $to are out of range")
-                case _ => signalException(s"$name (${fexp.idn.pos}): invalid arguments $args")
+                    else signalException(s"$name (${fexp.pos.show}): indices $from and $to are out of range")
+                case _ => signalException(s"$name (${fexp.pos.show}): invalid arguments $args")
 
         ///////////////
         // Equality //
@@ -942,9 +942,9 @@ trait ConcreteSchemePrimitives:
         object Eq extends SimplePrim:
             val name = "eq?"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case x :: y :: Nil => Value.Bool(x == y)
-                case _             => signalException(s"$name ($position): wrong number of arguments ${args.length}")
+                case _             => signalException(s"$name (${position.show}): wrong number of arguments ${args.length}")
 
         /////////////
         // Vectors //
@@ -965,17 +965,17 @@ trait ConcreteSchemePrimitives:
 
             def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
                 val elms = args.map(_._2).zipWithIndex.map({ case (e, i) => (BigInt(i), e) }).toMap
-                newVector(fexp, args.size, elms, Value.Undefined(fexp.idn))
+                newVector(fexp, args.size, elms, Value.Undefined(fexp.pos))
 
         object MakeVector extends Prim:
             val name = "make-vector"
 
             def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args.map(_._2) match
                 case Value.Integer(size) :: Nil =>
-                    Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.idn))
+                    Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.pos))
                 case Value.Integer(size) :: init :: Nil =>
                     Vector.newVector(fexp, size, Map(), init)
-                case _ => signalException(s"$name (${fexp.idn.pos}): invalid arguments $args")
+                case _ => signalException(s"$name (${fexp.pos.show}): invalid arguments $args")
 
         object VectorLength extends SingleArgumentPrim("vector-length"):
             def fun = { case Value.Pointer(a) =>
@@ -987,27 +987,27 @@ trait ConcreteSchemePrimitives:
         object VectorRef extends SimplePrim:
             val name = "vector-ref"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Pointer(a) :: Value.Integer(idx) :: Nil =>
                     lookupStore(a) match
                         case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz => els.getOrElse(idx, ini)
-                        case Value.Vector(siz, _, _) => signalException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
+                        case Value.Vector(siz, _, _) => signalException(s"$name (${position.show}): index $idx out of range (valid range: [0,${siz - 1}])")
                         case v                       => throw new Exception(s"Vector expected; found $v")
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object VectorSet extends SimplePrim:
             val name = "vector-set!"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Pointer(a) :: Value.Integer(idx) :: v :: Nil =>
                     lookupStore(a) match
                         case Value.Vector(siz, els, ini) if idx >= 0 && idx < siz =>
                             val updatedVct = Value.Vector(siz, els + (idx -> v), ini)
                             extendStore(a, updatedVct)
-                            Value.Undefined(Identity.none)
-                        case Value.Vector(siz, _, _) => signalException(s"$name ($position): index $idx out of range (valid range: [0,${siz - 1}])")
+                            Value.Undefined(None)
+                        case Value.Vector(siz, _, _) => signalException(s"$name (${position.show}): index $idx out of range (valid range: [0,${siz - 1}])")
                         case v                       => throw new Exception(s"Vector expected; found $v")
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         //////////
         // Cons //
@@ -1038,26 +1038,26 @@ trait ConcreteSchemePrimitives:
         object SetCar extends SimplePrim:
             val name = "set-car!"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Pointer(addr) :: v :: Nil =>
                     lookupStore(addr) match
                         case Value.Cons(_, cdr) =>
                             extendStore(addr, Value.Cons(v, cdr))
-                            Value.Undefined(Identity.none)
+                            Value.Undefined(None)
                         case v => throw new UnexpectedValueTypeException[Value](v)
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object SetCdr extends SimplePrim:
             val name = "set-cdr!"
 
-            def call(args: List[Value], position: Position): Value = args match
+            def call(args: List[Value], position: Option[Position]): Value = args match
                 case Value.Pointer(addr) :: v :: Nil =>
                     lookupStore(addr) match
                         case Value.Cons(car, _) =>
                             extendStore(addr, Value.Cons(car, v))
-                            Value.Undefined(Identity.none)
+                            Value.Undefined(None)
                         case v => throw new UnexpectedValueTypeException[Value](v)
-                case _ => signalException(s"$name ($position): invalid arguments $args")
+                case _ => signalException(s"$name (${position.show}): invalid arguments $args")
 
         ///////////
         // Lists //
@@ -1081,27 +1081,27 @@ trait ConcreteSchemePrimitives:
         object CharEq extends SimplePrim:
             val name = "char=?"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 == c2)
-                case _                                                 => signalException(s"$name ($position): invalid arguments $args")
+                case _                                                 => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object CharCIEq extends SimplePrim:
             val name = "char-ci=?"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower == c2.toLower)
-                case _                                                 => signalException(s"$name ($position): invalid arguments $args")
+                case _                                                 => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object CharLt extends SimplePrim:
             val name = "char<?"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1 < c2)
-                case _                                                 => signalException(s"$name ($position): invalid arguments $args")
+                case _                                                 => signalException(s"$name (${position.show}): invalid arguments $args")
 
         object CharCILt extends SimplePrim:
             val name = "char-ci<?"
 
-            def call(args: List[Value], position: Position): Value.Bool = args match
+            def call(args: List[Value], position: Option[Position]): Value.Bool = args match
                 case Value.Character(c1) :: Value.Character(c2) :: Nil => Value.Bool(c1.toLower < c2.toLower)
-                case _                                                 => signalException(s"$name ($position): invalid arguments $args")
+                case _                                                 => signalException(s"$name (${position.show}): invalid arguments $args")

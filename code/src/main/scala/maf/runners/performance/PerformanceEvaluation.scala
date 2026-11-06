@@ -2,6 +2,7 @@ package maf.runners.performance
 
 import maf.fixpoint.AnalysisEntry
 import maf.runners.*
+import maf.syntax.Source
 import maf.syntax.scheme.*
 import maf.util.*
 
@@ -48,7 +49,7 @@ trait PerformanceEvaluation:
         case TimedOut           => "TIMEOUT"
         case NoData             => "_"
 
-    def parseProgram(txt: String): SchemeExp = SchemeParser.parseProgram(txt)
+    def parseProgram(txt: String, source: Source): SchemeExp = SchemeParser.parseProgram(txt, source)
 
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
     def measureAnalysis(
@@ -58,7 +59,7 @@ trait PerformanceEvaluation:
       ): Future[(PerformanceResult, List[Metrics])] =
         def run(): (PerformanceResult, List[Metrics]) =
             // Parse the program
-            val program = parseProgram(Reader.loadFile(file))
+            val program = parseProgram(Reader.loadFile(file), Source.File(file))
             // Warm-up
             print(s"* WARM-UP ($maxWarmupRuns) - ")
             val warmupTimeout = maxWarmupTime

@@ -5,7 +5,7 @@ import maf.syntax.sexp.*
 
 /** Trait that provides a method to compile an s-expression into a standard Scheme expression. */
 trait BaseSchemeCompiler:
-    class SchemeCompilerException(reason: String, position: Identity) extends Exception(s"$reason (${position.pos})")
+    class SchemeCompilerException(reason: String, position: Option[Position]) extends Exception(s"$reason (${position.show})")
     import scala.util.control.TailCalls._
 
     /** Reserved keywords */
@@ -18,11 +18,11 @@ trait BaseSchemeCompiler:
         case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(Value.Nil, _), _), _) =>
             tailcall(expandQuoted(quoted))
         case SExpPair(SExpId(Identifier("quote", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme quote: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme quote: $exp", exp.pos)
         case SExpPair(SExpId(Identifier("quasiquote", _)), SExpPair(quasiquoted, SExpValue(Value.Nil, _), _), _) =>
             tailcall(expandQuasiquoted(quasiquoted, 1))
         case SExpPair(SExpId(Identifier("quasiquote", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme quasiquote: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme quasiquote: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("lambda" | "λ", _)),
               SExpPair(args, body, _),
@@ -31,9 +31,9 @@ trait BaseSchemeCompiler:
             for
                 argsv <- tailcall(compileArgs(args))
                 bodyv <- tailcall(compileBodyNonEmpty(body))
-            yield makeLambda(None, argsv, bodyv, exp.idn)
+            yield makeLambda(None, argsv, bodyv, exp.pos)
         case SExpPair(SExpId(Identifier("lambda" | "λ", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme lambda: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme lambda: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("if", _)),
               SExpPair(cond, SExpPair(cons, SExpPair(alt, SExpValue(Value.Nil, _), _), _), _),
@@ -43,7 +43,7 @@ trait BaseSchemeCompiler:
                 condv <- tailcall(this._compile(cond))
                 consv <- tailcall(this._compile(cons))
                 altv <- tailcall(this._compile(alt))
-            yield SchemeIf(condv, consv, altv, exp.idn)
+            yield SchemeIf(condv, consv, altv, exp.pos)
         case SExpPair(
               SExpId(Identifier("if", _)),
               SExpPair(cond, SExpPair(cons, SExpValue(Value.Nil, _), _), _),
@@ -53,9 +53,9 @@ trait BaseSchemeCompiler:
             for
                 condv <- tailcall(this._compile(cond))
                 consv <- tailcall(this._compile(cons))
-            yield SchemeIf(condv, consv, SchemeValue(Value.Boolean(false), exp.idn), exp.idn)
+            yield SchemeIf(condv, consv, SchemeValue(Value.Boolean(false), exp.pos), exp.pos)
         case SExpPair(SExpId(Identifier("if", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme if: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme if: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("let", _)),
               SExpPair(SExpId(name), SExpPair(bindings, body, _), _),
@@ -75,7 +75,7 @@ trait BaseSchemeCompiler:
                     case Some(value) => bodyv.tail
                     case None        => bodyv
                 }
-                SchemeNamedLet(name, bindingsv, actualBody, annotation, exp.idn)
+                SchemeNamedLet(name, bindingsv, actualBody, annotation, exp.pos)
             }
         case SExpPair(
               SExpId(Identifier("let", _)),
@@ -85,9 +85,9 @@ trait BaseSchemeCompiler:
             for
                 bindingsv <- tailcall(compileBindings(bindings))
                 bodyv <- tailcall(compileBodyNonEmpty(body))
-            yield SchemeLet(bindingsv, bodyv, exp.idn)
+            yield SchemeLet(bindingsv, bodyv, exp.pos)
         case SExpPair(SExpId(Identifier("let", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme let: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme let: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("let*", _)),
               SExpPair(bindings, body, _),
@@ -96,9 +96,9 @@ trait BaseSchemeCompiler:
             for
                 bindingsv <- tailcall(compileBindings(bindings))
                 bodyv <- tailcall(compileBodyNonEmpty(body))
-            yield SchemeLetStar(bindingsv, bodyv, exp.idn)
+            yield SchemeLetStar(bindingsv, bodyv, exp.pos)
         case SExpPair(SExpId(Identifier("let*", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme let*: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme let*: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("letrec", _)),
               SExpPair(bindings, body, _),
@@ -107,54 +107,54 @@ trait BaseSchemeCompiler:
             for
                 bindingsv <- tailcall(compileBindings(bindings))
                 bodyv <- tailcall(compileBodyNonEmpty(body))
-            yield SchemeLetrec(bindingsv, bodyv, exp.idn)
+            yield SchemeLetrec(bindingsv, bodyv, exp.pos)
         case SExpPair(SExpId(Identifier("letrec", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme letrec: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme letrec: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("set!", _)),
               SExpPair(SExpId(v), SExpPair(value, SExpValue(Value.Nil, _), _), _),
               _
             ) =>
             for valuev <- tailcall(this._compile(value))
-            yield SchemeSet(v, valuev, exp.idn)
+            yield SchemeSet(v, valuev, exp.pos)
         case SExpPair(SExpId(Identifier("when", _)), SExpPair(pred, body, _), _) =>
             for
                 predv <- tailcall(this._compile(pred))
                 bodyv <- tailcall(compileBodyNonEmpty(body))
-            yield SchemeWhen(predv, bodyv, exp.idn)
+            yield SchemeWhen(predv, bodyv, exp.pos)
         case SExpPair(SExpId(Identifier("when", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme when: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme when: $exp", exp.pos)
         case SExpPair(SExpId(Identifier("unless", _)), SExpPair(pred, body, _), _) =>
             for
                 predv <- tailcall(this._compile(pred))
                 bodyv <- tailcall(compileBodyNonEmpty(body))
-            yield SchemeUnless(predv, bodyv, exp.idn)
+            yield SchemeUnless(predv, bodyv, exp.pos)
         case SExpPair(SExpId(Identifier("unless", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme unless: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme unless: $exp", exp.pos)
         case SExpPair(SExpId(Identifier("set!", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme set!: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme set!: $exp", exp.pos)
         case SExpPair(SExpId(Identifier("begin", _)), body, _) =>
-            tailcall(compileBody(body)).map(SchemeBegin(_, exp.idn))
+            tailcall(compileBody(body)).map(SchemeBegin(_, exp.pos))
         case SExpPair(SExpId(Identifier("cond", _)), clauses, _) =>
-            tailcall(compileCondClauses(clauses)).map(SchemeCond(_, exp.idn))
+            tailcall(compileCondClauses(clauses)).map(SchemeCond(_, exp.pos))
         case SExpPair(SExpId(Identifier("case", _)), SExpPair(exp, clauses, _), _) =>
             tailcall(compileCaseClauses(clauses)).flatMap({ case (c, d) =>
-                tailcall(this._compile(exp)).map(expv => SchemeCase(expv, c, d, exp.idn))
+                tailcall(this._compile(exp)).map(expv => SchemeCase(expv, c, d, exp.pos))
             })
         case SExpPair(SExpId(Identifier("and", _)), args, _) =>
-            tailcall(compileBody(args)).map(SchemeAnd(_, exp.idn))
+            tailcall(compileBody(args)).map(SchemeAnd(_, exp.pos))
         case SExpPair(SExpId(Identifier("or", _)), args, _) =>
-            tailcall(compileBody(args)).map(SchemeOr(_, exp.idn))
+            tailcall(compileBody(args)).map(SchemeOr(_, exp.pos))
         case SExpPair(SExpId(Identifier("assert", _)), SExpPair(exp, SExpValue(Value.Nil, _), _), _) =>
-            tailcall(this._compile(exp).map(SchemeAssert(_, exp.idn)))
+            tailcall(this._compile(exp).map(SchemeAssert(_, exp.pos)))
         case SExpPair(SExpId(Identifier("assert", _)), _, _) =>
-            throw new SchemeCompilerException(s"Invalid Scheme assert: $exp", exp.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme assert: $exp", exp.pos)
         case SExpPair(
               SExpId(Identifier("define", _)),
               SExpPair(SExpId(name), SExpPair(value, SExpValue(Value.Nil, _), _), _),
               _
             ) =>
-            tailcall(this._compile(value)).map(SchemeDefineVariable(name, _, exp.idn))
+            tailcall(this._compile(value)).map(SchemeDefineVariable(name, _, exp.pos))
         case SExpPair(
               SExpId(Identifier("define", _)),
               SExpPair(SExpPair(SExpId(name), args, _), body, _),
@@ -163,7 +163,7 @@ trait BaseSchemeCompiler:
             for
                 argsv <- tailcall(compileArgs(args))
                 bodyv <- tailcall(this.compileBodyNonEmpty(body))
-            yield makeDefineFunction(name, argsv, bodyv, exp.idn)
+            yield makeDefineFunction(name, argsv, bodyv, exp.pos)
         case SExpPair(
               SExpId(Identifier("do", _)),
               SExpPair(bindings, SExpPair(SExpPair(test, finals, _), commands, _), _),
@@ -174,17 +174,17 @@ trait BaseSchemeCompiler:
                 testv <- tailcall(this._compile(test))
                 finalsv <- tailcall(compileBody(finals))
                 commandsv <- tailcall(compileBody(commands))
-            yield SchemeDo(bindingsv, testv, finalsv, commandsv, exp.idn)
+            yield SchemeDo(bindingsv, testv, finalsv, commandsv, exp.pos)
         case SExpPair(f, args, _) =>
             for
                 fv <- tailcall(this._compile(f))
                 argsv <- tailcall(compileBody(args))
-            yield SchemeFuncall(fv, argsv, exp.idn)
+            yield SchemeFuncall(fv, argsv, exp.pos)
         case SExpId(v) =>
             if reserved.contains(v.name) then
-                throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp (${exp.idn.pos})", exp.idn)
+                throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp (${exp.pos.show})", exp.pos)
             done(SchemeVar(v))
-        case SExpValue(value, _) => done(SchemeValue(value, exp.idn))
+        case SExpValue(value, _) => done(SchemeValue(value, exp.pos))
 
     def compileArgs(args: SExp): TailRec[(List[Identifier], Option[Identifier])] = args match
         case SExpPair(SExpId(id), rest, _) =>
@@ -192,10 +192,10 @@ trait BaseSchemeCompiler:
             yield (id :: restv._1, restv._2)
         case SExpValue(Value.Nil, _) => done((Nil, None))
         case SExpId(id)              => done((Nil, Some(id)))
-        case _                       => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.idn)
+        case _                       => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.pos)
 
     def compileBodyNonEmpty(body: SExp): TailRec[List[SchemeExp]] = body match
-        case SExpValue(Value.Nil, _) => throw new SchemeCompilerException(s"Empty body is not allowed", body.idn)
+        case SExpValue(Value.Nil, _) => throw new SchemeCompilerException(s"Empty body is not allowed", body.pos)
         case _                       => tailcall(compileBody(body))
 
     def compileBody(body: SExp): TailRec[List[SchemeExp]] = body match
@@ -205,22 +205,22 @@ trait BaseSchemeCompiler:
                 restv <- tailcall(compileBody(rest))
             yield expv :: restv
         case SExpValue(Value.Nil, _) => done(Nil)
-        case _                       => throw new SchemeCompilerException(s"Invalid Scheme body: $body", body.idn)
+        case _                       => throw new SchemeCompilerException(s"Invalid Scheme body: $body", body.pos)
 
     def compileBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp)]] = bindings match
         case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(Value.Nil, _), _), _), rest, _) =>
-            if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
+            if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.pos)
             for
                 valuev <- tailcall(this._compile(value))
                 restv <- tailcall(compileBindings(rest))
             yield (v, valuev) :: restv
         case SExpValue(Value.Nil, _) => done(Nil)
-        case _                       => throw new SchemeCompilerException(s"Invalid Scheme bindings: $bindings", bindings.idn)
+        case _                       => throw new SchemeCompilerException(s"Invalid Scheme bindings: $bindings", bindings.pos)
 
     def compileDoBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp, Option[SchemeExp])]] =
         bindings match
             case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(Value.Nil, _), _), _), rest, _) =>
-                if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
+                if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.pos)
                 for
                     valuev <- tailcall(this._compile(value))
                     restv <- tailcall(compileDoBindings(rest))
@@ -230,7 +230,7 @@ trait BaseSchemeCompiler:
                   rest,
                   _
                 ) =>
-                if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.idn)
+                if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.pos)
                 for
                     valuev <- tailcall(this._compile(value))
                     stepv <- tailcall(this._compile(step))
@@ -238,7 +238,7 @@ trait BaseSchemeCompiler:
                 yield (v, valuev, Some(stepv)) :: restv
             case SExpValue(Value.Nil, _) => done(Nil)
             case _ =>
-                throw new SchemeCompilerException(s"Invalid Scheme do-bindings: $bindings", bindings.idn)
+                throw new SchemeCompilerException(s"Invalid Scheme do-bindings: $bindings", bindings.pos)
 
     def compileCondClauses(clauses: SExp): TailRec[List[(SchemeExp, List[SchemeExp])]] =
         clauses match
@@ -248,7 +248,7 @@ trait BaseSchemeCompiler:
                   _
                 ) =>
                 for bodyv <- tailcall(compileBodyNonEmpty(body))
-                yield List((SchemeValue(Value.Boolean(true), clauses.idn), bodyv))
+                yield List((SchemeValue(Value.Boolean(true), clauses.pos), bodyv))
             case SExpPair(SExpPair(cond, body, _), restClauses, _) =>
                 for
                     condv <- tailcall(this._compile(cond))
@@ -257,7 +257,7 @@ trait BaseSchemeCompiler:
                 yield (condv, bodyv) :: restClausesv
             case SExpValue(Value.Nil, _) => done(Nil)
             case _ =>
-                throw new SchemeCompilerException(s"Invalid Scheme cond clauses: $clauses", clauses.idn)
+                throw new SchemeCompilerException(s"Invalid Scheme cond clauses: $clauses", clauses.pos)
 
     def compileCaseClauses(
         clauses: SExp
@@ -278,24 +278,24 @@ trait BaseSchemeCompiler:
                 })
             case SExpValue(Value.Nil, _) => done((Nil, Nil))
             case _ =>
-                throw new SchemeCompilerException(s"Invalid Scheme case clauses: $clauses", clauses.idn)
+                throw new SchemeCompilerException(s"Invalid Scheme case clauses: $clauses", clauses.pos)
 
     def compileCaseObjects(objects: SExp): TailRec[List[SchemeValue]] = objects match
         case SExpPair(SExpValue(v, _), rest, _) =>
             for restv <- tailcall(compileCaseObjects(rest))
-            yield SchemeValue(v, objects.idn) :: restv
+            yield SchemeValue(v, objects.pos) :: restv
         case SExpPair(SExpId(id), rest, _) =>
             // identifiers in case expressions are treated as symbols
             for restv <- tailcall(compileCaseObjects(rest))
-            yield SchemeValue(Value.Symbol(id.name), id.idn) :: restv
+            yield SchemeValue(Value.Symbol(id.name), id.pos) :: restv
         case SExpValue(Value.Nil, _) => done(Nil)
         case _ =>
-            throw new SchemeCompilerException(s"Invalid Scheme case objects: $objects", objects.idn)
+            throw new SchemeCompilerException(s"Invalid Scheme case objects: $objects", objects.pos)
     private def makeLambda(
         name: Option[String],
         args: (List[Identifier], Option[Identifier]),
         body: List[SchemeExp],
-        idn: Identity
+        pos: Option[Position]
       ) =
         val annotation = body match
             case SchemeVar(id) :: _ if id.name.startsWith("@") =>
@@ -308,13 +308,13 @@ trait BaseSchemeCompiler:
             case None        => body
         }
         args._2 match
-            case Some(vararg) => SchemeVarArgLambda(name, args._1, vararg, actualBody, annotation, idn)
-            case None         => SchemeLambda(name, args._1, actualBody, annotation, idn)
+            case Some(vararg) => SchemeVarArgLambda(name, args._1, vararg, actualBody, annotation, pos)
+            case None         => SchemeLambda(name, args._1, actualBody, annotation, pos)
     private def makeDefineFunction(
         id: Identifier,
         args: (List[Identifier], Option[Identifier]),
         body: List[SchemeExp],
-        idn: Identity
+        pos: Option[Position]
       ) =
         val annotation = body match
             case SchemeVar(id) :: _ if id.name.startsWith("@") =>
@@ -327,8 +327,8 @@ trait BaseSchemeCompiler:
             case None        => body
         }
         args._2 match
-            case Some(vararg) => SchemeDefineVarArgFunction(id, args._1, vararg, actualBody, annotation, idn)
-            case None         => SchemeDefineFunction(id, args._1, actualBody, annotation, idn)
+            case Some(vararg) => SchemeDefineVarArgFunction(id, args._1, vararg, actualBody, annotation, pos)
+            case None         => SchemeDefineFunction(id, args._1, actualBody, annotation, pos)
 
     private def expandQuoted(sexp: SExp): TailRec[SchemeExp] = sexp match
         case sexpVal: SExpValue => done(value(sexpVal))
@@ -343,13 +343,13 @@ trait BaseSchemeCompiler:
         // nested quasiquote
         case SExpPair(id @ SExpId(Identifier("quasiquote", _)), pair @ SExpPair(quasiquoted, nil @ SExpValue(Value.Nil, _), _), pos) =>
             for qqExp <- expandQuasiquoted(quasiquoted, depth + 1)
-            yield SchemePair(value(id), SchemePair(qqExp, value(nil), pair.idn), pos)
+            yield SchemePair(value(id), SchemePair(qqExp, value(nil), pair.pos), pos)
         // unquote
         case SExpPair(id @ SExpId(Identifier("unquote", _)), pair @ SExpPair(unquoted, nil @ SExpValue(Value.Nil, _), _), pos) =>
             if depth == 1 then tailcall(this._compile(unquoted))
             else
                 for uqExp <- expandQuasiquoted(unquoted, depth - 1)
-                yield SchemePair(value(id), SchemePair(uqExp, value(nil), pair.idn), pos)
+                yield SchemePair(value(id), SchemePair(uqExp, value(nil), pair.pos), pos)
         // unquote-splicing
         case SExpPair(
               carp @ SExpPair(id @ SExpId(Identifier("unquote-splicing", _)), pair @ SExpPair(unquotedSpl, nil @ SExpValue(Value.Nil, _), _), _),
@@ -365,10 +365,10 @@ trait BaseSchemeCompiler:
                 for
                     uqExp <- tailcall(expandQuasiquoted(unquotedSpl, depth - 1))
                     cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
-                yield SchemePair(SchemePair(value(id), SchemePair(uqExp, value(nil), pair.idn), carp.idn), cdrExp, pos)
+                yield SchemePair(SchemePair(value(id), SchemePair(uqExp, value(nil), pair.pos), carp.pos), cdrExp, pos)
         // throw compiler exceptions on illegal patterns
         case SExpPair(SExpId(Identifier(id, _)), _, _) if Set("quasiquote,unquote,unquote-splicing").contains(id) =>
-            throw new SchemeCompilerException(s"Illegal pattern in quasiquote: $sexp", sexp.idn)
+            throw new SchemeCompilerException(s"Illegal pattern in quasiquote: $sexp", sexp.pos)
         // other s-expressions are expanded as expected
         case sexpId: SExpId     => done(value(sexpId))
         case sexpVal: SExpValue => done(value(sexpVal))
@@ -379,8 +379,8 @@ trait BaseSchemeCompiler:
             yield SchemePair(carExp, cdrExp, pos)
 
     private def value(sexp: SExpValue): SchemeExp =
-        SchemeValue(sexp.value, sexp.idn)
+        SchemeValue(sexp.value, sexp.pos)
     private def value(sexp: SExpId): SchemeExp =
-        SchemeValue(Value.Symbol(sexp.id.name), sexp.id.idn)
+        SchemeValue(Value.Symbol(sexp.id.name), sexp.id.pos)
 
 object SchemeCompiler extends BaseSchemeCompiler

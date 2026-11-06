@@ -3,6 +3,7 @@ package maf.runners.precision
 import maf.analysis.scheme.*
 import maf.domain.lattice.*
 import maf.runners.*
+import maf.syntax.Source
 import maf.syntax.scheme.*
 import maf.util.*
 
@@ -157,8 +158,8 @@ abstract class SASBenchmarks
 
     def benchmarks = gabrielBenchmarks ++ extraBenchmarks
 
-    override def parseProgram(txt: String): SchemeExp =
-        val parsed = SchemeParser.parse(txt)
+    override def parseProgram(txt: String, source: Source): SchemeExp =
+        val parsed = SchemeParser.parse(txt, source)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)

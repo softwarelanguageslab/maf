@@ -1,21 +1,31 @@
 package maf.syntax
 
-import maf.util.SmartHash
+import java.util.concurrent.atomic.AtomicLong
 
-/** An expression */
-trait Expression extends SmartHash:
+/**
+ * An expression, i.e., a node in the AST of a program.
+ *
+ * Every expression is a distinct program point: it is only equal to itself, even if another expression has the same structure and position (e.g.,
+ * because a program transformation constructed both). To this end, every expression gets a unique label when it is constructed.
+ */
+trait Expression:
 
-    /** The identity of the expression. Can be used to get information about the position of the expression in its source file. */
-    def idn: Identity
+    /** The label of this expression, which is unique among all expressions (but differs between runs) */
+    final val label: Long = Expression.freshLabel()
+
+    final override def equals(that: Any): Boolean = that match
+        case that: Expression => label == that.label
+        case _                => false
+    final override def hashCode: Int = java.lang.Long.hashCode(label)
+
+    /** The position of the expression in its source file, or `None` if the expression does not occur in the source code. */
+    def pos: Option[Position]
 
     /** The set of free variables appearing in this expression. */
     def fv: Set[String]
 
-    /** The height of the AST represented by this Scheme expression. */
+    /** The height of the AST represented by this expression. */
     val height: Int = -1
-
-    /** A label indicating the type of an expression. */
-    def label: Label
 
     /** Returns a list of direct subexpressions of the given expression. */
     def subexpressions: List[Expression] // Uses `def` instead of `val` to avoid continuous memory overheads.
@@ -31,34 +41,15 @@ trait Expression extends SmartHash:
         subExpressions
 
     def size: Int = allSubexpressions.size
-    
-
-    /**
-     * Returns whether this expression is isomorphic to another expression. This is a basic implementation which should be specialised in subclasses.
-     */
-    def isomorphic(other: Expression): Boolean =
-        label == other.label &&
-            subexpressions.length == other.subexpressions.length &&
-            subexpressions.zip(other.subexpressions).forall { case (x, y) => x.isomorphic(y) }
-
-    /** Indicates whether this expression is equal to another expression when identisty information of the expression is ignored. */
-    def eql(other: Expression): Boolean = (hash == other.hash
-        && label == other.label
-        && subexpressions.length == other.subexpressions.length
-        && subexpressions.zip(other.subexpressions).forall(p => p._1.eql(p._2)))
-
-    /** A hash code that ignores positional information of the expression within the source code. */
-    lazy val hash: Int = (label, subexpressions.map(_.hash)).hashCode()
 
 object Expression:
-    def eql(e1: Expression, e2: Expression): Boolean = e1.eql(e2)
+    private val labels = new AtomicLong()
+    private def freshLabel(): Long = labels.getAndIncrement()
 
 /** An identifier. It has a name and a position */
-case class Identifier(name: String, idn: Identity) extends Expression with SmartHash:
-    def fullString: String = s"$name@$idn"
+case class Identifier(name: String, pos: Option[Position]) extends Expression:
+    def fullString: String = s"$name@${pos.show}"
     override def toString: String = name
     def fv: Set[String] = Set(name)
     override val height: Int = 0
-    val label: Label = Label.SYM
     def subexpressions: List[Expression] = List()
-    override lazy val hash: Int = (label, name).hashCode()
