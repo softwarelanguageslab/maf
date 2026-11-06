@@ -28,7 +28,6 @@ object Value:
  */
 sealed trait SExp extends Expression:
     val pos: Option[Position]
-    def fv: Set[String] = Set()
 
 /**
  * An s-expression is made of pairs, e.g., (foo bar) is represented as the pair with identifier foo as car and another pair -- with identifier bar as
@@ -50,7 +49,6 @@ case class SExpPair(
                 s"$car $rest"
             case SExpValue(Value.Nil, _) => s"$car"
             case _                       => s"$car . $cdr"
-    def subexpressions: List[Expression] = List(car, cdr)
 
 case class SExpVector(
     elements: List[SExp],
@@ -58,7 +56,6 @@ case class SExpVector(
     extends SExp:
 
     override def toString: String = s"#(${elements.map(_.toString).mkString(" ")})"
-    def subexpressions: List[Expression] = elements
 
 object SExpList:
 
@@ -87,12 +84,10 @@ object SExpList:
 case class SExpId(id: Identifier) extends SExp:
     val pos: Option[Position] = id.pos
     override def toString: String = id.toString
-    def subexpressions: List[Expression] = List(id)
 
 /** A literal value, such as 1, "foo", 'foo, etc. */
 case class SExpValue(value: Value, pos: Option[Position]) extends SExp:
     override def toString: String = value.toString
-    def subexpressions: List[Expression] = List()
 
 /** A quoted element, such as 'foo, '(foo (bar)), etc. */
 object SExpQuoted:

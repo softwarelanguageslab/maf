@@ -7,6 +7,13 @@ import maf.util.Show
 
 /** Abstract syntax of Scheme programs */
 sealed trait SchemeExp extends Expression:
+
+    /** The set of free variables appearing in this expression. */
+    def fv: Set[String]
+
+    /** The direct subexpressions of this expression, including the identifiers that it binds or refers to. */
+    def subexpressions: List[Expression]
+
     def prettyString(indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
 
@@ -54,9 +61,6 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     def lambdaName: String = name.getOrElse(s"λ@${pos.show}")
     // free variables
     lazy val fv: Set[String] = SchemeBody.fv(body) -- args.map(_.name).toSet -- varArgId.map(id => Set(id.name)).getOrElse(Set[String]())
-
-  // height
-    override val height: Int = 1 + body.foldLeft(0)((mx, e) => mx.max(e.height))
     def annotation: Option[(String, String)]
     def subexpressions: List[Expression] = args ::: body
 
@@ -110,7 +114,6 @@ case class SchemeFuncall(
             val a = args.mkString(" ")
             s"($f $a)"
     def fv: Set[String] = f.fv ++ args.flatMap(_.fv).toSet
-    override val height: Int = 1 + args.foldLeft(0)((mx, a) => mx.max(a.height).max(f.height))
     def subexpressions: List[Expression] = f :: args
     override def prettyString(indent: Int): String =
         if this.toString.length < 100 then this.toString
@@ -129,7 +132,6 @@ case class SchemeIf(
     extends SchemeExp:
     override def toString: String = s"(if $cond $cons $alt)"
     def fv: Set[String] = cond.fv ++ cons.fv ++ alt.fv
-    override val height: Int = 1 + cond.height.max(cons.height).max(alt.height)
     def subexpressions: List[Expression] = List(cond, cons, alt)
 
     override def prettyString(indent: Int): String =
@@ -142,7 +144,6 @@ sealed trait SchemeLettishExp extends SchemeExp:
     val bindings: List[(Identifier, SchemeExp)]
     val body: List[SchemeExp]
     val pos: Option[Position]
-    override val height: Int = 1 + bindings.foldLeft(0)((mx, b) => mx.max(b._2.height).max(body.foldLeft(0)((mx, e) => mx.max(e.height))))
     def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
     def letName: String
     override def prettyString(indent: Int): String =
@@ -230,7 +231,6 @@ sealed trait SchemeSetExp extends SchemeExp:
     val variable: Identifier
     val value: SchemeExp
     def fv: Set[String] = value.fv + variable.name
-    override val height: Int = 1 + value.height
     def subexpressions: List[Expression] = List(variable, value)
     override def prettyString(indent: Int): String =
         val ind = indent + variable.toString.length + 4
@@ -257,7 +257,6 @@ case class SchemeBegin(exps: List[SchemeExp], pos: Option[Position]) extends Sch
         val body = exps.mkString(" ")
         s"(begin $body)"
     def fv: Set[String] = exps.flatMap(_.fv).toSet
-    override val height: Int = 1 + exps.foldLeft(0)((mx, e) => mx.max(e.height))
     def subexpressions: List[Expression] = exps
 
     override def prettyString(indent: Int): String =
@@ -380,7 +379,6 @@ case class SchemeDefineVariable(
     extends SchemeExp:
     override def toString: String = s"(define $name $value)"
     def fv: Set[String] = value.fv - name.name
-    override val height: Int = 1 + value.height
     def subexpressions: List[Expression] = List(name, value)
 
     override def prettyString(indent: Int): String = s"(define $name ${value.prettyString(nextIndent(indent))})"
@@ -462,7 +460,6 @@ object SchemeDo:
 /** An identifier: name */
 sealed trait SchemeVarExp extends SchemeExp:
     val id: Identifier
-    override val height: Int = 1
     val pos: Option[Position] = id.pos
     def fv: Set[String] = Set(id.name)
     def subexpressions: List[Expression] = List(id)
@@ -485,7 +482,6 @@ object SchemeSplicedPair:
 case class SchemeValue(value: Value, pos: Option[Position]) extends SchemeExp:
     override def toString: String = value.toString
     def fv: Set[String] = Set()
-    override val height: Int = 1
     def subexpressions: List[Expression] = List()
 
 /** An assertion (assert <exp>) */
