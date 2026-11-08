@@ -1,6 +1,7 @@
 package maf.syntax.scheme
 
 import maf.syntax.*
+import maf.syntax.sexp.SExpParser
 
 class BaseSchemePrelude:
 
@@ -339,19 +340,23 @@ class BaseSchemePrelude:
       "__toplevel_append" -> "(define (__toplevel_append l1 l2) (append l1 l2))",
     )
 
-    def parseDef(dff: String, nam: String): List[SchemeExp] =
-        SchemeParser.parse(dff, Source.Prelude(nam))
+    // the definitions of the prelude only need other definitions of the prelude, which `addPrelude` adds as well
+    def parseDef(dff: String, nam: String): List[SchemeExp[Surface]] =
+        SExpParser.parse(dff, Source.Prelude(nam)).map(SchemeParser.compile)
 
-    lazy val primDefsParsed: Map[String, SchemeExp] = primDefs.map { case (nam, str) =>
+    lazy val primDefsParsed: Map[String, SchemeExp[Surface]] = primDefs.map { case (nam, str) =>
         val exp = SchemeBody(parseDef(str, nam))
         (nam, exp)
     }
 
     val primNames: Set[String] = primDefs.keySet
 
-    /** Transively adds all required definitions to the prelude, in addition to those mentioned in `incl`. */
-    def addPrelude(prg: List[SchemeExp], incl: Set[String] = Set.empty): List[SchemeExp] =
-        var prelude: List[SchemeExp] = List()
+    /**
+     * Transitively adds all required definitions of the prelude to a program, in addition to those mentioned in `incl`. The resulting program no longer
+     * needs the prelude, but may contain the features of its definitions.
+     */
+    def addPrelude[F](prg: List[SchemeExp[F | NeedsPrelude]], incl: Set[String] = Set.empty): List[SchemeExp[F | Surface]] =
+        var prelude: List[SchemeExp[Surface]] = List()
         var work: Set[String] = SchemeBody.fv(prg) ++ incl
         var added: Set[String] = Set.empty
         val primDefs = this.primDefs
@@ -361,6 +366,7 @@ class BaseSchemePrelude:
             prelude = defs.toList ::: prelude
             work = defs.flatMap(_.fv)
             added ++= free
-        prelude ::: prg
+        // no expression has the feature `NeedsPrelude`, so the program itself is a `SchemeExp[F]`
+        prelude ::: prg.asInstanceOf[List[SchemeExp[F]]]
 
 object SchemePrelude extends BaseSchemePrelude

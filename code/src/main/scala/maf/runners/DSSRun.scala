@@ -51,14 +51,14 @@ object DSSRun:
 
     lazy val grid = prepare(SchemeParser.parseFile("test/R5RS/various/grid.scm"))
 
-    def parse(txt: String): SchemeExp = prepare(SchemeParser.parse(txt, Source.Text))
+    def parse(txt: String): SchemeExp[Named] = prepare(SchemeParser.parse(txt, Source.Text))
 
-    def prepare(parsed: List[SchemeExp]): SchemeExp =
+    def prepare(parsed: List[SchemeExp[Surface | NeedsPrelude]]): SchemeExp[Named] =
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-    def runDSS(prg: SchemeExp) =
+    def runDSS(prg: SchemeExp[Any]) =
         val anl = new SchemeDSSAnalysis(prg, 0) //with NameBasedAllocator
         anl.analyze()
         val res = anl.results(anl.MainComponent)

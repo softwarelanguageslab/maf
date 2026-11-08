@@ -5,8 +5,39 @@ import maf.syntax.sexp.*
 import maf.util.Show
 
 
-/** Abstract syntax of Scheme programs */
-sealed trait SchemeExp extends Expression:
+/*
+ * Features of Scheme programs.
+ *
+ * Every Scheme expression is indexed by the features that may occur in it, as a union type: a `SchemeExp[F]` only contains core expressions (such as
+ * lambdas, calls, conditionals, let-bindings and literals) and expressions with a feature in `F`. For instance, a `SchemeExp[Mutation | Named]` may
+ * contain assignments and variables referred to by name, but no definitions. Program transformations state in their type which features they remove
+ * or introduce, and analyses state which features they support. As `SchemeExp` is covariant, a program with fewer features can be used wherever more
+ * features are allowed, and `SchemeExp[Any]` is any Scheme expression.
+ */
+
+/** Definitions: `(define x e)` */
+sealed trait Define
+
+/** Assignments: `(set! x e)` */
+sealed trait Mutation
+
+/** Variables that are referred to by name */
+sealed trait Named
+
+/** Lexically addressed variables, which refer to the identifier that binds them */
+sealed trait Lexical
+
+/**
+ * References to definitions of the prelude that the program may not include. No expression has this feature: the parser adds it to the type of the
+ * programs it parses, and adding the prelude to a program removes it.
+ */
+sealed trait NeedsPrelude
+
+/** The features of a program as written by the programmer, i.e., as compiled from its s-expressions */
+type Surface = Define | Mutation | Named
+
+/** Abstract syntax of Scheme programs, with features `F` */
+sealed trait SchemeExp[+F] extends Expression:
 
     /** The set of free variables appearing in this expression. */
     def fv: Set[String]
@@ -18,8 +49,8 @@ sealed trait SchemeExp extends Expression:
     def nextIndent(current: Int): Int = current + 3
 
 object SchemeExp:
-    given Show[SchemeExp] with
-        def show(v: SchemeExp): String = v.toString
+    given [F]: Show[SchemeExp[F]] with
+        def show(v: SchemeExp[F]): String = v.toString
 /*
     case SchemeLambda(name, args, body, ann, pos) =>
     case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
@@ -42,15 +73,15 @@ object SchemeExp:
 /**
  * A lambda expression: (lambda (args...) body...) Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
  */
-sealed trait SchemeLambdaExp extends SchemeExp:
+sealed trait SchemeLambdaExp[+F] extends SchemeExp[F]:
     // optionally, a lambda has a name
     def name: Option[String]
     // a lambda takes arguments, and has a non-empty body
     def args: List[Identifier]
-    def body: List[SchemeExp]
+    def body: List[SchemeExp[F]]
     require(body.nonEmpty)
     // the body as a single expression (a `begin` if the body has several expressions), constructed once so that it is the same program point for every call
-    val bodyExp: SchemeExp = SchemeBody(body)
+    val bodyExp: SchemeExp[F] = SchemeBody(body)
     // does the lambda support a variable number of arguments
     def varArgId: Option[Identifier]
     // can this lambda be called with a given number of arguments
@@ -64,13 +95,13 @@ sealed trait SchemeLambdaExp extends SchemeExp:
     def annotation: Option[(String, String)]
     def subexpressions: List[Expression] = args ::: body
 
-case class SchemeLambda(
+case class SchemeLambda[+F](
     name: Option[String],
     args: List[Identifier],
-    body: List[SchemeExp],
+    body: List[SchemeExp[F]],
     annotation: Option[(String, String)],
     pos: Option[Position])
-    extends SchemeLambdaExp:
+    extends SchemeLambdaExp[F]:
     override def toString: String =
         val a = args.mkString(" ")
         val b = body.mkString(" ")
@@ -80,14 +111,14 @@ case class SchemeLambda(
     override def prettyString(indent: Int): String =
         s"(lambda (${args.mkString(" ")})\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
-case class SchemeVarArgLambda(
+case class SchemeVarArgLambda[+F](
     name: Option[String],
     args: List[Identifier],
     vararg: Identifier,
-    body: List[SchemeExp],
+    body: List[SchemeExp[F]],
     annotation: Option[(String, String)],
     pos: Option[Position])
-    extends SchemeLambdaExp:
+    extends SchemeLambdaExp[F]:
     override def toString: String =
         val a =
             if args.isEmpty then vararg.toString
@@ -103,11 +134,11 @@ case class SchemeVarArgLambda(
         s"(lambda $a\n${body.map(" " * nextIndent(indent) ++ _.prettyString(nextIndent(indent))).mkString("\n")})"
 
 /** A function call: (f args...) */
-case class SchemeFuncall(
-    f: SchemeExp,
-    args: List[SchemeExp],
+case class SchemeFuncall[+F](
+    f: SchemeExp[F],
+    args: List[SchemeExp[F]],
     pos: Option[Position])
-    extends SchemeExp:
+    extends SchemeExp[F]:
     override def toString: String =
         if args.isEmpty then s"($f)"
         else
@@ -124,12 +155,12 @@ case class SchemeFuncall(
             s"(${if fnString.split("\n").nn.length <= 3 then f.toString else fnString}$argsString)"
 
 /** An if statement: (if cond cons alt) If without alt clauses need to be encoded with an empty begin as alt clause */
-case class SchemeIf(
-    cond: SchemeExp,
-    cons: SchemeExp,
-    alt: SchemeExp,
+case class SchemeIf[+F](
+    cond: SchemeExp[F],
+    cons: SchemeExp[F],
+    alt: SchemeExp[F],
     pos: Option[Position])
-    extends SchemeExp:
+    extends SchemeExp[F]:
     override def toString: String = s"(if $cond $cons $alt)"
     def fv: Set[String] = cond.fv ++ cons.fv ++ alt.fv
     def subexpressions: List[Expression] = List(cond, cons, alt)
@@ -140,9 +171,9 @@ case class SchemeIf(
             s"(if $cond\n${" " * nextIndent(indent)}${cons.prettyString(nextIndent(indent))}\n${" " * nextIndent(indent)}${alt.prettyString(nextIndent(indent))})"
 
 /** A let-like expression. */
-sealed trait SchemeLettishExp extends SchemeExp:
-    val bindings: List[(Identifier, SchemeExp)]
-    val body: List[SchemeExp]
+sealed trait SchemeLettishExp[+F] extends SchemeExp[F]:
+    val bindings: List[(Identifier, SchemeExp[F])]
+    val body: List[SchemeExp[F]]
     val pos: Option[Position]
     def subexpressions: List[Expression] = bindings.foldLeft(List[Expression]())((a, b) => b._2 :: b._1 :: a) ::: body
     def letName: String
@@ -156,11 +187,11 @@ sealed trait SchemeLettishExp extends SchemeExp:
         s"($id (${first}${rest})\n$bo)"
 
 /** Let-bindings: (let ((v1 e1) ...) body...) */
-case class SchemeLet(
-    bindings: List[(Identifier, SchemeExp)],
-    body: List[SchemeExp],
+case class SchemeLet[+F](
+    bindings: List[(Identifier, SchemeExp[F])],
+    body: List[SchemeExp[F]],
     pos: Option[Position])
-    extends SchemeLettishExp:
+    extends SchemeLettishExp[F]:
     override def toString: String =
         val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
         val bo = body.mkString(" ")
@@ -171,11 +202,11 @@ case class SchemeLet(
     def letName: String = "let"
 
 /** Let*-bindings: (let* ((v1 e1) ...) body...) */
-case class SchemeLetStar(
-    bindings: List[(Identifier, SchemeExp)],
-    body: List[SchemeExp],
+case class SchemeLetStar[+F](
+    bindings: List[(Identifier, SchemeExp[F])],
+    body: List[SchemeExp[F]],
     pos: Option[Position])
-    extends SchemeLettishExp:
+    extends SchemeLettishExp[F]:
     override def toString: String =
         val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
         val bo = body.mkString(" ")
@@ -192,11 +223,11 @@ case class SchemeLetStar(
     def letName: String = "let*"
 
 /** Letrec-bindings: (letrec* ((v1 e1) ...) body...) */
-case class SchemeLetrec(
-    bindings: List[(Identifier, SchemeExp)],
-    body: List[SchemeExp],
+case class SchemeLetrec[+F](
+    bindings: List[(Identifier, SchemeExp[F])],
+    body: List[SchemeExp[F]],
     pos: Option[Position])
-    extends SchemeLettishExp:
+    extends SchemeLettishExp[F]:
     override def toString: String =
         val bi = bindings.map({ case (name, exp) => s"($name $exp)" }).mkString(" ")
         val bo = body.mkString(" ")
@@ -214,45 +245,45 @@ case class SchemeLetrec(
 
 /** Named-let: (let name ((v1 e1) ...) body...) */
 object SchemeNamedLet:
-    def apply(
+    def apply[F](
         name: Identifier,
-        bindings: List[(Identifier, SchemeExp)],
-        body: List[SchemeExp],
+        bindings: List[(Identifier, SchemeExp[F])],
+        body: List[SchemeExp[F]],
         annotation: Option[(String, String)],
         pos: Option[Position]
-      ): SchemeExp =
+      ): SchemeExp[F | Named] =
         val (prs, ags) = bindings.unzip
         val fnDef =
             SchemeLetrec(List((name, SchemeLambda(Some(name.name), prs, body, annotation, pos))), List(SchemeVar(Identifier(name.name, pos))), pos)
         SchemeFuncall(fnDef, ags, pos)
 
 /** A set! expression: (set! variable value) */
-sealed trait SchemeSetExp extends SchemeExp:
+sealed trait SchemeSetExp[+F] extends SchemeExp[F]:
     val variable: Identifier
-    val value: SchemeExp
+    val value: SchemeExp[F]
     def fv: Set[String] = value.fv + variable.name
     def subexpressions: List[Expression] = List(variable, value)
     override def prettyString(indent: Int): String =
         val ind = indent + variable.toString.length + 4
         s"(set! $variable ${value.prettyString(ind)})"
 
-case class SchemeSet(
+case class SchemeSet[+F](
     variable: Identifier,
-    value: SchemeExp,
+    value: SchemeExp[F],
     pos: Option[Position])
-    extends SchemeSetExp:
+    extends SchemeSetExp[F | Mutation | Named]:
     override def toString: String = s"(set! $variable $value)"
 
-case class SchemeSetLex(
+case class SchemeSetLex[+F](
     variable: Identifier,
     lexAddr: LexicalRef,
-    value: SchemeExp,
+    value: SchemeExp[F],
     pos: Option[Position])
-    extends SchemeSetExp:
+    extends SchemeSetExp[F | Mutation | Lexical]:
     override def toString = s"(set! $variable $value)"
 
 /** A begin clause: (begin body...) */
-case class SchemeBegin(exps: List[SchemeExp], pos: Option[Position]) extends SchemeExp:
+case class SchemeBegin[+F](exps: List[SchemeExp[F]], pos: Option[Position]) extends SchemeExp[F]:
     override def toString: String =
         val body = exps.mkString(" ")
         s"(begin $body)"
@@ -264,12 +295,12 @@ case class SchemeBegin(exps: List[SchemeExp], pos: Option[Position]) extends Sch
 
 /** Used to create a begin if there are multiple statements, and a single exp if there is only one */
 object SchemeBody:
-    def apply(exps: List[SchemeExp]): SchemeExp = exps match
+    def apply[F](exps: List[SchemeExp[F]]): SchemeExp[F] = exps match
         case Nil        => SchemeValue(Value.Boolean(false), None) /* undefined */
         case exp :: Nil => exp
         case exp :: _   => SchemeBegin(exps, exp.pos)
-    def defs(bdy: List[SchemeExp]): List[Identifier] = defs(bdy, Nil)
-    def defs(bdy: List[SchemeExp], cur: List[Identifier]): List[Identifier] =
+    def defs(bdy: List[SchemeExp[Any]]): List[Identifier] = defs(bdy, Nil)
+    def defs(bdy: List[SchemeExp[Any]], cur: List[Identifier]): List[Identifier] =
         bdy.foldLeft(cur)((acc, exp) =>
             exp match {
                 case SchemeBegin(eps, _)             => SchemeBody.defs(eps, acc)
@@ -277,15 +308,15 @@ object SchemeBody:
                 case _                               => acc
             }
         )
-    def fv(bdy: List[SchemeExp]): Set[String] =
+    def fv(bdy: List[SchemeExp[Any]]): Set[String] =
         bdy.flatMap(_.fv).toSet -- defs(bdy).map(_.name)
 
 /** A cond expression: (cond (test1 body1...) ...). Desugared according to R5RS. */
 object SchemeCond:
-    def apply(clauses: List[(SchemeExp, List[SchemeExp])], pos: Option[Position]): SchemeExp =
+    def apply[F](clauses: List[(SchemeExp[F], List[SchemeExp[F]])], pos: Option[Position]): SchemeExp[F | Named] =
         if clauses.isEmpty then throw new Exception(s"Invalid Scheme cond without clauses (${pos.show})")
         else
-            clauses.foldRight[SchemeExp](SchemeValue(Value.Boolean(false /* undefined */ ), None))((clause, acc) =>
+            clauses.foldRight[SchemeExp[F | Named]](SchemeValue(Value.Boolean(false /* undefined */ ), None))((clause, acc) =>
                 clause match {
                     case (SchemeValue(Value.Boolean(true), _), body) => SchemeBody(body)
                     case (cond, Nil)                                 =>
@@ -304,34 +335,34 @@ object SchemeCond:
 
 /** A when expression: (when pred body ...) Desugared into an if-expression. */
 object SchemeWhen:
-    def apply(
-        pred: SchemeExp,
-        body: List[SchemeExp],
+    def apply[F](
+        pred: SchemeExp[F],
+        body: List[SchemeExp[F]],
         pos: Option[Position]
-      ): SchemeExp =
+      ): SchemeExp[F] =
         SchemeIf(pred, SchemeBody(body), SchemeValue(Value.Boolean(false), pos), pos)
 
 /** An unless expression: (unless pred body ...) Desugared into an if-expression. */
 object SchemeUnless:
-    def apply(
-        pred: SchemeExp,
-        body: List[SchemeExp],
+    def apply[F](
+        pred: SchemeExp[F],
+        body: List[SchemeExp[F]],
         pos: Option[Position]
-      ): SchemeExp =
+      ): SchemeExp[F] =
         SchemeIf(pred, SchemeValue(Value.Boolean(false), pos), SchemeBody(body), pos)
 
 /** A case expression: (case key ((vals1...) body1...) ... (else default...)). Desugared according to R5RS. */
 object SchemeCase:
-    def apply(
-        key: SchemeExp,
-        clauses: List[(List[SchemeValue], List[SchemeExp])],
-        default: List[SchemeExp],
+    def apply[F](
+        key: SchemeExp[F],
+        clauses: List[(List[SchemeValue], List[SchemeExp[F]])],
+        default: List[SchemeExp[F]],
         pos: Option[Position]
-      ): SchemeExp = key match
+      ): SchemeExp[F | Named] = key match
         case _: SchemeVar | _: SchemeValue =>
             /** Atomic key */
             val eqv = SchemeVar(Identifier("eq?", None)) /* TODO: should be eqv? instead of eq? */
-            clauses.foldRight[SchemeExp](SchemeBody(default))((clause, acc) =>
+            clauses.foldRight[SchemeExp[F | Named]](SchemeBody(default))((clause, acc) =>
                 /**
                  * In R5RS, the condition is desugared into a (memv key '(atoms ...)) call. This would mean we would have to construct a list and go
                  * through it, which would badly impact precision. Hence, we instead explicitly do a big-or with eq?
@@ -353,14 +384,14 @@ object SchemeCase:
 
 /** An and expression: (and exps...) */
 object SchemeAnd:
-    def apply(eps: List[SchemeExp], pos: Option[Position]): SchemeExp = eps match
+    def apply[F](eps: List[SchemeExp[F]], pos: Option[Position]): SchemeExp[F] = eps match
         case Nil        => SchemeValue(Value.Boolean(true), pos)
         case exp :: Nil => exp
         case exp :: rst => SchemeIf(exp, SchemeAnd(rst, pos), SchemeValue(Value.Boolean(false), pos), pos)
 
 /** An or expression: (or exps...) */
 object SchemeOr:
-    def apply(eps: List[SchemeExp], pos: Option[Position]): SchemeExp = eps match
+    def apply[F](eps: List[SchemeExp[F]], pos: Option[Position]): SchemeExp[F | Named] = eps match
         case Nil        => SchemeValue(Value.Boolean(false), pos)
         case exp :: Nil => exp
         case exp :: rst =>
@@ -372,11 +403,11 @@ object SchemeOr:
             )
 
 /** A variable definition: (define name value) */
-case class SchemeDefineVariable(
+case class SchemeDefineVariable[+F](
     name: Identifier,
-    value: SchemeExp,
+    value: SchemeExp[F],
     pos: Option[Position])
-    extends SchemeExp:
+    extends SchemeExp[F | Define]:
     override def toString: String = s"(define $name $value)"
     def fv: Set[String] = value.fv - name.name
     def subexpressions: List[Expression] = List(name, value)
@@ -385,19 +416,19 @@ case class SchemeDefineVariable(
 
 /** Function definition of the form (define (f arg ...) body) */
 object SchemeDefineFunction:
-    def apply(name: Identifier, args: List[Identifier], body: List[SchemeExp], annotation: Option[(String, String)], pos: Option[Position]): SchemeExp =
+    def apply[F](name: Identifier, args: List[Identifier], body: List[SchemeExp[F]], annotation: Option[(String, String)], pos: Option[Position]): SchemeExp[F | Define] =
         SchemeDefineVariable(name, SchemeLambda(Some(name.name), args, body, annotation, pos), pos)
 
 /** Function definition with varargs of the form (define (f arg . vararg ...) body) */
 object SchemeDefineVarArgFunction:
-    def apply(
+    def apply[F](
         name: Identifier,
         args: List[Identifier],
         vararg: Identifier,
-        body: List[SchemeExp],
+        body: List[SchemeExp[F]],
         annotation: Option[(String, String)],
         pos: Option[Position]
-      ): SchemeExp =
+      ): SchemeExp[F | Define] =
         SchemeDefineVariable(name, SchemeVarArgLambda(Some(name.name), args, vararg, body, annotation, pos), pos)
 
 /**
@@ -405,13 +436,13 @@ object SchemeDefineVarArgFunction:
  * (letrec ((loop (lambda (variable1 variable2 ...) (if <test> <finals> (begin <body> (loop <step1> ...)))))))
  */
 object SchemeDo:
-    def apply(
-        vars: List[(Identifier, SchemeExp, Option[SchemeExp])],
-        test: SchemeExp,
-        finals: List[SchemeExp],
-        commands: List[SchemeExp],
+    def apply[F](
+        vars: List[(Identifier, SchemeExp[F], Option[SchemeExp[F]])],
+        test: SchemeExp[F],
+        finals: List[SchemeExp[F]],
+        commands: List[SchemeExp[F]],
         pos: Option[Position]
-      ): SchemeExp =
+      ): SchemeExp[F | Named] =
         val loopIdName = "__do_loop"
         val loopId = Identifier(loopIdName, pos)
         val annot = commands.take(1) match
@@ -458,16 +489,16 @@ object SchemeDo:
         )
 
 /** An identifier: name */
-sealed trait SchemeVarExp extends SchemeExp:
+sealed trait SchemeVarExp[+F] extends SchemeExp[F]:
     val id: Identifier
     val pos: Option[Position] = id.pos
     def fv: Set[String] = Set(id.name)
     def subexpressions: List[Expression] = List(id)
 
-case class SchemeVar(id: Identifier) extends SchemeVarExp:
+case class SchemeVar(id: Identifier) extends SchemeVarExp[Named]:
     override def toString: String = id.name
 
-case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp:
+case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp[Lexical]:
     override def toString: String = id.name
 
 /** What a variable refers to, as resolved by the lexical addresser: a primitive (global) name, or the identifier that binds the variable */
@@ -476,36 +507,36 @@ enum LexicalRef:
     case VarRef(id: Identifier)
 
 object SchemePair:
-    def apply(car: SchemeExp, cdr: SchemeExp, pos: Option[Position]): SchemeExp =
+    def apply[F](car: SchemeExp[F], cdr: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
         SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", pos)), List(car, cdr), pos)
 
 object SchemeSplicedPair:
-    def apply(splice: SchemeExp, cdr: SchemeExp, pos: Option[Position]): SchemeExp =
+    def apply[F](splice: SchemeExp[F], cdr: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
         SchemeFuncall(SchemeVar(Identifier("__toplevel_append", pos)), List(splice, cdr), pos)
 
 /** A   value (number, symbol, string, ...) */
-case class SchemeValue(value: Value, pos: Option[Position]) extends SchemeExp:
+case class SchemeValue(value: Value, pos: Option[Position]) extends SchemeExp[Nothing]:
     override def toString: String = value.toString
     def fv: Set[String] = Set()
     def subexpressions: List[Expression] = List()
 
 /** An assertion (assert <exp>) */
-case class SchemeAssert(exp: SchemeExp, pos: Option[Position]) extends SchemeExp:
+case class SchemeAssert[+F](exp: SchemeExp[F], pos: Option[Position]) extends SchemeExp[F]:
     override def toString: String = s"(assert $exp)"
     def fv: Set[String] = exp.fv
     def subexpressions: List[Expression] = List(exp)
 
 /** Creates explicit (mutable) reference */
 object SchemeRef:
-    def apply(exp: SchemeExp, pos: Option[Position]) =
+    def apply[F](exp: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
         SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", pos)), List(SchemeValue(Value.Symbol("ref"), pos), exp), pos)
 
 /** Dereferences an explicit (mutable) reference */
 object SchemeDeref:
-    def apply(ref: SchemeExp, pos: Option[Position]) =
+    def apply[F](ref: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
         SchemeFuncall(SchemeVar(Identifier("__toplevel_cdr", pos)), List(ref), pos)
 
 /** Updates an explicit (mutable) reference */
 object SchemeSetRef:
-    def apply(ref: SchemeExp, exp: SchemeExp, pos: Option[Position]) =
+    def apply[F](ref: SchemeExp[F], exp: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
         SchemeFuncall(SchemeVar(Identifier("__toplevel_set-cdr!", pos)), List(ref, exp), pos)

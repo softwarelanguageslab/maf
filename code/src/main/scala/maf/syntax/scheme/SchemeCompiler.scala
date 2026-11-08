@@ -12,9 +12,9 @@ trait BaseSchemeCompiler:
     def reserved: List[String] =
         List("lambda", "if", "let", "let*", "letrec", "cond", "case", "set!", "begin", "define", "do", "when", "unless", "λ", "assert")
 
-    def compile(exp: SExp): SchemeExp = this._compile(exp).result
+    def compile(exp: SExp): SchemeExp[Surface] = this._compile(exp).result
 
-    def _compile(exp: SExp): TailRec[SchemeExp] = exp match
+    def _compile(exp: SExp): TailRec[SchemeExp[Surface]] = exp match
         case SExpPair(SExpId(Identifier("quote", _)), SExpPair(quoted, SExpValue(Value.Nil, _), _), _) =>
             tailcall(expandQuoted(quoted))
         case SExpPair(SExpId(Identifier("quote", _)), _, _) =>
@@ -194,11 +194,11 @@ trait BaseSchemeCompiler:
         case SExpId(id)              => done((Nil, Some(id)))
         case _                       => throw new SchemeCompilerException(s"Invalid Scheme argument list: $args", args.pos)
 
-    def compileBodyNonEmpty(body: SExp): TailRec[List[SchemeExp]] = body match
+    def compileBodyNonEmpty(body: SExp): TailRec[List[SchemeExp[Surface]]] = body match
         case SExpValue(Value.Nil, _) => throw new SchemeCompilerException(s"Empty body is not allowed", body.pos)
         case _                       => tailcall(compileBody(body))
 
-    def compileBody(body: SExp): TailRec[List[SchemeExp]] = body match
+    def compileBody(body: SExp): TailRec[List[SchemeExp[Surface]]] = body match
         case SExpPair(exp, rest, _) =>
             for
                 expv <- tailcall(this._compile(exp))
@@ -207,7 +207,7 @@ trait BaseSchemeCompiler:
         case SExpValue(Value.Nil, _) => done(Nil)
         case _                       => throw new SchemeCompilerException(s"Invalid Scheme body: $body", body.pos)
 
-    def compileBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp)]] = bindings match
+    def compileBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp[Surface])]] = bindings match
         case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(Value.Nil, _), _), _), rest, _) =>
             if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.pos)
             for
@@ -217,7 +217,7 @@ trait BaseSchemeCompiler:
         case SExpValue(Value.Nil, _) => done(Nil)
         case _                       => throw new SchemeCompilerException(s"Invalid Scheme bindings: $bindings", bindings.pos)
 
-    def compileDoBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp, Option[SchemeExp])]] =
+    def compileDoBindings(bindings: SExp): TailRec[List[(Identifier, SchemeExp[Surface], Option[SchemeExp[Surface]])]] =
         bindings match
             case SExpPair(SExpPair(SExpId(v), SExpPair(value, SExpValue(Value.Nil, _), _), _), rest, _) =>
                 if reserved.contains(v.name) then throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $v", bindings.pos)
@@ -240,7 +240,7 @@ trait BaseSchemeCompiler:
             case _ =>
                 throw new SchemeCompilerException(s"Invalid Scheme do-bindings: $bindings", bindings.pos)
 
-    def compileCondClauses(clauses: SExp): TailRec[List[(SchemeExp, List[SchemeExp])]] =
+    def compileCondClauses(clauses: SExp): TailRec[List[(SchemeExp[Surface], List[SchemeExp[Surface]])]] =
         clauses match
             case SExpPair(
                   SExpPair(SExpId(Identifier("else", _)), body, _),
@@ -261,7 +261,7 @@ trait BaseSchemeCompiler:
 
     def compileCaseClauses(
         clauses: SExp
-      ): TailRec[(List[(List[SchemeValue], List[SchemeExp])], List[SchemeExp])] =
+      ): TailRec[(List[(List[SchemeValue], List[SchemeExp[Surface]])], List[SchemeExp[Surface]])] =
         clauses match
             case SExpPair(
                   SExpPair(SExpId(Identifier("else", _)), body, _),
@@ -294,7 +294,7 @@ trait BaseSchemeCompiler:
     private def makeLambda(
         name: Option[String],
         args: (List[Identifier], Option[Identifier]),
-        body: List[SchemeExp],
+        body: List[SchemeExp[Surface]],
         pos: Option[Position]
       ) =
         val annotation = body match
@@ -313,7 +313,7 @@ trait BaseSchemeCompiler:
     private def makeDefineFunction(
         id: Identifier,
         args: (List[Identifier], Option[Identifier]),
-        body: List[SchemeExp],
+        body: List[SchemeExp[Surface]],
         pos: Option[Position]
       ) =
         val annotation = body match
@@ -330,7 +330,7 @@ trait BaseSchemeCompiler:
             case Some(vararg) => SchemeDefineVarArgFunction(id, args._1, vararg, actualBody, annotation, pos)
             case None         => SchemeDefineFunction(id, args._1, actualBody, annotation, pos)
 
-    private def expandQuoted(sexp: SExp): TailRec[SchemeExp] = sexp match
+    private def expandQuoted(sexp: SExp): TailRec[SchemeExp[Surface]] = sexp match
         case sexpVal: SExpValue => done(value(sexpVal))
         case sexpId: SExpId     => done(value(sexpId))
         case SExpPair(car, cdr, pos) =>
@@ -339,7 +339,7 @@ trait BaseSchemeCompiler:
                 cdrExp <- tailcall(expandQuoted(cdr))
             yield SchemePair(carExp, cdrExp, pos)
 
-    private def expandQuasiquoted(sexp: SExp, depth: Int): TailRec[SchemeExp] = sexp match
+    private def expandQuasiquoted(sexp: SExp, depth: Int): TailRec[SchemeExp[Surface]] = sexp match
         // nested quasiquote
         case SExpPair(id @ SExpId(Identifier("quasiquote", _)), pair @ SExpPair(quasiquoted, nil @ SExpValue(Value.Nil, _), _), pos) =>
             for qqExp <- expandQuasiquoted(quasiquoted, depth + 1)
@@ -378,9 +378,9 @@ trait BaseSchemeCompiler:
                 cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
             yield SchemePair(carExp, cdrExp, pos)
 
-    private def value(sexp: SExpValue): SchemeExp =
+    private def value(sexp: SExpValue): SchemeExp[Surface] =
         SchemeValue(sexp.value, sexp.pos)
-    private def value(sexp: SExpId): SchemeExp =
+    private def value(sexp: SExpId): SchemeExp[Surface] =
         SchemeValue(Value.Symbol(sexp.id.name), sexp.id.pos)
 
 object SchemeCompiler extends BaseSchemeCompiler

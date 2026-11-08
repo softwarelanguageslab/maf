@@ -13,12 +13,12 @@ object ConcreteValues:
     trait Prim:
         val name: String
 
-        def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value
+        def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value
 
     trait SimplePrim extends Prim:
         def call(args: List[Value], position: Option[Position]): Value
 
-        def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = call(args.map(_._2), fexp.pos)
+        def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = call(args.map(_._2), fexp.pos)
 
     type Addr = (Int, AddrInfo)
     type Env = Map[String, Addr]
@@ -29,9 +29,9 @@ object ConcreteValues:
             def pos = vrb.pos
         case class PrmAddr(nam: String) extends AddrInfo:
             def pos = None
-        case class PtrAddr(exp: SchemeExp) extends AddrInfo:
+        case class PtrAddr(exp: SchemeExp[Any]) extends AddrInfo:
             def pos = exp.pos
-        case class PtrIgnoreAddr(exp: SchemeExp) extends AddrInfo:
+        case class PtrIgnoreAddr(exp: SchemeExp[Any]) extends AddrInfo:
             def pos = exp.pos
 
     object Value:
@@ -40,7 +40,7 @@ object ConcreteValues:
         case class Undefined(pos: Option[Position]) extends Value:
             override def toString: String = "#<undef>"
 
-        case class Clo(lambda: SchemeLambdaExp, env: Env) extends Value:
+        case class Clo(lambda: SchemeLambdaExp[Any], env: Env) extends Value:
             override def toString: String = s"#<procedure:${lambda.lambdaName}>"
 
         case class Primitive(p: String) extends Value:

@@ -8,7 +8,7 @@ import org.scalatest.propspec.AnyPropSpec
 
 class UndefinerTests extends AnyPropSpec:
     // Compares the given programs based on their structure, but ignores positions
-    def comparePrograms(program1: SchemeExp, program2: SchemeExp): Boolean =
+    def comparePrograms(program1: SchemeExp[Any], program2: SchemeExp[Any]): Boolean =
         (program1, program2) match
             case (SchemeLambda(name, args, body, ann, _), SchemeLambda(name1, args1, body1, ann1, _))
                 if name == name1 && args.zip(args1).forall { case (a, b) => a.name == b.name } && ann == ann1 =>

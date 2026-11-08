@@ -17,10 +17,10 @@ trait SchemeSemantics:
     // shorthands
     type Val = Value
     type Adr = Address
-    type Exp = SchemeExp
+    type Exp = SchemeExp[Any]
     type Var = Identifier
-    type Lam = SchemeLambdaExp
-    type App = SchemeFuncall
+    type Lam = SchemeLambdaExp[Any]
+    type App = SchemeFuncall[Any]
     type Env = Environment[Adr]
     type Clo = (Lam, Env)
 
@@ -43,7 +43,7 @@ trait SchemeSemantics:
         def withCtx[X](ctx: Ctx => Ctx)(blk: M[X]): M[X]
         def allocVar(pos: Identifier): M[Adr] =
             for ctx <- getCtx yield VarAddr(pos, ctx)
-        def allocPtr(exp: SchemeExp): M[Adr] =
+        def allocPtr(exp: SchemeExp[Any]): M[Adr] =
             for ctx <- getCtx yield PtrAddr(exp, ctx)
         def call(lam: Lam): M[Val]
         // Scala is too stupid to figure this out...
@@ -57,20 +57,20 @@ trait SchemeSemantics:
     implicit final protected lazy val analysisM_ : AnalysisM[A] = analysisM
     import analysisM_._
 
-    def eval(exp: SchemeExp): A[Val] = exp match
+    def eval(exp: SchemeExp[Any]): A[Val] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)
-        case lam: SchemeLambdaExp       => evalLambda(lam)
+        case lam: SchemeLambdaExp[Any]       => evalLambda(lam)
         case SchemeVar(id)              => evalVariable(id)
         case SchemeBegin(eps, _)        => evalSequence(eps)
         case SchemeIf(prd, thn, alt, _) => evalIf(prd, thn, alt)
         case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
         case SchemeLetStar(bds, bdy, _) => evalLetStar(bds, bdy)
         case SchemeLetrec(bds, bdy, _)  => evalLetrec(bds, bdy)
-        case app: SchemeFuncall         => evalCall(app)
+        case app: SchemeFuncall[Any]         => evalCall(app)
         case SchemeAssert(exp, _)       => evalAssert(exp)
         case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
 
-    def evalAll(lst: List[SchemeExp]): A[List[Val]] = 
+    def evalAll(lst: List[SchemeExp[Any]]): A[List[Val]] = 
         lst match
             case Nil         => unit(Nil)
             case exp :: Nil  => eval(exp).map(_ :: Nil)

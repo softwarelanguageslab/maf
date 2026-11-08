@@ -17,7 +17,7 @@ trait BaseSchemeInterpreter[V]:
     import ConcreteValues._
 
     def run(
-        program: SchemeExp,
+        program: SchemeExp[Any],
         timeout: Timeout.T
       ): Value
 
@@ -70,13 +70,13 @@ trait BaseSchemeInterpreter[V]:
      * @param ignore
      *   whether to ignore the address for soundness tests
      */
-    def allocateVal(exp: SchemeExp, value: Value, ignore: Boolean = false): Value.Pointer =
+    def allocateVal(exp: SchemeExp[Any], value: Value, ignore: Boolean = false): Value.Pointer =
         val addr = newAddr(if ignore then AddrInfo.PtrIgnoreAddr(exp) else AddrInfo.PtrAddr(exp))
         extendStore(addr, value)
         Value.Pointer(addr)
 
     /** Allocate the given pair recursively in the store. */
-    def allocateAll(exp: SchemeExp, value: Value): ConcreteValues.Value = value match
+    def allocateAll(exp: SchemeExp[Any], value: Value): ConcreteValues.Value = value match
         case ConcreteValues.Value.Cons(car, cdr) =>
             val carAlloc = allocateAll(exp, car)
             val cdrAlloc = allocateAll(exp, cdr)
@@ -84,20 +84,20 @@ trait BaseSchemeInterpreter[V]:
         case _ => value
 
     def allocateCons(
-        exp: SchemeExp,
+        exp: SchemeExp[Any],
         car: Value,
         cdr: Value
       ): Value =
         allocateVal(exp, Value.Cons(car, cdr))
 
-    def allocateStr(exp: SchemeExp, str: String): Value.Pointer =
+    def allocateStr(exp: SchemeExp[Any], str: String): Value.Pointer =
         allocateVal(exp, Value.Str(str))
 
     def getString(addr: Addr): String = lookupStore(addr) match
         case Value.Str(str) => str
         case v              => throw new UnexpectedValueTypeException[Value](v)
 
-    def makeList(values: List[(SchemeExp, Value)]): Value = values match
+    def makeList(values: List[(SchemeExp[Any], Value)]): Value = values match
         case Nil                  => Value.Nil
         case (exp, value) :: rest => allocateCons(exp, value, makeList(rest))
 
@@ -106,7 +106,7 @@ trait BaseSchemeInterpreter[V]:
 
     val io: IO
 
-    def evalSExp(sexp: SExp, exp: SchemeExp): Value = sexp match
+    def evalSExp(sexp: SExp, exp: SchemeExp[Any]): Value = sexp match
         case SExpId(id)          => Value.Symbol(id.name)
         case SExpValue(value, _) => evalLiteral(value, exp)
         case SExpPair(car, cdr, _) =>
@@ -114,7 +114,7 @@ trait BaseSchemeInterpreter[V]:
             val cdrValue = evalSExp(cdr, exp)
             allocateCons(exp, carValue, cdrValue)
 
-    def evalLiteral(lit: sexp.Value, exp: SchemeExp): ConcreteValues.Value = lit match
+    def evalLiteral(lit: sexp.Value, exp: SchemeExp[Any]): ConcreteValues.Value = lit match
         case maf.syntax.sexp.Value.String(s)    => allocateStr(exp, s)
         case maf.syntax.sexp.Value.Symbol(s)    => Value.Symbol(s)
         case maf.syntax.sexp.Value.Integer(n)   => Value.Integer(n)

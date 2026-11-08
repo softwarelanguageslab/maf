@@ -19,7 +19,7 @@ trait BaseSchemeMutableVarBoxer:
     object LexicalTranslator extends BaseSchemeLexicalAddresser:
         var mutable: Set[LexicalRef] = Set.empty
 
-        override def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = super.translate(exp, lenv) match
+        override def translate[F <: Define | Mutation](exp: SchemeExp[F | Named], lenv: LexicalEnv): SchemeExp[F | Lexical] = super.translate(exp, lenv) match
             case res @ SchemeSetLex(_, ref, _, _) =>
                 mutable += ref
                 res
@@ -33,10 +33,10 @@ trait BaseSchemeMutableVarBoxer:
     //      * all definitions of these variables using `new-ref`
     //      * all assignments to these variables using `set-ref!`
     //      * all references to these variables using `deref`
-    def transform(exp: List[SchemeExp]): List[SchemeExp] =
+    def transform[F <: Define](exp: List[SchemeExp[F | Mutation | Named]]): List[SchemeExp[F | Named]] =
         // first, collect all mutable vars
         val translator = lexicalTranslator
-        val translated = translator.translateProgram(exp)
+        val translated = translator.translateProgram[F | Mutation](exp)
         // then, rewrite for mutable vars
         rewriteProgram(translated, translator.mutable)
 
@@ -44,7 +44,7 @@ trait BaseSchemeMutableVarBoxer:
 
     private def genSym(nam: String) = s"__ref_var_$nam"
 
-    private def rewriteProgram(exp: List[SchemeExp], mut: Set[LexicalRef]): List[SchemeExp] =
+    private def rewriteProgram[F <: Define](exp: List[SchemeExp[F | Mutation | Lexical]], mut: Set[LexicalRef]): List[SchemeExp[F | Named]] =
         val mutPrms = mut.collect[LexicalRef.PrmRef] { case prm: LexicalRef.PrmRef => prm }
         val rewPrms = mutPrms.map { prm => (prm, Identifier(genSym(prm.nam), None)) }
         if rewPrms.isEmpty then rewriteBody(exp, mut, Map.empty)
@@ -59,7 +59,7 @@ trait BaseSchemeMutableVarBoxer:
             case Some(oth) => SchemeVar(Identifier(oth.name, id.pos)) // SchemeVarLex(Identifier(oth.name, id.pos), LexicalRef.VarRef(oth))
             case None      => SchemeVar(id) // SchemeVarLex(id, lex)
 
-    protected def rewrite(exp: SchemeExp, mut: Set[LexicalRef], rew: Rewrites): SchemeExp = exp match
+    protected def rewrite[F <: Define](exp: SchemeExp[F | Mutation | Lexical], mut: Set[LexicalRef], rew: Rewrites): SchemeExp[F | Named] = exp match
         case vlu: SchemeValue => vlu
         case SchemeVarLex(id, lex) =>
             if mut(lex) then SchemeDeref(varRef(rew, id, lex), id.pos)
@@ -90,13 +90,13 @@ trait BaseSchemeMutableVarBoxer:
         case SchemeLetrec(bds, body, pos) =>
             SchemeLetrec(rewriteBindings(bds, mut, rew), rewriteBody(body, mut, rew), pos)
 
-    private def rewriteBindings(bds: List[(Identifier, SchemeExp)], mut: Set[LexicalRef], rew: Rewrites): List[(Identifier, SchemeExp)] =
+    private def rewriteBindings[F <: Define](bds: List[(Identifier, SchemeExp[F | Mutation | Lexical])], mut: Set[LexicalRef], rew: Rewrites): List[(Identifier, SchemeExp[F | Named])] =
         bds.map { (idf, exp) =>
             if mut(LexicalRef.VarRef(idf)) then (idf, SchemeRef(rewrite(exp, mut, rew), idf.pos))
             else (idf, rewrite(exp, mut, rew))
         }
 
-    private def rewriteLambdaBody(prs: List[Identifier], bdy: List[SchemeExp], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp] =
+    private def rewriteLambdaBody[F <: Define](prs: List[Identifier], bdy: List[SchemeExp[F | Mutation | Lexical]], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp[F | Named]] =
         val mutPrs = prs.map(LexicalRef.VarRef(_): LexicalRef.VarRef).filter(mut)
         val rewPrs = mutPrs.map(ref => (ref, Identifier(genSym(ref.id.name), ref.id.pos)))
         if rewPrs.isEmpty then rewriteBody(bdy, mut, rew)
@@ -106,7 +106,7 @@ trait BaseSchemeMutableVarBoxer:
             }
             List(SchemeLet(bds, rewriteBody(bdy, mut, rew ++ rewPrs), None))
 
-    private def rewriteBody(bdy: List[SchemeExp], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp] =
+    private def rewriteBody[F <: Define](bdy: List[SchemeExp[F | Mutation | Lexical]], mut: Set[LexicalRef], rew: Rewrites): List[SchemeExp[F | Named]] =
         bdy.map(rewrite(_, mut, rew))
 
 object SchemeMutableVarBoxer extends BaseSchemeMutableVarBoxer

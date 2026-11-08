@@ -15,15 +15,15 @@ object SchemeRenamer:
     /** Map each variables to the number of times it is bound */
     type CountMap = Map[String, Int]
 
-    def rename(exp: SchemeExp): SchemeExp =
+    def rename[F <: Surface](exp: SchemeExp[F]): SchemeExp[F] =
         rename(exp, Map[String, String](), Map[String, Int]()) match
             case (e, _) => e
 
-    def rename(
-        exp: SchemeExp,
+    def rename[F <: Surface](
+        exp: SchemeExp[F],
         names: NameMap,
         count: CountMap
-      ): (SchemeExp, CountMap) = exp match
+      ): (SchemeExp[F], CountMap) = exp match
         case SchemeLambda(name, args, body, ann, pos) =>
             countl(args, names, count) match
                 case (args1, names1, count1) =>
@@ -96,25 +96,24 @@ object SchemeRenamer:
                 case None    => (SchemeVar(Identifier(id.name, id.pos)), count) /* keep original name */
         case SchemeValue(v, pos) =>
             (SchemeValue(v, pos), count)
-        case _ => throw new Exception(s"Unhandled expression in renamer: $exp")
 
     /** Renames a list of expressions executed sequentially (eg. within a begin) */
-    def renameList(
-        exps: List[SchemeExp],
+    def renameList[F <: Surface](
+        exps: List[SchemeExp[F]],
         names: NameMap,
         count: CountMap
-      ): (List[SchemeExp], CountMap) = exps match
+      ): (List[SchemeExp[F]], CountMap) = exps match
         case exp :: rest =>
             val (exp1, count1) = rename(exp, names, count)
             val (rest1, count2) = renameList(rest, names, count1)
             (exp1 :: rest1, count2)
         case Nil => (Nil, count)
 
-    def renameLetStarBindings(
-        bindings: List[(Identifier, SchemeExp)],
+    def renameLetStarBindings[F <: Surface](
+        bindings: List[(Identifier, SchemeExp[F])],
         names: NameMap,
         count: CountMap
-      ): (List[(Identifier, SchemeExp)], NameMap, CountMap) =
+      ): (List[(Identifier, SchemeExp[F])], NameMap, CountMap) =
         bindings match
             case (v, e) :: rest =>
                 count1(v, names, count) match

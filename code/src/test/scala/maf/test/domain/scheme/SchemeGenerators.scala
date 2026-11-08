@@ -5,7 +5,6 @@ import org.scalacheck._
 import maf.domain.*
 import maf.domain.lattice.*
 import maf.domain.scheme.*
-import maf.syntax.*
 import maf.syntax.scheme.*
 import maf.syntax.sexp.*
 import maf.test.domain.lattice.*

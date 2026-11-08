@@ -5,7 +5,7 @@ import maf.domain.lattice.*
 import maf.syntax.scheme.*
 
 /** The abstract domain used for Scheme analyses. */
-trait SchemeDomain extends AbstractDomain[SchemeExp]:
+trait SchemeDomain extends AbstractDomain[SchemeExp[Any]]:
 
     /** Type of primitive functions. */
     type Prim = SchemePrimitive[Value, Address]

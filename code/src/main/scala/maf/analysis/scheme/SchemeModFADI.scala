@@ -10,7 +10,7 @@ import maf.syntax.scheme.*
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFADI(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
+abstract class SchemeModFADI(prg: SchemeExp[Any]) extends ModAnalysis[SchemeExp[Any]](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -196,7 +196,7 @@ abstract class SchemeModFADI(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg)
             case _ => super.doWrite(dep)
 
 
-trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[SchemeExp]:
+trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[SchemeExp[Any]]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
     var resultsPerPos = Map.empty.withDefaultValue(Set.empty)
@@ -217,11 +217,11 @@ trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[Sc
 
 // a standard instance
 
-class SchemeModFADIAnalysis(prg: SchemeExp, k: Int)
+class SchemeModFADIAnalysis(prg: SchemeExp[Any], k: Int)
     extends SchemeModFADI(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp]
+    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp[Any]]
         //override def run(t: maf.util.Timeout.T) = 
         //    super.run(t)
         //    println(results(MainComponent))

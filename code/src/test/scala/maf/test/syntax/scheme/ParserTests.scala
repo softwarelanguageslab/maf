@@ -8,7 +8,7 @@ import maf.test.*
 import maf.util.*
 
 trait SchemeParserTestsSpec extends SchemeBenchmarkTests:
-    def parseProgram(content: String, source: Source): List[SchemeExp] =
+    def parseProgram(content: String, source: Source): List[SchemeExp[Any]] =
         SchemeParser.parse(content, source)
 
     def name: String = "SchemeParser"
@@ -32,12 +32,12 @@ class AnnotationTests extends AnyFlatSpec:
     "Annotated lambdas" should "have their annotation accessible" in {
         val program = "(lambda (x) @annot:test x)"
         val parsed = SchemeParser.parse(program, Source.Text).head
-        assert(parsed.isInstanceOf[SchemeLambda])
-        assert(parsed.asInstanceOf[SchemeLambda].annotation == Some(("@annot", "test")))
+        assert(parsed.isInstanceOf[SchemeLambda[Any]])
+        assert(parsed.asInstanceOf[SchemeLambda[Any]].annotation == Some(("@annot", "test")))
     }
 
 class QuasiquoteTests extends AnyFlatSpec:
-    def parse(program: String): List[SchemeExp] = SchemeParser.parse(program, Source.Text)
+    def parse(program: String): List[SchemeExp[Any]] = SchemeParser.parse(program, Source.Text)
 
     "Quasiquoted templates" should "allow unquotes and splices of list elements, and unquoted tails" in {
         assert(parse("`(1 ,x ,@xs . ,y)").nonEmpty)

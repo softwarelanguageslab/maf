@@ -24,10 +24,10 @@ object SchemeSoundnessTests:
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     // analysis must support basic Scheme semantics
-    type Analysis = ModAnalysis[SchemeExp] with AnalysisResults[SchemeExp] with SchemeDomain
+    type Analysis = ModAnalysis[SchemeExp[Any]] with AnalysisResults[SchemeExp[Any]] with SchemeDomain
     // the analysis that is used to analyse the programs
     def name: String
-    def analysis(b: SchemeExp): Analysis
+    def analysis(b: SchemeExp[Any]): Analysis
     // the timeout and max number of concrete runs for a single benchmark program (default: 1min.)
     def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
     def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
@@ -59,11 +59,11 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     // the actual testing code
     protected def runInterpreter(
         i: SchemeInterpreter,
-        p: SchemeExp,
+        p: SchemeExp[Any],
         t: Timeout.T
       ): Value =
         i.run(p, t)
-    protected def evalConcrete(program: SchemeExp, benchmark: Benchmark): Map[Option[Position], Set[Value]] =
+    protected def evalConcrete(program: SchemeExp[Any], benchmark: Benchmark): Map[Option[Position], Set[Value]] =
         var posResults = Map[Option[Position], Set[Value]]().withDefaultValue(Set())
         val timeout = concreteTimeout(benchmark)
         val times = concreteRuns(benchmark)
@@ -84,7 +84,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
                 System.gc()
                 alert(s"Concrete evaluation of $benchmark failed with $e")
         posResults
-    protected def runAnalysis(program: SchemeExp, benchmark: Benchmark): Analysis =
+    protected def runAnalysis(program: SchemeExp[Any], benchmark: Benchmark): Analysis =
         try
             // analyze the program using the analysis under test
             val anl = analysis(program)
@@ -159,7 +159,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
         if isSlow(b) then Seq(SoundnessTest, SlowTest)
         else Seq(SoundnessTest)
 
-    def parseProgram(txt: String, benchmark: String): SchemeExp =
+    def parseProgram(txt: String, benchmark: String): SchemeExp[Any] =
         SchemeParser.parseProgram(txt, Source.File(benchmark))
 
     def onBenchmark(benchmark: Benchmark): Unit =

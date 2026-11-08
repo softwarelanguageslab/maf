@@ -8,19 +8,19 @@ import maf.util.Reader
 object SchemeParser:
 
     /** Compiles a s-expression into a scheme expression */
-    def compile(exp: SExp): SchemeExp = SchemeCompiler.compile(exp)
+    def compile(exp: SExp): SchemeExp[Surface] = SchemeCompiler.compile(exp)
 
     /** Performs alpha-renaming to ensure that every variable has a unique name */
-    def rename(exp: SchemeExp): SchemeExp = SchemeRenamer.rename(exp)
+    def rename[F <: Surface](exp: SchemeExp[F]): SchemeExp[F] = SchemeRenamer.rename(exp)
 
     /** Replace defines in a program (a list of expressions) by a big letrec as a single expression */
-    def undefine(exps: List[SchemeExp]): SchemeExp = SchemeUndefiner.undefine(exps)
+    def undefine[F](exps: List[SchemeExp[F | Define]]): SchemeExp[F | Named] = SchemeUndefiner.undefine(exps)
 
-    /** Parse a string representing a Scheme program, which originates from the given source */
-    def parse(s: String, source: Source): List[SchemeExp] = SExpParser.parse(s, source).map(compile)
+    /** Parse a string representing a Scheme program, which originates from the given source (and may need definitions of the prelude) */
+    def parse(s: String, source: Source): List[SchemeExp[Surface | NeedsPrelude]] = SExpParser.parse(s, source).map(compile)
 
     /** Parse the Scheme program in the given file */
-    def parseFile(path: String): List[SchemeExp] = parse(Reader.loadFile(path), Source.File(path))
+    def parseFile(path: String): List[SchemeExp[Surface | NeedsPrelude]] = parse(Reader.loadFile(path), Source.File(path))
 
     /** Parse a program (including adding a prelude and undefining it) */
-    def parseProgram(prg: String, source: Source): SchemeExp = undefine(SchemePrelude.addPrelude(parse(prg, source)))
+    def parseProgram(prg: String, source: Source): SchemeExp[Mutation | Named] = undefine(SchemePrelude.addPrelude(parse(prg, source)))

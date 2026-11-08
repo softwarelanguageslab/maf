@@ -10,7 +10,7 @@ import maf.syntax.scheme.*
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
+abstract class SchemeModFLocalFS(prg: SchemeExp[Any], gc: Boolean = true) extends ModAnalysis[SchemeExp[Any]](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -276,7 +276,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp, gc: Boolean = true) extends Mod
                 super.doWrite(dep)
 
 
-trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp]:
+trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp[Any]]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
     var resultsPerPos = Map.empty.withDefaultValue(Set.empty)
     override def extendV(sto: Sto, adr: Adr, vlu: Val) =

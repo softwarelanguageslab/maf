@@ -10,7 +10,7 @@ import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 import maf.test.*
 
 trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
-    override def parseProgram(txt: String, benchmark: String): SchemeExp =
+    override def parseProgram(txt: String, benchmark: String): SchemeExp[Any] =
         val parsed = SchemeParser.parse(txt, Source.File(benchmark))
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -18,11 +18,11 @@ trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
 
 class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (context-insensitive)"
-    def analysis(prg: SchemeExp) =
+    def analysis(prg: SchemeExp[Any]) =
         new SchemeModFLocalFS(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp]
+            with FIFOWorklistAlgorithm[SchemeExp[Any]]
             with SchemeModFLocalFSAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(
@@ -34,10 +34,10 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
 
 class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (call-site sensitive)"
-    def analysis(prg: SchemeExp) =
+    def analysis(prg: SchemeExp[Any]) =
         new SchemeModFLocal(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(1)
-            with FIFOWorklistAlgorithm[SchemeExp]
+            with FIFOWorklistAlgorithm[SchemeExp[Any]]
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: String): Boolean = true // don't run this for fast tests

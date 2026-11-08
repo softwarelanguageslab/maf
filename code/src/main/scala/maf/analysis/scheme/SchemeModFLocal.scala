@@ -10,7 +10,7 @@ import maf.syntax.scheme.*
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](prg) with SchemeSemantics:
+abstract class SchemeModFLocal(prg: SchemeExp[Any]) extends ModAnalysis[SchemeExp[Any]](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -203,7 +203,7 @@ abstract class SchemeModFLocal(prg: SchemeExp) extends ModAnalysis[SchemeExp](pr
             case _ => super.doWrite(dep)
 
 
-trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp]:
+trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp[Any]]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
     var resultsPerPos = Map.empty.withDefaultValue(Set.empty)
@@ -224,8 +224,8 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
 
 // a standard instance
 
-class SchemeDSSAnalysis(prg: SchemeExp, k: Int)
+class SchemeDSSAnalysis(prg: SchemeExp[Any], k: Int)
     extends SchemeModFLocal(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp]
+    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp[Any]]

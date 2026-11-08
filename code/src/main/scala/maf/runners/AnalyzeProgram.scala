@@ -14,7 +14,7 @@ object AnalyzeProgram extends App:
         case Terminated(iterationCount: Int, time: Long)
         case TimedOut
 
-    def parse(file: String): SchemeExp =
+    def parse(file: String): SchemeExp[Any] =
         val parsed = SchemeParser.parseFile(file)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -27,7 +27,7 @@ object AnalyzeProgram extends App:
             new SchemeModFLocalFS(prog)
                 with SchemeModFLocalNoSensitivity
                 with SchemeConstantPropagationDomain
-                with PriorityQueueWorklistAlgorithm[SchemeExp]:
+                with PriorityQueueWorklistAlgorithm[SchemeExp[Any]]:
                     /** Example implementation of priority **/
                     lazy val ordering = Ordering.by(priority) // currently, ordering is based on calculated priority
                                                               // alternatively, could also just implement `compare` here
@@ -35,7 +35,7 @@ object AnalyzeProgram extends App:
                         cmp match
                             case MainComponent => 0  // "main" (= top-level program code) gets priority 0
                             case CallComponent(lam, env, ctx) => priority(lam) // TODO: could also take lexical environment + context into account
-                    def priority(lam: SchemeLambdaExp): Int =
+                    def priority(lam: SchemeLambdaExp[Any]): Int =
                         42   // TODO: determine the priority for each lambda in the program
         val time = Timer.timeOnly { analysis.analyzeWithTimeout(timeout) }
         if analysis.finished then

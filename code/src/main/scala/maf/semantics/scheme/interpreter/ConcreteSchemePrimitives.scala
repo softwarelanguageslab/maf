@@ -2,7 +2,6 @@ package maf.semantics.scheme.interpreter
 
 import maf.domain.*
 import maf.domain.lattice.MathOps
-import maf.syntax.*
 import maf.syntax.Position
 import maf.syntax.scheme.*
 import maf.util.NumOps
@@ -193,9 +192,9 @@ trait ConcreteSchemePrimitives:
         ).map(prim => (prim.name, prim)).toMap
 
         abstract class SingleArgumentPrimWithExp(val name: String) extends Prim:
-            def fun(fexp: SchemeFuncall): PartialFunction[Value, Value]
+            def fun(fexp: SchemeFuncall[Any]): PartialFunction[Value, Value]
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = args match
                 case (_, x) :: Nil =>
                     val f = fun(fexp)
                     if f.isDefinedAt(x) then f(x)
@@ -205,7 +204,7 @@ trait ConcreteSchemePrimitives:
         abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name):
             def fun: PartialFunction[Value, Value]
 
-            def fun(fexp: SchemeFuncall): PartialFunction[Value, Value] = fun
+            def fun(fexp: SchemeFuncall[Any]): PartialFunction[Value, Value] = fun
 
         ////////////////
         // Arithmetic //
@@ -596,12 +595,12 @@ trait ConcreteSchemePrimitives:
                 case Value.Real(x)    => Value.Integer(x.toInt) /* TODO: fractions */
 
         object NumberToString extends SingleArgumentPrimWithExp("number->string"):
-            def fun(fexp: SchemeFuncall) =
+            def fun(fexp: SchemeFuncall[Any]) =
                 case Value.Integer(x) => allocateStr(fexp, s"$x")
                 case Value.Real(x)    => allocateStr(fexp, s"$x")
 
         object SymbolToString extends SingleArgumentPrimWithExp("symbol->string"):
-            def fun(fexp: SchemeFuncall) = { case Value.Symbol(x) =>
+            def fun(fexp: SchemeFuncall[Any]) = { case Value.Symbol(x) =>
                 allocateStr(fexp, x)
             }
 
@@ -616,7 +615,7 @@ trait ConcreteSchemePrimitives:
             }
 
         object CharToString extends SingleArgumentPrimWithExp("char->string"):
-            def fun(fexp: SchemeFuncall) = { case Value.Character(c) =>
+            def fun(fexp: SchemeFuncall[Any]) = { case Value.Character(c) =>
                 allocateStr(fexp, c.toString)
             }
 
@@ -750,7 +749,7 @@ trait ConcreteSchemePrimitives:
         object `read` extends Prim:
             val name = "read"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = args match
                 case Nil =>
                     io.read(io.console).map(sexp => evalSExp(sexp, fexp)).getOrElse(Value.EOF)
                 case (_, Value.InputPort(port)) :: Nil =>
@@ -858,7 +857,7 @@ trait ConcreteSchemePrimitives:
         object StringAppend extends Prim:
             val name = "string-append"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value =
                 allocateStr(
                   fexp,
                   args.foldLeft("")((acc, v) =>
@@ -874,7 +873,7 @@ trait ConcreteSchemePrimitives:
         object MakeString extends Prim:
             val name = "make-string"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = args match
                 case (_, Value.Integer(length)) :: Nil                            => allocateStr(fexp, "\u0000" * bigIntToInt(length))
                 case (_, Value.Integer(length)) :: (_, Value.Character(c)) :: Nil => allocateStr(fexp, c.toString * bigIntToInt(length))
                 case _ => signalException(s"$name (${fexp.pos.show}): invalid arguments $args")
@@ -928,7 +927,7 @@ trait ConcreteSchemePrimitives:
         object Substring extends Prim:
             val name = "substring"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]) = args match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]) = args match
                 case (_, Value.Pointer(a)) :: (_, Value.Integer(from)) :: (_, Value.Integer(to)) :: Nil if from <= to =>
                     val str = getString(a)
                     if 0 <= from && to <= str.size then allocateStr(fexp, str.substring(bigIntToInt(from), bigIntToInt(to)).nn)
@@ -953,7 +952,7 @@ trait ConcreteSchemePrimitives:
             val name = "vector"
 
             def newVector(
-                fexp: SchemeFuncall,
+                fexp: SchemeFuncall[Any],
                 siz: BigInt,
                 elms: Map[BigInt, Value],
                 ini: Value
@@ -963,14 +962,14 @@ trait ConcreteSchemePrimitives:
                 extendStore(ptr, vct)
                 Value.Pointer(ptr)
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value =
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value =
                 val elms = args.map(_._2).zipWithIndex.map({ case (e, i) => (BigInt(i), e) }).toMap
                 newVector(fexp, args.size, elms, Value.Undefined(fexp.pos))
 
         object MakeVector extends Prim:
             val name = "make-vector"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args.map(_._2) match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = args.map(_._2) match
                 case Value.Integer(size) :: Nil =>
                     Vector.newVector(fexp, size, Map(), Value.Undefined(fexp.pos))
                 case Value.Integer(size) :: init :: Nil =>
@@ -1030,7 +1029,7 @@ trait ConcreteSchemePrimitives:
         object Cons extends Prim:
             val name = "cons"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = args match
                 case (_, car) :: (_, cdr) :: Nil =>
                     allocateCons(fexp, car, cdr)
                 case _ => signalException(s"cons: wrong number of arguments $args")
@@ -1065,7 +1064,7 @@ trait ConcreteSchemePrimitives:
         object ListPrim extends Prim:
             val name = "list"
 
-            def call(fexp: SchemeFuncall, args: List[(SchemeExp, Value)]): Value = args match
+            def call(fexp: SchemeFuncall[Any], args: List[(SchemeExp[Any], Value)]): Value = args match
                 case Nil => Value.Nil
                 case (exp, head) :: rest =>
                     allocateCons(exp, head, call(fexp, rest))

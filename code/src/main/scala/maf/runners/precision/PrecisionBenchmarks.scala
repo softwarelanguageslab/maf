@@ -14,7 +14,7 @@ import maf.util.*
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
     type Benchmark = String
-    type Analysis = AnalysisEntry[SchemeExp] with AnalysisResults[SchemeExp] with ModularSchemeDomain {
+    type Analysis = AnalysisEntry[SchemeExp[Any]] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
         val modularLatticeWrapper: ModularSchemeLatticeWrapper {
             val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
         }
@@ -183,9 +183,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   - `None` otherwise
      */
     protected def runAnalysis(
-        analysis: SchemeExp => Analysis,
+        analysis: SchemeExp[Any] => Analysis,
         name: String,
-        program: SchemeExp,
+        program: SchemeExp[Any],
         path: Benchmark,
         timeout: Timeout.T = Timeout.none
       ): AnalysisResult =
@@ -244,7 +244,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   - `None` otherwise
      */
     protected def runInterpreter(
-        program: SchemeExp,
+        program: SchemeExp[Any],
         path: Benchmark,
         timeout: Timeout.T = Timeout.none,
         times: Int = 1
@@ -277,9 +277,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @param program
      *   the Scheme expression of the entire program
      */
-    protected def forBenchmark(path: Benchmark, program: SchemeExp): Unit
+    protected def forBenchmark(path: Benchmark, program: SchemeExp[Any]): Unit
 
-    protected def parseProgram(txt: String, source: Source): SchemeExp = SchemeParser.parseProgram(txt, source)
+    protected def parseProgram(txt: String, source: Source): SchemeExp[Any] = SchemeParser.parseProgram(txt, source)
 
     /**
      * Run a benchmark

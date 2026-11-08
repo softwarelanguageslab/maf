@@ -43,7 +43,7 @@ trait UndefinerTester:
      *
      * This function returns true if a define is in the wrong context.
      */
-    protected def check(s: List[SchemeExp], allowed: Boolean): Result =
+    protected def check(s: List[SchemeExp[Any]], allowed: Boolean): Result =
         s.foldLeft[Result](NoError(allowed))(_ || check(_, allowed))
 
     /**
@@ -51,7 +51,7 @@ trait UndefinerTester:
      *
      * Annotations are currently used as sensitivity annoations, and start with "@"
      */
-    private def isAnnotation(vrr: SchemeVarExp): Boolean =
+    private def isAnnotation(vrr: SchemeVarExp[Any]): Boolean =
         vrr.id.name.startsWith("@")
 
     /**
@@ -59,14 +59,14 @@ trait UndefinerTester:
      *
      * Will reject programs that have defines and expressions interleaved
      */
-    private def checkSequence(s: List[SchemeExp])(allowed: Boolean): Result =
+    private def checkSequence(s: List[SchemeExp[Any]])(allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
             case (SchemeDefineVariable(name, value, pos)) :: rest =>
                 if allowed then check(value, false) || checkSequence(rest)(true) else Error(pos)
             case (e @ SchemeBegin(_, _)) :: rest =>
                 check(e, allowed) ||> checkSequence(rest)
-            case (vrr: SchemeVarExp) :: rest if isAnnotation(vrr) =>
+            case (vrr: SchemeVarExp[?]) :: rest if isAnnotation(vrr) =>
                 // annotations of the form @... are ignored as expressions
                 checkSequence(rest)(allowed)
 
@@ -77,7 +77,7 @@ trait UndefinerTester:
                 NoError(allowed)
 
     /** Checks whether the given expression contains defines in invalid contexts */
-    protected def check(s: SchemeExp, allowed: Boolean): Result =
+    protected def check(s: SchemeExp[Any], allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
             case SchemeLambda(name, args, body, ann, pos) =>
@@ -125,22 +125,23 @@ end UndefinerTester
  * `(letrec ((foo 1) (f (lambda (x) x))) (f foo))`, which is semantically equivalent with respect to the end result.
  *
  * At the top level, all other expressions are bound to fresh variables (`_0`, `_1`, ...) as well, and the program evaluates to the last of these.
+ * The result therefore has no definitions, but may refer to variables by name.
  *
  * The program is assumed to be compiled by the SchemeCompiler, and is checked not to contain defines in an invalid context.
  */
 object SchemeUndefiner extends UndefinerTester:
 
-    def undefine(exps: List[SchemeExp]): SchemeExp =
+    def undefine[F](exps: List[SchemeExp[F | Define]]): SchemeExp[F | Named] =
         SchemeBody(undefineExps(exps))
 
-    def undefineExps(exps: List[SchemeExp], topLevel: Boolean = true): List[SchemeExp] =
+    def undefineExps[F](exps: List[SchemeExp[F | Define]], topLevel: Boolean = true): List[SchemeExp[F | Named]] =
         val result = check(exps, true)
         if result.isError then
             throw new Exception(s"Malformed program, define in invalid context. First occurence of error at ${result.show} in $exps")
         new Undefiner().undefineBody(exps, topLevel)
 
     /** The bindings introduced by a body, in order. */
-    private type Bindings = mutable.ListBuffer[(Identifier, SchemeExp)]
+    private type Bindings[F] = mutable.ListBuffer[(Identifier, SchemeExp[F])]
 
     /** Undefines a single program, keeping a counter to generate fresh names for its top-level expressions. */
     private class Undefiner:
@@ -152,13 +153,24 @@ object SchemeUndefiner extends UndefinerTester:
             id
 
         /** Undefines a body, turning its defines (and, at the top level, all its expressions) into letrec bindings. */
-        def undefineBody(body: List[SchemeExp], topLevel: Boolean): List[SchemeExp] =
-            val bds: Bindings = mutable.ListBuffer.empty
-            val exps = body.flatMap(undefine(_, bds, topLevel))
-            letrectify(exps, bds.toList, topLevel)
+        def undefineBody[F](body: List[SchemeExp[F | Define]], topLevel: Boolean): List[SchemeExp[F | Named]] =
+            if topLevel then undefineTopLevel(body) else undefineNested(body)
+
+        /** Undefines the top level of a program, which binds all of its expressions. */
+        private def undefineTopLevel[F](body: List[SchemeExp[F | Define]]): List[SchemeExp[F | Named]] =
+            val bds: Bindings[F] = mutable.ListBuffer.empty
+            val exps = body.flatMap(undefine(_, bds, true))
+            assert(exps.isEmpty) // all expressions at the top level are bound
+            letrectifyTopLevel(bds.toList)
+
+        /** Undefines a body that is nested in an expression. */
+        private def undefineNested[F](body: List[SchemeExp[F | Define]]): List[SchemeExp[F]] =
+            val bds: Bindings[F] = mutable.ListBuffer.empty
+            val exps = body.flatMap(undefine(_, bds, false))
+            letrectify(exps, bds.toList)
 
         /** Undefines an expression that is not part of a body, and therefore results in exactly one expression. */
-        private def undefineSingle(exp: SchemeExp, bds: Bindings): SchemeExp =
+        private def undefineSingle[F](exp: SchemeExp[F | Define], bds: Bindings[F]): SchemeExp[F] =
             val exps = undefine(exp, bds, false)
             assert(exps.size == 1)
             exps.head
@@ -167,15 +179,15 @@ object SchemeUndefiner extends UndefinerTester:
          * Undefines an expression in a body with bindings `bds`. Defines are added to these bindings, and so are all other expressions at the top
          * level. Returns the expressions that remain in the body.
          */
-        private def undefine(exp: SchemeExp, bds: Bindings, topLevel: Boolean): List[SchemeExp] =
-            def emit(e: SchemeExp): List[SchemeExp] =
+        private def undefine[F](exp: SchemeExp[F | Define], bds: Bindings[F], topLevel: Boolean): List[SchemeExp[F]] =
+            def emit(e: SchemeExp[F]): List[SchemeExp[F]] =
                 if topLevel then
                     bds += (fresh(e.pos) -> e)
                     Nil
                 else List(e)
-            def single(e: SchemeExp): SchemeExp = undefineSingle(e, bds)
-            def bindings(bnd: List[(Identifier, SchemeExp)]) = bnd.map((id, e) => (id, single(e)))
-            def body(bdy: List[SchemeExp]) = undefineBody(bdy, false)
+            def single(e: SchemeExp[F | Define]): SchemeExp[F] = undefineSingle(e, bds)
+            def bindings(bnd: List[(Identifier, SchemeExp[F | Define])]) = bnd.map((id, e) => (id, single(e)))
+            def body(bdy: List[SchemeExp[F | Define]]): List[SchemeExp[F]] = undefineNested(bdy)
             exp match
                 case SchemeLambda(name, args, bdy, ann, pos)               => emit(SchemeLambda(name, args, body(bdy), ann, pos))
                 case SchemeVarArgLambda(name, args, vararg, bdy, ann, pos) => emit(SchemeVarArgLambda(name, args, vararg, body(bdy), ann, pos))
@@ -187,7 +199,9 @@ object SchemeUndefiner extends UndefinerTester:
                 case SchemeSet(variable, value, pos)                       => emit(SchemeSet(variable, single(value), pos))
                 case SchemeSetLex(variable, lexAddr, value, pos)           => emit(SchemeSetLex(variable, lexAddr, single(value), pos))
                 case SchemeAssert(cnd, pos)                                => emit(SchemeAssert(single(cnd), pos))
-                case _: SchemeVar | _: SchemeVarLex | _: SchemeValue       => emit(exp)
+                case e: SchemeVar                                          => emit(e)
+                case e: SchemeVarLex                                       => emit(e)
+                case e: SchemeValue                                        => emit(e)
                 // begins do not introduce an additional scope
                 case SchemeBegin(exps, pos) =>
                     val undefined = exps.flatMap(undefine(_, bds, topLevel))
@@ -196,11 +210,16 @@ object SchemeUndefiner extends UndefinerTester:
                     bds += (name -> single(value))
                     Nil
 
-    private def letrectify(body: List[SchemeExp], bindings: List[(Identifier, SchemeExp)], topLevel: Boolean): List[SchemeExp] =
+    /** Binds the given bindings of a body around its remaining expressions. */
+    private def letrectify[F](body: List[SchemeExp[F]], bindings: List[(Identifier, SchemeExp[F])]): List[SchemeExp[F]] =
         if bindings.isEmpty then body
-        else if topLevel then
+        else List(SchemeLetrec(bindings, body, None))
+
+    /** Binds the given bindings of the top level, in an expression that evaluates to (the variable bound to) the last of them. */
+    private def letrectifyTopLevel[F](bindings: List[(Identifier, SchemeExp[F])]): List[SchemeExp[F | Named]] =
+        if bindings.isEmpty then Nil
+        else
             // This can be cleaner, but this avoids creating a top-level letrec when the entire expression is just a let. (todo: also on other levels and when no let is needed)
             bindings.last._2 match
-                case lettishExp: SchemeLettishExp if bindings.size == 1 => List(lettishExp)
+                case lettishExp: SchemeLettishExp[?] if bindings.size == 1 => List(lettishExp)
                 case _ => List(SchemeLetrec(bindings, List(SchemeVar(bindings.last._1)), None))
-        else List(SchemeLetrec(bindings, body, None))

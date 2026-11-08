@@ -28,7 +28,7 @@ class SchemeInterpreter(
 
     /** Evaluates `program`. Will check the analysis result by calling `compare` on all encountered values. */
     def run(
-        program: SchemeExp,
+        program: SchemeExp[Any],
         timeout: Timeout.T
       ): Value =
         setStore(initialSto)
@@ -42,7 +42,7 @@ class SchemeInterpreter(
             }
 
     def evalSequence(
-        exps: List[SchemeExp],
+        exps: List[SchemeExp[Any]],
         env: Env,
         timeout: Timeout.T
       ): TailRec[Value] =
@@ -56,8 +56,8 @@ class SchemeInterpreter(
                 yield vn
 
     def evalLet(
-        bindings: List[(Identifier, SchemeExp)],
-        body: List[SchemeExp],
+        bindings: List[(Identifier, SchemeExp[Any])],
+        body: List[SchemeExp[Any]],
         pos: Option[Position],
         envExt: Env,
         env: Env,
@@ -74,8 +74,8 @@ class SchemeInterpreter(
                 yield res
 
     def evalLetStar(
-        bindings: List[(Identifier, SchemeExp)],
-        body: List[SchemeExp],
+        bindings: List[(Identifier, SchemeExp[Any])],
+        body: List[SchemeExp[Any]],
         pos: Option[Position],
         envExt: Env,
         env: Env,
@@ -92,8 +92,8 @@ class SchemeInterpreter(
                 yield res
 
     def evalLetrec(
-        bindings: List[(Identifier, SchemeExp)],
-        body: List[SchemeExp],
+        bindings: List[(Identifier, SchemeExp[Any])],
+        body: List[SchemeExp[Any]],
         pos: Option[Position],
         envExt: Env,
         env: Env,
@@ -125,7 +125,7 @@ class SchemeInterpreter(
         super.extendStore(a, v)
 
     def evalArgs(
-        args: List[SchemeExp],
+        args: List[SchemeExp[Any]],
         env: Env,
         timeout: Timeout.T
       ): TailRec[List[Value]] =
@@ -143,9 +143,9 @@ class SchemeInterpreter(
 
     protected def applyFun(
         f: Value,
-        call: SchemeFuncall,
+        call: SchemeFuncall[Any],
         argsv: List[Value],
-        args: List[SchemeExp],
+        args: List[SchemeExp[Any]],
         pos: Option[Position],
         timeout: Timeout.T
       ): TailRec[Value] =
@@ -196,7 +196,7 @@ class SchemeInterpreter(
     var buffer: Int = 10000                //buffer has to be sufficiently large
 
     def runWithMaxSteps(
-                         program: SchemeExp,
+                         program: SchemeExp[Any],
                          maxSteps: Long
                        ): Value =
         setStore(initialSto)
@@ -204,7 +204,7 @@ class SchemeInterpreter(
         eval(program, initialEnv, Timeout.start(Duration(5, SECONDS))).result
 
     def eval(
-        e: SchemeExp,
+        e: SchemeExp[Any],
         env: Env,
         timeout: Timeout.T
       ): TailRec[Value] =
@@ -212,7 +212,7 @@ class SchemeInterpreter(
         if (evalSteps - buffer) > maxEvalSteps then throw new TimeoutException()
         if timeout.reached then throw new TimeoutException()
         e match
-            case lambda: SchemeLambdaExp => done(Value.Clo(lambda, env))
+            case lambda: SchemeLambdaExp[Any] => done(Value.Clo(lambda, env))
             case call @ SchemeFuncall(f, args, pos) =>
                 for
                     fv <- tailcall(eval(f, env, timeout))

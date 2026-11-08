@@ -34,10 +34,11 @@ trait BaseSchemeLexicalAddresser:
 
     def initialLEnv(globals: String => Boolean) = LexicalEnv(emptyScope)(globals)
 
-    def translateProgram(prg: List[SchemeExp], globals: String => Boolean = _ => true): List[SchemeExp] =
+    /** Lexically addresses the variables of a program (that does not contain lexically addressed variables yet) */
+    def translateProgram[F <: Define | Mutation](prg: List[SchemeExp[F | Named]], globals: String => Boolean = _ => true): List[SchemeExp[F | Lexical]] =
         translateBody(prg, initialLEnv(globals).newFrame.extend(SchemeBody.defs(prg)))
 
-    def translate(exp: SchemeExp, lenv: LexicalEnv): SchemeExp = exp match
+    def translate[F <: Define | Mutation](exp: SchemeExp[F | Named], lenv: LexicalEnv): SchemeExp[F | Lexical] = exp match
         case vexp: SchemeValue =>
             vexp
         case SchemeLambda(nam, prs, bdy, ann, pos) =>
@@ -64,7 +65,7 @@ trait BaseSchemeLexicalAddresser:
             val bdyLex = translateBody(body, lenv.newFrame.extend(vrs))
             SchemeLet(bdsLex, bdyLex, pos)
         case SchemeLetStar(bindings, body, pos) =>
-            val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp)], LexicalEnv)]((Nil, lenv.newFrame)) {
+            val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp[F | Lexical])], LexicalEnv)]((Nil, lenv.newFrame)) {
                 case ((accBds, accEnv), (id, vexp)) => ((id, translate(vexp, accEnv)) :: accBds, accEnv.extend(id))
             }
             val bdyLex = translateBody(body, extEnv)
@@ -75,11 +76,10 @@ trait BaseSchemeLexicalAddresser:
             val bdsLex = vrs.zip(translate(eps, extEnv))
             val bdyLex = translateBody(body, extEnv)
             SchemeLetrec(bdsLex, bdyLex, pos)
-        case _ => throw new Exception(s"Unsupported Scheme expression: $exp")
 
-    def translate(bdy: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
+    def translate[F <: Define | Mutation](bdy: List[SchemeExp[F | Named]], lenv: LexicalEnv): List[SchemeExp[F | Lexical]] =
         bdy.map(translate(_, lenv))
-    def translateBody(body: List[SchemeExp], lenv: LexicalEnv): List[SchemeExp] =
+    def translateBody[F <: Define | Mutation](body: List[SchemeExp[F | Named]], lenv: LexicalEnv): List[SchemeExp[F | Lexical]] =
         translate(body, lenv.newFrame.extend(SchemeBody.defs(body)))
 
 object SchemeLexicalAddresser extends BaseSchemeLexicalAddresser

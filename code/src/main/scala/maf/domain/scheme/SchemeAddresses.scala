@@ -16,7 +16,7 @@ case class VarAddr[Context](id: Identifier, ctx: Context) extends SchemeAddr[Con
     def printable = !id.name.startsWith("__")
     def pos: Option[Position] = id.pos
     override def toString: String = s"${id.fullString}${showCtx(ctx)}"
-case class PtrAddr[Context](exp: SchemeExp, ctx: Context) extends SchemeAddr[Context]:
+case class PtrAddr[Context](exp: SchemeExp[Any], ctx: Context) extends SchemeAddr[Context]:
     def printable = false
     def pos: Option[Position] = exp.pos
     override def toString: String = s"PtrAddr(${exp.pos.show})${showCtx(ctx)}"

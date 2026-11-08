@@ -11,7 +11,7 @@ import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 import maf.test.*
 
 trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
-    override def parseProgram(txt: String, benchmark: String): SchemeExp =
+    override def parseProgram(txt: String, benchmark: String): SchemeExp[Any] =
         val parsed = SchemeParser.parse(txt, Source.File(benchmark))
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -19,11 +19,11 @@ trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
 
 class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = s"DSS"
-    def analysis(prg: SchemeExp) =
+    def analysis(prg: SchemeExp[Any]) =
         new SchemeModFLocal(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp]
+            with FIFOWorklistAlgorithm[SchemeExp[Any]]
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(
@@ -42,7 +42,7 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
 class SchemeModFADITests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
 
     def name = s"ADI (with GC)"
-    def analysis(prg: SchemeExp) = SchemeAnalyses.modfADIAnalysis(prg, 0)
+    def analysis(prg: SchemeExp[Any]) = SchemeAnalyses.modfADIAnalysis(prg, 0)
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these time out in the analysis

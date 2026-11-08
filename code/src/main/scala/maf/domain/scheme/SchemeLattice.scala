@@ -39,7 +39,7 @@ trait SchemeLattice[L, A <: Address] extends Lattice[L] with LatticeWithAddrs[L,
 
     /** The representation of a closure */
     type Env = Environment[A]
-    type Closure = (SchemeLambdaExp, Env)
+    type Closure = (SchemeLambdaExp[Any], Env)
 
     /** Extract closures contained in this value */
     def getClosures(x: L): Set[Closure]
