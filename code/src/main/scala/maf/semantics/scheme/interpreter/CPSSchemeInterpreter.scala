@@ -24,7 +24,7 @@ class CPSSchemeInterpreter(
         case Kont(v, cc)        => Right(apply(v, cc))
 
     override def run(
-        program: SchemeExp[Any],
+        program: SchemeExp[Mutation | Named],
         timeout: Timeout.T
       ): Value =
         setStore(initialSto)
@@ -59,28 +59,28 @@ class CPSSchemeInterpreter(
         val cc: Continuation
 
     case class ArgC(
-        exps: List[SchemeExp[Any]],
+        exps: List[SchemeExp[Mutation | Named]],
         env: Env,
         f: Value,
         argv: List[Value],
-        call: SchemeFuncall[Any],
+        call: SchemeFuncall[Mutation | Named],
         cc: Continuation)
         extends InternalContinuation
 
-    case class BegC(exps: List[SchemeExp[Any]], env: Env, cc: Continuation) extends InternalContinuation
+    case class BegC(exps: List[SchemeExp[Mutation | Named]], env: Env, cc: Continuation) extends InternalContinuation
 
     case class EndC() extends Continuation // End of the program.
-    case class FunC(args: List[SchemeExp[Any]], env: Env, call: SchemeFuncall[Any], cc: Continuation) extends InternalContinuation
+    case class FunC(args: List[SchemeExp[Mutation | Named]], env: Env, call: SchemeFuncall[Mutation | Named], cc: Continuation) extends InternalContinuation
 
-    case class IffC(cons: SchemeExp[Any], alt: SchemeExp[Any], env: Env, cc: Continuation) extends InternalContinuation
+    case class IffC(cons: SchemeExp[Mutation | Named], alt: SchemeExp[Mutation | Named], env: Env, cc: Continuation) extends InternalContinuation
 
-    case class LetC(bnd: List[(Identifier, SchemeExp[Any])], env: Env, bvals: List[Value], let: SchemeLet[Any], cc: Continuation) extends InternalContinuation
+    case class LetC(bnd: List[(Identifier, SchemeExp[Mutation | Named])], env: Env, bvals: List[Value], let: SchemeLet[Mutation | Named], cc: Continuation) extends InternalContinuation
 
-    case class LtsC(i: Identifier, bnd: List[(Identifier, SchemeExp[Any])], env: Env, let: SchemeLetStar[Any], cc: Continuation) extends InternalContinuation
+    case class LtsC(i: Identifier, bnd: List[(Identifier, SchemeExp[Mutation | Named])], env: Env, let: SchemeLetStar[Mutation | Named], cc: Continuation) extends InternalContinuation
 
-    case class LtrC(i: Identifier, bnd: List[(Identifier, SchemeExp[Any])], env: Env, let: SchemeLetrec[Any], cc: Continuation) extends InternalContinuation
+    case class LtrC(i: Identifier, bnd: List[(Identifier, SchemeExp[Mutation | Named])], env: Env, let: SchemeLetrec[Mutation | Named], cc: Continuation) extends InternalContinuation
 
-    case class PaiC(car: Value, e: SchemeExp[Any], cc: Continuation) extends InternalContinuation
+    case class PaiC(car: Value, e: SchemeExp[Mutation | Named], cc: Continuation) extends InternalContinuation
 
     case class RetC(addr: Addr, cc: Continuation) extends InternalContinuation // Allows to write the return value of a function call to the store. This breaks tail recursion...
     case class SetC(addr: Addr, cc: Continuation) extends InternalContinuation
@@ -93,7 +93,7 @@ class CPSSchemeInterpreter(
         val cc: Continuation
 
     case class Step(
-        exp: SchemeExp[Any],
+        exp: SchemeExp[Mutation | Named],
         env: Env,
         cc: Continuation)
         extends State
@@ -105,7 +105,7 @@ class CPSSchemeInterpreter(
     /* ********************** */
 
     def eval(
-        exp: SchemeExp[Any],
+        exp: SchemeExp[Mutation | Named],
         env: Env,
         cc: Continuation
       ): State = exp match
@@ -113,10 +113,9 @@ class CPSSchemeInterpreter(
         case SchemeBegin(Nil, _)                           => Kont(Value.Void, cc) // Allow empty begin (same than other interpreter).
         case SchemeBegin(first :: Nil, _)                  => Step(first, env, cc)
         case SchemeBegin(first :: rest, _)                 => Step(first, env, BegC(rest, env, cc))
-        case SchemeDefineVariable(_, _, pos)               => signalException(UndefinedExpressionExpected(pos))
         case call @ SchemeFuncall(f, args, _)              => Step(f, env, FunC(args, env, call, cc))
         case SchemeIf(cond, cons, alt, _)                  => Step(cond, env, IffC(cons, alt, env, cc))
-        case lambda: SchemeLambdaExp[Any]                       => Kont(Value.Clo(lambda, env), cc)
+        case lambda: SchemeLambdaExp[Mutation | Named]     => Kont(Value.Clo(lambda, env), cc)
         case SchemeLet(Nil, body, pos)                     => Step(SchemeBegin(body, pos), env, cc)
         case let @ SchemeLet((_, e) :: rest, _, _)         => Step(e, env, LetC(rest, env, Nil, let, cc))
         case SchemeLetrec(Nil, body, pos)                  => Step(SchemeBegin(body, pos), env, cc)
@@ -129,7 +128,6 @@ class CPSSchemeInterpreter(
             env.get(variable.name) match
                 case Some(addr) => Step(value, env, SetC(addr, cc))
                 case None       => signalException(UndefinedVariableError(variable))
-        case SchemeSetLex(_, _, _, _) => signalException(UnsupportedExpression(exp))
         case SchemeValue(value, _)    => Kont(evalLiteral(value, exp), cc)
         case SchemeVar(id) =>
             env.get(id.name) match
@@ -138,9 +136,6 @@ class CPSSchemeInterpreter(
                     lookupStoreOption(addr) match
                         case None        => signalException(UninitialisedVariableError(id))
                         case Some(value) => Kont(value, cc)
-        case SchemeVarLex(_, _) => signalException(UnsupportedExpression(exp))
-
-        case _ => signalException(UnsupportedExpression(exp))
 
     def apply(v: Value, cc: Continuation): State = cc match
         case ArgC(Nil, _, f, argv, call, cc)                 => continueBody(f, v :: argv, call, cc)
@@ -166,9 +161,9 @@ class CPSSchemeInterpreter(
     // Evaluate the arguments of a function.
     def continueArgs(
         f: Value,
-        args: List[SchemeExp[Any]],
+        args: List[SchemeExp[Mutation | Named]],
         env: Env,
-        call: SchemeFuncall[Any],
+        call: SchemeFuncall[Mutation | Named],
         cc: Continuation
       ): State =
         // First, check the arity.
@@ -194,7 +189,7 @@ class CPSSchemeInterpreter(
     def continueBody(
         f: Value,
         argvsRev: List[Value],
-        call: SchemeFuncall[Any],
+        call: SchemeFuncall[Mutation | Named],
         cc: Continuation
       ): State =
         val argvs = argvsRev.reverse

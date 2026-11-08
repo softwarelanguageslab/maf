@@ -17,9 +17,9 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
 
     type Analysis = SchemeModFLocal & SchemeDomain & SchemeModFLocalSensitivity
 
-    def analysis(prg: SchemeExp[Any]): Analysis
+    def analysis(prg: SchemeExp[Named]): Analysis
 
-    def parseProgram(txt: String): SchemeExp[Any] =
+    def parseProgram(txt: String): SchemeExp[Named] =
         val parsed = SchemeParser.parse(txt, Source.Text)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -38,13 +38,13 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
         assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
 
 class ConstantPropagationDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Any]) =
-        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Any]]
+    def analysis(prg: SchemeExp[Named]) =
+        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
 
 class PowersetDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Any]) =
-        new SchemeModFLocal(prg) with SchemePowersetDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Any]]
+    def analysis(prg: SchemeExp[Named]) =
+        new SchemeModFLocal(prg) with SchemePowersetDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
 
 class TypeDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Any]) =
-        new SchemeModFLocal(prg) with SchemeTypeDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Any]]
+    def analysis(prg: SchemeExp[Named]) =
+        new SchemeModFLocal(prg) with SchemeTypeDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]

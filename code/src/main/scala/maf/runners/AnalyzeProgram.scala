@@ -14,7 +14,7 @@ object AnalyzeProgram extends App:
         case Terminated(iterationCount: Int, time: Long)
         case TimedOut
 
-    def parse(file: String): SchemeExp[Any] =
+    def parse(file: String): SchemeExp[Named] =
         val parsed = SchemeParser.parseFile(file)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -27,7 +27,7 @@ object AnalyzeProgram extends App:
             new SchemeModFLocalFS(prog)
                 with SchemeModFLocalNoSensitivity
                 with SchemeConstantPropagationDomain
-                with PriorityQueueWorklistAlgorithm[SchemeExp[Any]]:
+                with PriorityQueueWorklistAlgorithm[SchemeExp[Named]]:
                     /** Example implementation of priority **/
                     lazy val ordering = Ordering.by(priority) // currently, ordering is based on calculated priority
                                                               // alternatively, could also just implement `compare` here

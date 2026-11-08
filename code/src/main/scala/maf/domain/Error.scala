@@ -16,8 +16,6 @@ case class UndefinedVariableError(id: Identifier) extends Error:
     override def toString: String = s"$id:${id.pos.show}"
 case class UninitialisedVariableError(id: Identifier) extends Error
 case class PrimitiveError(errs: Set[Error]) extends Error
-case class UndefinedExpressionExpected(pos: Option[Position]) extends Error
-case class UnsupportedExpression(exp: Expression) extends Error
 
 /** Use with care, can be used for legacy string based errors */
 case class StringError(messsage: String) extends Error

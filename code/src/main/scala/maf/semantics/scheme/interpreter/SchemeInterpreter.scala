@@ -28,7 +28,7 @@ class SchemeInterpreter(
 
     /** Evaluates `program`. Will check the analysis result by calling `compare` on all encountered values. */
     def run(
-        program: SchemeExp[Any],
+        program: SchemeExp[Mutation | Named],
         timeout: Timeout.T
       ): Value =
         setStore(initialSto)
@@ -42,7 +42,7 @@ class SchemeInterpreter(
             }
 
     def evalSequence(
-        exps: List[SchemeExp[Any]],
+        exps: List[SchemeExp[Mutation | Named]],
         env: Env,
         timeout: Timeout.T
       ): TailRec[Value] =
@@ -56,8 +56,8 @@ class SchemeInterpreter(
                 yield vn
 
     def evalLet(
-        bindings: List[(Identifier, SchemeExp[Any])],
-        body: List[SchemeExp[Any]],
+        bindings: List[(Identifier, SchemeExp[Mutation | Named])],
+        body: List[SchemeExp[Mutation | Named]],
         pos: Option[Position],
         envExt: Env,
         env: Env,
@@ -74,8 +74,8 @@ class SchemeInterpreter(
                 yield res
 
     def evalLetStar(
-        bindings: List[(Identifier, SchemeExp[Any])],
-        body: List[SchemeExp[Any]],
+        bindings: List[(Identifier, SchemeExp[Mutation | Named])],
+        body: List[SchemeExp[Mutation | Named]],
         pos: Option[Position],
         envExt: Env,
         env: Env,
@@ -92,8 +92,8 @@ class SchemeInterpreter(
                 yield res
 
     def evalLetrec(
-        bindings: List[(Identifier, SchemeExp[Any])],
-        body: List[SchemeExp[Any]],
+        bindings: List[(Identifier, SchemeExp[Mutation | Named])],
+        body: List[SchemeExp[Mutation | Named]],
         pos: Option[Position],
         envExt: Env,
         env: Env,
@@ -125,7 +125,7 @@ class SchemeInterpreter(
         super.extendStore(a, v)
 
     def evalArgs(
-        args: List[SchemeExp[Any]],
+        args: List[SchemeExp[Mutation | Named]],
         env: Env,
         timeout: Timeout.T
       ): TailRec[List[Value]] =
@@ -143,9 +143,9 @@ class SchemeInterpreter(
 
     protected def applyFun(
         f: Value,
-        call: SchemeFuncall[Any],
+        call: SchemeFuncall[Mutation | Named],
         argsv: List[Value],
-        args: List[SchemeExp[Any]],
+        args: List[SchemeExp[Mutation | Named]],
         pos: Option[Position],
         timeout: Timeout.T
       ): TailRec[Value] =
@@ -196,7 +196,7 @@ class SchemeInterpreter(
     var buffer: Int = 10000                //buffer has to be sufficiently large
 
     def runWithMaxSteps(
-                         program: SchemeExp[Any],
+                         program: SchemeExp[Mutation | Named],
                          maxSteps: Long
                        ): Value =
         setStore(initialSto)
@@ -204,7 +204,7 @@ class SchemeInterpreter(
         eval(program, initialEnv, Timeout.start(Duration(5, SECONDS))).result
 
     def eval(
-        e: SchemeExp[Any],
+        e: SchemeExp[Mutation | Named],
         env: Env,
         timeout: Timeout.T
       ): TailRec[Value] =
@@ -212,7 +212,7 @@ class SchemeInterpreter(
         if (evalSteps - buffer) > maxEvalSteps then throw new TimeoutException()
         if timeout.reached then throw new TimeoutException()
         e match
-            case lambda: SchemeLambdaExp[Any] => done(Value.Clo(lambda, env))
+            case lambda: SchemeLambdaExp[Mutation | Named] => done(Value.Clo(lambda, env))
             case call @ SchemeFuncall(f, args, pos) =>
                 for
                     fv <- tailcall(eval(f, env, timeout))
@@ -288,7 +288,6 @@ class SchemeInterpreter(
                 evalSequence(exps, env, timeout)
             case SchemeAssert(_, _) =>
                 done(Value.Void)
-            case SchemeDefineVariable(_, _, _) => ???
             case SchemeVar(id) =>
                 env.get(id.name) match
                     case None => signalException(UndefinedVariableError(id))
@@ -298,7 +297,6 @@ class SchemeInterpreter(
                             case Some(v) => done(v)
             case SchemeValue(v, _) =>
                 done(evalLiteral(v, e))
-            case _ => throw new Exception(s"Unsupported Scheme expression: $e")
 
 object SchemeInterpreter:
 

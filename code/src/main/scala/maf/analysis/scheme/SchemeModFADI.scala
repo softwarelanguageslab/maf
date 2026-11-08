@@ -10,7 +10,7 @@ import maf.syntax.scheme.*
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFADI(prg: SchemeExp[Any]) extends ModAnalysis[SchemeExp[Any]](prg) with SchemeSemantics:
+abstract class SchemeModFADI(prg: SchemeExp[Named]) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -217,11 +217,11 @@ trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[Sc
 
 // a standard instance
 
-class SchemeModFADIAnalysis(prg: SchemeExp[Any], k: Int)
+class SchemeModFADIAnalysis(prg: SchemeExp[Named], k: Int)
     extends SchemeModFADI(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp[Any]]
+    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp[Named]]
         //override def run(t: maf.util.Timeout.T) = 
         //    super.run(t)
         //    println(results(MainComponent))

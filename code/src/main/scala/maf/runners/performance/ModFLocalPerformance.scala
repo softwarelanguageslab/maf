@@ -3,11 +3,11 @@ package maf.runners.performance
 import maf.fixpoint.AnalysisEntry
 import maf.runners.SchemeAnalyses
 import maf.syntax.Source
-import maf.syntax.scheme.{SchemeExp, SchemeParser, SchemePrelude}
+import maf.syntax.scheme.{Named, SchemeExp, SchemeParser, SchemePrelude}
 import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
 
 object ModFLocalPerformance extends PerformanceEvaluation:
-    type Analysis = AnalysisEntry[SchemeExp[Any]]
+    type Analysis = AnalysisEntry[SchemeExp[Named]]
     def benchmarks =
         List(
         )
@@ -18,7 +18,7 @@ object ModFLocalPerformance extends PerformanceEvaluation:
           (SchemeAnalyses.modflocalFSAnalysis(_, 0), "0-CFA DSS-FS"),
           (SchemeAnalyses.modflocalFSAnalysis(_, 1), "1-CFA DSS-FS"),
         )
-    override def parseProgram(txt: String, source: Source): SchemeExp[Any] =
+    override def parseProgram(txt: String, source: Source): SchemeExp[Named] =
         val parsed = SchemeParser.parse(txt, source)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)

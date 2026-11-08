@@ -19,7 +19,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
     // - the analyses to compare in terms of precision
     // - the benchmarks to compare the analyses on
     // - the number of runs for the concrete interpreter
-    def analyses: List[(SchemeExp[Any] => Analysis, String)]
+    def analyses: List[(SchemeExp[Named] => Analysis, String)]
     def benchmarks: List[Benchmark]
     def runs = 3 // number of runs for the concrete interpreter
 
@@ -50,7 +50,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
      * @param program
      *   the Scheme expression of the benchmark program
      */
-    protected def forBenchmark(path: Benchmark, program: SchemeExp[Any]): Unit =
+    protected def forBenchmark(path: Benchmark, program: SchemeExp[Named]): Unit =
         // run the concrete interpreter analysis first
         val concreteResult = runInterpreter(program, path, Timeout.none, runs).get // no timeout set for the concrete interpreter
         // run the other analyses on the benchmark
@@ -120,18 +120,18 @@ abstract class SASBenchmarks
       ConstantPropagation.Sym
     ]:
 
-    lazy val dss0: (SchemeExp[Any] => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 0),          "0-CFA DSS")
-    lazy val dss1: (SchemeExp[Any] => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 1),          "1-CFA DSS")
-    lazy val dss2: (SchemeExp[Any] => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 2),          "2-CFA DSS")
-    lazy val adi0: (SchemeExp[Any] => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 0),            "0-CFA ADI")
-    lazy val adi1: (SchemeExp[Any] => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 1),            "1-CFA ADI")
-    lazy val adi2: (SchemeExp[Any] => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 2),            "2-CFA ADI")
-    lazy val dssFS0: (SchemeExp[Any] => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 0, true),  "0-CFA DSS-FS")
-    lazy val dssFS1: (SchemeExp[Any] => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 1, true),  "1-CFA DSS-FS")
-    lazy val dssFS2: (SchemeExp[Any] => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 2, true),  "2-CFA DSS-FS")
-    lazy val dssFS0NoGC: (SchemeExp[Any] => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 0, false), "0-CFA DSS-FS (without GC)")
-    lazy val dssFS1NoGC: (SchemeExp[Any] => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 1, false), "1-CFA DSS-FS (without GC)")
-    lazy val dssFS2NoGC: (SchemeExp[Any] => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 2, false), "2-CFA DSS-FS (without GC)")
+    lazy val dss0: (SchemeExp[Named] => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 0),          "0-CFA DSS")
+    lazy val dss1: (SchemeExp[Named] => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 1),          "1-CFA DSS")
+    lazy val dss2: (SchemeExp[Named] => Analysis, String)        = (SchemeAnalyses.modflocalAnalysis(_, 2),          "2-CFA DSS")
+    lazy val adi0: (SchemeExp[Named] => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 0),            "0-CFA ADI")
+    lazy val adi1: (SchemeExp[Named] => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 1),            "1-CFA ADI")
+    lazy val adi2: (SchemeExp[Named] => Analysis, String)        = (SchemeAnalyses.modfADIAnalysis(_, 2),            "2-CFA ADI")
+    lazy val dssFS0: (SchemeExp[Named] => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 0, true),  "0-CFA DSS-FS")
+    lazy val dssFS1: (SchemeExp[Named] => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 1, true),  "1-CFA DSS-FS")
+    lazy val dssFS2: (SchemeExp[Named] => Analysis, String)      = (SchemeAnalyses.modflocalFSAnalysis(_, 2, true),  "2-CFA DSS-FS")
+    lazy val dssFS0NoGC: (SchemeExp[Named] => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 0, false), "0-CFA DSS-FS (without GC)")
+    lazy val dssFS1NoGC: (SchemeExp[Named] => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 1, false), "1-CFA DSS-FS (without GC)")
+    lazy val dssFS2NoGC: (SchemeExp[Named] => Analysis, String)  = (SchemeAnalyses.modflocalFSAnalysis(_, 2, false), "2-CFA DSS-FS (without GC)")
 
     def gabrielBenchmarks = 
       List(
@@ -159,7 +159,7 @@ abstract class SASBenchmarks
 
     def benchmarks = gabrielBenchmarks ++ extraBenchmarks
 
-    override def parseProgram(txt: String, source: Source): SchemeExp[Any] =
+    override def parseProgram(txt: String, source: Source): SchemeExp[Named] =
         val parsed = SchemeParser.parse(txt, source)
         val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
         val transf = SchemeMutableVarBoxer.transform(prelud)
@@ -207,7 +207,7 @@ object CountIterationBenchmark extends SASBenchmarks:
 
   var results: Table[Int] = Table.empty 
 
-  override protected def forBenchmark(path: Benchmark, program: SchemeExp[Any]): Unit =
+  override protected def forBenchmark(path: Benchmark, program: SchemeExp[Named]): Unit =
     println(s"ANALYZING $path")
     analyses.foreach { case (analysis, name) => 
       val anl = analysis(program)

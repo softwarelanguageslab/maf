@@ -17,10 +17,11 @@ trait SchemeSemantics:
     // shorthands
     type Val = Value
     type Adr = Address
-    type Exp = SchemeExp[Any]
+    // the analysed programs have no definitions and no assignments (i.e., they are undefined and boxed), and refer to variables by name
+    type Exp = SchemeExp[Named]
     type Var = Identifier
-    type Lam = SchemeLambdaExp[Any]
-    type App = SchemeFuncall[Any]
+    type Lam = SchemeLambdaExp[Named]
+    type App = SchemeFuncall[Named]
     type Env = Environment[Adr]
     type Clo = (Lam, Env)
 
@@ -57,20 +58,19 @@ trait SchemeSemantics:
     implicit final protected lazy val analysisM_ : AnalysisM[A] = analysisM
     import analysisM_._
 
-    def eval(exp: SchemeExp[Any]): A[Val] = exp match
+    def eval(exp: Exp): A[Val] = exp match
         case vlu: SchemeValue           => evalLiteralValue(vlu)
-        case lam: SchemeLambdaExp[Any]       => evalLambda(lam)
+        case lam: Lam                   => evalLambda(lam)
         case SchemeVar(id)              => evalVariable(id)
         case SchemeBegin(eps, _)        => evalSequence(eps)
         case SchemeIf(prd, thn, alt, _) => evalIf(prd, thn, alt)
         case SchemeLet(bds, bdy, _)     => evalLet(bds, bdy)
         case SchemeLetStar(bds, bdy, _) => evalLetStar(bds, bdy)
         case SchemeLetrec(bds, bdy, _)  => evalLetrec(bds, bdy)
-        case app: SchemeFuncall[Any]         => evalCall(app)
+        case app: App                   => evalCall(app)
         case SchemeAssert(exp, _)       => evalAssert(exp)
-        case _                          => throw new Exception(s"Unsupported Scheme expression: $exp")
 
-    def evalAll(lst: List[SchemeExp[Any]]): A[List[Val]] = 
+    def evalAll(lst: List[Exp]): A[List[Val]] =
         lst match
             case Nil         => unit(Nil)
             case exp :: Nil  => eval(exp).map(_ :: Nil)
@@ -171,9 +171,13 @@ trait SchemeSemantics:
     protected def applyPrimitive(app: App, prm: Prim, ags: List[Val]): A[Val] =
         prm.call(app, ags)
 
+    // The lattice is independent of the features of programs, and stores the lambdas of closures as `SchemeLambdaExp[Any]`. However, its closures are
+    // created by `evalLambda`, from lambdas of the analysed program, which are therefore `Lam`s.
+    private def closures(fun: Val): Set[Clo] = lattice.getClosures(fun).asInstanceOf[Set[Clo]]
+
     protected def applyClosures(app: App, fun: Val, ags: List[Val]): A[Val] =
         val agc = ags.length
-        lattice.getClosures(fun).foldMapM { (lam, lex) =>
+        closures(fun).foldMapM { (lam, lex) =>
             for
                 _ <- guard(lam.check(agc))
                 fvs <- lex.addrs.mapM(adr => lookupSto(adr).map((adr, _)))

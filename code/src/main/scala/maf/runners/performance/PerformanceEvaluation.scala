@@ -21,7 +21,7 @@ case object NoData extends PerformanceResult
 case class Metrics(name: String, results: Statistics.Stats)
 
 trait PerformanceEvaluation:
-    type Analysis <: AnalysisEntry[SchemeExp[Any]]
+    type Analysis <: AnalysisEntry[SchemeExp[Named]]
 
     // Configuring the warm-up
     def maxWarmupRuns = 10 // maximum number of warm-up runs
@@ -36,7 +36,7 @@ trait PerformanceEvaluation:
     def benchmarks: Iterable[Benchmark]
 
     // The analyses that are evaluated (and their names)
-    def analyses: List[(SchemeExp[Any] => Analysis, String)]
+    def analyses: List[(SchemeExp[Named] => Analysis, String)]
 
     var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
@@ -49,12 +49,13 @@ trait PerformanceEvaluation:
         case TimedOut           => "TIMEOUT"
         case NoData             => "_"
 
-    def parseProgram(txt: String, source: Source): SchemeExp[Any] = SchemeParser.parseProgram(txt, source)
+    /** Parses a program into the form that the analyses support */
+    def parseProgram(txt: String, source: Source): SchemeExp[Named]
 
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
     def measureAnalysis(
         file: String,
-        analysis: SchemeExp[Any] => Analysis
+        analysis: SchemeExp[Named] => Analysis
       )(using ex: ExecutionContext
       ): Future[(PerformanceResult, List[Metrics])] =
         def run(): (PerformanceResult, List[Metrics]) =

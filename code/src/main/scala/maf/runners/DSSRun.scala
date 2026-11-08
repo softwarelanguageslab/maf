@@ -58,7 +58,7 @@ object DSSRun:
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-    def runDSS(prg: SchemeExp[Any]) =
+    def runDSS(prg: SchemeExp[Named]) =
         val anl = new SchemeDSSAnalysis(prg, 0) //with NameBasedAllocator
         anl.analyze()
         val res = anl.results(anl.MainComponent)
