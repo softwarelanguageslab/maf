@@ -5,6 +5,7 @@ import maf.semantics.scheme.interpreter.*
 import maf.semantics.scheme.interpreter.ConcreteValues.Addr
 import maf.syntax.{Position, Source}
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.test.{InterpreterTest, SlowTest}
 import maf.util.{Reader, Timeout}
 
@@ -57,7 +58,7 @@ class InterpreterTests() extends AnyPropSpec:
         case _ => Some(v1 == v2)
 
     def onBenchmark(benchmark: String): Unit =
-        val program: SchemeExp[Mutation | Named] = SchemeParser.parseProgram(Reader.loadFile(benchmark), Source.File(benchmark))
+        val program: SchemeExp[Mutation | Named] & Preluded = SchemeParser.parseProgram(Reader.loadFile(benchmark), Source.File(benchmark))
         property(s"The Scheme interpreters give the same result for $benchmark", InterpreterTest, SlowTest) {
             try
                 // TODO (maybe): run in parallel?

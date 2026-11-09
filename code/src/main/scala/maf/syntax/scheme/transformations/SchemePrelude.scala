@@ -1,7 +1,34 @@
-package maf.syntax.scheme
+package maf.syntax.scheme.transformations
 
 import maf.syntax.*
+import maf.syntax.scheme.*
 import maf.syntax.sexp.SExpParser
+
+/**
+ * Marks programs that include the definitions of the prelude which they refer to. Only adding the prelude to a program establishes this, and only
+ * the transformations in this package that keep these definitions can keep the marker, using `keepPrelude`. Both check that the program indeed
+ * includes the definitions it refers to (and `PreludeTests` checks this for the benchmark programs).
+ */
+opaque type Preluded = Any
+
+private def preluded[P <: List[SchemeExp[Any]]](prg: P): P & Preluded =
+    val missing = SchemePrelude.missingDefinitions(prg)
+    assert(missing.isEmpty, s"The program refers to definitions of the prelude that it does not include: ${missing.mkString(", ")}")
+    prg
+
+/**
+ * Applies a transformation that keeps the definitions of the prelude to a program, which keeps the marker `Preluded` if the program has it. Checks
+ * that the transformation does not introduce references to definitions of the prelude that the program does not include.
+ */
+private[transformations] def keepPrelude[
+    P <: SchemeExp[Any] | List[SchemeExp[Any]],
+    R <: SchemeExp[Any] | List[SchemeExp[Any]],
+    M >: Preluded
+  ](prg: P & M)(transform: P => R): R & M =
+    val result = transform(prg)
+    val introduced = SchemePrelude.missingDefinitions(result) -- SchemePrelude.missingDefinitions(prg)
+    assert(introduced.isEmpty, s"The transformation introduced references to definitions of the prelude that the program does not include: ${introduced.mkString(", ")}")
+    result
 
 class BaseSchemePrelude:
 
@@ -351,13 +378,23 @@ class BaseSchemePrelude:
 
     val primNames: Set[String] = primDefs.keySet
 
+    /** The definitions of the prelude that a program (i.e., an expression or a list of expressions) refers to, without including them */
+    def missingDefinitions(prg: SchemeExp[Any] | List[SchemeExp[Any]]): Set[String] =
+        val fv = prg match
+            case exp: SchemeExp[Any]        => exp.fv
+            case exps: List[SchemeExp[Any]] => SchemeBody.fv(exps)
+        fv.intersect(primNames)
+
+    /** The definitions of the prelude that boxing a program introduces references to (see `SchemeRef`, `SchemeDeref` and `SchemeSetRef`) */
+    val boxingDefs: Set[String] = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!")
+
     /**
-     * Transitively adds all required definitions of the prelude to a program, in addition to those mentioned in `incl`. The resulting program no longer
-     * needs the prelude, but may contain the features of its definitions.
+     * Transitively adds all required definitions of the prelude to a program, in addition to those mentioned in `incl` and those that boxing the program
+     * requires. The resulting program may contain the features of these definitions.
      */
-    def addPrelude[F](prg: List[SchemeExp[F | NeedsPrelude]], incl: Set[String] = Set.empty): List[SchemeExp[F | Surface]] =
+    def addPrelude[F](prg: List[SchemeExp[F]], incl: Set[String] = Set.empty): List[SchemeExp[F | Surface]] & Preluded =
         var prelude: List[SchemeExp[Surface]] = List()
-        var work: Set[String] = SchemeBody.fv(prg) ++ incl
+        var work: Set[String] = SchemeBody.fv(prg) ++ incl ++ boxingDefs
         var added: Set[String] = Set.empty
         val primDefs = this.primDefs
         while work.nonEmpty do
@@ -366,7 +403,6 @@ class BaseSchemePrelude:
             prelude = defs.toList ::: prelude
             work = defs.flatMap(_.fv)
             added ++= free
-        // no expression has the feature `NeedsPrelude`, so the program itself is a `SchemeExp[F]`
-        prelude ::: prg.asInstanceOf[List[SchemeExp[F]]]
+        preluded(prelude ::: prg)
 
 object SchemePrelude extends BaseSchemePrelude

@@ -6,7 +6,7 @@ import maf.fixpoint.FIFOWorklistAlgorithm
 import maf.semantics.scheme.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
-import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
+import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
 import maf.test.SchemeR5RSTests
 import maf.util.Timeout
 
@@ -17,11 +17,11 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
 
     type Analysis = SchemeModFLocal & SchemeDomain & SchemeModFLocalSensitivity
 
-    def analysis(prg: SchemeExp[Named]): Analysis
+    def analysis(prg: SchemeExp[Named] & Preluded): Analysis
 
-    def parseProgram(txt: String): SchemeExp[Named] =
+    def parseProgram(txt: String): SchemeExp[Named] & Preluded =
         val parsed = SchemeParser.parse(txt, Source.Text)
-        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val prelud = SchemePrelude.addPrelude(parsed)
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
@@ -38,13 +38,13 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
         assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
 
 class ConstantPropagationDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Named]) =
+    def analysis(prg: SchemeExp[Named] & Preluded) =
         new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
 
 class PowersetDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Named]) =
+    def analysis(prg: SchemeExp[Named] & Preluded) =
         new SchemeModFLocal(prg) with SchemePowersetDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
 
 class TypeDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Named]) =
+    def analysis(prg: SchemeExp[Named] & Preluded) =
         new SchemeModFLocal(prg) with SchemeTypeDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]

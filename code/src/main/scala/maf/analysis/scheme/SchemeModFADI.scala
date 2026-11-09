@@ -7,10 +7,11 @@ import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFADI(prg: SchemeExp[Named]) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
+abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -217,7 +218,7 @@ trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[Sc
 
 // a standard instance
 
-class SchemeModFADIAnalysis(prg: SchemeExp[Named], k: Int)
+class SchemeModFADIAnalysis(prg: SchemeExp[Named] & Preluded, k: Int)
     extends SchemeModFADI(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)

@@ -7,10 +7,11 @@ import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFLocalFS(prg: SchemeExp[Named], gc: Boolean = true) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
+abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean = true) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands

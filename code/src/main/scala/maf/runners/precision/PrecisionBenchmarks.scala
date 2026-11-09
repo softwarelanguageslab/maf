@@ -9,6 +9,7 @@ import maf.runners.precision.address.*
 import maf.semantics.scheme.interpreter.{ConcreteValues, EmptyIO, FileIO, IO, SchemeInterpreter}
 import maf.syntax.*
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
@@ -183,9 +184,9 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   - `None` otherwise
      */
     protected def runAnalysis(
-        analysis: SchemeExp[Named] => Analysis,
+        analysis: SchemeExp[Named] & Preluded => Analysis,
         name: String,
-        program: SchemeExp[Named],
+        program: SchemeExp[Named] & Preluded,
         path: Benchmark,
         timeout: Timeout.T = Timeout.none
       ): AnalysisResult =
@@ -244,7 +245,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   - `None` otherwise
      */
     protected def runInterpreter(
-        program: SchemeExp[Named],
+        program: SchemeExp[Named] & Preluded,
         path: Benchmark,
         timeout: Timeout.T = Timeout.none,
         times: Int = 1
@@ -277,10 +278,10 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @param program
      *   the Scheme expression of the entire program
      */
-    protected def forBenchmark(path: Benchmark, program: SchemeExp[Named]): Unit
+    protected def forBenchmark(path: Benchmark, program: SchemeExp[Named] & Preluded): Unit
 
     /** Parses a program into the form that the analyses support */
-    protected def parseProgram(txt: String, source: Source): SchemeExp[Named]
+    protected def parseProgram(txt: String, source: Source): SchemeExp[Named] & Preluded
 
     /**
      * Run a benchmark

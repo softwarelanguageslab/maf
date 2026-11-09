@@ -4,6 +4,7 @@ import maf.domain.*
 import maf.semantics.scheme.interpreter.ConcreteValues._
 import maf.syntax.*
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.util.Timeout
 
 import scala.concurrent.TimeoutException
@@ -24,7 +25,7 @@ class CPSSchemeInterpreter(
         case Kont(v, cc)        => Right(apply(v, cc))
 
     override def run(
-        program: SchemeExp[Mutation | Named],
+        program: SchemeExp[Mutation | Named] & Preluded,
         timeout: Timeout.T
       ): Value =
         setStore(initialSto)

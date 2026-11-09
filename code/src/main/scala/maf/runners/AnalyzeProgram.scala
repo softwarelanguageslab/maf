@@ -5,7 +5,7 @@ import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.scheme.*
-import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
+import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
 import maf.util.{Timeout, Timer}
 
 object AnalyzeProgram extends App:
@@ -14,9 +14,9 @@ object AnalyzeProgram extends App:
         case Terminated(iterationCount: Int, time: Long)
         case TimedOut
 
-    def parse(file: String): SchemeExp[Named] =
+    def parse(file: String): SchemeExp[Named] & Preluded =
         val parsed = SchemeParser.parseFile(file)
-        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val prelud = SchemePrelude.addPrelude(parsed)
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 

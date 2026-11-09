@@ -22,7 +22,7 @@ The source code (in [`code/src/main/scala/maf`](code/src/main/scala/maf)) is org
 | Package | Contents |
 |---|---|
 | `maf.util` | Generic utilities, such as monads, monoids, timeouts and file I/O. |
-| `maf.syntax` | Expressions (program points with a unique label) and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser, compiler and prelude, and `scheme.transformations` the source-to-source transformations (undefiner, mutable variable boxer, lexical addresser and renamer). |
+| `maf.syntax` | Expressions (program points with a unique label) and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser and compiler, and `scheme.transformations` the source-to-source transformations (prelude, undefiner, mutable variable boxer, lexical addresser and renamer). |
 | `maf.domain` | Semantic domains: addresses, environments, stores, errors and abstract domains. `lattice` contains the lattice interfaces and their implementations (concrete, constant propagation, type, bounded); `scheme` contains the Scheme lattice, abstract domains, addresses and primitives. |
 | `maf.semantics` | `scheme` contains the (monadic) abstract semantics of Scheme with its context-sensitivity policies and allocators; `scheme.interpreter` contains the concrete Scheme interpreters. |
 | `maf.fixpoint` | The generic modular fixpoint machinery: `ModAnalysis`, work lists and worklist algorithms. |
@@ -40,12 +40,12 @@ To run a modular analysis, you compose an analysis with an abstract domain, a co
 The analyses do not support `set!` directly, so a program first needs to be parsed, extended with the required prelude definitions, rewritten to use explicit boxes for mutable variables, and undefined:
 ```scala
 val parsed = SchemeParser.parseFile(path-to-file)
-val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+val prelud = SchemePrelude.addPrelude(parsed)
 val transf = SchemeMutableVarBoxer.transform(prelud)
 val prog = SchemeParser.undefine(transf)
 ```
 
-The type of a Scheme expression lists the features that may occur in it, such as definitions (`Define`) or assignments (`Mutation`), and each of these steps states in its type which features it removes or introduces. For instance, `parsed` is a `List[SchemeExp[Define | Mutation | Named | NeedsPrelude]]`, and `prog` is a `SchemeExp[Named]`: a program without definitions and assignments, which refers to variables by name (and may bind the same name more than once). The analyses only accept such programs, so the compiler rejects a program that skipped one of these steps. Renaming `prog` with `SchemeParser.rename` gives every variable a unique name, which results in a `SchemeExp[UniqueNames]`.
+The type of a Scheme expression lists the features that may occur in it, such as definitions (`Define`) or assignments (`Mutation`), and each of these steps states in its type which features it removes or introduces. For instance, `parsed` is a `List[SchemeExp[Define | Mutation | Named]]`, and `prog` is a `SchemeExp[Named]`: a program without definitions and assignments, which refers to variables by name. Properties of whole programs are instead marked by the step that establishes them, and kept by the steps that preserve them. For instance, adding the prelude marks a program as `Preluded`, so `prog` is in fact a `SchemeExp[Named] & Preluded`. The analyses only accept such programs, so the compiler rejects a program that skipped one of these steps. Similarly, renaming `prog` with `SchemeParser.rename` gives every variable a unique name, and marks the result with `UniqueNames`.
 
 Then, for instance, to analyse `prog` using a 1-CFA analysis with a constant-propagation domain:
 ```scala

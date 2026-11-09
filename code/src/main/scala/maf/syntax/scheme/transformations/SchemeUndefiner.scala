@@ -131,8 +131,9 @@ end UndefinerTester
  */
 object SchemeUndefiner extends UndefinerTester:
 
-    def undefine[F](exps: List[SchemeExp[F | Define]]): SchemeExp[F | Named] =
-        SchemeBody(undefineExps(exps))
+    /** Undefines a program, which keeps the marker `Preluded` (as the definitions of the prelude become bindings of a letrec) */
+    def undefine[F, M >: Preluded](exps: List[SchemeExp[F | Define]] & M): SchemeExp[F | Named] & M =
+        keepPrelude(exps)(exps => SchemeBody(undefineExps(exps)))
 
     def undefineExps[F](exps: List[SchemeExp[F | Define]], topLevel: Boolean = true): List[SchemeExp[F | Named]] =
         val result = check(exps, true)

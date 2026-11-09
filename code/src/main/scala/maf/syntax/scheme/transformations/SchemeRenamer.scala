@@ -3,6 +3,11 @@ package maf.syntax.scheme.transformations
 import maf.syntax.Identifier
 import maf.syntax.scheme.*
 
+/** Marks programs in which every variable has a unique name, which only renaming establishes */
+opaque type UniqueNames = Any
+
+private def unique[P](prg: P): P & UniqueNames = prg
+
 /**
  * Object that provides a method to rename variables in a Scheme program in order to have only unique names. For example, (let ((x 1)) (let ((x 2))
  * x)) will be converted to (let ((_x_0 1)) (let ((_x_1 2)) _x_1)). This is useful to perform ANF conversion.
@@ -20,10 +25,9 @@ object SchemeRenamer:
     /** Map each variables to the number of times it is bound */
     type CountMap = Map[String, Int]
 
-    def rename(exp: SchemeExp[Named]): SchemeExp[UniqueNames] =
-        rename(exp, Map[String, String](), Map[String, Int]()) match
-            // every bound variable of the result has a unique name
-            case (e, _) => e.asInstanceOf[SchemeExp[UniqueNames]]
+    /** Renames the variables of a program to unique names, which keeps the marker `Preluded` (as every variable keeps referring to the same binding) */
+    def rename[M >: Preluded](exp: SchemeExp[Named] & M): SchemeExp[Named] & UniqueNames & M =
+        unique(keepPrelude(exp)(exp => rename(exp, Map[String, String](), Map[String, Int]())._1))
 
     def rename[F <: Named](
         exp: SchemeExp[F],

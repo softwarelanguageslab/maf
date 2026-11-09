@@ -6,19 +6,19 @@ import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
-import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
+import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
 import maf.test.*
 
 trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
-    override def parseProgram(txt: String, benchmark: String): SchemeExp[Named] =
+    override def parseProgram(txt: String, benchmark: String): SchemeExp[Named] & Preluded =
         val parsed = SchemeParser.parse(txt, Source.File(benchmark))
-        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val prelud = SchemePrelude.addPrelude(parsed)
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
 class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (context-insensitive)"
-    def analysis(prg: SchemeExp[Named]) =
+    def analysis(prg: SchemeExp[Named] & Preluded) =
         new SchemeModFLocalFS(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
@@ -34,7 +34,7 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
 
 class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (call-site sensitive)"
-    def analysis(prg: SchemeExp[Named]) =
+    def analysis(prg: SchemeExp[Named] & Preluded) =
         new SchemeModFLocal(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(1)

@@ -4,6 +4,7 @@ import maf.fixpoint.AnalysisEntry
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 
 import scala.concurrent.duration._
@@ -36,7 +37,7 @@ trait PerformanceEvaluation:
     def benchmarks: Iterable[Benchmark]
 
     // The analyses that are evaluated (and their names)
-    def analyses: List[(SchemeExp[Named] => Analysis, String)]
+    def analyses: List[(SchemeExp[Named] & Preluded => Analysis, String)]
 
     var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
@@ -50,12 +51,12 @@ trait PerformanceEvaluation:
         case NoData             => "_"
 
     /** Parses a program into the form that the analyses support */
-    def parseProgram(txt: String, source: Source): SchemeExp[Named]
+    def parseProgram(txt: String, source: Source): SchemeExp[Named] & Preluded
 
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
     def measureAnalysis(
         file: String,
-        analysis: SchemeExp[Named] => Analysis
+        analysis: SchemeExp[Named] & Preluded => Analysis
       )(using ex: ExecutionContext
       ): Future[(PerformanceResult, List[Metrics])] =
         def run(): (PerformanceResult, List[Metrics]) =

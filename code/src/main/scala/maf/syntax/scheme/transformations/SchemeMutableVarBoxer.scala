@@ -33,7 +33,11 @@ trait BaseSchemeMutableVarBoxer:
     //      * all definitions of these variables using `new-ref`
     //      * all assignments to these variables using `set-ref!`
     //      * all references to these variables using `deref`
-    def transform[F <: Define](exp: List[SchemeExp[F | Mutation | Named]]): List[SchemeExp[F | Named]] =
+    // boxing introduces references to definitions of the prelude (see `SchemePrelude.boxingDefs`), which `addPrelude` always includes
+    def transform[F <: Define](exp: List[SchemeExp[F | Mutation | Named]] & Preluded): List[SchemeExp[F | Named]] & Preluded =
+        keepPrelude(exp)(box[F])
+
+    private def box[F <: Define](exp: List[SchemeExp[F | Mutation | Named]]): List[SchemeExp[F | Named]] =
         // first, collect all mutable vars
         val translator = lexicalTranslator
         val translated = translator.translateProgram[F | Mutation](exp)

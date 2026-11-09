@@ -3,7 +3,7 @@ package maf.semantics.scheme.interpreter
 import maf.domain.*
 import maf.syntax.*
 import maf.syntax.scheme.*
-import maf.syntax.scheme.transformations.SchemeUndefiner
+import maf.syntax.scheme.transformations.{Preluded, SchemePrelude, SchemeUndefiner}
 import maf.util.*
 
 import scala.concurrent.duration.{Duration, SECONDS}
@@ -28,7 +28,7 @@ class SchemeInterpreter(
 
     /** Evaluates `program`. Will check the analysis result by calling `compare` on all encountered values. */
     def run(
-        program: SchemeExp[Mutation | Named],
+        program: SchemeExp[Mutation | Named] & Preluded,
         timeout: Timeout.T
       ): Value =
         setStore(initialSto)
@@ -196,7 +196,7 @@ class SchemeInterpreter(
     var buffer: Int = 10000                //buffer has to be sufficiently large
 
     def runWithMaxSteps(
-                         program: SchemeExp[Mutation | Named],
+                         program: SchemeExp[Mutation | Named] & Preluded,
                          maxSteps: Long
                        ): Value =
         setStore(initialSto)

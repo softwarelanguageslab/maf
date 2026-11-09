@@ -3,16 +3,16 @@ package maf.test.syntax.scheme.transformations
 import maf.semantics.scheme.interpreter.*
 import maf.syntax.{Identifier, Position, Source}
 import maf.syntax.scheme.*
-import maf.syntax.scheme.transformations.SchemeMutableVarBoxer
+import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude, UniqueNames}
 import maf.util.Timeout
 
 import org.scalatest.propspec.AnyPropSpec
 
 class RenamerTests extends AnyPropSpec:
     // undefines and boxes the given program, as the renamer requires
-    def prepare(program: String): SchemeExp[Named] =
+    def prepare(program: String): SchemeExp[Named] & Preluded =
         val parsed = SchemeParser.parse(program, Source.Text)
-        val prelud = SchemePrelude.addPrelude(parsed, incl = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!"))
+        val prelud = SchemePrelude.addPrelude(parsed)
         SchemeParser.undefine(SchemeMutableVarBoxer.transform(prelud))
 
     // the identifiers of all variables that are bound in the given expression
@@ -26,7 +26,7 @@ class RenamerTests extends AnyPropSpec:
             case _                   => Nil
         }
 
-    def run(program: SchemeExp[Mutation | Named]): ConcreteValues.Value =
+    def run(program: SchemeExp[Mutation | Named] & Preluded): ConcreteValues.Value =
         val interpreter = new SchemeInterpreter((_: Option[Position], _: ConcreteValues.Value) => (), io = new EmptyIO())
         interpreter.run(program, Timeout.none)
 
@@ -44,7 +44,7 @@ class RenamerTests extends AnyPropSpec:
     programs.foreach { (program, result) =>
         property(s"Renaming gives unique names to the variables of $program, without changing its result") {
             val prepared = prepare(program)
-            val renamed: SchemeExp[UniqueNames] = SchemeParser.rename(prepared)
+            val renamed: SchemeExp[Named] & Preluded & UniqueNames = SchemeParser.rename(prepared)
             val before = binders(prepared).map(_.name)
             val after = binders(renamed).map(_.name)
             assert(before.distinct.size < before.size, "The program should bind some name more than once")

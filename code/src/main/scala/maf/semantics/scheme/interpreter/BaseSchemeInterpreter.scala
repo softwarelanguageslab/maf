@@ -2,6 +2,7 @@ package maf.semantics.scheme.interpreter
 
 import maf.domain.Error
 import maf.syntax.scheme.*
+import maf.syntax.scheme.transformations.Preluded
 import maf.syntax.sexp
 import maf.syntax.sexp.{SExp, SExpId, SExpPair, SExpValue}
 import maf.util.Timeout
@@ -17,7 +18,7 @@ trait BaseSchemeInterpreter[V]:
     import ConcreteValues._
 
     def run(
-        program: SchemeExp[Mutation | Named],
+        program: SchemeExp[Mutation | Named] & Preluded,
         timeout: Timeout.T
       ): Value
 
