@@ -5,7 +5,7 @@ import maf.syntax.scheme.*
 
 /**
  * Object that provides a method to rename variables in a Scheme program in order to have only unique names. For example, (let ((x 1)) (let ((x 2))
- * x)) will be converted to (let ((_x0 1)) (let ((_x1 2)) _x1)). This is useful to perform ANF conversion.
+ * x)) will be converted to (let ((_x_0 1)) (let ((_x_1 2)) _x_1)). This is useful to perform ANF conversion.
  *
  * Only programs without definitions and assignments can be renamed, so programs have to be undefined and boxed first:
  *   - the names of definitions are not renamed, and a definition that shadows a renamed variable is not taken into account;
@@ -14,7 +14,7 @@ import maf.syntax.scheme.*
  */
 object SchemeRenamer:
 
-    /** Maps each variables to their alpha-renamed version (eg. x -> _x0) */
+    /** Maps each variables to their alpha-renamed version (eg. x -> _x_0) */
     type NameMap = Map[String, String]
 
     /** Map each variables to the number of times it is bound */
@@ -125,7 +125,9 @@ object SchemeRenamer:
         val c: Int = count.get(variable.name) match
             case Some(x) => x + 1
             case None    => 0
-        val n = s"_$variable$c"
+        // the counter is separated from the name, as the name can end in digits (otherwise, `a` with counter 10 and `a1` with counter 0 would
+        // both become `_a10`)
+        val n = s"_${variable.name}_$c"
         (Identifier(n, variable.pos), names + (variable.name -> n), count + (variable.name -> c))
 
     /** Same as count1 but for a list of variables */
