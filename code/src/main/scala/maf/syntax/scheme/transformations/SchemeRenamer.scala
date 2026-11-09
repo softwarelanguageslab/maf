@@ -14,7 +14,7 @@ private def unique[P](prg: P): P & UniqueNames = prg
  *
  * Only programs without definitions and assignments can be renamed, so programs have to be undefined and boxed first:
  *   - the names of definitions are not renamed, and a definition that shadows a renamed variable is not taken into account;
- *   - boxing assignments introduces references to definitions of the prelude (such as `__toplevel_cons`) by their original names, which renaming
+ *   - boxing assignments introduces references to definitions of the prelude (such as `#%cons`) by their original names, which renaming
  *     changes.
  */
 object SchemeRenamer:

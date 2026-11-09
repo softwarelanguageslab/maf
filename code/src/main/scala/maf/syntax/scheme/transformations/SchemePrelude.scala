@@ -358,13 +358,13 @@ class BaseSchemePrelude:
       "deref" -> "(define deref car)",
       "ref-set" -> "(define ref-set set-car!)",
       "void" -> "(define (void) #f)",
-      "__toplevel_cons" -> "(define __toplevel_cons cons)",
-      // "__toplevel_cons" -> "(define (__toplevel_cons a d) (cons a d))", ALTERNATIVE: lower precision, better analysis complexity
-      "__toplevel_car" -> "(define __toplevel_car car)",
-      "__toplevel_cdr" -> "(define __toplevel_cdr cdr)",
-      "__toplevel_set-car!" -> "(define __toplevel_set-car! set-car!)",
-      "__toplevel_set-cdr!" -> "(define __toplevel_set-cdr! set-cdr!)",
-      "__toplevel_append" -> "(define (__toplevel_append l1 l2) (append l1 l2))",
+      "#%cons" -> "(define #%cons cons)",
+      // "#%cons" -> "(define (#%cons a d) (cons a d))", ALTERNATIVE: lower precision, better analysis complexity
+      "#%car" -> "(define #%car car)",
+      "#%cdr" -> "(define #%cdr cdr)",
+      "#%set-car!" -> "(define #%set-car! set-car!)",
+      "#%set-cdr!" -> "(define #%set-cdr! set-cdr!)",
+      "#%append" -> "(define (#%append l1 l2) (append l1 l2))",
     )
 
     // the definitions of the prelude only need other definitions of the prelude, which `addPrelude` adds as well
@@ -386,7 +386,7 @@ class BaseSchemePrelude:
         fv.intersect(primNames)
 
     /** The definitions of the prelude that boxing a program introduces references to (see `SchemeRef`, `SchemeDeref` and `SchemeSetRef`) */
-    val boxingDefs: Set[String] = Set("__toplevel_cons", "__toplevel_cdr", "__toplevel_set-cdr!")
+    val boxingDefs: Set[String] = Set("#%cons", "#%cdr", "#%set-cdr!")
 
     /**
      * Transitively adds all required definitions of the prelude to a program, in addition to those mentioned in `incl` and those that boxing the program

@@ -124,7 +124,8 @@ end UndefinerTester
  * Removes defines from a Scheme program, replacing them by letrec bindings. For example, `(define foo 1) (define (f x) x) (f foo)` is converted to
  * `(letrec ((foo 1) (f (lambda (x) x))) (f foo))`, which is semantically equivalent with respect to the end result.
  *
- * At the top level, all other expressions are bound to fresh variables (`_0`, `_1`, ...) as well, and the program evaluates to the last of these.
+ * At the top level, all other expressions are bound to fresh variables (`#%0`, `#%1`, ...) as well, and the program evaluates to the last of these.
+ * These names are reserved, so that programs can not contain them.
  * The result therefore has no definitions, but may refer to variables by name.
  *
  * The program is assumed to be compiled by the SchemeCompiler, and is checked not to contain defines in an invalid context.
@@ -149,7 +150,7 @@ object SchemeUndefiner extends UndefinerTester:
         private var counter = 0
 
         private def fresh(pos: Option[Position]): Identifier =
-            val id = Identifier(s"_$counter", pos)
+            val id = Identifier(s"#%$counter", pos)
             counter += 1
             id
 

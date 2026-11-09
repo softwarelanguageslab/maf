@@ -19,9 +19,10 @@ trait SchemeParserTestsSpec extends SchemeBenchmarkTests:
             val parsed = parseProgram(content, Source.File(benchmark))
             // Check that the parsing was succesful
             assert(parsed.nonEmpty)
-            // Check that printing and parsing the result again gives the same result
+            // Check that printing and parsing the result again gives the same result (where the printed program may contain reserved identifiers, e.g.,
+            // for quasiquotes)
             val printed = parsed.mkString(" ")
-            val reparsed = parseProgram(printed, Source.Text)
+            val reparsed = SchemeParser.parseInternal(printed, Source.Text)
             assert(parsed.toString == reparsed.toString, "Printing and parsing again gives a result different from the original parse")
             assert(reparsed.flatMap(_.subexpressions).forall(e => e.pos.forall(_.source == Source.Text)))
         }
@@ -52,4 +53,21 @@ class QuasiquoteTests extends AnyFlatSpec:
     they should "reject unquotes with other than one argument" in {
         assertThrows[SchemeCompiler.SchemeCompilerException](parse("`(1 (unquote x y))"))
         assertThrows[SchemeCompiler.SchemeCompilerException](parse("`(1 (unquote))"))
+    }
+
+class ReservedIdentifierTests extends AnyFlatSpec:
+    def parse(program: String): List[SchemeExp[Any]] = SchemeParser.parse(program, Source.Text)
+
+    "Programs" should "not contain reserved identifiers" in {
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("(define #%cons 1)"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("(let ((#%cdr car)) (#%cdr '(1 2)))"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("(#%cons 1 2)"))
+    }
+
+    they should "be able to use quasiquotes, which refer to reserved identifiers once printed" in {
+        val parsed = parse("(define x 1) `(1 ,x)")
+        val printed = parsed.mkString(" ")
+        assert(printed.contains(s"${SchemeParser.reservedPrefix}cons"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse(printed))
+        assert(SchemeParser.parseInternal(printed, Source.Text).toString == parsed.toString)
     }

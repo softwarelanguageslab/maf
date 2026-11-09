@@ -505,11 +505,11 @@ enum LexicalRef:
 
 object SchemePair:
     def apply[F](car: SchemeExp[F], cdr: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", pos)), List(car, cdr), pos)
+        SchemeFuncall(SchemeVar(Identifier("#%cons", pos)), List(car, cdr), pos)
 
 object SchemeSplicedPair:
     def apply[F](splice: SchemeExp[F], cdr: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_append", pos)), List(splice, cdr), pos)
+        SchemeFuncall(SchemeVar(Identifier("#%append", pos)), List(splice, cdr), pos)
 
 /** A   value (number, symbol, string, ...) */
 case class SchemeValue(value: Value, pos: Option[Position]) extends SchemeExp[Nothing]:
@@ -526,14 +526,14 @@ case class SchemeAssert[+F](exp: SchemeExp[F], pos: Option[Position]) extends Sc
 /** Creates explicit (mutable) reference */
 object SchemeRef:
     def apply[F](exp: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_cons", pos)), List(SchemeValue(Value.Symbol("ref"), pos), exp), pos)
+        SchemeFuncall(SchemeVar(Identifier("#%cons", pos)), List(SchemeValue(Value.Symbol("ref"), pos), exp), pos)
 
 /** Dereferences an explicit (mutable) reference */
 object SchemeDeref:
     def apply[F](ref: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_cdr", pos)), List(ref), pos)
+        SchemeFuncall(SchemeVar(Identifier("#%cdr", pos)), List(ref), pos)
 
 /** Updates an explicit (mutable) reference */
 object SchemeSetRef:
     def apply[F](ref: SchemeExp[F], exp: SchemeExp[F], pos: Option[Position]): SchemeExp[F | Named] =
-        SchemeFuncall(SchemeVar(Identifier("__toplevel_set-cdr!", pos)), List(ref, exp), pos)
+        SchemeFuncall(SchemeVar(Identifier("#%set-cdr!", pos)), List(ref, exp), pos)

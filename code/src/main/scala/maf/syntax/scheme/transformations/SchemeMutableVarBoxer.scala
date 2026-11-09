@@ -46,7 +46,8 @@ trait BaseSchemeMutableVarBoxer:
 
     type Rewrites = Map[LexicalRef, Identifier]
 
-    private def genSym(nam: String) = s"__ref_var_$nam"
+    // the name of the reference of a mutable variable, which is reserved so that programs can not contain it
+    private def genSym(nam: String) = s"#%ref-$nam"
 
     private def rewriteProgram[F <: Define](exp: List[SchemeExp[F | Mutation | Lexical]], mut: Set[LexicalRef]): List[SchemeExp[F | Named]] =
         val mutPrms = mut.collect[LexicalRef.PrmRef] { case prm: LexicalRef.PrmRef => prm }
