@@ -17,7 +17,8 @@ trait SchemeSemantics:
     // shorthands
     type Val = Value
     type Adr = Address
-    // the analysed programs have no definitions and no assignments (i.e., they are undefined and boxed), and refer to variables by name
+    // the analysed programs have no definitions and no assignments (i.e., they are undefined and boxed), and refer to variables by name, which may be
+    // bound more than once
     type Exp = SchemeExp[Named]
     type Var = Identifier
     type Lam = SchemeLambdaExp[Named]

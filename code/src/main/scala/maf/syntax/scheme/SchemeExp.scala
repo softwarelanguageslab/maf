@@ -21,8 +21,16 @@ sealed trait Define
 /** Assignments: `(set! x e)` */
 sealed trait Mutation
 
-/** Variables that are referred to by name */
+/** Variables that are referred to by name, where the same name may be bound more than once */
 sealed trait Named
+
+/**
+ * Variables that are referred to by name, where every name is bound at most once. These are a special case of `Named` variables, and variables
+ * themselves have this feature, so that they fit in programs with unique names. Compiling a program gives it the feature `Named`, and renaming its
+ * variables to unique names turns that into `UniqueNames`. (A program that is built from expressions directly gets this feature as well, even if it
+ * binds a name more than once.)
+ */
+sealed trait UniqueNames extends Named
 
 /** Lexically addressed variables, which refer to the identifier that binds them */
 sealed trait Lexical
@@ -271,7 +279,7 @@ case class SchemeSet[+F](
     variable: Identifier,
     value: SchemeExp[F],
     pos: Option[Position])
-    extends SchemeSetExp[F | Mutation | Named]:
+    extends SchemeSetExp[F | Mutation | UniqueNames]:
     override def toString: String = s"(set! $variable $value)"
 
 case class SchemeSetLex[+F](
@@ -495,7 +503,7 @@ sealed trait SchemeVarExp[+F] extends SchemeExp[F]:
     def fv: Set[String] = Set(id.name)
     def subexpressions: List[Expression] = List(id)
 
-case class SchemeVar(id: Identifier) extends SchemeVarExp[Named]:
+case class SchemeVar(id: Identifier) extends SchemeVarExp[UniqueNames]:
     override def toString: String = id.name
 
 case class SchemeVarLex(id: Identifier, lexAddr: LexicalRef) extends SchemeVarExp[Lexical]:

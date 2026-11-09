@@ -6,6 +6,11 @@ import maf.syntax.scheme.*
 /**
  * Object that provides a method to rename variables in a Scheme program in order to have only unique names. For example, (let ((x 1)) (let ((x 2))
  * x)) will be converted to (let ((_x0 1)) (let ((_x1 2)) _x1)). This is useful to perform ANF conversion.
+ *
+ * Only programs without definitions and assignments can be renamed, so programs have to be undefined and boxed first:
+ *   - the names of definitions are not renamed, and a definition that shadows a renamed variable is not taken into account;
+ *   - boxing assignments introduces references to definitions of the prelude (such as `__toplevel_cons`) by their original names, which renaming
+ *     changes.
  */
 object SchemeRenamer:
 
@@ -15,11 +20,12 @@ object SchemeRenamer:
     /** Map each variables to the number of times it is bound */
     type CountMap = Map[String, Int]
 
-    def rename[F <: Surface](exp: SchemeExp[F]): SchemeExp[F] =
+    def rename(exp: SchemeExp[Named]): SchemeExp[UniqueNames] =
         rename(exp, Map[String, String](), Map[String, Int]()) match
-            case (e, _) => e
+            // every bound variable of the result has a unique name
+            case (e, _) => e.asInstanceOf[SchemeExp[UniqueNames]]
 
-    def rename[F <: Surface](
+    def rename[F <: Named](
         exp: SchemeExp[F],
         names: NameMap,
         count: CountMap
@@ -67,29 +73,12 @@ object SchemeRenamer:
                         case (exps, count2) =>
                             renameList(body, names1, count2) match
                                 case (body1, count3) => (SchemeLetrec(variables.zip(exps), body1, pos), count3)
-
-        case SchemeSet(variable, value, pos) =>
-            rename(value, names, count) match
-                case (value1, count1) =>
-                    (SchemeSet(names.get(variable.name) match {
-                                   case Some(n) => Identifier(n, variable.pos)
-                                   case None    => variable
-                               },
-                               value1,
-                               pos
-                     ),
-                     count1
-                    )
         case SchemeBegin(body, pos) =>
             renameList(body, names, count) match
                 case (body1, count1) => (SchemeBegin(body1, pos), count1)
         case SchemeAssert(exp, pos) =>
             rename(exp, names, count) match
                 case (exp1, count1) => (SchemeAssert(exp1, pos), count1)
-        case SchemeDefineVariable(name, value, pos) =>
-            /* Keeps name untouched (maybe not correct?) */
-            rename(value, names, count) match
-                case (value1, count1) => (SchemeDefineVariable(name, value1, pos), count1)
         case SchemeVar(id) =>
             names.get(id.name) match
                 case Some(n) => (SchemeVar(Identifier(n, id.pos)), count)
@@ -98,7 +87,7 @@ object SchemeRenamer:
             (SchemeValue(v, pos), count)
 
     /** Renames a list of expressions executed sequentially (eg. within a begin) */
-    def renameList[F <: Surface](
+    def renameList[F <: Named](
         exps: List[SchemeExp[F]],
         names: NameMap,
         count: CountMap
@@ -109,7 +98,7 @@ object SchemeRenamer:
             (exp1 :: rest1, count2)
         case Nil => (Nil, count)
 
-    def renameLetStarBindings[F <: Surface](
+    def renameLetStarBindings[F <: Named](
         bindings: List[(Identifier, SchemeExp[F])],
         names: NameMap,
         count: CountMap

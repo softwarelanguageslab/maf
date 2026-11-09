@@ -10,8 +10,8 @@ object SchemeParser:
     /** Compiles a s-expression into a scheme expression */
     def compile(exp: SExp): SchemeExp[Surface] = SchemeCompiler.compile(exp)
 
-    /** Performs alpha-renaming to ensure that every variable has a unique name */
-    def rename[F <: Surface](exp: SchemeExp[F]): SchemeExp[F] = SchemeRenamer.rename(exp)
+    /** Performs alpha-renaming to ensure that every variable has a unique name (which requires the program to be undefined and boxed) */
+    def rename(exp: SchemeExp[Named]): SchemeExp[UniqueNames] = SchemeRenamer.rename(exp)
 
     /** Replace defines in a program (a list of expressions) by a big letrec as a single expression */
     def undefine[F](exps: List[SchemeExp[F | Define]]): SchemeExp[F | Named] = SchemeUndefiner.undefine(exps)
