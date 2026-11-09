@@ -65,8 +65,9 @@ trait BaseSchemeLexicalAddresser:
             val bdyLex = translateBody(body, lenv.newFrame.extend(vrs))
             SchemeLet(bdsLex, bdyLex, pos)
         case SchemeLetStar(bindings, body, pos) =>
-            val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp[F | Lexical])], LexicalEnv)]((Nil, lenv.newFrame)) {
-                case ((accBds, accEnv), (id, vexp)) => ((id, translate(vexp, accEnv)) :: accBds, accEnv.extend(id))
+            // every binding gets its own frame, as a let* can bind the same name more than once
+            val (bdsLex, extEnv) = bindings.foldLeft[(List[(Identifier, SchemeExp[F | Lexical])], LexicalEnv)]((Nil, lenv)) {
+                case ((accBds, accEnv), (id, vexp)) => ((id, translate(vexp, accEnv)) :: accBds, accEnv.newFrame.extend(id))
             }
             val bdyLex = translateBody(body, extEnv)
             SchemeLetStar(bdsLex.reverse, bdyLex, pos)

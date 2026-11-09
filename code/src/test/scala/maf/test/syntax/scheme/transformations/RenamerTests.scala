@@ -36,7 +36,9 @@ class RenamerTests extends AnyPropSpec:
       // a mutable parameter (which gets boxed) with the same name as a global variable
       "(define (counter n) (lambda () (set! n (+ n 1)) n)) (define c (counter 0)) (define n 10) (c) (+ (c) n)" -> 12,
       // names that end in a digit, so the 11th variable named `a` and the first named `a1` must not get the same name
-      s"(define (f a1) ${(0 to 10).foldRight("a1")((i, body) => s"(let ((a $i)) $body)")}) (f 42)" -> 42
+      s"(define (f a1) ${(0 to 10).foldRight("a1")((i, body) => s"(let ((a $i)) $body)")}) (f 42)" -> 42,
+      // a let* that binds the same name more than once, of which only the last binding is mutable (and gets boxed)
+      "(define (f x) (let* ((x (+ x 1)) (x (* x 2))) (set! x (+ x 1)) x)) (f 1)" -> 5
     )
 
     programs.foreach { (program, result) =>
