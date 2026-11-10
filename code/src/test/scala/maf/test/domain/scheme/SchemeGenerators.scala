@@ -117,7 +117,6 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
         val anyClosure: Gen[valLat.Closure] = for
             nm1 <- Gen.choose(0, 100) // lambdas are faked in 100 different variations
             lam = SchemeLambda(None, List(), List(SchemeValue(Value.Integer(nm1), None)), None, None)
-            nm2 <- Gen.choose(0, 100) // environments are faked in 100 different variations
         yield ((lam, emptyEnv))
         // a generator for each type of value
         val anyNilV: Gen[V] = Gen.const(modularLattice.Nil)

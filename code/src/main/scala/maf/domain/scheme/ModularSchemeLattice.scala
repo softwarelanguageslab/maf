@@ -87,7 +87,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
             def join(x: (L, L), y: => (L, L)): (L, L) = (schemeLattice.join(x._1, y._1), schemeLattice.join(x._2, y._2))
             def subsumes(x: (L, L), y: => (L, L)): Boolean =
                 (schemeLattice.subsumes(x._1, y._1) && schemeLattice.subsumes(x._2, y._2))
-            def eql[B: BoolLattice](x: (L, L), y: (L, L)): B = ???
+            def eql[B2: BoolLattice](x: (L, L), y: (L, L)): B2 = ???
         }
 
     object VecT extends AbstractType[Vec, Vec]:
@@ -143,7 +143,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                         IntLattice[I].subsumes(idx1, idx2) && schemeLattice.subsumes(vlu1, vlu2)
                     }
                 }
-            def eql[B: BoolLattice](x: Vec, y: Vec): B = ???
+            def eql[B2: BoolLattice](x: Vec, y: Vec): B2 = ???
         }
 
     object VoidT extends AbstractType[Unit, Void.type]:
@@ -843,7 +843,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
     override def eq(x: L, y: L)(comparePtr: MaybeEq[A]): L = schemeLattice.eq(x, y)(comparePtr)
 
-    private def emptyEnv[A <: Address] = Environment[A](Iterable.empty)
+    private def emptyEnv[A2 <: Address] = Environment[A2](Iterable.empty)
 
     def convertV[BaseAddr <: Address](
         baseDomain: ModularSchemeLattice[A, S, B, I, R, C, Sym]

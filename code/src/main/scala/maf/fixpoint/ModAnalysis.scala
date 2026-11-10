@@ -3,6 +3,7 @@ package maf.fixpoint
 import maf.syntax.*
 import maf.util.{SmartHash, Timeout}
 
+import scala.annotation.unused
 import scala.concurrent.duration._
 
 // an intra-analysis of a component can read ("register") or write ("trigger") dependencies
@@ -57,7 +58,7 @@ abstract class ModAnalysis[Expr <: Expression](val program: Expr) extends Clonea
     // when we discover a component that has not yet been analyzed, we add it to the worklist
     // concretely, we keep track of a set `visited` of all components that have already been visited
     var visited: Set[Component] = Set()
-    def spawn(cmp: Component, from: Component): Unit = spawn(cmp)
+    def spawn(cmp: Component, @unused from: Component): Unit = spawn(cmp)
     def spawn(cmp: Component): Unit =
         if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
             visited += cmp

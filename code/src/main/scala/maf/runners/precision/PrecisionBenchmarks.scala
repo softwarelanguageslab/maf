@@ -12,6 +12,8 @@ import maf.syntax.scheme.*
 import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 
+import scala.annotation.unused
+
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
     type Benchmark = String
@@ -225,7 +227,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @param addResult
      *   a callback function that can register values in the result map
      */
-    def handleInterpreterError(addResult: (Option[Position], ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
+    def handleInterpreterError(@unused addResult: (Option[Position], ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
 
     /**
      * Run the concrete interpreter on a given program

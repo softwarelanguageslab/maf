@@ -2,6 +2,7 @@ package maf.test.analysis.scheme
 
 import java.util.concurrent.TimeoutException
 import org.scalatest.Tag
+import scala.annotation.unused
 import scala.concurrent.duration._
 
 import maf.analysis.*
@@ -30,8 +31,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     def name: String
     def analysis(b: SchemeExp[Named] & Preluded): Analysis
     // the timeout and max number of concrete runs for a single benchmark program (default: 1min.)
-    def analysisTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
-    def concreteTimeout(b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
+    def analysisTimeout(@unused b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
+    def concreteTimeout(@unused b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
     def concreteRuns(b: Benchmark): Int = 1 // for highly non-deterministic programs, a higher value is recommended
 
     /**
@@ -44,7 +45,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
      * @return
      *   a concrete SchemeInterpreter
      */
-    def createInterpreter(addResult: (Option[Position], ConcreteValues.Value) => Unit, io: IO = new EmptyIO(), benchmark: String): SchemeInterpreter =
+    def createInterpreter(addResult: (Option[Position], ConcreteValues.Value) => Unit, io: IO = new EmptyIO(), @unused benchmark: String): SchemeInterpreter =
         new SchemeInterpreter(addResult, io)
 
     /**
@@ -55,7 +56,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
      * @param addResult
      *   a callback function that can register values in the result map
      */
-    def handleInterpreterError(addResult: (Option[Position], ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
+    def handleInterpreterError(@unused addResult: (Option[Position], ConcreteValues.Value) => Unit): PartialFunction[Throwable, Any] = { case e => throw e }
 
     // the actual testing code
     protected def runInterpreter(

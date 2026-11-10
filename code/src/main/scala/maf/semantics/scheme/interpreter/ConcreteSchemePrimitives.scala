@@ -201,7 +201,7 @@ trait ConcreteSchemePrimitives:
                     else signalException(StringError(s"$name (${fexp.pos.show}): invalid argument type $x"))
                 case _ => signalException(StringError(s"$name (${fexp.pos.show}): invalid arguments $args"))
 
-        abstract class SingleArgumentPrim(name: String) extends SingleArgumentPrimWithExp(name):
+        abstract class SingleArgumentPrim(nam: String) extends SingleArgumentPrimWithExp(nam):
             def fun: PartialFunction[Value, Value]
 
             def fun(fexp: SchemeFuncall[Mutation | Named]): PartialFunction[Value, Value] = fun
@@ -288,7 +288,7 @@ trait ConcreteSchemePrimitives:
                 case Value.Integer(x) => Value.Integer(x.abs)
                 case Value.Real(x)    => Value.Real(scala.math.abs(x))
 
-        abstract class DoublePrim(name: String, f: Double => Double) extends SingleArgumentPrim(name):
+        abstract class DoublePrim(nam: String, f: Double => Double) extends SingleArgumentPrim(nam):
             def fun =
                 case Value.Real(x)    => Value.Real(f(x))
                 case Value.Integer(x) => Value.Real(f(x.toDouble))
@@ -743,7 +743,7 @@ trait ConcreteSchemePrimitives:
             val name = "any?"
 
             def call(args: List[Value], position: Option[Position]) = args match
-                case value :: Nil => Value.Bool(true)
+                case _ :: Nil => Value.Bool(true)
                 case _            => signalException(s"$name (${position.show}) wrong number of arguments, 1 expected, got ${args.length}")
 
         object `read` extends Prim:

@@ -51,7 +51,7 @@ class SchemeInterpreter(
             case e :: Nil => tailcall(eval(e, env, timeout))
             case e1 :: exps =>
                 for
-                    v1 <- tailcall(eval(e1, env, timeout))
+                    _ <- tailcall(eval(e1, env, timeout))
                     vn <- tailcall(evalSequence(exps, env, timeout))
                 yield vn
 
@@ -151,7 +151,7 @@ class SchemeInterpreter(
       ): TailRec[Value] =
         f match
             // A regular closure with a fixed amount of parameters
-            case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
+            case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, _, pos2), env2) =>
                 if argsNames.length != argsv.length then
                     signalException(
                       ArityError(pos2, argsNames.length, argsv.length, call.pos)
@@ -167,7 +167,7 @@ class SchemeInterpreter(
                 yield ret
 
             // A closure with a variable amount of parameters
-            case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
+            case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, _, pos2), env2) =>
                 val arity = argsNames.length
                 if argsv.length < arity then
                     signalException(
@@ -217,7 +217,7 @@ class SchemeInterpreter(
                 for
                     fv <- tailcall(eval(f, env, timeout))
                     res <- fv match
-                        case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, ann, pos2), env2) =>
+                        case Value.Clo(lambda @ SchemeLambda(name, argsNames, body, _, pos2), env2) =>
                             if argsNames.length != args.length then
 
                                 signalException(
@@ -232,7 +232,7 @@ class SchemeInterpreter(
                                 }
                                 res <- tailcall(evalSequence(body, envExt, timeout))
                             yield res
-                        case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, ann, pos2), env2) =>
+                        case Value.Clo(lambda @ SchemeVarArgLambda(name, argsNames, vararg, body, _, pos2), env2) =>
                             val arity = argsNames.length
                             if args.length < arity then
                                 signalException(
@@ -309,7 +309,7 @@ object SchemeInterpreter:
     def main(args: Array[String]): Unit =
         if args.length == 1 then
             val pgm = SchemeUndefiner.undefine(SchemePrelude.addPrelude(SchemeParser.parseFile(args(0))))
-            val interpreter = new SchemeInterpreter((id, v) => ())
+            val interpreter = new SchemeInterpreter((_, _) => ())
             val res = interpreter.run(pgm, Timeout.start(timeout))
             println(s"Result: $res")
         else println(s"Expected file to run as argument")

@@ -57,10 +57,9 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
         analyses.foreach { case (analysis, name) =>
             val t0 = System.nanoTime
             val otherResult = runAnalysis(analysis, name, program, path, timeout())
-            val t1 = System.nanoTime
             val duration = (System.nanoTime - t0) / 1e9d  //duration is reported in seconds
             println(s"duration: $duration")
-            val (lessPrecise, size) = otherResult match
+            val (lessPrecise, _) = otherResult match
                 case Terminated(analysisResult) =>
                     additionalCounts(name, path, analysisResult, concreteResult)
                     performanceResults = performanceResults.add(path, name, Some(duration))
@@ -76,7 +75,7 @@ abstract class AnalysisComparisonAlt[Num: IntLattice, Rea: RealLattice, Bln: Boo
             //precisionResults = precisionResults.add(path, s"$name-total", size)
         }
 
-    private def runBenchmarks(benchmarks: List[Benchmark], outputFolder: Option[String] = None) =
+    private def runBenchmarks(benchmarks: List[Benchmark], outputFolder: Option[String]) =
       assert(benchmarks.size == benchmarks.toSet.size) // sanity check to make sure we don't have duplicates
       benchmarks.foreach { benchmark =>
         runBenchmark(benchmark)

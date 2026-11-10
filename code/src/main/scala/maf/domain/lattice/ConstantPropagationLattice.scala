@@ -19,11 +19,11 @@ object ConstantPropagation:
     abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]]:
         def level(v: L[A]): scala.Int = v match
             case Top         => 3
-            case Constant(v) => 2
+            case Constant(_) => 2
             case Bottom      => 1
         def show(x: L[A]): String = x match
             case Top         => typeName
-            case Constant(x) => x.toString
+            case Constant(x) => Show[A].show(x)
             case Bottom      => s"$typeName.⊥"
         val bottom: L[A] = Bottom
         val top: L[A] = Top

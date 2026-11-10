@@ -41,7 +41,7 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
     def extend(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
         case None if lat.isBottom(vlu) => Delta.emptyDelta[A,V]
         case None                      => Delta(SmartMap(adr -> (vlu, countFor(adr))))
-        case Some(old @ (oldV, oldC))  => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)))
+        case Some((oldV, oldC))        => Delta(SmartMap(adr -> (lat.join(oldV, vlu), oldC.inc)))
     def update(adr: A, vlu: V): Delta[A,V] = content.get(adr) match
         case None | Some((_, CountZero)) => throw new Exception("Trying to update a non-existing address")
         case Some((_, CountOne))         => Delta(SmartMap(adr -> (vlu, CountOne))) // strong update
@@ -76,18 +76,18 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
         ))
     // replaying a delta that was computed w.r.t. a GC'd store
     def replay(delta: Delta[A,V], allocated: Set[A]): Delta[A,V] =
-        Delta(delta.delta.map { case bnd @ (adr, (v, c)) =>
+        Delta(delta.delta.map { case bnd @ (adr, (v, _)) =>
             if allocated.contains(adr) then 
                 get(adr) match {
                     case None           => bnd 
-                    case Some((v2, c2)) => (adr, (lat.join(v2, v), CountInf))
+                    case Some((v2, _))  => (adr, (lat.join(v2, v), CountInf))
                 }
             else 
                 bnd 
         })
     override def toString = 
         content.content
-               .filter { case (a, (v, c)) => a.printable }
+               .filter { case (a, _) => a.printable }
                .toString
 
 case class LocalStoreGC[A <: Address,V]()(using lat: LatticeWithAddrs[V, A], shouldCount: A=>Boolean) extends AbstractGC[LocalStore[A,V], A]:

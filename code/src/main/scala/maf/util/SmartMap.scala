@@ -26,9 +26,6 @@ case class SmartMap[K, +V](content: Map[K, V], hc: Long) extends Iterable[(K, V)
     def keys: Iterable[K] = content.keys
     def keySet: Set[K] = content.keySet
     def map[V2 >: V](f: ((K, V2)) => (K, V2)): SmartMap[K, V2] = SmartMap.from(content.map(f)) //TODO: type can be generalized here
-    // FOR TESTING PURPOSES
-    private def computeHash: Int = content.map(_.hashCode).sum
-// assert(computeHash == hashCode) <- enable to test
 
 object SmartMap:
     def empty[K, V]: SmartMap[K, V] = SmartMap(Map.empty, 0)

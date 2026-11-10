@@ -111,13 +111,14 @@ trait SchemePowersetDomain extends ModularSchemeDomain:
 // BOUNDED SET DOMAIN
 //
 class SchemeBoundedDomainWrapper(val bound: Int) extends ModularSchemeLatticeWrapper:
-    object Bounded extends BoundedLattice(bound)
-    type S = Bounded.S
-    type B = Bounded.B
-    type I = Bounded.I
-    type R = Bounded.R
-    type C = Bounded.C
-    type Sym = Bounded.Sym
+    // a value rather than an object, so that it is initialized before the lattice that uses it
+    final val bounded = new BoundedLattice(bound)
+    type S = bounded.S
+    type B = bounded.B
+    type I = bounded.I
+    type R = bounded.R
+    type C = bounded.C
+    type Sym = bounded.Sym
     final val modularLattice = new ModularSchemeLattice
     final val primitives = new SchemeLatticePrimitives()(modularLattice.schemeLattice)
 

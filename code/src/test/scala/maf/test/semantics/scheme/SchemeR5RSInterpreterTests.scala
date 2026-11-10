@@ -7,6 +7,7 @@ import maf.syntax.scheme.*
 import maf.test.SchemeR5RSTests
 import maf.util.Timeout
 
+import org.scalatest.Assertion
 import scala.concurrent.duration._
 
 /** Checks the result of each R5RS test program, as computed by a concrete interpreter. */
@@ -17,7 +18,7 @@ trait SchemeR5RSInterpreterTests extends SchemeR5RSTests:
     // we only need a lattice to compare the results of the interpreter with the expected answers
     lazy val lattice = SchemeConstantPropagationDomain.modularLattice.schemeLattice
 
-    def testExpr(program: String, answer: Any): Unit =
+    def testExpr(program: String, answer: Any): Assertion =
         val text = SchemeParser.parseProgram(program, Source.Text)
         val l = lattice
 

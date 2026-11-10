@@ -6,12 +6,14 @@ import maf.syntax.scheme.transformations.{SchemeMutableVarBoxer, SchemePrelude}
 import maf.test.*
 import maf.util.Reader
 
+import org.scalatest.Assertion
+
 /**
  * Checks that the program transformations that keep the marker `Preluded` indeed keep the definitions of the prelude, i.e., that a program with this
  * marker does not refer to definitions of the prelude that it does not include.
  */
 trait PreludeTestsSpec extends SchemeBenchmarkTests:
-    def check(step: String, prg: SchemeExp[Any] | List[SchemeExp[Any]]): Unit =
+    def check(step: String, prg: SchemeExp[Any] | List[SchemeExp[Any]]): Assertion =
         val missing = SchemePrelude.missingDefinitions(prg)
         assert(missing.isEmpty, s"After $step, the program refers to definitions of the prelude that it does not include: ${missing.mkString(", ")}")
 

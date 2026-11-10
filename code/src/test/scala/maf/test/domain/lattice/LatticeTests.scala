@@ -70,30 +70,28 @@ abstract class LatticeTest[L: Lattice](gen: LatticeGenerator[L]) extends Lattice
 
 abstract class BoolLatticeTest[B: BoolLattice](gen: LatticeGenerator[B]) extends LatticeTest[B](gen):
     val boolLaws: Properties =
-        newProperties("Bool") { p =>
-            newProperties("BoolLattice") { p =>
-                implicit val arb = gen.anyArb
-                val lat: BoolLattice[B] = implicitly
-                import lat._
+        newProperties("BoolLattice") { p =>
+            implicit val arb = gen.anyArb
+            val lat: BoolLattice[B] = implicitly
+            import lat._
 
-                /** Inject preserves truthiness */
-                p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = isTrue(inject(true)) && isFalse(inject(false))
+            /** Inject preserves truthiness */
+            p.property("isTrue(inject(true)) ∧ isFalse(inject(false))") = isTrue(inject(true)) && isFalse(inject(false))
 
-                /** Top is both true and false */
-                p.property("isTrue(⊤) ∧ isFalse(⊤)") = isTrue(top) && isFalse(top)
+            /** Top is both true and false */
+            p.property("isTrue(⊤) ∧ isFalse(⊤)") = isTrue(top) && isFalse(top)
 
-                /** Bottom is neither true nor false */
-                p.property("¬isTrue(⊥) ∧ ¬isFalse(⊥)") = !isTrue(bottom) && !isFalse(bottom)
+            /** Bottom is neither true nor false */
+            p.property("¬isTrue(⊥) ∧ ¬isFalse(⊥)") = !isTrue(bottom) && !isFalse(bottom)
 
-                /** Not reverses truthiness */
-                p.property("∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))") = forAll { (a: B) =>
-                    conditional(isTrue(a), isFalse(not(a))) && conditional(isFalse(a), isTrue(not(a)))
-                }
-
-                /** Not is involutive */
-                p.property("∀ a: not(not(a)) == a") = forAll((a: B) => not(not(a)) == a)
-                p
+            /** Not reverses truthiness */
+            p.property("∀ a: isTrue(a) ⇒ isFalse(not(a)) ∧ isFalse(a) ⇒ isTrue(not(a))") = forAll { (a: B) =>
+                conditional(isTrue(a), isFalse(not(a))) && conditional(isFalse(a), isTrue(not(a)))
             }
+
+            /** Not is involutive */
+            p.property("∀ a: not(not(a)) == a") = forAll((a: B) => not(not(a)) == a)
+            p
         }
     checkAll(boolLaws)
 

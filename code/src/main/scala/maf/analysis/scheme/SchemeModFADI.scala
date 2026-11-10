@@ -145,7 +145,7 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
         def extendSto(adr: Adr, vlu: Val) =
             (_, _, sto, _, _) => Set(((), extendV(sto, adr, vlu)))
         def updateSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _, _) => Set(((), updateV(sto, adr, vlu)))
+            (_, _, sto, _, _) => Set(((), updateV(sto, adr, vlu)))
         def lookupSto(adr: Adr) =
             flatMap((_, _, sto, _, _) => Set((sto.lookup(adr), sto)))(inject)
         // CTX STUFF

@@ -60,22 +60,20 @@ object Writer:
     def disableReporting(writer: Writer): Unit = writer.report = false
 
     // Avoid output being buffered.
-    def write(writer: Writer, data: String): String =
+    def write(writer: Writer, data: String): Unit =
         writer.w.write(data)
         writer.w.flush()
         if writer.report then
             System.out.print(data)
             System.out.flush()
-        data
-    def writeln(writer: Writer, data: String): String = write(writer, data + "\n")
+    def writeln(writer: Writer, data: String): Unit = write(writer, data + "\n")
 
-    def writeErr(writer: Writer, data: String): String =
+    def writeErr(writer: Writer, data: String): Unit =
         System.err.print(data)
         System.err.flush()
         writer.w.write(data)
         writer.w.flush()
-        data
-    def writeErrln(writer: Writer, data: String): String = writeErr(writer, data + "\n")
+    def writeErrln(writer: Writer, data: String): Unit = writeErr(writer, data + "\n")
 
     def flush(writer: Writer): Unit = writer._1.flush()
 

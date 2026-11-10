@@ -129,7 +129,7 @@ abstract class SchemeModFLocal(prg: SchemeExp[Named] & Preluded) extends ModAnal
     protected def analysisM: AnalysisM[A] = new AnalysisM[A]:
         // MONAD
         def unit[X](x: X) =
-            (_, _, sto, _) => Set((x, Delta.emptyDelta[Adr,Val], Set.empty, Set.empty))
+            (_, _, _, _) => Set((x, Delta.emptyDelta[Adr,Val], Set.empty, Set.empty))
         def map[X, Y](m: A[X])(f: X => Y) =
             (anl, env, sto, ctx) => m(anl, env, sto, ctx).map((x, d, u, a) => (f(x), d, u, a))
         def flatMap[X, Y](m: A[X])(f: X => A[Y]) =
@@ -148,21 +148,21 @@ abstract class SchemeModFLocal(prg: SchemeExp[Named] & Preluded) extends ModAnal
             mbottom // we are not interested in errors here (at least, not yet ...)
         // STOREM
         def addrEq =
-            (anl, _, sto, _) => Set((eqA(sto), Delta.emptyDelta, Set.empty, Set.empty))
+            (_, _, sto, _) => Set((eqA(sto), Delta.emptyDelta, Set.empty, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _) => Set(((), extendV(sto, adr, vlu), Set.empty, Set(adr)))
+            (_, _, sto, _) => Set(((), extendV(sto, adr, vlu), Set.empty, Set(adr)))
         def updateSto(adr: Adr, vlu: Val) =
-            (anl, _, sto, _) => Set(((), updateV(sto, adr, vlu), Set(adr), Set.empty))
+            (_, _, sto, _) => Set(((), updateV(sto, adr, vlu), Set(adr), Set.empty))
         def lookupSto(adr: Adr) =
-            flatMap((anl, _, sto, _) => Set((sto.lookupValue(adr), Delta.emptyDelta, Set.empty, Set.empty)))(inject)
+            flatMap((_, _, sto, _) => Set((sto.lookupValue(adr), Delta.emptyDelta, Set.empty, Set.empty)))(inject)
         // CTX STUFF
         def getCtx =
-            (_, _, sto, ctx) => Set((ctx, Delta.emptyDelta, Set.empty, Set.empty))
+            (_, _, _, ctx) => Set((ctx, Delta.emptyDelta, Set.empty, Set.empty))
         def withCtx[X](f: Ctx => Ctx)(blk: A[X]): A[X] =
             (anl, env, sto, ctx) => blk(anl, env, sto, f(ctx))
         // ENV STUFF
         def getEnv =
-            (_, env, sto, _) => Set((env, Delta.emptyDelta, Set.empty, Set.empty))
+            (_, env, _, _) => Set((env, Delta.emptyDelta, Set.empty, Set.empty))
         def withEnv[X](f: Env => Env)(blk: A[X]): A[X] =
             (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF

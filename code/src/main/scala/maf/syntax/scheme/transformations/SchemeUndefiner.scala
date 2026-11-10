@@ -60,7 +60,6 @@ trait UndefinerTester:
      * Will reject programs that have defines and expressions interleaved
      */
     private def checkSequence(s: List[SchemeExp[Any]])(allowed: Boolean): Result =
-        given allowedB: Boolean = allowed
         s match
             case (SchemeDefineVariable(name, value, pos)) :: rest =>
                 if allowed then check(value, false) || checkSequence(rest)(true) else Error(pos)
@@ -80,10 +79,10 @@ trait UndefinerTester:
     protected def check(s: SchemeExp[Any], allowed: Boolean): Result =
         given allowedB: Boolean = allowed
         s match
-            case SchemeLambda(name, args, body, ann, pos) =>
+            case SchemeLambda(_, _, body, _, _) =>
                 checkSequence(body)(true)
 
-            case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
+            case SchemeVarArgLambda(_, _, _, body, _, _) =>
                 checkSequence(body)(true)
 
             case SchemeFuncall(f, args, pos) =>
@@ -114,7 +113,7 @@ trait UndefinerTester:
                 if allowed then check(value, false) else Error(pos)
 
             case SchemeVar(id)            => false
-            case SchemeVarLex(id, lexAdr) => false
+            case SchemeVarLex(_, _)       => false
             case SchemeValue(value, pos)  => false
             case SchemeAssert(exp, _) =>
                 check(exp, false)

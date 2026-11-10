@@ -79,8 +79,8 @@ class SExpLexer extends Lexical with SExpTokens:
             if in.atEnd then new Success("EOI", in)
             else Failure("End of Input expected", in)
     }
-    def eol: Parser[Any] = acceptIf(n => n == '\n')(n => "")
-    def notEol: Parser[Char] = acceptIf(n => n != '\n')(n => "")
+    def eol: Parser[Any] = acceptIf(n => n == '\n')(_ => "")
+    def notEol: Parser[Char] = acceptIf(n => n != '\n')(_ => "")
     def comment: Parser[String] = ';' ~> rep(notEol) ^^ (_.mkString)
     // whitespace and comments between tokens (skipped by the scanner, so that a token ends at its last character)
     def whitespace: Parser[Any] = rep(comment | whitespaceChar | eol)
@@ -118,14 +118,7 @@ class SExpLexer extends Lexical with SExpTokens:
         ('"' ~> stringContent ~ chrExcept('\\') <~ '"' ^^ { case s ~ ending => TString(s + ending) }) |
             ('"' ~> stringContent <~ '"' ^^ (s => TString(s)))
     def identifier: Parser[SExpToken] =
-        def specialInitial: Parser[Char] =
-            (chr('!') | chr('$') | chr('%') | chr('&') | chr('*') | chr('/') | chr(':') | chr('<') | chr(
-              '='
-            ) | chr('>') | chr('?') | chr('^') | chr('_') | chr('~') | chr('@')) ^^ (x => x)
-        // def initial: Parser[Char] = letter | specialInitial
         def initial: Parser[Char] = not(chr('@') | chr('.') | chr('#') | digit | whitespaceChar | delimiter | quotes | chr('"')) ~> chrExcept()
-        def specialSubsequent: Parser[Char] = chr('+') | chr('-') | chr('.') | chr('@')
-        //def subsequent: Parser[Char] = initial | digit | specialSubsequent
         def subsequent: Parser[Char] = not(whitespaceChar | delimiter | quotes | chr('"') | chr('\'')) ~> chrExcept()
         def peculiarIdentifier: Parser[String] = { in =>
             // R5RS specifies + | - | ..., not clear what ... is supposed to be

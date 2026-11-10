@@ -39,7 +39,7 @@ trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with
     // exotic -- not so important if not implemented yet
     def callcc(clo: (SchemeLambdaExp[Any], Environment[A]), pos: Option[Position]): M[V] = throw new Exception("Not supported")
 
-trait SchemePrimitive[V: Lattice, A <: Address] extends Serializable:
+trait SchemePrimitive[V, A <: Address] extends Serializable:
     // Every primitive in Scheme has a unique name
     def name: String
     // They can be called given the calling expression and arguments using any compatible SchemePrimM monad

@@ -4,6 +4,8 @@ import maf.syntax.*
 import maf.syntax.sexp.*
 import maf.util.Show
 
+import scala.annotation.unused
+
 
 /*
  * Features of Scheme programs.
@@ -42,7 +44,7 @@ sealed trait SchemeExp[+F] extends Expression:
     /** The direct subexpressions of this expression, including the identifiers that it binds or refers to. */
     def subexpressions: List[Expression]
 
-    def prettyString(indent: Int = 0): String = toString()
+    def prettyString(@unused indent: Int = 0): String = toString()
     def nextIndent(current: Int): Int = current + 3
 
 object SchemeExp:

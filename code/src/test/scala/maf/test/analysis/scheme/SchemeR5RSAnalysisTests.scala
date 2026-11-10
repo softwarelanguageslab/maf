@@ -10,6 +10,7 @@ import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, Schem
 import maf.test.SchemeR5RSTests
 import maf.util.Timeout
 
+import org.scalatest.Assertion
 import scala.concurrent.duration._
 
 /** Checks the result of each R5RS test program, as computed by a DSS analysis. */
@@ -25,7 +26,7 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
         val transf = SchemeMutableVarBoxer.transform(prelud)
         SchemeParser.undefine(transf)
 
-    def testExpr(program: String, answer: Any): Unit =
+    def testExpr(program: String, answer: Any): Assertion =
         val a = analysis(parseProgram(program))
         val l = a.lattice
 

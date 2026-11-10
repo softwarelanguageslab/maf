@@ -78,7 +78,7 @@ object Store:
             // extra ops
             def copyTo(a: A, t: CountingStore[A, V]) = s.get(a) match
                 case None           => t
-                case Some(c@(v,_))  => t + (a -> c)
+                case Some(c)        => t + (a -> c)
             def values = s.values.map(_._1).toSet
 
 
