@@ -293,6 +293,8 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
                 case MakeVector => throw new Exception("ModularSchemeLattice: make-vector SchemeOp not supported on Value")
                 case VectorRef  => throw new Exception("ModularSchemeLattice: vector-ref SchemeOp not supported on Value")
                 case VectorSet  => throw new Exception("ModularSchemeLattice: vector-set SchemeOp not supported on Value")
+                case MakeInputPort  => throw new Exception("ModularSchemeLattice: make-input-port SchemeOp not supported on Value")
+                case MakeOutputPort => throw new Exception("ModularSchemeLattice: make-output-port SchemeOp not supported on Value")
 
                 case IsNull =>
                     MayFail.success(args(0) match {

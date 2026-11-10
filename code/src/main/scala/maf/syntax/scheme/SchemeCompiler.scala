@@ -185,6 +185,7 @@ trait BaseSchemeCompiler:
                 throw new SchemeCompilerException(s"Invalid Scheme identifier (reserved): $exp (${exp.pos.show})", exp.pos)
             done(SchemeVar(v))
         case SExpValue(value, _) => done(SchemeValue(value, exp.pos))
+        case SExpVector(_, _)    => throw new SchemeCompilerException(s"Vector literals are not supported: $exp", exp.pos)
 
     def compileArgs(args: SExp): TailRec[(List[Identifier], Option[Identifier])] = args match
         case SExpPair(SExpId(id), rest, _) =>
@@ -338,6 +339,7 @@ trait BaseSchemeCompiler:
                 carExp <- tailcall(expandQuoted(car))
                 cdrExp <- tailcall(expandQuoted(cdr))
             yield SchemePair(carExp, cdrExp, pos)
+        case SExpVector(_, pos) => throw new SchemeCompilerException(s"Vector literals are not supported: $sexp", pos)
 
     private def expandQuasiquoted(sexp: SExp, depth: Int): TailRec[SchemeExp[Surface]] = sexp match
         // nested quasiquote
@@ -377,6 +379,7 @@ trait BaseSchemeCompiler:
                 carExp <- tailcall(expandQuasiquoted(car, depth))
                 cdrExp <- tailcall(expandQuasiquoted(cdr, depth))
             yield SchemePair(carExp, cdrExp, pos)
+        case SExpVector(_, pos) => throw new SchemeCompilerException(s"Vector literals are not supported: $sexp", pos)
 
     private def value(sexp: SExpValue): SchemeExp[Surface] =
         SchemeValue(sexp.value, sexp.pos)

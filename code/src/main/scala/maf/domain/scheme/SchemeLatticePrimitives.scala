@@ -598,7 +598,7 @@ class SchemeLatticePrimitives[V, A <: Address](implicit override val schemeLatti
                     // Note #1: creating a vector with these arguments is known to succeed
                     // Note #2: vector (and string) should use a different address than the cons-cell
                     // Note #3: need to ensure that abstract count == +inf for adr!
-                    MayFailSuccess(vct) = lat.vector(numTop, vlu)
+                    MayFailSuccess(vct) = lat.vector(numTop, vlu): @unchecked
                     _ <- PrimM[M].extendSto(adr, cns)
                     _ <- PrimM[M].extendSto(adr, vct)
                     _ <- PrimM[M].extendSto(adr, stringTop)

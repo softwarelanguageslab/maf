@@ -20,8 +20,8 @@ trait BaseSchemeMutableVarBoxer:
         var mutable: Set[LexicalRef] = Set.empty
 
         override def translate[F <: Define | Mutation](exp: SchemeExp[F | Named], lenv: LexicalEnv): SchemeExp[F | Lexical] = super.translate(exp, lenv) match
-            case res @ SchemeSetLex(_, ref, _, _) =>
-                mutable += ref
+            case res: SchemeSetLex[?] =>
+                mutable += res.lexAddr
                 res
             case res => res
 

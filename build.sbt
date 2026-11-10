@@ -1,3 +1,5 @@
+ThisBuild / scalaVersion := "3.3.7"
+
 lazy val root = project
   .in(file("."))
   .aggregate(maf)
@@ -9,7 +11,6 @@ lazy val maf = project
     name := "maf",
     organization := "soft",
     version := "2.0",
-    scalaVersion := "3.3.7",
     /** Dependencies */
     libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "2.0.0",
     /** Compilation options */

@@ -4,7 +4,7 @@ import maf.domain.Error
 import maf.syntax.scheme.*
 import maf.syntax.scheme.transformations.Preluded
 import maf.syntax.sexp
-import maf.syntax.sexp.{SExp, SExpId, SExpPair, SExpValue}
+import maf.syntax.sexp.{SExp, SExpId, SExpPair, SExpValue, SExpVector}
 import maf.util.Timeout
 
 case class ProgramError(msg: Error) extends Exception:
@@ -68,11 +68,9 @@ trait BaseSchemeInterpreter[V]:
      *   the scheme expression that determines the address of the given value
      * @param value
      *   the value to allocate in the store
-     * @param ignore
-     *   whether to ignore the address for soundness tests
      */
-    def allocateVal(exp: SchemeExp[Mutation | Named], value: Value, ignore: Boolean = false): Value.Pointer =
-        val addr = newAddr(if ignore then AddrInfo.PtrIgnoreAddr(exp) else AddrInfo.PtrAddr(exp))
+    def allocateVal(exp: SchemeExp[Mutation | Named], value: Value): Value.Pointer =
+        val addr = newAddr(AddrInfo.PtrAddr(exp))
         extendStore(addr, value)
         Value.Pointer(addr)
 
@@ -114,6 +112,9 @@ trait BaseSchemeInterpreter[V]:
             val carValue = evalSExp(car, exp)
             val cdrValue = evalSExp(cdr, exp)
             allocateCons(exp, carValue, cdrValue)
+        case SExpVector(elements, _) =>
+            val values = elements.map(evalSExp(_, exp))
+            allocateVal(exp, Value.Vector(values.size, values.zipWithIndex.map((value, idx) => BigInt(idx) -> value).toMap, Value.Undefined(exp.pos)))
 
     def evalLiteral(lit: sexp.Value, exp: SchemeExp[Mutation | Named]): ConcreteValues.Value = lit match
         case maf.syntax.sexp.Value.String(s)    => allocateStr(exp, s)

@@ -55,6 +55,16 @@ class QuasiquoteTests extends AnyFlatSpec:
         assertThrows[SchemeCompiler.SchemeCompilerException](parse("`(1 (unquote))"))
     }
 
+class VectorLiteralTests extends AnyFlatSpec:
+    def parse(program: String): List[SchemeExp[Any]] = SchemeParser.parse(program, Source.Text)
+
+    "Vector literals" should "not be supported, whether they are quoted or not" in {
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("#(1 2 3)"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("'#(1 2 3)"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("'(1 #(2 3))"))
+        assertThrows[SchemeCompiler.SchemeCompilerException](parse("(define x 1) `(1 #(2 ,x))"))
+    }
+
 class ReservedIdentifierTests extends AnyFlatSpec:
     def parse(program: String): List[SchemeExp[Any]] = SchemeParser.parse(program, Source.Text)
 

@@ -49,8 +49,8 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case analysis.modularLatticeWrapper.modularLattice.Void         => baseDomain.Void
         case v                                                          => throw new Exception(s"Unsupported value type for conversion: ${v.ord}.")
 
-    protected def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue = value match
-        case analysis.modularLatticeWrapper.modularLattice.Elements(vs) => baseDomain.Elements(vs.map(convertV(analysis)))
+    protected def convertValue(analysis: Analysis)(value: analysis.Value): BaseValue =
+        baseLattice.join(value.elements[analysis.modularLatticeWrapper.modularLattice.Value].map(v => baseDomain.Element(convertV(analysis)(v))))
 
     private def convertConcreteAddr(addr: ConcreteValues.Addr): BaseAddr = addr._2 match
         case ConcreteValues.AddrInfo.VarAddr(v) => address.VarAddr(v)
@@ -72,8 +72,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         case ConcreteValues.Value.Cons(a, d)   => baseLattice.cons(convertConcreteValue(a), convertConcreteValue(d))
         case ConcreteValues.Value.Pointer(a)   => baseLattice.pointer(convertConcreteAddr(a))
         case ConcreteValues.Value.Vector(siz, els, _) =>
-            def convertNumber(n: BigInt): Num = baseLattice.number(n) match
-                case baseDomain.Elements(vs) => vs.head.asInstanceOf[baseDomain.Int].i
+            def convertNumber(n: BigInt): Num = IntLattice[Num].inject(n)
 
             val cSiz = convertNumber(siz)
             val cEls = els.foldLeft(Map[Num, BaseValue]()) { case (acc, (idx, vlu)) =>

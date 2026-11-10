@@ -31,8 +31,6 @@ object ConcreteValues:
             def pos = None
         case class PtrAddr(exp: SchemeExp[Mutation | Named]) extends AddrInfo:
             def pos = exp.pos
-        case class PtrIgnoreAddr(exp: SchemeExp[Mutation | Named]) extends AddrInfo:
-            def pos = exp.pos
 
     object Value:
 

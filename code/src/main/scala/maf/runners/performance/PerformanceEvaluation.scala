@@ -11,6 +11,8 @@ import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Await
+import scala.util.boundary
+import scala.util.boundary.break
 
 // A variable that holds the results
 sealed trait PerformanceResult
@@ -59,7 +61,7 @@ trait PerformanceEvaluation:
         analysis: SchemeExp[Named] & Preluded => Analysis
       )(using ex: ExecutionContext
       ): Future[(PerformanceResult, List[Metrics])] =
-        def run(): (PerformanceResult, List[Metrics]) =
+        def run(): (PerformanceResult, List[Metrics]) = boundary:
             // Parse the program
             val program = parseProgram(Reader.loadFile(file), Source.File(file))
             // Warm-up
@@ -87,7 +89,7 @@ trait PerformanceEvaluation:
                     )
 
                     times = (t.toDouble / 1000000) :: times
-                else return (TimedOut, List()) // immediately return
+                else break((TimedOut, List())) // immediately return
             print("\n")
             // Compute, print and return the results
             val result = Statistics.all(times)
@@ -117,25 +119,27 @@ trait PerformanceEvaluation:
         failFast: Boolean
       )(using ExecutionContext
       ): Unit =
-        analyses.foreach { case (analysis, name) =>
-            try
-                println(s"***** Running $name on $benchmark [$current/$total] *****")
-                val (result, metrics) = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
-                addResult(name, benchmark, result, metrics)
-                result match
-                    case TimedOut if timeoutFast => return
-                    case _                       => ()
-            catch
-                case e: Exception =>
-                    println(s"Encountered an exception: ${e.getMessage}")
-                    e.printStackTrace()
-                    if failFast then return
-                case e: VirtualMachineError =>
-                    System.gc()
-                    println(s"Running $benchmark resulted in an error: ${e.getMessage}")
-                    e.printStackTrace()
-                    if failFast then return
-        }
+        boundary:
+            analyses.foreach { case (analysis, name) =>
+                // whether to skip the remaining analyses of the benchmark (outside of `try`, since a `break` is an exception)
+                val skipRemaining =
+                    try
+                        println(s"***** Running $name on $benchmark [$current/$total] *****")
+                        val (result, metrics) = Await.result(measureAnalysis(benchmark, analysis), Duration.Inf)
+                        addResult(name, benchmark, result, metrics)
+                        result == TimedOut && timeoutFast
+                    catch
+                        case e: Exception =>
+                            println(s"Encountered an exception: ${e.getMessage}")
+                            e.printStackTrace()
+                            failFast
+                        case e: VirtualMachineError =>
+                            System.gc()
+                            println(s"Running $benchmark resulted in an error: ${e.getMessage}")
+                            e.printStackTrace()
+                            failFast
+                if skipRemaining then break()
+            }
 
     def measureBenchmarks(timeoutFast: Boolean = true, failFast: Boolean = true)(using ExecutionContext) =
         var current = 0

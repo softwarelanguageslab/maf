@@ -8,7 +8,7 @@ trait LatticeGenerator[L]:
     def any: Gen[L]
     def le(l: L): Gen[L]
     implicit val anyArb: Arbitrary[L] = Arbitrary(any)
-    implicit val shrink: Shrink[L] = Shrink(v => Stream.empty)
+    implicit val shrink: Shrink[L] = Shrink.shrinkAny // does not shrink
 
 object Generators:
     val str: Gen[String] = Gen.resize(10, Gen.oneOf(Gen.identifier, Gen.alphaStr, Gen.numStr))
@@ -61,7 +61,7 @@ class ConcreteGenerator[T](g: Gen[T])(implicit lat: Lattice[Concrete.L[T]]) exte
         case Concrete.Top             => any
         case Concrete.Values(content) => isetgen.genSubset(content.toSet[T]).map(x => Concrete.Values(x))
     override val shrink = Shrink {
-        case Concrete.Top => Stream.empty
+        case Concrete.Top => Shrink.shrinkAny[Concrete.L[T]].shrink(Concrete.Top)
         case Concrete.Values(vs) =>
             Shrink.shrinkContainer[Set, T].shrink(vs.toSet[T]).map(Concrete.Values(_))
     }

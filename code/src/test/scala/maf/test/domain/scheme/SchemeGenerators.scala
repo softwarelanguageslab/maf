@@ -63,16 +63,19 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
     type L = modularLattice.L
     type V = modularLattice.Value
 
+    // the value of the lattice that contains the given values
+    def fromValues(vs: Iterable[V]): L = modularLattice.schemeLattice.join(vs.map(modularLattice.Element(_)))
+
     // useful to reduce the size of counterexample instances
-    implicit val shrinkL: Shrink[L] = Shrink[L] { case modularLattice.Elements(vs) =>
-        Shrink.shrinkContainer[List, V].shrink(vs).map(modularLattice.Elements(_))
+    implicit val shrinkL: Shrink[L] = Shrink[L] { l =>
+        Shrink.shrinkContainer[List, V].shrink(l.elements[V]).map(fromValues)
     }
     implicit val shrinkV: Shrink[V] = Shrink[V] {
         case modularLattice.Vec(siz, els) =>
             for elsShrinked <- Shrink.shrinkContainer[Set, (I, L)].shrink(els.toSet)
             yield modularLattice.Vec(siz, elsShrinked.toMap)
         // TODO: Shrink other values (useful for e.g. concrete lattice)
-        case _ => Stream.empty
+        case v => Shrink.shrinkAny[V].shrink(v)
     }
     implicit val shrinkBinding: Shrink[(I, L)] = Shrink[(I, L)] { case (idx, vlu) =>
         for vluShrinked <- Shrink.shrink(vlu) yield (idx, vluShrinked)
@@ -92,18 +95,17 @@ abstract class ModularSchemeLatticeGenerator[S: StringLattice, B: BoolLattice, I
             ptr <- pickAtMost(1, SchemeVLatticeGenerator.anyPtrV)
             clo <- pickAtMost(1, SchemeVLatticeGenerator.anyCloV)
             lst = nil ++ str ++ bln ++ int ++ rea ++ chr ++ sym ++ prm ++ ptr ++ clo
-        yield modularLattice.Elements(lst.sortBy(_.ord))
+        yield fromValues(lst)
         /* Generate any cons-cell */
         def anyPai: Gen[L] = SchemeVLatticeGenerator.anyPaiV.map(modularLattice.Element(_))
         /* Generate any vector */
         def anyVec: Gen[L] = SchemeVLatticeGenerator.anyVecV.map(modularLattice.Element(_))
         /* Generate a Scheme value subsumed by a given Scheme value */
-        def le(l: L): Gen[L] = l match
-            case modularLattice.Elements(vs) =>
-                for
-                    subset <- Gen.someOf(vs)
-                    subsumed <- Gen.sequence[List[V], V](subset.map(SchemeVLatticeGenerator.le))
-                yield modularLattice.Elements(subsumed.sortBy(_.ord))
+        def le(l: L): Gen[L] =
+            for
+                subset <- Gen.someOf(l.elements[V])
+                subsumed <- Gen.sequence[List[V], V](subset.map(SchemeVLatticeGenerator.le))
+            yield fromValues(subsumed)
         /* Generating specific values */
         def anyInt = SchemeVLatticeGenerator.anyIntV.map(modularLattice.Element(_))
         /* Shrinking values */

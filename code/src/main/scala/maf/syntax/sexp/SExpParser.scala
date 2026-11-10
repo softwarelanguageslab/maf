@@ -91,7 +91,7 @@ class SExpLexer extends Lexical with SExpTokens:
     def stringContentNoEscape: Parser[String] =
         rep(chrExcept('\\', '"')) ^^ (_.mkString)
     def stringContent: Parser[String] =
-        (stringContentNoEscape ~ '\\' ~ any ~ stringContent ^^ { case s1 ~ '\\' ~ c ~ s2 =>
+        (stringContentNoEscape ~ ('\\' ~> any) ~ stringContent ^^ { case s1 ~ c ~ s2 =>
             s"$s1\\$c$s2"
         }) |
             stringContentNoEscape
