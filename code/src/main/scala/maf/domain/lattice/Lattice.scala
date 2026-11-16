@@ -7,7 +7,7 @@ import maf.util.{Monoid, Show}
 object LatticeTopUndefined extends MAFException
 
 /** A lattice typeclass. It is actually a join-semi lattice as it only need a join operation and a bottom element */
-trait Lattice[L] extends PartialOrdering[L] with Show[L] with Serializable:
+trait Lattice[L] extends PartialOrdering[L] with Show[L]:
 
     /** A lattice has a bottom element */
     def bottom: L
@@ -66,6 +66,23 @@ object Lattice:
         def level(v: Set[A]): Int = v.size // the number of levels is the amount of elements in the size
 
     implicit def setLattice[A: Show]: Lattice[Set[A]] = new SetLattice[A]
+
+    /**
+     * Sets ordered by subsumption, given an order on their elements: a set subsumes another one if one of its elements subsumes each of the elements of
+     * the other. Joining two sets keeps the elements of the second set, and the elements of the first set that none of the second set subsumes, so
+     * that joining a set into a set that subsumes it gives the latter.
+     */
+    class SubsumptionSetLattice[A](elementSubsumes: (A, A) => Boolean) extends Lattice[Set[A]]:
+        def show(x: Set[A]): String = x.mkString("{", ",", "}")
+        def top = throw LatticeTopUndefined
+        def bottom: Set[A] = Set.empty
+        def join(x: Set[A], y: => Set[A]): Set[A] =
+            val ys = y
+            ys ++ x.filterNot(a => ys.exists(b => b == a || elementSubsumes(b, a)))
+        // (checking for equality first is faster when the elements share their parts)
+        def subsumes(x: Set[A], y: => Set[A]): Boolean = y.forall(b => x.exists(a => a == b || elementSubsumes(a, b)))
+        def eql[B: BoolLattice](x: Set[A], y: Set[A]) = ???
+        def level(v: Set[A]): Int = v.size
 
     implicit object UnitLattice extends Lattice[Unit]:
         def show(v: Unit): String = "()"

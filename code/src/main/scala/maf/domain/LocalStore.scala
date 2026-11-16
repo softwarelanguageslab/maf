@@ -1,6 +1,6 @@
 package maf.domain
 
-import maf.domain.lattice.LatticeWithAddrs
+import maf.domain.lattice.{Lattice, LatticeWithAddrs}
 import maf.util.SmartMap
 
 import scala.annotation.tailrec
@@ -9,7 +9,17 @@ import scala.annotation.tailrec
 // for DSS: counting + delta stores
 //
 
-case class Delta[A <: Address, V](delta: SmartMap[A, (V, AbstractCount)])
+case class Delta[A <: Address, V](delta: SmartMap[A, (V, AbstractCount)]):
+    // whether this delta changes every address that the given delta changes, to a value and count that subsume the ones of the given delta
+    def subsumes(other: Delta[A, V])(using lat: Lattice[V]): Boolean =
+        other.delta.forall { case (adr, (vlu, cnt)) => delta.get(adr).exists((v, c) => lat.subsumes(v, vlu) && c.subsumes(cnt)) }
+    // the delta that changes the addresses that either delta changes, to the join of their values and counts
+    def join(other: Delta[A, V])(using lat: Lattice[V]): Delta[A, V] =
+        Delta(other.delta.foldLeft(delta) { case (acc, (adr, (vlu, cnt))) =>
+            acc.get(adr) match
+                case None         => acc + (adr -> (vlu, cnt))
+                case Some((v, c)) => acc + (adr -> (lat.join(v, vlu), c.join(cnt)))
+        })
 
 case class DeltaGC[A <: Address,V](sto: LocalStore[A,V])(using lat: LatticeWithAddrs[V, A]) extends AbstractGC[Delta[A,V], A]:
     def fresh = Delta.emptyDelta[A,V]
@@ -53,6 +63,12 @@ case class LocalStore[A <: Address, V](content: SmartMap[A, (V, AbstractCount)])
             case Some(old @ (oldV, oldC)) =>
                 val upd = (lat.join(oldV, vlu), oldC.join(cnt))
                 if upd == old then None else Some(LocalStore(content + (adr -> upd)))
+    // whether this store binds every address that the given store binds, to a value and count that subsume the ones of the given store
+    def subsumes(other: LocalStore[A, V]): Boolean =
+        other.content.forall { case (adr, (vlu, cnt)) => get(adr).exists((v, c) => lat.subsumes(v, vlu) && c.subsumes(cnt)) }
+    // joins the given store into this one
+    def join(other: LocalStore[A, V]): LocalStore[A, V] =
+        other.content.foldLeft(sto) { case (acc, (adr, (vlu, cnt))) => acc.joinAt(adr, vlu, cnt).getOrElse(acc) }
     // contains check
     def contains(adr: A): Boolean =
         content.contains(adr)

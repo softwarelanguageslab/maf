@@ -22,7 +22,7 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
         new SchemeModFLocalFS(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp[Named]]
+            with FIFOWorklistAlgorithm
             with SchemeModFLocalFSAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(
@@ -38,6 +38,6 @@ class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSo
         new SchemeModFLocal(prg) //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(1)
-            with FIFOWorklistAlgorithm[SchemeExp[Named]]
+            with FIFOWorklistAlgorithm
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: String): Boolean = true // don't run this for fast tests

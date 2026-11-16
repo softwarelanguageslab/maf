@@ -20,7 +20,7 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
     type Dep = Dependency
     type Sto = Store.CountingStore[Adr, Val]
     type Cnt = AbstractCount
-    type Anl = SchemeLocalIntraAnalysis
+    type Anl = AnalysisState
 
     given GC[Sto, Adr] = GC.storeStopAndCopyGC
     given store: Store[Sto, Adr, Val] = Store.countingInstance
@@ -47,7 +47,7 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
     // COMPONENTS
     //
 
-    sealed trait Component extends Serializable:
+    sealed trait Component:
         val exp: Exp
         val env: Env
         val sto: Sto
@@ -65,15 +65,22 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
         override def toString = s"${lam.lambdaName}@${lam.pos.show} [$ctx] [<store>]"
 
     def initialComponent: Cmp = MainComponent
-    def expr(cmp: Cmp): Exp = cmp.exp
 
     //
     // RESULTS
     //
 
-    var results: Map[Component, Set[(Val, Sto)]] = Map.empty
+    // for every path through a component: its value and the resulting store
+    type Res = (Val, Sto)
 
-    case class ResultDependency(cmp: Component) extends Dependency
+    case class ResultDependency(cmp: Component) extends Dependency:
+        type Value = Set[Res]
+        given lattice: Lattice[Set[Res]] = resultLattice
+
+    // a set of results subsumes another one if each result of the latter is subsumed by a result of the former
+    lazy val resultLattice: Lattice[Set[Res]] = Lattice.SubsumptionSetLattice[Res] { case ((v1, s1), (v2, s2)) =>
+        lattice.subsumes(v1, v2) && s1.subsumes(s2)
+    }
 
     //
     // STORE STUFF
@@ -160,41 +167,17 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
             (anl, env, sto, ctx, krs) => blk(anl, f(env), sto, ctx, krs)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, sto, ctx, krs) => anl.call(lam, env, sto, ctx, krs)
+            (anl, env, sto, ctx, krs) =>
+                val cll = CallComponent(lam, env, sto, ctx, krs)
+                anl.spawn(cll)
+                anl.get(ResultDependency(cll))
 
     //
-    // THE INTRA-ANALYSIS
+    // THE ANALYSIS OF A COMPONENT
     //
 
-    def intraAnalysis(cmp: Component) = new SchemeLocalIntraAnalysis(cmp)
-    class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp):
-        intra =>
-
-        // local state
-        var results = inter.results
-
-        def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx, krs: Set[Adr]): Set[(Val, Sto)] =
-            val cmp = CallComponent(lam, env, sto, ctx, krs)
-            spawn(cmp)
-            register(ResultDependency(cmp))
-            results.getOrElse(cmp, Set.empty)
-
-        def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val rgc = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx, cmp.krs)
-            val old = results.getOrElse(cmp, Set.empty)
-            if rgc != old then
-                intra.results += cmp -> rgc
-                trigger(ResultDependency(cmp))
-
-        override def doWrite(dep: Dependency): Boolean = dep match
-            case ResultDependency(cmp) =>
-                val old = inter.results.getOrElse(cmp, Set.empty)
-                val cur = intra.results(cmp)
-                if old != cur then
-                    inter.results += cmp -> cur
-                    true
-                else false
-            case _ => super.doWrite(dep)
+    def analyzeComponent(cmp: Component, anl: Anl): Unit =
+        anl.set(ResultDependency(cmp), eval(cmp.exp)(anl, cmp.env, cmp.sto, cmp.ctx, cmp.krs))
 
 
 trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[SchemeExp[Any]]:
@@ -222,7 +205,7 @@ class SchemeModFADIAnalysis(prg: SchemeExp[Named] & Preluded, k: Int)
     extends SchemeModFADI(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp[Named]]
+    with maf.fixpoint.FIFOWorklistAlgorithm
         //override def run(t: maf.util.Timeout.T) = 
         //    super.run(t)
-        //    println(results(MainComponent))
+        //    println(value(ResultDependency(MainComponent)))

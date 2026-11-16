@@ -27,7 +27,7 @@ object AnalyzeProgram extends App:
             new SchemeModFLocalFS(prog)
                 with SchemeModFLocalNoSensitivity
                 with SchemeConstantPropagationDomain
-                with PriorityQueueWorklistAlgorithm[SchemeExp[Named]]:
+                with PriorityQueueWorklistAlgorithm:
                     /** Example implementation of priority **/
                     lazy val ordering = Ordering.by(priority) // currently, ordering is based on calculated priority
                                                               // alternatively, could also just implement `compare` here

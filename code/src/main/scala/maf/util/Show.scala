@@ -1,6 +1,6 @@
 package maf.util
 
-trait Show[V] extends Serializable:
+trait Show[V]:
     def show(v: V): String
 
 object Show:

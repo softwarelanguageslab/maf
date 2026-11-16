@@ -17,7 +17,7 @@ import scala.annotation.unused
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
     type Benchmark = String
-    type Analysis = AnalysisEntry[SchemeExp[Named]] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
+    type Analysis = ModAnalysis[SchemeExp[Named]] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
         val modularLatticeWrapper: ModularSchemeLatticeWrapper {
             val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
         }

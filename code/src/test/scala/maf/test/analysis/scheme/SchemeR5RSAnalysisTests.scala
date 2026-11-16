@@ -35,17 +35,17 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
         a.analyzeWithTimeout(Timeout.start(Duration(30, SECONDS)))
         // All R5RS tests should terminate, no matter the analysis, because they're so simple.
         assert(a.finished, s"Analysis of $program should finish within the given time bound out.")
-        val result = l.join(a.results.getOrElse(a.MainComponent, Set.empty).map(_._1))
+        val result = l.join(a.value(a.ResultDependency(a.MainComponent)).map(_._1))
         assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
 
 class ConstantPropagationDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
     def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
+        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm
 
 class PowersetDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
     def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) with SchemePowersetDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
+        new SchemeModFLocal(prg) with SchemePowersetDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm
 
 class TypeDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
     def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) with SchemeTypeDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm[SchemeExp[Named]]
+        new SchemeModFLocal(prg) with SchemeTypeDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm

@@ -61,6 +61,6 @@ object DSSRun:
     def runDSS(prg: SchemeExp[Named] & Preluded) =
         val anl = new SchemeDSSAnalysis(prg, 0) //with NameBasedAllocator
         anl.analyze()
-        val res = anl.results(anl.MainComponent)
+        val res = anl.value(anl.ResultDependency(anl.MainComponent))
         val vlu = Lattice[anl.Val].join(res.map(_._1))
         vlu

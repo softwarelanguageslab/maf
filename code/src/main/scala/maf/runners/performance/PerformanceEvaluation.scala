@@ -1,6 +1,6 @@
 package maf.runners.performance
 
-import maf.fixpoint.AnalysisEntry
+import maf.fixpoint.ModAnalysis
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
@@ -24,7 +24,7 @@ case object NoData extends PerformanceResult
 case class Metrics(name: String, results: Statistics.Stats)
 
 trait PerformanceEvaluation:
-    type Analysis <: AnalysisEntry[SchemeExp[Named]]
+    type Analysis <: ModAnalysis[SchemeExp[Named]]
 
     // Configuring the warm-up
     def maxWarmupRuns = 10 // maximum number of warm-up runs

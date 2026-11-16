@@ -14,8 +14,7 @@ import maf.util.SmartUnion._
  */
 /** TODO[medium]: use Show and ShowStore here */
 class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: IntLattice, R: RealLattice, C: CharLattice, Sym: SymbolLattice]
-    extends Serializable
-    with SchemeLattice[HMap, A]:
+    extends SchemeLattice[HMap, A]:
 
     trait ModularSchemeConvertor[BaseAddr <: Address, V]:
         def convertAddr(addr: Address): BaseAddr
@@ -745,7 +744,7 @@ class ModularSchemeLattice[A <: Address, S: StringLattice, B: BoolLattice, I: In
 
         extension (v: L) def vs: List[Value] = v.elements[Value]
 
-    object Element extends Serializable:
+    object Element:
         def apply(v: Value): L =
             // NOTE: the usage of asInstanceOf here is slightly unsafe since Value.tpy.Wrap might not correspond to the actual type of v
             // we trust the programmers to not make this mistake, but it cannot be enforcement at compile-time.

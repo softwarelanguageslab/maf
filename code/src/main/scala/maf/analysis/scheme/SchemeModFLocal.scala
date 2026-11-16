@@ -21,7 +21,7 @@ abstract class SchemeModFLocal(prg: SchemeExp[Named] & Preluded) extends ModAnal
     type Sto = LocalStore[Adr, Val]
     type Dlt = Delta[Adr, Val]
     type Cnt = AbstractCount
-    type Anl = SchemeLocalIntraAnalysis
+    type Anl = AnalysisState
 
     //
     // INITIALISATION
@@ -44,7 +44,7 @@ abstract class SchemeModFLocal(prg: SchemeExp[Named] & Preluded) extends ModAnal
     // COMPONENTS
     //
 
-    sealed trait Component extends Serializable:
+    sealed trait Component:
         val exp: Exp
         val env: Env
         val sto: Sto
@@ -60,15 +60,22 @@ abstract class SchemeModFLocal(prg: SchemeExp[Named] & Preluded) extends ModAnal
         override def toString = s"${lam.lambdaName}@${lam.pos.show} [$ctx] [${sto.content.hc}]"
 
     def initialComponent: Cmp = MainComponent
-    def expr(cmp: Cmp): Exp = cmp.exp
 
     //
     // RESULTS
     //
 
-    var results: Map[Component, Set[(Val, Dlt, Set[Adr], Set[Adr])]] = Map.empty
+    // for every path through a component: its value, how it changes the store, and the addresses that it updates and allocates
+    type Res = (Val, Dlt, Set[Adr], Set[Adr])
 
-    case class ResultDependency(cmp: Component) extends Dependency
+    case class ResultDependency(cmp: Component) extends Dependency:
+        type Value = Set[Res]
+        given lattice: Lattice[Set[Res]] = resultLattice
+
+    // a set of results subsumes another one if each result of the latter is subsumed by a result of the former
+    lazy val resultLattice: Lattice[Set[Res]] = Lattice.SubsumptionSetLattice[Res] { case ((v1, d1, u1, a1), (v2, d2, u2, a2)) =>
+        lattice.subsumes(v1, v2) && d1.subsumes(d2) && u2.subsetOf(u1) && a2.subsetOf(a1)
+    }
 
     //
     // STORE STUFF
@@ -167,41 +174,17 @@ abstract class SchemeModFLocal(prg: SchemeExp[Named] & Preluded) extends ModAnal
             (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
         def call(lam: Lam): A[Val] =
-            (anl, env, sto, ctx) => anl.call(lam, env, sto, ctx)
+            (anl, env, sto, ctx) =>
+                val cll = CallComponent(lam, env, sto, ctx)
+                anl.spawn(cll)
+                anl.get(ResultDependency(cll))
 
     //
-    // THE INTRA-ANALYSIS
+    // THE ANALYSIS OF A COMPONENT
     //
 
-    def intraAnalysis(cmp: Component) = new SchemeLocalIntraAnalysis(cmp)
-    class SchemeLocalIntraAnalysis(cmp: Cmp) extends IntraAnalysis(cmp):
-        intra =>
-
-        // local state
-        var results = inter.results
-
-        def call(lam: Lam, env: Env, sto: Sto, ctx: Ctx): Set[(Val, Dlt, Set[Adr], Set[Adr])] =
-            val cmp = CallComponent(lam, env, sto, ctx)
-            spawn(cmp)
-            register(ResultDependency(cmp))
-            results.getOrElse(cmp, Set.empty)
-
-        def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            val rgc = eval(cmp.exp)(this, cmp.env, cmp.sto, cmp.ctx)
-            val old = results.getOrElse(cmp, Set.empty)
-            if rgc != old then
-                intra.results += cmp -> rgc
-                trigger(ResultDependency(cmp))
-
-        override def doWrite(dep: Dependency): Boolean = dep match
-            case ResultDependency(cmp) =>
-                val old = inter.results.getOrElse(cmp, Set.empty)
-                val cur = intra.results(cmp)
-                if old != cur then
-                    inter.results += cmp -> cur
-                    true
-                else false
-            case _ => super.doWrite(dep)
+    def analyzeComponent(cmp: Component, anl: Anl): Unit =
+        anl.set(ResultDependency(cmp), eval(cmp.exp)(anl, cmp.env, cmp.sto, cmp.ctx))
 
 
 trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResults[SchemeExp[Any]]:
@@ -229,4 +212,4 @@ class SchemeDSSAnalysis(prg: SchemeExp[Named] & Preluded, k: Int)
     extends SchemeModFLocal(prg)
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.fixpoint.FIFOWorklistAlgorithm[SchemeExp[Named]]
+    with maf.fixpoint.FIFOWorklistAlgorithm

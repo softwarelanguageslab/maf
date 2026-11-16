@@ -23,7 +23,7 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
         new SchemeModFLocal(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm[SchemeExp[Named]]
+            with FIFOWorklistAlgorithm
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(

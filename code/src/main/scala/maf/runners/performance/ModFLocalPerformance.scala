@@ -1,13 +1,13 @@
 package maf.runners.performance
 
-import maf.fixpoint.AnalysisEntry
+import maf.fixpoint.ModAnalysis
 import maf.runners.SchemeAnalyses
 import maf.syntax.Source
 import maf.syntax.scheme.{Named, SchemeExp, SchemeParser}
 import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
 
 object ModFLocalPerformance extends PerformanceEvaluation:
-    type Analysis = AnalysisEntry[SchemeExp[Named]]
+    type Analysis = ModAnalysis[SchemeExp[Named]]
     def benchmarks =
         List(
         )

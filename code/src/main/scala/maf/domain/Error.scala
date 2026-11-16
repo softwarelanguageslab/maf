@@ -5,7 +5,7 @@ import maf.syntax.Position
 
 /** An error that is not thrown but rather used as an erroneous value. */
 // TODO Perhaps rename to ErrorValue?
-trait Error extends Serializable
+trait Error
 case class ArityError(fpos: Option[Position], expected: Int, got: Int, call: Option[Position] = None) extends Error
 case class VarArityError(call: Option[Position], expected: Int, got: Int) extends Error
 case class ValueNotApplicable[V](value: V, pos: Option[Position]) extends Error

@@ -21,9 +21,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
     type Sto = LocalStore[Adr, Val]
     type Dlt = Delta[Adr, Val]
     type Cnt = AbstractCount
-    type Res = Map[Cmp, (Val, Dlt, Set[Adr], Set[Adr])]
-    type Sts = Map[Cmp, Sto]
-    type Anl = SchemeModFLocalFSIntraAnalysis
+    type Res = (Val, Dlt, Set[Adr], Set[Adr])
+    type Anl = AnalysisState
 
     //
     // INITIALISATION
@@ -48,7 +47,7 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
     // COMPONENTS
     //
 
-    sealed trait Component extends Serializable:
+    sealed trait Component:
         def exp: Exp
         def env: Env
         def ctx: Ctx
@@ -62,22 +61,44 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
         override def toString = s"${lam.lambdaName} [$ctx]"
 
     def initialComponent: Component = MainComponent
-    def expr(cmp: Component): Exp = cmp.exp
 
     //
     // STATE = RESULTS + STORE
     //
 
-    var results: Res = Map.empty
-    case class ResultDependency(cmp: Cmp) extends Dependency
+    // the result of a component, if it returns: its value, how it changes the store, and the addresses that it updates and allocates
+    case class ResultDependency(cmp: Cmp) extends Dependency:
+        type Value = Option[Res]
+        given lattice: Lattice[Option[Res]] = resultLattice
 
-    var stores: Sts = Map.empty
-    case class AddrDependencyFS(cmp: Cmp, adr: Adr) extends Dependency
+    // the store of a call component, which its callers extend
+    case class StoreDependency(cll: Cll) extends Dependency:
+        type Value = Sto
+        given lattice: Lattice[Sto] = storeLattice
 
-    override def triggeredComponents(dep: Dep): Set[Cmp] = 
-        dep match
-            case AddrDependencyFS(cmp, _) => Set(cmp)
-            case _ => super.triggeredComponents(dep)
+    lazy val resultLattice: Lattice[Option[Res]] = new Lattice[Option[Res]]:
+        def show(res: Option[Res]): String = res.toString
+        def bottom: Option[Res] = None
+        def top = throw LatticeTopUndefined
+        def join(x: Option[Res], y: => Option[Res]): Option[Res] = (x, y) match
+            case (None, res) => res
+            case (res, None) => res
+            case (Some((v1, d1, u1, a1)), Some((v2, d2, u2, a2))) => Some((lattice.join(v1, v2), d1.join(d2), u1 ++ u2, a1 ++ a2))
+        def subsumes(x: Option[Res], y: => Option[Res]): Boolean = (x, y) match
+            case (_, None) => true
+            case (None, _) => false
+            case (Some((v1, d1, u1, a1)), Some((v2, d2, u2, a2))) => lattice.subsumes(v1, v2) && d1.subsumes(d2) && u2.subsetOf(u1) && a2.subsetOf(a1)
+        def eql[B: BoolLattice](x: Option[Res], y: Option[Res]): B = ???
+        def level(res: Option[Res]): Int = res.size
+
+    lazy val storeLattice: Lattice[Sto] = new Lattice[Sto]:
+        def show(sto: Sto): String = sto.toString
+        def bottom: Sto = LocalStore.empty
+        def top = throw LatticeTopUndefined
+        def join(x: Sto, y: => Sto): Sto = x.join(y)
+        def subsumes(x: Sto, y: => Sto): Boolean = x.subsumes(y)
+        def eql[B: BoolLattice](x: Sto, y: Sto): B = ???
+        def level(sto: Sto): Int = sto.content.size
 
 
     //
@@ -134,10 +155,6 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
                 }
         else blk
 
-    override def init() =
-        super.init()
-        stores += MainComponent -> initialSto
-
     //
     // ANALYSISM MONAD
     //
@@ -189,17 +206,23 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
             (anl, env, sto, ctx) => blk(anl, f(env), sto, ctx)
         // CALL STUFF
         def call(lam: Lam) =
-            (anl, env, sto, ctx) => anl.call(CallComponent(lam, env, ctx), sto)
+            (anl, env, sto, ctx) =>
+                val cll = CallComponent(lam, env, ctx)
+                // add bindings to its store
+                anl.set(StoreDependency(cll), sto)
+                anl.spawn(cll)
+                anl.get(ResultDependency(cll))
 
     //
-    // THE INTRA-ANALYSIS
+    // THE ANALYSIS OF A COMPONENT
     //
 
     var iterations = 0
     
     def computeOneCounts: (Int, Int) = 
+        val stores = initialSto :: components.toList.collect { case cll: Cll => value(StoreDependency(cll)) }
         stores.foldLeft((0,0)) { 
-            case (acc, (_, store)) =>
+            case (acc, store) =>
                 store.content.foldLeft(acc) {
                     case (acc2@(countOne, total), (adr, (_ , count))) =>
                         if shouldCount(adr) then 
@@ -219,62 +242,14 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
         else 
             Some(one.toDouble / total.toDouble)
 
-    def intraAnalysis(cmp: Component) = new SchemeModFLocalFSIntraAnalysis(cmp)
-    class SchemeModFLocalFSIntraAnalysis(cmp: Component) extends IntraAnalysis(cmp):
-        intra =>
-        
-        // local state
-        var results = inter.results
-        var stores = inter.stores
-
-        def analyzeWithTimeout(timeout: Timeout.T): Unit =
-            iterations = iterations + 1
-            // get the (widened) store
-            val sto = stores.getOrElse(cmp, LocalStore.empty)
-            // compute the result
-            val rgc = eval(cmp.exp)(this, cmp.env, sto, cmp.ctx)
-            // update the result of this component
-            val old = results.get(cmp)
-            if (old != rgc) then
-                results += cmp -> rgc.get
-                trigger(ResultDependency(cmp))
-
-        def call(cll: Cll, sto: Sto): Option[(Val, Dlt, Set[Adr], Set[Adr])] =
-            // spawn the component
-            spawn(cll)
-            // add bindings to its store
-            val stw = stores.getOrElse(cll, LocalStore.empty)
-            val (upd, dty) = sto.content.foldLeft((stw, false)) { 
-                case (acc, (adr, (vlu, cnt))) =>
-                    acc._1.joinAt(adr, vlu, cnt) match
-                        case None => acc
-                        case Some(upd) =>
-                            trigger(AddrDependencyFS(cll, adr))
-                            (upd, true)
-            }
-            if dty then stores += cll -> upd
-            register(ResultDependency(cll))
-            results.get(cll)
-
-        override def doWrite(dep: Dependency): Boolean = dep match
-            case ResultDependency(cmp) =>
-                val old = inter.results.get(cmp)
-                val cur = intra.results(cmp)    // we are certain to have a result here!
-                if !old.isDefined || old.get != cur then
-                    inter.results += cmp -> cur
-                    true
-                else false
-            case AddrDependencyFS(cmp, adr) =>
-                val oldS = inter.stores.getOrElse(cmp, LocalStore.empty)
-                val newS = intra.stores(cmp) // we are certain to have a store here!
-                val (newV, newC) = newS.content(adr) // we are certain to have a binding here!
-                oldS.joinAt(adr, newV, newC) match
-                    case None => false
-                    case Some(upd) =>
-                        inter.stores += cmp -> upd
-                        true
-            case _ => 
-                super.doWrite(dep)
+    def analyzeComponent(cmp: Component, anl: Anl): Unit =
+        iterations = iterations + 1
+        // get the (widened) store
+        val sto = cmp match
+            case MainComponent => initialSto
+            case cll: Cll      => anl.get(StoreDependency(cll))
+        // compute the result
+        anl.set(ResultDependency(cmp), eval(cmp.exp)(anl, cmp.env, sto, cmp.ctx))
 
 
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp[Any]]:

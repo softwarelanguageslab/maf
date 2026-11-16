@@ -1,6 +1,6 @@
 package maf.util
 
-trait Monoid[M] extends Serializable:
+trait Monoid[M]:
     def append(x: M, y: => M): M
     def zero: M
 

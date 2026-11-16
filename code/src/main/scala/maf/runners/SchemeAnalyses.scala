@@ -13,14 +13,14 @@ object SchemeAnalyses:
         new SchemeModFLocal(prg)
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(k)
-            with FIFOWorklistAlgorithm[SchemeExp[Named]]
+            with FIFOWorklistAlgorithm
             with SchemeModFLocalAnalysisResults
 
     def modflocalFSAnalysis(prg: SchemeExp[Named] & Preluded, k: Int, gc: Boolean = true) =
       new SchemeModFLocalFS(prg, gc)
           with SchemeConstantPropagationDomain
           with SchemeModFLocalCallSiteSensitivity(k)
-          with FIFOWorklistAlgorithm[SchemeExp[Named]]
+          with FIFOWorklistAlgorithm
           with SchemeModFLocalFSAnalysisResults
 
     def modfADIAnalysis(prg: SchemeExp[Named] & Preluded, k: Int) =

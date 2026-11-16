@@ -25,7 +25,7 @@ The source code (in [`code/src/main/scala/maf`](code/src/main/scala/maf)) is org
 | `maf.syntax` | Expressions (program points with a unique label) and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser and compiler, and `scheme.transformations` the source-to-source transformations (prelude, undefiner, mutable variable boxer, lexical addresser and renamer). |
 | `maf.domain` | Semantic domains: addresses, environments, stores, errors and abstract domains. `lattice` contains the lattice interfaces and their implementations (concrete, constant propagation, type, bounded); `scheme` contains the Scheme lattice, abstract domains, addresses and primitives. |
 | `maf.semantics` | `scheme` contains the (monadic) abstract semantics of Scheme with its context-sensitivity policies and allocators; `scheme.interpreter` contains the concrete Scheme interpreters. |
-| `maf.fixpoint` | The generic modular fixpoint machinery: `ModAnalysis`, work lists and worklist algorithms. |
+| `maf.fixpoint` | The generic modular fixpoint machinery: `ModAnalysis`, a system of constraints with side effects over the components of a program, and the worklist algorithms that solve it. |
 | `maf.analysis` | The analysis results interface. `scheme` contains the analyses (`SchemeModFLocal`, `SchemeModFLocalFS` and `SchemeModFADI`). |
 | `maf.runners` | Ready-to-run programs and the catalogue of benchmark programs. `precision` and `performance` contain the experiments. |
 
@@ -52,13 +52,13 @@ Then, for instance, to analyse `prog` using a 1-CFA analysis with a constant-pro
 val analysis = new SchemeModFLocal(prog)
                  with SchemeConstantPropagationDomain
                  with SchemeModFLocalCallSiteSensitivity(1)
-                 with FIFOWorklistAlgorithm[SchemeExp[Named]]
+                 with FIFOWorklistAlgorithm
 analysis.analyze()
 ```
 Method `analyze` computes the full (and sound) analysis result for the program that the analysis is constructed with.
 This method does not return the analysis results directly.
-Rather, after calling `analyze`, the computed analysis results can be accessed through the properties of the `analysis` object (e.g., `analysis.results(analysis.MainComponent)`).
-Mixing in `SchemeModFLocalAnalysisResults` (resp. `SchemeModFLocalFSAnalysisResults` and `SchemeModFADIAnalysisResults`) additionally collects the values per program location in `resultsPerIdn`.
+Rather, after calling `analyze`, the computed analysis results can be accessed through the `value` of the dependencies of the `analysis` object (e.g., `analysis.value(analysis.ResultDependency(analysis.MainComponent))`).
+Mixing in `SchemeModFLocalAnalysisResults` (resp. `SchemeModFLocalFSAnalysisResults` and `SchemeModFADIAnalysisResults`) additionally collects the values per program location in `resultsPerPos`.
 
 Alternatively, one can use the `analyzeWithTimeout(<timeout>)` method to run the analysis with a given timeout. This timeout is obtained from a Java Duration
 (using `Timeout.start(<duration>)`). 

@@ -39,7 +39,7 @@ trait SchemePrimM[M[_], A <: Address, V] extends Monad[M] with MonadJoin[M] with
     // exotic -- not so important if not implemented yet
     def callcc(clo: (SchemeLambdaExp[Any], Environment[A]), pos: Option[Position]): M[V] = throw new Exception("Not supported")
 
-trait SchemePrimitive[V, A <: Address] extends Serializable:
+trait SchemePrimitive[V, A <: Address]:
     // Every primitive in Scheme has a unique name
     def name: String
     // They can be called given the calling expression and arguments using any compatible SchemePrimM monad
@@ -63,7 +63,7 @@ case class PrimitiveVariadicArityError(
 case class PrimitiveNotApplicable[V](name: String, args: List[V]) extends Error
 case class UserError(message: String) extends Error
 
-abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A]) extends Serializable:
+abstract class SchemePrimitives[V, A <: Address](implicit val schemeLattice: SchemeLattice[V, A]):
     def allPrimitives: Map[String, SchemePrimitive[V, A]]
     def apply(name: String): SchemePrimitive[V, A] = allPrimitives(name)
     def ofList(prims: List[SchemePrimitive[V, A]]): Map[String, SchemePrimitive[V, A]] =

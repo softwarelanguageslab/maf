@@ -30,6 +30,8 @@ trait Store[S, A, V]:
         // TODO: put in separate "sub" typeclasses?
         def copyTo(a: A, t: S): S
         def values: Set[V]
+        // whether this store binds every address that the given store binds, to a value that subsumes the one of the given store
+        def subsumes(other: S): Boolean
 
 object Store:
 
@@ -47,6 +49,7 @@ object Store:
                 case None       => t
                 case Some(v)    => t + (a -> v)
             def values = m.values.toSet
+            def subsumes(other: SimpleStore[A, V]) = other.forall((a, v) => m.get(a).exists(Lattice[V].subsumes(_, v)))
 
     // a counting instance
     opaque type CountingStore[A, V] = Map[A, (V, AbstractCount)]
@@ -80,6 +83,9 @@ object Store:
                 case None           => t
                 case Some(c)        => t + (a -> c)
             def values = s.values.map(_._1).toSet
+            // the counts need to subsume each other as well
+            def subsumes(other: CountingStore[A, V]) =
+                other.forall { case (a, (v, c)) => s.get(a).exists((sv, sc) => Lattice[V].subsumes(sv, v) && sc.subsumes(c)) }
 
 
 // Abstract GC

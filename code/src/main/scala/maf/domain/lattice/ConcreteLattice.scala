@@ -27,7 +27,7 @@ class ConcreteLattice:
 
     def makeValues[X](contents: Set[X]): L[X] = Values(contents)
 
-    abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]] with Serializable:
+    abstract class BaseInstance[A: Show](typeName: String) extends Lattice[L[A]]:
         def show(x: L[A]): String = x match
             case Top                                  => typeName
             case Values(content) if content.size == 1 => Show[A].show(content.head)

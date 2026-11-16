@@ -2,7 +2,7 @@ package maf.domain
 
 import maf.util.Monoid
 
-sealed trait MayFail[A, E] extends Serializable:
+sealed trait MayFail[A, E]:
     def addError(err: E): MayFail[A, E] = addErrors(Set(err))
     def addErrors(errs: Set[E]): MayFail[A, E] = this match
         case MayFailSuccess(a)     => MayFailBoth(a, errs)
