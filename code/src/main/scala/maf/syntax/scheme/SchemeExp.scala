@@ -50,24 +50,6 @@ sealed trait SchemeExp[+F] extends Expression:
 object SchemeExp:
     given [F]: Show[SchemeExp[F]] with
         def show(v: SchemeExp[F]): String = v.toString
-/*
-    case SchemeLambda(name, args, body, ann, pos) =>
-    case SchemeVarArgLambda(name, args, vararg, body, ann, pos) =>
-    case SchemeFuncall(f, args, pos) =>
-    case SchemeIf(cond, cons, alt, pos) =>
-    case SchemeLet(bindings, body, pos) =>
-    case SchemeLetStar(bindings, body, pos) =>
-    case SchemeLetrec(bindings, body, pos) =>
-    case SchemeSet(variable, value, pos) =>
-    case SchemeSetLex(variable, lexAddr, value, pos) =>
-    case SchemeBegin(exps, pos) =>
-    case SchemeDefineVariable(name, value, pos) =>
-    case SchemeDefineFunction(name, args, body, pos) =>
-    case SchemeDefineVarArgFunction(name, args, vararg, body, pos) =>
-    case SchemeVar(id) =>
-    case SchemeVarLex(id, lexAdr) =>
-    case SchemeValue(value, pos) =>
- */
 
 /**
  * A lambda expression: (lambda (args...) body...) Not supported: "rest"-arguments, of the form (lambda arg body), or (lambda (arg1 . args) body...)
