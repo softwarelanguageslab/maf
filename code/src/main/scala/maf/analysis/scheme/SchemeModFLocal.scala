@@ -4,6 +4,7 @@ import maf.analysis.*
 import maf.domain.*
 import maf.domain.lattice.*
 import maf.domain.scheme.*
+import maf.fixpoint.Solver
 import maf.semantics.scheme.*
 import maf.syntax.Position
 import maf.syntax.scheme.*
@@ -198,7 +199,7 @@ trait SchemeModFLocalAnalysisResults extends SchemeModFLocal with AnalysisResult
         given lattice: Lattice[Set[Val]] = positionLattice
     lazy val positionLattice: Lattice[Set[Val]] = Lattice.setLattice
 
-    def resultsPerPos(solver: Solver) = solver.dependencies.collect { case dep: PositionDependency => dep.pos -> solver.value(dep) }.toMap
+    def resultsPerPos(solver: Solver[this.type]) = solver.dependencies.collect { case dep: PositionDependency => dep.pos -> solver.value(dep) }.toMap
 
     private def record(anl: Anl, adr: Adr, vlu: Val): Unit = adr match
         case _: VarAddr[_] | _: PtrAddr[_] => anl.set(PositionDependency(adr.pos), Set(vlu))

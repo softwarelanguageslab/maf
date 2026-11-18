@@ -1,7 +1,7 @@
 package maf.runners.precision
 
 import maf.domain.lattice.*
-import maf.analysis.Metric
+import maf.fixpoint.{Metric, analyze}
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*

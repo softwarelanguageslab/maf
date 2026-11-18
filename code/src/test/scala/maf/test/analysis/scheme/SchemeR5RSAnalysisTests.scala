@@ -2,7 +2,8 @@ package maf.test.analysis.scheme
 
 import maf.analysis.scheme.*
 import maf.domain.scheme.*
-import maf.fixpoint.FIFOWorklistAlgorithm
+import maf.fixpoint.analyze
+import maf.fixpoint.worklist.FIFOWorklistAlgorithm
 import maf.semantics.scheme.*
 import maf.syntax.Source
 import maf.syntax.scheme.*

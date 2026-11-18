@@ -7,7 +7,8 @@ import scala.concurrent.duration._
 
 import maf.analysis.*
 import maf.domain.scheme.*
-import maf.fixpoint.*
+import maf.fixpoint.{FixpointAlgorithm, Solver, analyze}
+import maf.fixpoint.worklist.FIFOWorklistAlgorithm
 import maf.semantics.scheme.interpreter.*
 import maf.semantics.scheme.interpreter.ConcreteValues._
 import maf.syntax.*
@@ -88,7 +89,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
                 System.gc()
                 alert(s"Concrete evaluation of $benchmark failed with $e")
         posResults
-    protected def runAnalysis(anl: Analysis)(program: SchemeExp[Named] & Preluded, benchmark: Benchmark): anl.Solver =
+    protected def runAnalysis(anl: Analysis)(program: SchemeExp[Named] & Preluded, benchmark: Benchmark): Solver[anl.type] =
         try
             // analyze the program using the analysis under test
             val (ellapsed, timeout) = Timer.time(analysisTimeout(benchmark))
@@ -134,7 +135,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
 
     protected def compareResults(
         analysis: Analysis
-      )(solver: analysis.Solver,
+      )(solver: Solver[analysis.type],
         concreteResults: Map[Option[Position], Set[Value]],
         message: String = ""
       ): Unit =

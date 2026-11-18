@@ -4,7 +4,8 @@ import maf.analysis.*
 import maf.domain.*
 import maf.domain.lattice.*
 import maf.domain.scheme.*
-import maf.fixpoint.*
+import maf.fixpoint.{FixpointAlgorithm, Solver, analyze}
+import maf.fixpoint.worklist.FIFOWorklistAlgorithm
 import maf.runners.precision.address.*
 import maf.semantics.scheme.interpreter.{ConcreteValues, EmptyIO, FileIO, IO, SchemeInterpreter}
 import maf.syntax.*
@@ -165,7 +166,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * @return
      *   a ResultMap containing the context-insensitive results for that analysis
      */
-    protected def extract(analysis: Analysis)(solver: analysis.Solver): ResultMap =
+    protected def extract(analysis: Analysis)(solver: Solver[analysis.type]): ResultMap =
         analysis.resultsPerPos(solver).view
             .mapValues(vs => analysis.lattice.join(vs))
             .mapValues(convertValue(analysis))

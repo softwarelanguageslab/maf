@@ -25,7 +25,7 @@ The source code (in [`code/src/main/scala/maf`](code/src/main/scala/maf)) is org
 | `maf.syntax` | Expressions (program points with a unique label) and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser and compiler, and `scheme.transformations` the source-to-source transformations (prelude, undefiner, mutable variable boxer, lexical addresser and renamer). |
 | `maf.domain` | Semantic domains: addresses, environments, stores, errors and abstract domains. `lattice` contains the lattice interfaces and their implementations (concrete, constant propagation, type, bounded); `scheme` contains the Scheme lattice, abstract domains, addresses and primitives. |
 | `maf.semantics` | `scheme` contains the (monadic) abstract semantics of Scheme with its context-sensitivity policies and allocators; `scheme.interpreter` contains the concrete Scheme interpreters. |
-| `maf.fixpoint` | The generic modular fixpoint machinery: `FixpointAlgorithm`, the interface of the algorithms that compute the solutions of analyses, and the worklist algorithms. |
+| `maf.fixpoint` | The generic modular fixpoint machinery: `FixpointAlgorithm`, the interface of the algorithms that compute the solutions of analyses, and `Solver`, the interface of the solvers that they return. `worklist` contains the worklist algorithms, and the `Worklist` typeclass of their worklists. |
 | `maf.analysis` | `Analysis`, the base trait of all analyses: a system of constraints with side effects over the components of a program. `AnalysisResults` is the analysis results interface, and `scheme` contains the analyses (`SchemeModFLocal`, `SchemeModFLocalFS` and `SchemeModFADI`). |
 | `maf.runners` | Ready-to-run programs and the catalogue of benchmark programs. `precision` and `performance` contain the experiments. |
 
@@ -54,9 +54,9 @@ val analysis = new SchemeModFLocal
                  with SchemeModFLocalCallSiteSensitivity(1)
 val solver = analysis.analyze(prog, FIFOWorklistAlgorithm)
 ```
-Method `analyze` computes the full (and sound) solution of the analysis for `prog` with the given fixpoint algorithm, and returns the solver that computed it.
+Method `analyze` (an extension method of analyses, imported from `maf.fixpoint`) computes the full (and sound) solution of the analysis for `prog` with the given fixpoint algorithm, and returns the solver that computed it (a `Solver[analysis.type]`).
 It is short for `FIFOWorklistAlgorithm.solver(analysis, prog)`, which returns a solver that has not solved anything yet, followed by `solver.solve()`.
-The analysis itself keeps no state, so the same analysis can be solved for other programs, or with other fixpoint algorithms (such as `LIFOWorklistAlgorithm` or `CallDepthFirstWorklistAlgorithm`).
+The analysis itself keeps no state, so the same analysis can be solved for other programs, or with other fixpoint algorithms (such as `LIFOWorklistAlgorithm`, or `WorklistAlgorithm[W]` for any type of worklists `W` with a `Worklist` instance).
 The results of the analysis are the `value`s of its dependencies in the solver (e.g., `solver.value(analysis.ResultDependency(analysis.initialComponent(prog)))`).
 Mixing in `SchemeModFLocalAnalysisResults` (resp. `SchemeModFLocalFSAnalysisResults` and `SchemeModFADIAnalysisResults`) additionally collects the values per program location, in `analysis.resultsPerPos(solver)`.
 

@@ -1,6 +1,7 @@
 package maf.runners.performance
 
-import maf.fixpoint.{FIFOWorklistAlgorithm, FixpointAlgorithm}
+import maf.fixpoint.{FixpointAlgorithm, analyze}
+import maf.fixpoint.worklist.FIFOWorklistAlgorithm
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*

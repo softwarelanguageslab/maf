@@ -3,7 +3,8 @@ package maf.runners
 import maf.analysis.scheme.*
 import maf.domain.*
 import maf.domain.lattice.*
-import maf.fixpoint.FIFOWorklistAlgorithm
+import maf.fixpoint.analyze
+import maf.fixpoint.worklist.FIFOWorklistAlgorithm
 import maf.syntax.Source
 import maf.syntax.scheme.*
 import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
