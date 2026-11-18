@@ -26,10 +26,12 @@ object SchemeSoundnessTests:
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     // analysis must support basic Scheme semantics
-    type Analysis = ModAnalysis[SchemeExp[Named]] with AnalysisResults[SchemeExp[Any]] with SchemeDomain
+    type Analysis = maf.fixpoint.Analysis[SchemeExp[Named] & Preluded] with AnalysisResults[SchemeExp[Any]] with SchemeDomain
     // the analysis that is used to analyse the programs
     def name: String
-    def analysis(b: SchemeExp[Named] & Preluded): Analysis
+    def analysis: Analysis
+    // the fixpoint algorithm that computes its solutions (default: FIFO)
+    def algorithm: FixpointAlgorithm = FIFOWorklistAlgorithm
     // the timeout and max number of concrete runs for a single benchmark program (default: 1min.)
     def analysisTimeout(@unused b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
     def concreteTimeout(@unused b: Benchmark): Timeout.T = Timeout.start(Duration(1, MINUTES))
@@ -86,15 +88,15 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
                 System.gc()
                 alert(s"Concrete evaluation of $benchmark failed with $e")
         posResults
-    protected def runAnalysis(program: SchemeExp[Named] & Preluded, benchmark: Benchmark): Analysis =
+    protected def runAnalysis(anl: Analysis)(program: SchemeExp[Named] & Preluded, benchmark: Benchmark): anl.Solution =
         try
             // analyze the program using the analysis under test
-            val anl = analysis(program)
+            val sol = algorithm.solution(anl, program)
             val (ellapsed, timeout) = Timer.time(analysisTimeout(benchmark))
             SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = false)
-            anl.analyzeWithTimeout(timeout)
-            assume(anl.finished, "Analysis timed out")
-            anl
+            sol.compute(timeout)
+            assume(sol.finished, "Analysis timed out")
+            sol
         catch
             case e: VirtualMachineError =>
                 System.gc()
@@ -132,11 +134,12 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             case v => throw new Exception(s"Unknown concrete value type: $v.")
 
     protected def compareResults(
-        analysis: Analysis,
+        analysis: Analysis
+      )(sol: analysis.Solution,
         concreteResults: Map[Option[Position], Set[Value]],
         message: String = ""
       ): Unit =
-        val analysisResults = analysis.resultsPerPos
+        val analysisResults = analysis.resultsPerPos(sol)
         concreteResults.foreach { case (pos, concreteValues) =>
             val abstractValues = analysisResults.getOrElse(pos, Set.empty)
             concreteValues.foreach { concreteValue =>
@@ -172,7 +175,8 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             // run the program using a concrete interpreter
             val concreteResults = evalConcrete(program, benchmark)
             // analyze the program using the analysis under test
-            val anl = runAnalysis(program, benchmark)
+            val anl = analysis
+            val sol = runAnalysis(anl)(program, benchmark)
             // check if the analysis results soundly (over-)approximate the concrete results
-            compareResults(anl, concreteResults)
+            compareResults(anl)(sol, concreteResults)
         }

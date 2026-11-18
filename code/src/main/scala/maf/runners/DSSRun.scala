@@ -3,6 +3,7 @@ package maf.runners
 import maf.analysis.scheme.*
 import maf.domain.*
 import maf.domain.lattice.*
+import maf.fixpoint.FIFOWorklistAlgorithm
 import maf.syntax.Source
 import maf.syntax.scheme.*
 import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
@@ -59,8 +60,9 @@ object DSSRun:
         SchemeParser.undefine(transf)
 
     def runDSS(prg: SchemeExp[Named] & Preluded) =
-        val anl = new SchemeDSSAnalysis(prg, 0) //with NameBasedAllocator
-        anl.analyze()
-        val res = anl.value(anl.ResultDependency(anl.MainComponent))
+        val anl = new SchemeDSSAnalysis(0) //with NameBasedAllocator
+        val sol = FIFOWorklistAlgorithm.solution(anl, prg)
+        sol.compute()
+        val res = sol.value(anl.ResultDependency(anl.initialComponent(prg)))
         val vlu = Lattice[anl.Val].join(res.map(_._1))
         vlu

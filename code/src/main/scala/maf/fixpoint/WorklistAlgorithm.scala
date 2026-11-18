@@ -1,45 +1,100 @@
 package maf.fixpoint
 
+import maf.syntax.Expression
 import maf.util.Timeout
 
 import scala.annotation.unused
 import scala.collection.mutable.PriorityQueue
 
-/**
- * A fixpoint algorithm that keeps a worklist of the components to (re)analyze: the components that are spawned for the first time, and the ones that
- * read a dependency when it changes. Its analysis states change the global analysis state right away, and update a dependency by joining the values
- * that are written to it.
- */
-trait WorklistAlgorithm extends ModAnalysis[?]:
-    def addToWorkList(cmp: Component): Unit
+// The worklist algorithms keep a worklist of the components to (re)analyze: the components that are spawned for the first time, and the ones that
+// read a dependency when it changes. Their analysis states change the global analysis state right away, and update a dependency by joining the
+// values that are written to it. They differ in the order in which they analyze the components in their worklist.
+
+/** A worklist algorithm that analyzes the components in a breadth-first order. */
+object FIFOWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new SequentialWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def emptyWorkList = FIFOWorkList.empty
+
+/** A worklist algorithm that analyzes the components in a depth-first order. */
+object LIFOWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new SequentialWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def emptyWorkList = LIFOWorkList.empty
+
+/** A worklist algorithm that analyzes the components in an arbitrary order. */
+object RandomWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new SequentialWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def emptyWorkList = RandomWorkList.empty
+
+/** A worklist algorithm that analyzes the most deeply nested calls first (the components that are spawned the furthest from the initial one). */
+object CallDepthFirstWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new PriorityWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            private var depth: Map[anl.Component, Int] = Map.empty.withDefaultValue(0)
+            protected def ordering = Ordering.by(depth(_))
+            override protected def spawn(cmp: anl.Component, from: anl.Component): Unit =
+                if !visited(cmp) then depth += cmp -> (depth(from) + 1)
+                super.spawn(cmp, from)
+
+/** A worklist algorithm that analyzes the components that it analyzed the least often first. */
+object LeastVisitedFirstWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new AnalysisCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def ordering = Ordering.by((cmp: anl.Component) => timesAnalyzed(cmp)).reverse
+
+/** A worklist algorithm that analyzes the components that it analyzed the most often first. */
+object MostVisitedFirstWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new AnalysisCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def ordering = Ordering.by(timesAnalyzed(_))
+
+/** A worklist algorithm that analyzes the components that read the most dependencies first. */
+object MostDependenciesFirstWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new DependencyCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def ordering = Ordering.by(dependenciesRead(_).size)
+
+/** A worklist algorithm that analyzes the components that read the fewest dependencies first. */
+object LeastDependenciesFirstWorklistAlgorithm extends FixpointAlgorithm:
+    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
+        new DependencyCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+            protected def ordering = Ordering.by((cmp: anl.Component) => dependenciesRead(cmp).size).reverse
+
+// The solutions of the worklist algorithms. They implement the members of `analysis.Solution`, which each worklist algorithm mixes in: a class can
+// not extend `analysis.Solution` itself, as the type checker could not tell that a solution for `anl` is an `anl.Solution`.
+
+/** The solution of `analysis` for the program of the component `initial`, as a worklist algorithm computes it. */
+private[fixpoint] abstract class WorklistSolution[A <: Analysis[?]](val analysis: A, initial: analysis.Component):
+    import analysis.Dependency
+
+    /** Adds `cmp` to the worklist. */
+    protected def add(cmp: analysis.Component): Unit
+
+    /** Removes the next component to analyze from the worklist, and returns it. */
+    protected def next(): analysis.Component
+
+    /** Returns whether the worklist is empty. */
+    protected def isEmpty: Boolean
 
     /** The values of the dependencies that were written (the others are still at the bottom of their lattice). */
-    var values: Map[Dependency, Any] = Map()
-    def value(dep: Dependency): dep.Value = values.get(dep) match
-        case Some(vlu) => vlu.asInstanceOf[dep.Value]
-        case None      => dep.lattice.bottom
+    private var values: Map[Dependency, Any] = Map()
 
     /** For every dependency, the components that read it. */
-    var deps: Map[Dependency, Set[Component]] = Map[Dependency, Set[Component]]().withDefaultValue(Set.empty)
-    def register(target: Component, dep: Dependency): Unit = deps += dep -> (deps(dep) + target)
+    private var readers: Map[Dependency, Set[analysis.Component]] = Map().withDefaultValue(Set.empty)
+    protected def register(cmp: analysis.Component, dep: Dependency): Unit = readers += dep -> (readers(dep) + cmp)
 
     /** The components that were spawned, which are added to the worklist only the first time. */
-    var visited: Set[Component] = Set()
-    def components: Set[Component] = visited
-
-    override def init(): Unit =
-        super.init()
-        visited += initialComponent
-
-    protected def spawn(cmp: Component, @unused from: Component): Unit = spawn(cmp)
-    protected def spawn(cmp: Component): Unit =
+    protected var visited: Set[analysis.Component] = Set()
+    protected def spawn(cmp: analysis.Component, @unused from: analysis.Component): Unit =
         if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
             visited += cmp
-            addToWorkList(cmp)
+            add(cmp)
 
     /** An analysis state for the analysis of `cmp`, which changes the global analysis state right away. */
-    class WorklistAnalysisState(cmp: Component) extends AnalysisState:
-        def spawn(other: Component): Unit = WorklistAlgorithm.this.spawn(other, cmp)
+    private class State(cmp: analysis.Component) extends analysis.AnalysisState:
+        def spawn(other: analysis.Component): Unit = WorklistSolution.this.spawn(other, cmp)
         def get(dep: Dependency): dep.Value =
             register(cmp, dep)
             value(dep)
@@ -48,108 +103,72 @@ trait WorklistAlgorithm extends ModAnalysis[?]:
             val upd = dep.lattice.join(old, vlu)
             if upd != old then
                 values += dep -> upd
-                deps(dep).foreach(addToWorkList)
+                readers(dep).foreach(add)
 
-trait SequentialWorklistAlgorithm extends WorklistAlgorithm:
-    // we can choose what kind of worklist to pick
-    def emptyWorkList: WorkList[Component]
-    // adding elements to the worklist
-    var workList: WorkList[Component] = emptyWorkList.add(initialComponent)
-    def addToWorkList(cmp: Component) = workList = workList.add(cmp)
-    def finished: Boolean = workList.isEmpty
-    // a single step in the worklist algorithm iteration
-    def step(): Unit =
-        // take the next component
-        val current = workList.head
+    // whether the computation has started, i.e., whether the initial component was added to the worklist
+    private var started: Boolean = false
+
+    // the number of analyses of components so far
+    private var iterations: Int = 0
+
+    /** Analyzes the components in the worklist until it is empty or the timeout is reached. */
+    final def compute(timeout: Timeout.T): Unit =
+        if !started then
+            started = true
+            visited += initial
+            add(initial)
+        while !isEmpty && !timeout.reached do
+            val cmp = next()
+            iterations += 1
+            analysis.analyzeComponent(cmp, State(cmp))
+
+    final def finished: Boolean = started && isEmpty
+    final def value(dep: Dependency): dep.Value = values.get(dep) match
+        case Some(vlu) => vlu.asInstanceOf[dep.Value]
+        case None      => dep.lattice.bottom
+    final def components: Set[analysis.Component] = visited
+    final def dependencies: Set[Dependency] = values.keySet
+    final def metrics: List[Metric] = List(Metric("iterations", iterations))
+
+/** A solution with a worklist that is a `WorkList`. */
+private[fixpoint] abstract class SequentialWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends WorklistSolution[A](anl, initial):
+    protected def emptyWorkList: WorkList[analysis.Component]
+    private var workList: WorkList[analysis.Component] = emptyWorkList
+    protected def add(cmp: analysis.Component): Unit = workList = workList.add(cmp)
+    protected def next(): analysis.Component =
+        val cmp = workList.head
         workList = workList.tail
-        // analyze it
-        analyzeComponent(current, WorklistAnalysisState(current))
-
-    // step until worklist is empty or timeout is reached
-    def run(timeout: Timeout.T): Unit =
-        while !finished && !timeout.reached do step()
-
-    // add the initial component during initialisation
-    override def init() =
-        super.init()
-        addToWorkList(initialComponent)
-
-/** Provides a work list with a depth-first exploration order to a modular analysis. */
-trait LIFOWorklistAlgorithm extends SequentialWorklistAlgorithm:
-    def emptyWorkList = LIFOWorkList()
-
-/** Provides a work list with a breadth-first exploration order to a modular analysis. */
-trait FIFOWorklistAlgorithm extends SequentialWorklistAlgorithm:
-    def emptyWorkList = FIFOWorkList()
-
-/** Provides a work list with a random exploration order to a modular analysis. */
-trait RandomWorklistAlgorithm extends SequentialWorklistAlgorithm:
-    def emptyWorkList = RandomWorkList()
-
-// TODO: use an immutable priority queue, or reuse SequentialWorklistAlgorithm differently here
-trait PriorityQueueWorklistAlgorithm extends WorklistAlgorithm:
-    // choose the priority ordering of components
-    implicit lazy val ordering: Ordering[Component]
-    // worklist is a priority queue
-    var worklistSet: Set[Component] = Set(initialComponent)
-    lazy val worklist: PriorityQueue[Component] = PriorityQueue(initialComponent)
-    def push(cmp: Component) =
-        if !worklistSet.contains(cmp) then
-            worklistSet += cmp
-            worklist += cmp
-    def pop(): Component =
-        val cmp = worklist.dequeue()
-        worklistSet -= cmp
         cmp
-    def addToWorkList(cmp: Component): Unit = push(cmp)
-    def finished: Boolean = worklist.isEmpty
-    // a single step in the worklist algorithm iteration
-    def step(): Unit =
-        // take the next component, and analyze it
-        val current = pop()
-        analyzeComponent(current, WorklistAnalysisState(current))
+    protected def isEmpty: Boolean = workList.isEmpty
 
-    // step until worklist is empty or timeout is reached
-    def run(timeout: Timeout.T): Unit =
-        while !finished && !timeout.reached do step()
+// TODO: use an immutable priority queue
+/** A solution with a worklist that is a priority queue, which contains each component at most once. */
+private[fixpoint] abstract class PriorityWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends WorklistSolution[A](anl, initial):
+    /** The order of the components, of which the greatest is analyzed first. */
+    protected def ordering: Ordering[analysis.Component]
+    private lazy val queue: PriorityQueue[analysis.Component] = PriorityQueue.empty(using ordering)
+    private var queued: Set[analysis.Component] = Set()
+    protected def add(cmp: analysis.Component): Unit =
+        if !queued.contains(cmp) then
+            queued += cmp
+            queue += cmp
+    protected def next(): analysis.Component =
+        val cmp = queue.dequeue()
+        queued -= cmp
+        cmp
+    protected def isEmpty: Boolean = queue.isEmpty
 
-
-/** Provides a work list that prioritises nested calls by call depth to a modular analysis. */
-trait CallDepthFirstWorklistAlgorithm extends PriorityQueueWorklistAlgorithm:
-    var depth: Map[Component, Int] = Map.empty.withDefaultValue(0)
-    lazy val ordering: Ordering[Component] = Ordering.by(depth)
-    override protected def spawn(cmp: Component, from: Component): Unit =
-        if !visited(cmp) then // TODO[easy]: a mutable set could do visited.add(...) in a single call
-            visited += cmp
-            depth += cmp -> (depth(from) + 1)
-            addToWorkList(cmp)
-
-trait LeastVisitedFirstWorklistAlgorithm extends PriorityQueueWorklistAlgorithm:
-    var count: Map[Component, Int] = Map.empty.withDefaultValue(0)
-    lazy val ordering: Ordering[Component] = Ordering.by(count).reverse
-    override def pop(): Component =
-        val cmp = super.pop()
-        count += cmp -> (count(cmp) + 1)
+/** A solution with a priority queue that counts how often it analyzed each component. */
+private[fixpoint] abstract class AnalysisCountWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends PriorityWorklistSolution[A](anl, initial):
+    protected var timesAnalyzed: Map[analysis.Component, Int] = Map.empty.withDefaultValue(0)
+    override protected def next(): analysis.Component =
+        val cmp = super.next()
+        timesAnalyzed += cmp -> (timesAnalyzed(cmp) + 1)
         cmp
 
-trait MostVisitedFirstWorklistAlgorithm extends LeastVisitedFirstWorklistAlgorithm:
-    override lazy val ordering: Ordering[Component] = Ordering.by(count)
-
-trait MostDependenciesFirstWorklistAlgorithm extends PriorityQueueWorklistAlgorithm:
-    var cmpDeps: Map[Component, Set[Dependency]] = Map.empty.withDefaultValue(Set.empty)
-    var depCount: Map[Component, Int] = Map.empty.withDefaultValue(0)
-    lazy val ordering: Ordering[Component] = Ordering.by(depCount)
-    override def register(cmp: Component, dep: Dependency): Unit =
+/** A solution with a priority queue that keeps the dependencies that each component read. */
+private[fixpoint] abstract class DependencyCountWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends PriorityWorklistSolution[A](anl, initial):
+    protected var dependenciesRead: Map[analysis.Component, Set[analysis.Dependency]] = Map.empty.withDefaultValue(Set.empty)
+    override protected def register(cmp: analysis.Component, dep: analysis.Dependency): Unit =
         super.register(cmp, dep)
-        cmpDeps += (cmp -> (cmpDeps(cmp) + dep))
-        depCount += (cmp -> (cmpDeps(cmp).size))
-
-trait LeastDependenciesFirstWorklistAlgorithm extends MostDependenciesFirstWorklistAlgorithm:
-    override lazy val ordering: Ordering[Component] = Ordering.by(depCount).reverse
-
-trait BiggerEnvironmentFirstWorklistAlgorithm extends PriorityQueueWorklistAlgorithm:
-    def environmentSize(cmp: Component): Int
-    lazy val ordering: Ordering[Component] = Ordering.by(environmentSize)
-
-trait SmallerEnvironmentFirstWorklistAlgorithm extends BiggerEnvironmentFirstWorklistAlgorithm:
-    override lazy val ordering: Ordering[Component] = Ordering.by(environmentSize).reverse
+        dependenciesRead += cmp -> (dependenciesRead(cmp) + dep)

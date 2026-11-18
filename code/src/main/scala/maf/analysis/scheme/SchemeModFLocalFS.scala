@@ -6,12 +6,15 @@ import maf.domain.lattice.*
 import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.semantics.scheme.*
+import maf.syntax.Position
 import maf.syntax.scheme.*
 import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean = true) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
+import scala.annotation.unused
+
+abstract class SchemeModFLocalFS(gc: Boolean = true) extends Analysis[SchemeExp[Named] & Preluded] with SchemeSemantics:
     inter: SchemeDomain with SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -28,17 +31,14 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
     // INITIALISATION
     //
 
-    lazy val initialExp: Exp = program
-    lazy val initialEnv: Env = BasicEnvironment(initialBds.map(p => (p._1, p._2)).toMap)
-    lazy val initialSto: Sto = LocalStore.from(initialBds.map(p => (p._2, p._3)))
-
     given shouldCount: (Adr => Boolean) =
         case _: PtrAddr[_] => true
         case _             => false
 
-    private lazy val initialBds: Iterable[(String, Adr, Val)] =
+    // the bindings of the primitives that the program `prg` uses, which its analysis starts from
+    private def initialBds(prg: Exp): Iterable[(String, Adr, Val)] =
         primitives.allPrimitives.view
-            .filterKeys(initialExp.fv)
+            .filterKeys(prg.fv)
             .map { case (name, p) =>
                 (name, PrmAddr(name), lattice.primitive(p.name))
             }
@@ -51,20 +51,25 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
         def exp: Exp
         def env: Env
         def ctx: Ctx
-    case object MainComponent extends Component:
-        val exp = initialExp
-        val env = initialEnv
+    case class MainComponent(prg: SchemeExp[Named] & Preluded) extends Component with SmartHash:
+        val exp = prg
+        val env = BasicEnvironment(initialBds(prg).map(p => (p._1, p._2)).toMap)
         val ctx = initialCtx
+        // the store that the program starts from
+        val sto: Sto = LocalStore.from(initialBds(prg).map(p => (p._2, p._3)))
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, ctx: Ctx) extends Component:
         def exp = lam.bodyExp
         override def toString = s"${lam.lambdaName} [$ctx]"
 
-    def initialComponent: Component = MainComponent
+    def initialComponent(prg: SchemeExp[Named] & Preluded): Component = MainComponent(prg)
 
     //
     // STATE = RESULTS + STORE
     //
+
+    // the dependencies of this analysis
+    sealed trait Dependency extends Analysis.Dependency
 
     // the result of a component, if it returns: its value, how it changes the store, and the addresses that it updates and allocates
     case class ResultDependency(cmp: Cmp) extends Dependency:
@@ -105,8 +110,8 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
     // STORE STUFF
     //
 
-    def extendV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
-    def updateV(sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
+    def extendV(@unused anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.extend(adr, vlu)
+    def updateV(@unused anl: Anl, sto: Sto, adr: Adr, vlu: Val): Dlt = sto.update(adr, vlu)
     def eqA(sto: Sto): MaybeEq[Adr] = new MaybeEq[Adr]:
         def apply[B: BoolLattice](a1: Adr, a2: Adr): B =
             if a1 == a2 then
@@ -189,9 +194,9 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
         def addrEq =
             (_, _, sto, _) => Some((eqA(sto), Delta.emptyDelta, Set.empty, Set.empty))
         def extendSto(adr: Adr, vlu: Val) =
-            (_, _, sto, _) => Some((), extendV(sto, adr, vlu), Set.empty, Set(adr))
+            (anl, _, sto, _) => Some((), extendV(anl, sto, adr, vlu), Set.empty, Set(adr))
         def updateSto(adr: Adr, vlu: Val) =
-            (_, _, sto, _) => Some((), updateV(sto, adr, vlu), Set(adr), Set.empty)
+            (anl, _, sto, _) => Some((), updateV(anl, sto, adr, vlu), Set(adr), Set.empty)
         def lookupSto(adr: Adr) =
             (_, _, sto, _) => sto.getValue(adr).map((_, Delta.emptyDelta, Set.empty, Set.empty))
         // CTX STUFF
@@ -217,10 +222,11 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
     // THE ANALYSIS OF A COMPONENT
     //
 
-    var iterations = 0
-    
-    def computeOneCounts: (Int, Int) = 
-        val stores = initialSto :: components.toList.collect { case cll: Cll => value(StoreDependency(cll)) }
+    def computeOneCounts(sol: Solution): (Int, Int) =
+        val stores = sol.components.toList.map {
+            case main: MainComponent => main.sto
+            case cll: Cll            => sol.value(StoreDependency(cll))
+        }
         stores.foldLeft((0,0)) { 
             case (acc, store) =>
                 store.content.foldLeft(acc) {
@@ -235,36 +241,41 @@ abstract class SchemeModFLocalFS(prg: SchemeExp[Named] & Preluded, gc: Boolean =
                 }
         }
 
-    def computeOneCountsPercentage: Option[Double] =
-        val (one, total) = computeOneCounts
+    def computeOneCountsPercentage(sol: Solution): Option[Double] =
+        val (one, total) = computeOneCounts(sol)
         if total == 0 then
             None
         else 
             Some(one.toDouble / total.toDouble)
 
     def analyzeComponent(cmp: Component, anl: Anl): Unit =
-        iterations = iterations + 1
         // get the (widened) store
         val sto = cmp match
-            case MainComponent => initialSto
-            case cll: Cll      => anl.get(StoreDependency(cll))
+            case main: MainComponent => main.sto
+            case cll: Cll            => anl.get(StoreDependency(cll))
         // compute the result
         anl.set(ResultDependency(cmp), eval(cmp.exp)(anl, cmp.env, sto, cmp.ctx))
 
 
 trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisResults[SchemeExp[Any]]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
-    var resultsPerPos = Map.empty.withDefaultValue(Set.empty)
-    override def extendV(sto: Sto, adr: Adr, vlu: Val) =
-        adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerPos += adr.pos -> (resultsPerPos(adr.pos) + vlu)
-            case _ => ()
-        super.extendV(sto, adr, vlu)
 
-    override def updateV(sto: Sto, adr: Adr, vlu: Val) =
-        adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerPos += adr.pos -> (resultsPerPos(adr.pos) + vlu)
-            case _ => ()
-        super.updateV(sto, adr, vlu)
+    // the values that the analysis writes to the variables and pointers of a position, which no component reads
+    case class PositionDependency(pos: Option[Position]) extends Dependency:
+        type Value = Set[Val]
+        given lattice: Lattice[Set[Val]] = positionLattice
+    lazy val positionLattice: Lattice[Set[Val]] = Lattice.setLattice
+
+    def resultsPerPos(sol: Solution) = sol.dependencies.collect { case dep: PositionDependency => dep.pos -> sol.value(dep) }.toMap
+
+    private def record(anl: Anl, adr: Adr, vlu: Val): Unit = adr match
+        case _: VarAddr[_] | _: PtrAddr[_] => anl.set(PositionDependency(adr.pos), Set(vlu))
+        case _                             => ()
+
+    override def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val) =
+        record(anl, adr, vlu)
+        super.extendV(anl, sto, adr, vlu)
+
+    override def updateV(anl: Anl, sto: Sto, adr: Adr, vlu: Val) =
+        record(anl, adr, vlu)
+        super.updateV(anl, sto, adr, vlu)

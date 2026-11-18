@@ -6,12 +6,15 @@ import maf.domain.lattice.*
 import maf.domain.scheme.*
 import maf.fixpoint.*
 import maf.semantics.scheme.*
+import maf.syntax.Position
 import maf.syntax.scheme.*
 import maf.syntax.scheme.transformations.Preluded
 import maf.util.*
 import maf.util.Monad.MonadSyntaxOps
 
-abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalysis[SchemeExp[Named]](prg) with SchemeSemantics:
+import scala.annotation.unused
+
+abstract class SchemeModFADI extends Analysis[SchemeExp[Named] & Preluded] with SchemeSemantics:
     inter: SchemeDomain & SchemeModFLocalSensitivity =>
 
     // more shorthands
@@ -32,15 +35,10 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
     // INITIALISATION
     //
 
-    lazy val initialExp: Exp = program
-    lazy val initialEnv: Env = Environment(initialBds.map(p => (p._1, p._2)))
-    lazy val initialSto: Sto = initialBds.foldLeft(store.empty) {
-        case (accSto, (_, adr, vlu)) => accSto.extend(adr, vlu)
-    }
-
-    private lazy val initialBds: Iterable[(String, Adr, Val)] =
+    // the bindings of the primitives that the program `prg` uses, which its analysis starts from
+    private def initialBds(prg: Exp): Iterable[(String, Adr, Val)] =
         primitives.allPrimitives.view
-            .filterKeys(initialExp.fv)
+            .filterKeys(prg.fv)
             .map { case (name, p) => (name, PrmAddr(name), lattice.primitive(p.name)) }
 
     //
@@ -53,18 +51,20 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
         val sto: Sto
         val ctx: Ctx
         val krs: Set[Adr]
-    case object MainComponent extends Component:
-        val exp = initialExp
-        val env = initialEnv
+    case class MainComponent(prg: SchemeExp[Named] & Preluded) extends Component with SmartHash:
+        val exp = prg
+        val env = Environment(initialBds(prg).map(p => (p._1, p._2)))
         val ctx = initialCtx
-        val sto = initialSto
+        val sto = initialBds(prg).foldLeft(store.empty) {
+            case (accSto, (_, adr, vlu)) => accSto.extend(adr, vlu)
+        }
         val krs = Set.empty
         override def toString = "main"
     case class CallComponent(lam: Lam, env: Env, sto: Sto, ctx: Ctx, krs: Set[Adr]) extends Component:
         val exp = lam.bodyExp
         override def toString = s"${lam.lambdaName}@${lam.pos.show} [$ctx] [<store>]"
 
-    def initialComponent: Cmp = MainComponent
+    def initialComponent(prg: SchemeExp[Named] & Preluded): Cmp = MainComponent(prg)
 
     //
     // RESULTS
@@ -72,6 +72,9 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
 
     // for every path through a component: its value and the resulting store
     type Res = (Val, Sto)
+
+    // the dependencies of this analysis
+    sealed trait Dependency extends Analysis.Dependency
 
     case class ResultDependency(cmp: Component) extends Dependency:
         type Value = Set[Res]
@@ -86,8 +89,8 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
     // STORE STUFF
     //
 
-    def extendV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.extend(adr, vlu)
-    def updateV(sto: Sto, adr: Adr, vlu: Val): Sto = sto.update(adr, vlu)
+    def extendV(@unused anl: Anl, sto: Sto, adr: Adr, vlu: Val): Sto = sto.extend(adr, vlu)
+    def updateV(@unused anl: Anl, sto: Sto, adr: Adr, vlu: Val): Sto = sto.update(adr, vlu)
 
     def eqA(sto: Sto): MaybeEq[Adr] = sto.addrEq
 
@@ -150,9 +153,9 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
         def addrEq =
             (_, _, sto, _, _) => Set((eqA(sto), sto))
         def extendSto(adr: Adr, vlu: Val) =
-            (_, _, sto, _, _) => Set(((), extendV(sto, adr, vlu)))
+            (anl, _, sto, _, _) => Set(((), extendV(anl, sto, adr, vlu)))
         def updateSto(adr: Adr, vlu: Val) =
-            (_, _, sto, _, _) => Set(((), updateV(sto, adr, vlu)))
+            (anl, _, sto, _, _) => Set(((), updateV(anl, sto, adr, vlu)))
         def lookupSto(adr: Adr) =
             flatMap((_, _, sto, _, _) => Set((sto.lookup(adr), sto)))(inject)
         // CTX STUFF
@@ -183,29 +186,29 @@ abstract class SchemeModFADI(prg: SchemeExp[Named] & Preluded) extends ModAnalys
 trait SchemeModFADIAnalysisResults extends SchemeModFADI with AnalysisResults[SchemeExp[Any]]:
     this: SchemeModFLocalSensitivity with SchemeDomain =>
 
-    var resultsPerPos = Map.empty.withDefaultValue(Set.empty)
+    // the values that the analysis writes to the variables and pointers of a position, which no component reads
+    case class PositionDependency(pos: Option[Position]) extends Dependency:
+        type Value = Set[Val]
+        given lattice: Lattice[Set[Val]] = positionLattice
+    lazy val positionLattice: Lattice[Set[Val]] = Lattice.setLattice
 
-    override def extendV(sto: Sto, adr: Adr, vlu: Val) =
-        adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerPos += adr.pos -> (resultsPerPos(adr.pos) + vlu)
-            case _ => ()
-        super.extendV(sto, adr, vlu)
+    def resultsPerPos(sol: Solution) = sol.dependencies.collect { case dep: PositionDependency => dep.pos -> sol.value(dep) }.toMap
 
-    override def updateV(sto: Sto, adr: Adr, vlu: Val) =
-        adr match
-            case _: VarAddr[_] | _: PtrAddr[_] =>
-                resultsPerPos += adr.pos -> (resultsPerPos(adr.pos) + vlu)
-            case _ => ()
-        super.updateV(sto, adr, vlu)
+    private def record(anl: Anl, adr: Adr, vlu: Val): Unit = adr match
+        case _: VarAddr[_] | _: PtrAddr[_] => anl.set(PositionDependency(adr.pos), Set(vlu))
+        case _                             => ()
+
+    override def extendV(anl: Anl, sto: Sto, adr: Adr, vlu: Val) =
+        record(anl, adr, vlu)
+        super.extendV(anl, sto, adr, vlu)
+
+    override def updateV(anl: Anl, sto: Sto, adr: Adr, vlu: Val) =
+        record(anl, adr, vlu)
+        super.updateV(anl, sto, adr, vlu)
 
 // a standard instance
 
-class SchemeModFADIAnalysis(prg: SchemeExp[Named] & Preluded, k: Int)
-    extends SchemeModFADI(prg)
+class SchemeModFADIAnalysis(k: Int)
+    extends SchemeModFADI
     with SchemeConstantPropagationDomain
     with SchemeModFLocalCallSiteSensitivity(k)
-    with maf.fixpoint.FIFOWorklistAlgorithm
-        //override def run(t: maf.util.Timeout.T) = 
-        //    super.run(t)
-        //    println(value(ResultDependency(MainComponent)))

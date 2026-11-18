@@ -17,13 +17,16 @@ import scala.annotation.unused
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
     type Benchmark = String
-    type Analysis = ModAnalysis[SchemeExp[Named]] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
+    type Analysis = maf.fixpoint.Analysis[SchemeExp[Named] & Preluded] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
         val modularLatticeWrapper: ModularSchemeLatticeWrapper {
             val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
         }
     }
 
     implicit def cpAnalysis(anl: ModularSchemeDomain): Analysis = anl.asInstanceOf[Analysis]
+
+    // the fixpoint algorithm that computes the solutions of the analyses
+    def algorithm: FixpointAlgorithm = FIFOWorklistAlgorithm
 
     private def convertAddr(addr: Address): BaseAddr = addr match
         case maf.domain.scheme.VarAddr(vrb, _) => address.VarAddr(vrb)
@@ -154,14 +157,16 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         morePrecise
 
     /**
-     * Given an analysis (that terminated), extract its ResultMap
+     * Given a solution of an analysis (that terminated), extract its ResultMap
      * @param analysis
      *   the analysis from which the results need to be extracted
+     * @param sol
+     *   its solution
      * @return
      *   a ResultMap containing the context-insensitive results for that analysis
      */
-    protected def extract(analysis: Analysis): ResultMap =
-        analysis.resultsPerPos.view
+    protected def extract(analysis: Analysis)(sol: analysis.Solution): ResultMap =
+        analysis.resultsPerPos(sol).view
             .mapValues(vs => analysis.lattice.join(vs))
             .mapValues(convertValue(analysis))
             .toMap
@@ -170,7 +175,7 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      * Run the analysis on a given program
      *
      * @param analysis
-     *   a function that creates an analysis for a given program
+     *   the analysis to run (with `algorithm`)
      * @param program
      *   the program to analyze
      * @param name
@@ -185,18 +190,18 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
      *   - `None` otherwise
      */
     protected def runAnalysis(
-        analysis: SchemeExp[Named] & Preluded => Analysis,
+        analysis: Analysis,
         name: String,
         program: SchemeExp[Named] & Preluded,
         path: Benchmark,
         timeout: Timeout.T = Timeout.none
       ): AnalysisResult =
         try
-            val anl = analysis(program)
+            val sol = algorithm.solution(analysis, program)
             println(s"... analysing $path using $name ...")
-            anl.analyzeWithTimeout(timeout)
-            val res = extract(anl)
-            if anl.finished then Terminated(res)
+            sol.compute(timeout)
+            val res = extract(analysis)(sol)
+            if sol.finished then Terminated(res)
             else TimedOut(res)
         catch
             case e: Exception =>

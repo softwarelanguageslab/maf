@@ -25,7 +25,7 @@ The source code (in [`code/src/main/scala/maf`](code/src/main/scala/maf)) is org
 | `maf.syntax` | Expressions (program points with a unique label) and source positions. `sexp` contains S-expressions and their parser; `scheme` contains the Scheme AST, parser and compiler, and `scheme.transformations` the source-to-source transformations (prelude, undefiner, mutable variable boxer, lexical addresser and renamer). |
 | `maf.domain` | Semantic domains: addresses, environments, stores, errors and abstract domains. `lattice` contains the lattice interfaces and their implementations (concrete, constant propagation, type, bounded); `scheme` contains the Scheme lattice, abstract domains, addresses and primitives. |
 | `maf.semantics` | `scheme` contains the (monadic) abstract semantics of Scheme with its context-sensitivity policies and allocators; `scheme.interpreter` contains the concrete Scheme interpreters. |
-| `maf.fixpoint` | The generic modular fixpoint machinery: `ModAnalysis`, a system of constraints with side effects over the components of a program, and the worklist algorithms that solve it. |
+| `maf.fixpoint` | The generic modular fixpoint machinery: `Analysis`, a system of constraints with side effects over the components of a program, and `FixpointAlgorithm`, the interface of the algorithms that compute its solutions (such as the worklist algorithms). |
 | `maf.analysis` | The analysis results interface. `scheme` contains the analyses (`SchemeModFLocal`, `SchemeModFLocalFS` and `SchemeModFADI`). |
 | `maf.runners` | Ready-to-run programs and the catalogue of benchmark programs. `precision` and `performance` contain the experiments. |
 
@@ -35,7 +35,7 @@ The test suite (in [`code/src/test/scala/maf/test`](code/src/test/scala/maf/test
 
 ## Analysing a program
 
-To run a modular analysis, you compose an analysis with an abstract domain, a context-sensitivity policy and a worklist algorithm.
+To run a modular analysis, you compose an analysis with an abstract domain and a context-sensitivity policy, and compute its solution for a program with a fixpoint algorithm.
 
 The analyses do not support `set!` directly, so a program first needs to be parsed, extended with the required prelude definitions, rewritten to use explicit boxes for mutable variables, and undefined:
 ```scala
@@ -49,22 +49,22 @@ The type of a Scheme expression lists the features that may occur in it, such as
 
 Then, for instance, to analyse `prog` using a 1-CFA analysis with a constant-propagation domain:
 ```scala
-val analysis = new SchemeModFLocal(prog)
+val analysis = new SchemeModFLocal
                  with SchemeConstantPropagationDomain
                  with SchemeModFLocalCallSiteSensitivity(1)
-                 with FIFOWorklistAlgorithm
-analysis.analyze()
+val solution = FIFOWorklistAlgorithm.solution(analysis, prog)
+solution.compute()
 ```
-Method `analyze` computes the full (and sound) analysis result for the program that the analysis is constructed with.
-This method does not return the analysis results directly.
-Rather, after calling `analyze`, the computed analysis results can be accessed through the `value` of the dependencies of the `analysis` object (e.g., `analysis.value(analysis.ResultDependency(analysis.MainComponent))`).
-Mixing in `SchemeModFLocalAnalysisResults` (resp. `SchemeModFLocalFSAnalysisResults` and `SchemeModFADIAnalysisResults`) additionally collects the values per program location in `resultsPerPos`.
+Method `solution` returns the solution of the analysis for `prog`, of which nothing is computed yet, and method `compute` computes the full (and sound) solution.
+The analysis itself keeps no state, so the same analysis can be solved for other programs, or with other fixpoint algorithms (such as `LIFOWorklistAlgorithm` or `CallDepthFirstWorklistAlgorithm`).
+The results of the analysis are the `value`s of its dependencies in the solution (e.g., `solution.value(analysis.ResultDependency(analysis.initialComponent(prog)))`).
+Mixing in `SchemeModFLocalAnalysisResults` (resp. `SchemeModFLocalFSAnalysisResults` and `SchemeModFADIAnalysisResults`) additionally collects the values per program location, in `analysis.resultsPerPos(solution)`.
 
-Alternatively, one can use the `analyzeWithTimeout(<timeout>)` method to run the analysis with a given timeout. This timeout is obtained from a Java Duration
+Alternatively, one can call `compute(<timeout>)` to compute the solution with a given timeout. This timeout is obtained from a Java Duration
 (using `Timeout.start(<duration>)`). 
-The method returns when either the analysis has terminated or when the timeout has been reached (approximately, meaning in practice it may run a bit longer than the specified timeout). 
-Extra care should be taken when using this method, as the (partial) analysis results are not guaranteed to be sound when the timeout is triggered. 
-Therefore, when using this method, it is recommended to explicitly check afterwards if the analysis terminated using the `finished` method.
+The method returns when either the computation has finished or when the timeout has been reached (approximately, meaning in practice it may run a bit longer than the specified timeout), and calling it again resumes the computation where it stopped.
+Extra care should be taken when using a timeout, as the (partial) solution is not guaranteed to be sound when the timeout is triggered. 
+Therefore, it is recommended to explicitly check afterwards if the computation finished using the `finished` method.
 
 Some ready-to-run examples can be found in the package `maf.runners`, e.g.:
 ```sbtshell

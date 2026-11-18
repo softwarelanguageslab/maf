@@ -2,7 +2,6 @@ package maf.test.analysis.scheme
 
 import maf.analysis.scheme.*
 import maf.domain.scheme.*
-import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
@@ -18,11 +17,10 @@ trait SchemeModFLocalFSSoundnessTests extends SchemeSoundnessTests:
 
 class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (context-insensitive)"
-    def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocalFS(prg) //TODO!
+    def analysis =
+        new SchemeModFLocalFS //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm
             with SchemeModFLocalFSAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(
@@ -34,10 +32,9 @@ class SchemeModFLocalFSInsensitiveSoundnessTests extends SchemeModFLocalFSSoundn
 
 class SchemeModFLocalFSCallSiteSensitiveSoundnessTests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = "MODF LOCAL (FS) (call-site sensitive)"
-    def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) //TODO!
+    def analysis =
+        new SchemeModFLocal //TODO!
             with SchemeConstantPropagationDomain
             with SchemeModFLocalCallSiteSensitivity(1)
-            with FIFOWorklistAlgorithm
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: String): Boolean = true // don't run this for fast tests

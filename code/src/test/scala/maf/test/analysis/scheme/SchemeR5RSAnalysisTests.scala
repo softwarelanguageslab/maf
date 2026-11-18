@@ -18,7 +18,7 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
 
     type Analysis = SchemeModFLocal & SchemeDomain & SchemeModFLocalSensitivity
 
-    def analysis(prg: SchemeExp[Named] & Preluded): Analysis
+    def analysis: Analysis
 
     def parseProgram(txt: String): SchemeExp[Named] & Preluded =
         val parsed = SchemeParser.parse(txt, Source.Text)
@@ -27,25 +27,27 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
         SchemeParser.undefine(transf)
 
     def testExpr(program: String, answer: Any): Assertion =
-        val a = analysis(parseProgram(program))
+        val prg = parseProgram(program)
+        val a = analysis
         val l = a.lattice
 
         import l.Injector._
 
-        a.analyzeWithTimeout(Timeout.start(Duration(30, SECONDS)))
+        val sol = FIFOWorklistAlgorithm.solution(a, prg)
+        sol.compute(Timeout.start(Duration(30, SECONDS)))
         // All R5RS tests should terminate, no matter the analysis, because they're so simple.
-        assert(a.finished, s"Analysis of $program should finish within the given time bound out.")
-        val result = l.join(a.value(a.ResultDependency(a.MainComponent)).map(_._1))
+        assert(sol.finished, s"Analysis of $program should finish within the given time bound out.")
+        val result = l.join(sol.value(a.ResultDependency(a.initialComponent(prg))).map(_._1))
         assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
 
 class ConstantPropagationDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm
+    def analysis =
+        new SchemeModFLocal with SchemeConstantPropagationDomain with SchemeModFLocalNoSensitivity
 
 class PowersetDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) with SchemePowersetDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm
+    def analysis =
+        new SchemeModFLocal with SchemePowersetDomain with SchemeModFLocalNoSensitivity
 
 class TypeDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:
-    def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg) with SchemeTypeDomain with SchemeModFLocalNoSensitivity with FIFOWorklistAlgorithm
+    def analysis =
+        new SchemeModFLocal with SchemeTypeDomain with SchemeModFLocalNoSensitivity

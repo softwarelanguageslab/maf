@@ -24,22 +24,15 @@ object AnalyzeProgram extends App:
     def analyze(file: String, timeout: Timeout.T = Timeout.none): AnalysisResult =
         val prog = parse(file)
         val analysis =
-            new SchemeModFLocalFS(prog)
+            new SchemeModFLocalFS
                 with SchemeModFLocalNoSensitivity
                 with SchemeConstantPropagationDomain
-                with PriorityQueueWorklistAlgorithm:
-                    /** Example implementation of priority **/
-                    lazy val ordering = Ordering.by(priority) // currently, ordering is based on calculated priority
-                                                              // alternatively, could also just implement `compare` here
-                    def priority(cmp: Component): Int =
-                        cmp match
-                            case MainComponent => 0  // "main" (= top-level program code) gets priority 0
-                            case CallComponent(lam, env, ctx) => priority(lam) // TODO: could also take lexical environment + context into account
-                    def priority(lam: SchemeLambdaExp[Any]): Int =
-                        42   // TODO: determine the priority for each lambda in the program
-        val time = Timer.timeOnly { analysis.analyzeWithTimeout(timeout) }
-        if analysis.finished then
-            AnalysisResult.Terminated(analysis.iterations, time/1000000)
+        // the worklist analyzes the most deeply nested calls first
+        val solution = CallDepthFirstWorklistAlgorithm.solution(analysis, prog)
+        val time = Timer.timeOnly { solution.compute(timeout) }
+        if solution.finished then
+            val iterations = solution.metrics.collectFirst { case Metric("iterations", n) => n.toInt }.get
+            AnalysisResult.Terminated(iterations, time/1000000)
         else
             AnalysisResult.TimedOut
 

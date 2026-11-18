@@ -1,6 +1,6 @@
 package maf.runners.performance
 
-import maf.fixpoint.ModAnalysis
+import maf.fixpoint.{FIFOWorklistAlgorithm, FixpointAlgorithm}
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
@@ -24,7 +24,7 @@ case object NoData extends PerformanceResult
 case class Metrics(name: String, results: Statistics.Stats)
 
 trait PerformanceEvaluation:
-    type Analysis <: ModAnalysis[SchemeExp[Named]]
+    type Analysis <: maf.fixpoint.Analysis[SchemeExp[Named] & Preluded]
 
     // Configuring the warm-up
     def maxWarmupRuns = 10 // maximum number of warm-up runs
@@ -39,7 +39,10 @@ trait PerformanceEvaluation:
     def benchmarks: Iterable[Benchmark]
 
     // The analyses that are evaluated (and their names)
-    def analyses: List[(SchemeExp[Named] & Preluded => Analysis, String)]
+    def analyses: List[(Analysis, String)]
+
+    // The fixpoint algorithm that computes their solutions
+    def algorithm: FixpointAlgorithm = FIFOWorklistAlgorithm
 
     var results = Table.empty[PerformanceResult].withDefaultValue(NoData)
 
@@ -58,7 +61,7 @@ trait PerformanceEvaluation:
     // Runs a single analysis multiple times and returns the mean timing (in milliseconds)
     def measureAnalysis(
         file: String,
-        analysis: SchemeExp[Named] & Preluded => Analysis
+        analysis: Analysis
       )(using ex: ExecutionContext
       ): Future[(PerformanceResult, List[Metrics])] =
         def run(): (PerformanceResult, List[Metrics]) = boundary:
@@ -70,7 +73,7 @@ trait PerformanceEvaluation:
             for i <- 1 to maxWarmupRuns do
                 print(s"$i ")
                 System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-                analysis(program).analyzeWithTimeout(warmupTimeout)
+                algorithm.solution(analysis, program).compute(warmupTimeout)
             print("\n")
             // Actual timing
             print(s"* RUNS ($analysisRuns) - ")
@@ -79,11 +82,11 @@ trait PerformanceEvaluation:
 
             for i <- 1 to analysisRuns do
                 print(s"$i ")
-                val a = analysis(program)
+                val sol = algorithm.solution(analysis, program)
                 System.gc()
-                val t = Timer.timeOnly(a.analyzeWithTimeout(analysisTime))
-                if a.finished then
-                    val analysisMetrics = a.metrics
+                val t = Timer.timeOnly(sol.compute(analysisTime))
+                if sol.finished then
+                    val analysisMetrics = sol.metrics
                     metrics = analysisMetrics.foldLeft(metrics)((metrics, metric) =>
                         metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
                     )

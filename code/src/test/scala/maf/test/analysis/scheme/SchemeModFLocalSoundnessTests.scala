@@ -2,7 +2,6 @@ package maf.test.analysis.scheme
 
 import maf.analysis.scheme.*
 import maf.domain.scheme.*
-import maf.fixpoint.*
 import maf.runners.*
 import maf.semantics.scheme.*
 import maf.syntax.Source
@@ -19,11 +18,10 @@ trait SchemeModFLocalSoundnessTests extends SchemeSoundnessTests:
 
 class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
     def name = s"DSS"
-    def analysis(prg: SchemeExp[Named] & Preluded) =
-        new SchemeModFLocal(prg)
+    def analysis =
+        new SchemeModFLocal
             with SchemeConstantPropagationDomain
             with SchemeModFLocalNoSensitivity
-            with FIFOWorklistAlgorithm
             with SchemeModFLocalAnalysisResults
     override def isSlow(b: Benchmark): Boolean =
         Set(
@@ -42,7 +40,7 @@ class SchemeModFLocalTestsA extends SchemeModFLocalSoundnessTests with VariousSe
 class SchemeModFADITests extends SchemeModFLocalSoundnessTests with VariousSequentialBenchmarks:
 
     def name = s"ADI (with GC)"
-    def analysis(prg: SchemeExp[Named] & Preluded) = SchemeAnalyses.modfADIAnalysis(prg, 0)
+    def analysis = SchemeAnalyses.modfADIAnalysis(0)
     override def isSlow(b: Benchmark): Boolean =
         Set(
           // these time out in the analysis
