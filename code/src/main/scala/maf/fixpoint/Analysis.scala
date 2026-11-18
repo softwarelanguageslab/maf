@@ -7,7 +7,8 @@ import maf.util.{SmartHash, Timeout}
 case class Metric(name: String, result: Double)
 
 /**
- * Base trait of all analyses in MAF, which are modular analyses of programs of type `Expr`.
+ * Base trait of all analyses in MAF, which are modular analyses of programs of type `Expr`. It is contravariant in `Expr`: an analysis of the
+ * programs of a type is also an analysis of the programs of its subtypes.
  *
  * A modular analysis is a system of constraints with side effects. It splits the analysis of a program into the analyses of components
  * (`analyzeComponent`), starting from the component of the program itself (`initialComponent`), which read (`get`) and write (`set`) parts of the
@@ -17,7 +18,7 @@ case class Metric(name: String, result: Double)
  * An analysis keeps no state of its own: the solutions keep it. The same analysis can therefore be solved for several programs, and with several
  * fixpoint algorithms.
  */
-trait Analysis[Expr <: Expression]:
+trait Analysis[-Expr <: Expression]:
 
     // parameterized by a component representation
     type Component
