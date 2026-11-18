@@ -61,8 +61,7 @@ object DSSRun:
 
     def runDSS(prg: SchemeExp[Named] & Preluded) =
         val anl = new SchemeDSSAnalysis(0) //with NameBasedAllocator
-        val sol = FIFOWorklistAlgorithm.solution(anl, prg)
-        sol.compute()
-        val res = sol.value(anl.ResultDependency(anl.initialComponent(prg)))
+        val solver = anl.analyze(prg, FIFOWorklistAlgorithm)
+        val res = solver.value(anl.ResultDependency(anl.initialComponent(prg)))
         val vlu = Lattice[anl.Val].join(res.map(_._1))
         vlu

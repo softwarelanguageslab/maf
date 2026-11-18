@@ -1,5 +1,6 @@
 package maf.fixpoint
 
+import maf.analysis.{Analysis, Metric}
 import maf.syntax.Expression
 import maf.util.Timeout
 
@@ -12,26 +13,26 @@ import scala.collection.mutable.PriorityQueue
 
 /** A worklist algorithm that analyzes the components in a breadth-first order. */
 object FIFOWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new SequentialWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new SequentialWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def emptyWorkList = FIFOWorkList.empty
 
 /** A worklist algorithm that analyzes the components in a depth-first order. */
 object LIFOWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new SequentialWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new SequentialWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def emptyWorkList = LIFOWorkList.empty
 
 /** A worklist algorithm that analyzes the components in an arbitrary order. */
 object RandomWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new SequentialWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new SequentialWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def emptyWorkList = RandomWorkList.empty
 
 /** A worklist algorithm that analyzes the most deeply nested calls first (the components that are spawned the furthest from the initial one). */
 object CallDepthFirstWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new PriorityWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new PriorityWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             private var depth: Map[anl.Component, Int] = Map.empty.withDefaultValue(0)
             protected def ordering = Ordering.by(depth(_))
             override protected def spawn(cmp: anl.Component, from: anl.Component): Unit =
@@ -40,33 +41,33 @@ object CallDepthFirstWorklistAlgorithm extends FixpointAlgorithm:
 
 /** A worklist algorithm that analyzes the components that it analyzed the least often first. */
 object LeastVisitedFirstWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new AnalysisCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new AnalysisCountWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def ordering = Ordering.by((cmp: anl.Component) => timesAnalyzed(cmp)).reverse
 
 /** A worklist algorithm that analyzes the components that it analyzed the most often first. */
 object MostVisitedFirstWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new AnalysisCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new AnalysisCountWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def ordering = Ordering.by(timesAnalyzed(_))
 
 /** A worklist algorithm that analyzes the components that read the most dependencies first. */
 object MostDependenciesFirstWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new DependencyCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new DependencyCountWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def ordering = Ordering.by(dependenciesRead(_).size)
 
 /** A worklist algorithm that analyzes the components that read the fewest dependencies first. */
 object LeastDependenciesFirstWorklistAlgorithm extends FixpointAlgorithm:
-    def solution[E <: Expression](anl: Analysis[E], prg: E): anl.Solution =
-        new DependencyCountWorklistSolution[anl.type](anl, anl.initialComponent(prg)) with anl.Solution:
+    def solver[E <: Expression](anl: Analysis[E], prg: E): anl.Solver =
+        new DependencyCountWorklistSolver[anl.type](anl, anl.initialComponent(prg)) with anl.Solver:
             protected def ordering = Ordering.by((cmp: anl.Component) => dependenciesRead(cmp).size).reverse
 
-// The solutions of the worklist algorithms. They implement the members of `analysis.Solution`, which each worklist algorithm mixes in: a class can
-// not extend `analysis.Solution` itself, as the type checker could not tell that a solution for `anl` is an `anl.Solution`.
+// The solvers of the worklist algorithms. They implement the members of `analysis.Solver`, which each worklist algorithm mixes in: a class can
+// not extend `analysis.Solver` itself, as the type checker could not tell that a solver of `anl` is an `anl.Solver`.
 
-/** The solution of `analysis` for the program of the component `initial`, as a worklist algorithm computes it. */
-private[fixpoint] abstract class WorklistSolution[A <: Analysis[?]](val analysis: A, initial: analysis.Component):
+/** A solver of `analysis` for the program of the component `initial`, which uses a worklist. */
+private[fixpoint] abstract class WorklistSolver[A <: Analysis[?]](val analysis: A, initial: analysis.Component):
     import analysis.Dependency
 
     /** Adds `cmp` to the worklist. */
@@ -94,7 +95,7 @@ private[fixpoint] abstract class WorklistSolution[A <: Analysis[?]](val analysis
 
     /** An analysis state for the analysis of `cmp`, which changes the global analysis state right away. */
     private class State(cmp: analysis.Component) extends analysis.AnalysisState:
-        def spawn(other: analysis.Component): Unit = WorklistSolution.this.spawn(other, cmp)
+        def spawn(other: analysis.Component): Unit = WorklistSolver.this.spawn(other, cmp)
         def get(dep: Dependency): dep.Value =
             register(cmp, dep)
             value(dep)
@@ -105,14 +106,14 @@ private[fixpoint] abstract class WorklistSolution[A <: Analysis[?]](val analysis
                 values += dep -> upd
                 readers(dep).foreach(add)
 
-    // whether the computation has started, i.e., whether the initial component was added to the worklist
+    // whether the solver has started, i.e., whether the initial component was added to the worklist
     private var started: Boolean = false
 
     // the number of analyses of components so far
     private var iterations: Int = 0
 
     /** Analyzes the components in the worklist until it is empty or the timeout is reached. */
-    final def compute(timeout: Timeout.T): Unit =
+    final def solve(timeout: Timeout.T): Unit =
         if !started then
             started = true
             visited += initial
@@ -130,8 +131,8 @@ private[fixpoint] abstract class WorklistSolution[A <: Analysis[?]](val analysis
     final def dependencies: Set[Dependency] = values.keySet
     final def metrics: List[Metric] = List(Metric("iterations", iterations))
 
-/** A solution with a worklist that is a `WorkList`. */
-private[fixpoint] abstract class SequentialWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends WorklistSolution[A](anl, initial):
+/** A solver with a worklist that is a `WorkList`. */
+private[fixpoint] abstract class SequentialWorklistSolver[A <: Analysis[?]](anl: A, initial: anl.Component) extends WorklistSolver[A](anl, initial):
     protected def emptyWorkList: WorkList[analysis.Component]
     private var workList: WorkList[analysis.Component] = emptyWorkList
     protected def add(cmp: analysis.Component): Unit = workList = workList.add(cmp)
@@ -142,8 +143,8 @@ private[fixpoint] abstract class SequentialWorklistSolution[A <: Analysis[?]](an
     protected def isEmpty: Boolean = workList.isEmpty
 
 // TODO: use an immutable priority queue
-/** A solution with a worklist that is a priority queue, which contains each component at most once. */
-private[fixpoint] abstract class PriorityWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends WorklistSolution[A](anl, initial):
+/** A solver with a worklist that is a priority queue, which contains each component at most once. */
+private[fixpoint] abstract class PriorityWorklistSolver[A <: Analysis[?]](anl: A, initial: anl.Component) extends WorklistSolver[A](anl, initial):
     /** The order of the components, of which the greatest is analyzed first. */
     protected def ordering: Ordering[analysis.Component]
     private lazy val queue: PriorityQueue[analysis.Component] = PriorityQueue.empty(using ordering)
@@ -158,16 +159,16 @@ private[fixpoint] abstract class PriorityWorklistSolution[A <: Analysis[?]](anl:
         cmp
     protected def isEmpty: Boolean = queue.isEmpty
 
-/** A solution with a priority queue that counts how often it analyzed each component. */
-private[fixpoint] abstract class AnalysisCountWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends PriorityWorklistSolution[A](anl, initial):
+/** A solver with a priority queue that counts how often it analyzed each component. */
+private[fixpoint] abstract class AnalysisCountWorklistSolver[A <: Analysis[?]](anl: A, initial: anl.Component) extends PriorityWorklistSolver[A](anl, initial):
     protected var timesAnalyzed: Map[analysis.Component, Int] = Map.empty.withDefaultValue(0)
     override protected def next(): analysis.Component =
         val cmp = super.next()
         timesAnalyzed += cmp -> (timesAnalyzed(cmp) + 1)
         cmp
 
-/** A solution with a priority queue that keeps the dependencies that each component read. */
-private[fixpoint] abstract class DependencyCountWorklistSolution[A <: Analysis[?]](anl: A, initial: anl.Component) extends PriorityWorklistSolution[A](anl, initial):
+/** A solver with a priority queue that keeps the dependencies that each component read. */
+private[fixpoint] abstract class DependencyCountWorklistSolver[A <: Analysis[?]](anl: A, initial: anl.Component) extends PriorityWorklistSolver[A](anl, initial):
     protected var dependenciesRead: Map[analysis.Component, Set[analysis.Dependency]] = Map.empty.withDefaultValue(Set.empty)
     override protected def register(cmp: analysis.Component, dep: analysis.Dependency): Unit =
         super.register(cmp, dep)

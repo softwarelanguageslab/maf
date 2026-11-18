@@ -4,7 +4,6 @@ import maf.analysis.*
 import maf.domain.*
 import maf.domain.lattice.*
 import maf.domain.scheme.*
-import maf.fixpoint.*
 import maf.semantics.scheme.*
 import maf.syntax.Position
 import maf.syntax.scheme.*
@@ -222,10 +221,10 @@ abstract class SchemeModFLocalFS(gc: Boolean = true) extends Analysis[SchemeExp[
     // THE ANALYSIS OF A COMPONENT
     //
 
-    def computeOneCounts(sol: Solution): (Int, Int) =
-        val stores = sol.components.toList.map {
+    def computeOneCounts(solver: Solver): (Int, Int) =
+        val stores = solver.components.toList.map {
             case main: MainComponent => main.sto
-            case cll: Cll            => sol.value(StoreDependency(cll))
+            case cll: Cll            => solver.value(StoreDependency(cll))
         }
         stores.foldLeft((0,0)) { 
             case (acc, store) =>
@@ -241,8 +240,8 @@ abstract class SchemeModFLocalFS(gc: Boolean = true) extends Analysis[SchemeExp[
                 }
         }
 
-    def computeOneCountsPercentage(sol: Solution): Option[Double] =
-        val (one, total) = computeOneCounts(sol)
+    def computeOneCountsPercentage(solver: Solver): Option[Double] =
+        val (one, total) = computeOneCounts(solver)
         if total == 0 then
             None
         else 
@@ -266,7 +265,7 @@ trait SchemeModFLocalFSAnalysisResults extends SchemeModFLocalFS with AnalysisRe
         given lattice: Lattice[Set[Val]] = positionLattice
     lazy val positionLattice: Lattice[Set[Val]] = Lattice.setLattice
 
-    def resultsPerPos(sol: Solution) = sol.dependencies.collect { case dep: PositionDependency => dep.pos -> sol.value(dep) }.toMap
+    def resultsPerPos(solver: Solver) = solver.dependencies.collect { case dep: PositionDependency => dep.pos -> solver.value(dep) }.toMap
 
     private def record(anl: Anl, adr: Adr, vlu: Val): Unit = adr match
         case _: VarAddr[_] | _: PtrAddr[_] => anl.set(PositionDependency(adr.pos), Set(vlu))

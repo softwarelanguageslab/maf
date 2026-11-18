@@ -17,7 +17,7 @@ import scala.annotation.unused
 abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolLattice, Chr: CharLattice, Str: StringLattice, Smb: SymbolLattice]:
 
     type Benchmark = String
-    type Analysis = maf.fixpoint.Analysis[SchemeExp[Named] & Preluded] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
+    type Analysis = maf.analysis.Analysis[SchemeExp[Named] & Preluded] with AnalysisResults[SchemeExp[Any]] with ModularSchemeDomain {
         val modularLatticeWrapper: ModularSchemeLatticeWrapper {
             val modularLattice: ModularSchemeLattice[Address, Str, Bln, Num, Rea, Chr, Smb]
         }
@@ -157,16 +157,16 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         morePrecise
 
     /**
-     * Given a solution of an analysis (that terminated), extract its ResultMap
+     * Given a solver of an analysis (that terminated), extract its ResultMap
      * @param analysis
      *   the analysis from which the results need to be extracted
-     * @param sol
-     *   its solution
+     * @param solver
+     *   its solver
      * @return
      *   a ResultMap containing the context-insensitive results for that analysis
      */
-    protected def extract(analysis: Analysis)(sol: analysis.Solution): ResultMap =
-        analysis.resultsPerPos(sol).view
+    protected def extract(analysis: Analysis)(solver: analysis.Solver): ResultMap =
+        analysis.resultsPerPos(solver).view
             .mapValues(vs => analysis.lattice.join(vs))
             .mapValues(convertValue(analysis))
             .toMap
@@ -197,11 +197,10 @@ abstract class PrecisionBenchmarks[Num: IntLattice, Rea: RealLattice, Bln: BoolL
         timeout: Timeout.T = Timeout.none
       ): AnalysisResult =
         try
-            val sol = algorithm.solution(analysis, program)
             println(s"... analysing $path using $name ...")
-            sol.compute(timeout)
-            val res = extract(analysis)(sol)
-            if sol.finished then Terminated(res)
+            val solver = analysis.analyze(program, algorithm, timeout)
+            val res = extract(analysis)(solver)
+            if solver.finished then Terminated(res)
             else TimedOut(res)
         catch
             case e: Exception =>

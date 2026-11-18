@@ -33,11 +33,10 @@ trait SchemeR5RSAnalysisTests extends SchemeR5RSTests:
 
         import l.Injector._
 
-        val sol = FIFOWorklistAlgorithm.solution(a, prg)
-        sol.compute(Timeout.start(Duration(30, SECONDS)))
+        val solver = a.analyze(prg, FIFOWorklistAlgorithm, Timeout.start(Duration(30, SECONDS)))
         // All R5RS tests should terminate, no matter the analysis, because they're so simple.
-        assert(sol.finished, s"Analysis of $program should finish within the given time bound out.")
-        val result = l.join(sol.value(a.ResultDependency(a.initialComponent(prg))).map(_._1))
+        assert(solver.finished, s"Analysis of $program should finish within the given time bound out.")
+        val result = l.join(solver.value(a.ResultDependency(a.initialComponent(prg))).map(_._1))
         assert(l.subsumes(result, answer), s"Primitive computation test failed on program: $program with result $result (expected $answer).")
 
 class ConstantPropagationDSSR5RSCorrectnessTests extends SchemeR5RSAnalysisTests:

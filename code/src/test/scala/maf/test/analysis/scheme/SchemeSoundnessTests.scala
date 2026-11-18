@@ -26,7 +26,7 @@ object SchemeSoundnessTests:
 
 trait SchemeSoundnessTests extends SchemeBenchmarkTests:
     // analysis must support basic Scheme semantics
-    type Analysis = maf.fixpoint.Analysis[SchemeExp[Named] & Preluded] with AnalysisResults[SchemeExp[Any]] with SchemeDomain
+    type Analysis = maf.analysis.Analysis[SchemeExp[Named] & Preluded] with AnalysisResults[SchemeExp[Any]] with SchemeDomain
     // the analysis that is used to analyse the programs
     def name: String
     def analysis: Analysis
@@ -88,15 +88,14 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
                 System.gc()
                 alert(s"Concrete evaluation of $benchmark failed with $e")
         posResults
-    protected def runAnalysis(anl: Analysis)(program: SchemeExp[Named] & Preluded, benchmark: Benchmark): anl.Solution =
+    protected def runAnalysis(anl: Analysis)(program: SchemeExp[Named] & Preluded, benchmark: Benchmark): anl.Solver =
         try
             // analyze the program using the analysis under test
-            val sol = algorithm.solution(anl, program)
             val (ellapsed, timeout) = Timer.time(analysisTimeout(benchmark))
             SchemeSoundnessTests.logEllapsed(this, benchmark, ellapsed, concrete = false)
-            sol.compute(timeout)
-            assume(sol.finished, "Analysis timed out")
-            sol
+            val solver = anl.analyze(program, algorithm, timeout)
+            assume(solver.finished, "Analysis timed out")
+            solver
         catch
             case e: VirtualMachineError =>
                 System.gc()
@@ -135,11 +134,11 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
 
     protected def compareResults(
         analysis: Analysis
-      )(sol: analysis.Solution,
+      )(solver: analysis.Solver,
         concreteResults: Map[Option[Position], Set[Value]],
         message: String = ""
       ): Unit =
-        val analysisResults = analysis.resultsPerPos(sol)
+        val analysisResults = analysis.resultsPerPos(solver)
         concreteResults.foreach { case (pos, concreteValues) =>
             val abstractValues = analysisResults.getOrElse(pos, Set.empty)
             concreteValues.foreach { concreteValue =>
@@ -176,7 +175,7 @@ trait SchemeSoundnessTests extends SchemeBenchmarkTests:
             val concreteResults = evalConcrete(program, benchmark)
             // analyze the program using the analysis under test
             val anl = analysis
-            val sol = runAnalysis(anl)(program, benchmark)
+            val solver = runAnalysis(anl)(program, benchmark)
             // check if the analysis results soundly (over-)approximate the concrete results
-            compareResults(anl)(sol, concreteResults)
+            compareResults(anl)(solver, concreteResults)
         }

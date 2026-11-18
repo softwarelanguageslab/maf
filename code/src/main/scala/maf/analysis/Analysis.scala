@@ -1,6 +1,7 @@
-package maf.fixpoint
+package maf.analysis
 
 import maf.domain.lattice.Lattice
+import maf.fixpoint.FixpointAlgorithm
 import maf.syntax.Expression
 import maf.util.{SmartHash, Timeout}
 
@@ -13,9 +14,9 @@ case class Metric(name: String, result: Double)
  * A modular analysis is a system of constraints with side effects. It splits the analysis of a program into the analyses of components
  * (`analyzeComponent`), starting from the component of the program itself (`initialComponent`), which read (`get`) and write (`set`) parts of the
  * global analysis state, called dependencies, and discover (`spawn`) other components, through an `AnalysisState`. Its solution for a program is
- * the least fixpoint of these analyses, which a fixpoint algorithm computes (see `FixpointAlgorithm`).
+ * the least fixpoint of these analyses, which a solver computes with a fixpoint algorithm (see `FixpointAlgorithm`).
  *
- * An analysis keeps no state of its own: the solutions keep it. The same analysis can therefore be solved for several programs, and with several
+ * An analysis keeps no state of its own: its solvers keep it. The same analysis can therefore be solved for several programs, and with several
  * fixpoint algorithms.
  */
 trait Analysis[-Expr <: Expression]:
@@ -51,32 +52,41 @@ trait Analysis[-Expr <: Expression]:
     def analyzeComponent(cmp: Component, state: AnalysisState): Unit
 
     /**
-     * The solution of this analysis for a program, which a fixpoint algorithm computes (see `FixpointAlgorithm.solution`). It keeps the global
-     * analysis state, and the state of the fixpoint algorithm.
+     * A solver of this analysis for a program, which computes its solution with a fixpoint algorithm (see `FixpointAlgorithm.solver`). It keeps the
+     * global analysis state, and the state of the fixpoint algorithm.
      */
-    trait Solution:
+    trait Solver:
 
         /**
-         * Computes the solution until it reaches the least fixpoint or the given timeout, whichever comes first. Another call resumes the computation
-         * where this one stopped. Extra care should be taken when a timeout is given, as the solution is not guaranteed to be sound if the timeout is
-         * reached: check afterwards whether the computation finished (see `finished`).
+         * Solves the analysis until it reaches the least fixpoint or the given timeout, whichever comes first. Another call resumes where this one
+         * stopped. Extra care should be taken when a timeout is given, as the values of the dependencies are not guaranteed to be sound if the timeout
+         * is reached: check afterwards whether the solver finished (see `finished`).
          */
-        def compute(timeout: Timeout.T = Timeout.none): Unit
+        def solve(timeout: Timeout.T = Timeout.none): Unit
 
-        /** Returns whether the computation has finished, i.e., whether the solution is the least fixpoint. */
+        /** Returns whether the solver has finished, i.e., whether the values of the dependencies are the least fixpoint. */
         def finished: Boolean
 
-        /** Returns the value of `dep` (e.g., to inspect the results of the analysis). */
+        /** Returns the current value of `dep` (e.g., to inspect the results of the analysis). */
         def value(dep: Dependency): dep.Value
 
-        /** Returns the components that the analyses of the components discovered. */
+        /** Returns the components that the analyses of the components discovered so far. */
         def components: Set[Component]
 
         /** Returns the dependencies whose values are not at the bottom of their lattice. */
         def dependencies: Set[Dependency]
 
-        /** Returns the metrics that the computation collected (e.g., the number of analyses of components). */
+        /** Returns the metrics that the solver collected (e.g., the number of analyses of components). */
         def metrics: List[Metric]
+
+    /**
+     * Analyzes the program `prg` with the fixpoint algorithm `alg`, until it reaches the least fixpoint or the given timeout, and returns the solver.
+     * Check afterwards whether the solver finished, and call its `solve` to resume (see `Solver.solve`).
+     */
+    final def analyze(prg: Expr, alg: FixpointAlgorithm, timeout: Timeout.T = Timeout.none): Solver =
+        val solver = alg.solver(this, prg)
+        solver.solve(timeout)
+        solver
 
 object Analysis:
 

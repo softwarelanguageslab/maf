@@ -24,7 +24,7 @@ case object NoData extends PerformanceResult
 case class Metrics(name: String, results: Statistics.Stats)
 
 trait PerformanceEvaluation:
-    type Analysis <: maf.fixpoint.Analysis[SchemeExp[Named] & Preluded]
+    type Analysis <: maf.analysis.Analysis[SchemeExp[Named] & Preluded]
 
     // Configuring the warm-up
     def maxWarmupRuns = 10 // maximum number of warm-up runs
@@ -73,7 +73,7 @@ trait PerformanceEvaluation:
             for i <- 1 to maxWarmupRuns do
                 print(s"$i ")
                 System.gc() // It never hurts (hopefully, because it may cause GC errors...)
-                algorithm.solution(analysis, program).compute(warmupTimeout)
+                analysis.analyze(program, algorithm, warmupTimeout)
             print("\n")
             // Actual timing
             print(s"* RUNS ($analysisRuns) - ")
@@ -82,11 +82,10 @@ trait PerformanceEvaluation:
 
             for i <- 1 to analysisRuns do
                 print(s"$i ")
-                val sol = algorithm.solution(analysis, program)
                 System.gc()
-                val t = Timer.timeOnly(sol.compute(analysisTime))
-                if sol.finished then
-                    val analysisMetrics = sol.metrics
+                val (t, solver) = Timer.time(analysis.analyze(program, algorithm, analysisTime))
+                if solver.finished then
+                    val analysisMetrics = solver.metrics
                     metrics = analysisMetrics.foldLeft(metrics)((metrics, metric) =>
                         metrics + (metric.name -> (metric.result :: metrics.get(metric.name).getOrElse(List())))
                     )

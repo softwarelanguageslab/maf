@@ -1,5 +1,6 @@
 package maf.runners
 
+import maf.analysis.Metric
 import maf.analysis.scheme.*
 import maf.domain.scheme.*
 import maf.fixpoint.*
@@ -28,10 +29,9 @@ object AnalyzeProgram extends App:
                 with SchemeModFLocalNoSensitivity
                 with SchemeConstantPropagationDomain
         // the worklist analyzes the most deeply nested calls first
-        val solution = CallDepthFirstWorklistAlgorithm.solution(analysis, prog)
-        val time = Timer.timeOnly { solution.compute(timeout) }
-        if solution.finished then
-            val iterations = solution.metrics.collectFirst { case Metric("iterations", n) => n.toInt }.get
+        val (time, solver) = Timer.time { analysis.analyze(prog, CallDepthFirstWorklistAlgorithm, timeout) }
+        if solver.finished then
+            val iterations = solver.metrics.collectFirst { case Metric("iterations", n) => n.toInt }.get
             AnalysisResult.Terminated(iterations, time/1000000)
         else
             AnalysisResult.TimedOut

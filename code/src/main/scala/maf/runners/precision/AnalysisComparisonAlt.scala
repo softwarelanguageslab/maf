@@ -1,7 +1,7 @@
 package maf.runners.precision
 
 import maf.domain.lattice.*
-import maf.fixpoint.Metric
+import maf.analysis.Metric
 import maf.runners.*
 import maf.syntax.Source
 import maf.syntax.scheme.*
@@ -209,9 +209,8 @@ object CountIterationBenchmark extends SASBenchmarks:
   override protected def forBenchmark(path: Benchmark, program: SchemeExp[Named] & Preluded): Unit =
     println(s"ANALYZING $path")
     analyses.foreach { case (analysis, name) => 
-      val sol = algorithm.solution(analysis, program)
-      sol.compute(Timeout.start(Duration(15, MINUTES)))
-      results = results.add(path, name, sol.metrics.collectFirst { case Metric("iterations", n) => n.toInt }.get)
+      val solver = analysis.analyze(program, algorithm, Timeout.start(Duration(15, MINUTES)))
+      results = results.add(path, name, solver.metrics.collectFirst { case Metric("iterations", n) => n.toInt }.get)
     }
 
   override def timeout() = Timeout.none

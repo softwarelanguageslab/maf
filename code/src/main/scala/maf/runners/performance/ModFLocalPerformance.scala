@@ -6,7 +6,7 @@ import maf.syntax.scheme.{Named, SchemeExp, SchemeParser}
 import maf.syntax.scheme.transformations.{Preluded, SchemeMutableVarBoxer, SchemePrelude}
 
 object ModFLocalPerformance extends PerformanceEvaluation:
-    type Analysis = maf.fixpoint.Analysis[SchemeExp[Named] & Preluded]
+    type Analysis = maf.analysis.Analysis[SchemeExp[Named] & Preluded]
     def benchmarks =
         List(
         )
